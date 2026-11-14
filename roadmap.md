@@ -1,5 +1,10 @@
 # Roadmap
 
+## WhatsApp explicit property UUID routing November 14
+- [x] Both official receivers resolve an explicit eligible public/live/unpaused property before phone history; sender-specific leads remain scoped to its workspace. Explicit traffic bypasses the legacy global-phone upsert and owner-companion routing, never another person's lead.
+- [x] Exact property facts take priority through fast/slow/rescue replies; generic buyer fallback is replaced with a property-specific response. Existing autopilot gates remain; Green messaging stays retired under the standing official-only rule.
+- [x] Five Deno routing tests, three Rita prompt tests and both receiver Deno checks passed. Both receivers deployed; unsigned Meta and unauthorized internal requests return 401. Real signed inbound event, AI reply and recipient delivery remain unverified; no WhatsApp message was sent.
+
 ## Profile and office presentation November 14
 - [x] Shared dropdown items use +3px; chat action popovers add +3px to their existing modal scale. Profile, shared grid, expanded cards and homepage rows expose share/favorite only in menus.
 - [x] Profile controls anchor at shell top on expansion/view changes without resetting columns; page close portals outside scroll ancestors with 22px X, dialog close stays sticky with 18px X.

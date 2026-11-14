@@ -182,7 +182,8 @@ Deno.serve(async (req) => {
               // Multi-tenant context routing: the official number is shared by
               // every workspace, so the tenant is the one whose conversation
               // with this phone is the most recent (last outbound session).
-              const waCtx = await resolveWaContext(admin, from);
+              const routingText = String(m?.text?.body ?? m?.button?.text ?? m?.interactive?.button_reply?.title ?? m?.interactive?.list_reply?.title ?? m?.image?.caption ?? m?.video?.caption ?? m?.document?.caption ?? "");
+              const waCtx = await resolveWaContext(admin, from, routingText);
               const ownerId: string | null = waCtx.ownerId ?? fallbackOwnerId;
               if (waCtx.ownerId) {
                 console.log("[meta-wa-webhook] context routed inbound", {
@@ -235,19 +236,22 @@ Deno.serve(async (req) => {
 
 
               // 1. Ensure a CRM lead exists for this sender.
-              const { data: leadId, error: leadErr } = await admin.rpc(
-                "upsert_lead_from_interaction",
-                {
-                  _platform: "whatsapp",
-                  _handle: from,
-                  _external_id: from,
-                  _full_name: profileName,
-                  _phone: from,
-                  _email: null,
-                  _avatar: null,
-                  _owner: ownerId,
-                },
-              );
+              // The legacy upsert matches phones globally; explicit-property traffic
+              // must instead use a sender-specific row within the property's workspace.
+              const explicitLead = waCtx.listingId && !waCtx.leadId
+                ? await admin.from("leads").insert({
+                    workspace_owner_id: ownerId, assigned_to: ownerId,
+                    phone_number: from, full_name: profileName || "מתעניין/ת חדש/ה",
+                    interest_tag: waCtx.listingId, ai_autopilot: true,
+                    status: "contacted", lead_stage: "engaging", is_demo: false,
+                  }).select("id").maybeSingle()
+                : null;
+              const legacyLead = !waCtx.listingId ? await admin.rpc("upsert_lead_from_interaction", {
+                _platform: "whatsapp", _handle: from, _external_id: from,
+                _full_name: profileName, _phone: from, _email: null, _avatar: null, _owner: ownerId,
+              }) : null;
+              const leadId = waCtx.listingId ? waCtx.leadId ?? explicitLead?.data?.id ?? null : legacyLead?.data ?? null;
+              const leadErr = explicitLead?.error ?? legacyLead?.error;
               if (leadErr) console.error("[meta-wa-webhook] upsert lead failed", leadErr);
               if (!leadId) {
                 console.error("[meta-wa-webhook] no lead resolved — message would be dropped", {
@@ -265,10 +269,14 @@ Deno.serve(async (req) => {
                   .is("assigned_to", null);
               }
 
+              if (leadId && waCtx.listingId && ownerId) {
+                await admin.from("leads").update({ interest_tag: waCtx.listingId }).eq("id", leadId).eq("workspace_owner_id", ownerId);
+              }
+
               // Partner attribution: the public WhatsApp button embeds the
               // sharing partner's referral code in the opening message.
               const refMatch = String(content).match(/קוד הפניה:\s*([A-Za-z0-9_-]{4,40})/);
-              if (refMatch) {
+              if (refMatch && !waCtx.listingId) {
                 const { error: refErr } = await admin.rpc("attribute_whatsapp_referral", {
                   _ref: refMatch[1], _phone: from, _name: profileName,
                 });
@@ -351,8 +359,8 @@ Deno.serve(async (req) => {
                   console.warn("[autopilot] whitelist lookup threw", wlEx);
                 }
 
-                const mode = isOwnerPhone ? "owner_router" : "autopilot_only";
-                const forwardBody = isOwnerPhone
+                const mode = isOwnerPhone && !waCtx.listingId ? "owner_router" : "autopilot_only";
+                const forwardBody = isOwnerPhone && !waCtx.listingId
                   ? JSON.stringify(payload)
                   : JSON.stringify({
                       autopilot_only: true,

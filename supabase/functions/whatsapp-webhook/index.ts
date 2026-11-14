@@ -25,15 +25,16 @@
 // ============================================================
 
 import { requireCaller } from "../_shared/authz.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
-import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
+import { routeOwnerCommand, lookupOwnerByPhone } from "../_shared/wa-companion-router.ts";
 import { generateFastReply } from "../_shared/waFastReply.ts";
 import { processListingInquiry } from "../_shared/listingInquiry.ts";
 import { FOCUS_COLUMNS, matchListingFromText, renderFocusPropertyBlock, textNamesAddress, ADDRESS_NOT_FOUND_BLOCK } from "../_shared/focusProperty.ts";
 import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, saveRitaState } from "../_shared/ritaIntel.ts";
 import { resolveLeadGender } from "../_shared/hebrewGender.ts";
+import { propertyIdsFromText, resolveWaPropertyContext, EXPLICIT_PROPERTY_PROMPT, retainPropertyReply } from "../_shared/waPropertyContext.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
 import {
   extractRefCode,
@@ -180,7 +181,7 @@ function extractRawMessageText(payload: any, raw = ""): string {
 // Uses Lovable AI Gateway (Gemini) to parse a free-text inbound message into
 // structured lead fields, then merges the result into the master lead row.
 async function extractAndApplyLeadMetadata(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient<any>,
   lead: any,
   inboundText: string,
 ): Promise<void> {
@@ -263,7 +264,7 @@ async function extractAndApplyLeadMetadata(
 }
 
 async function persistRawRecoveryMessage(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient<any>,
   payload: any,
   rawBody: string,
   reason: string,
@@ -530,7 +531,7 @@ const SHORTLINK_PRICE_RE = /במחיר\s+([\d.,]+)/;
 const SHORTLINK_ROOMS_RE = /דירת\s+(\d+(?:\.\d+)?)\s+חדרים/;
 
 async function resolveShortLinkListing(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient<any>,
   inboundText: string,
 ): Promise<{ listing_id: string; owner_id: string | null; deal_type: string | null; city: string | null; neighborhood: string | null } | null> {
   if (!SHORTLINK_ANCHOR_RE.test(inboundText)) return null;
@@ -600,7 +601,7 @@ function phoneVariants(phone: string): string[] {
  * signature and no ref tag, and Rita would ask "על איזה נכס מדובר?".
  */
 async function resolveSharedPropertyForPhone(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient<any>,
   senderPhone: string,
 ): Promise<{
   listing_id: string;
@@ -759,7 +760,7 @@ function formatMarketIntelForWhatsApp(
 
 
 async function handleLeadInboxInbound(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient<any>,
   supabaseUrl: string,
   serviceKey: string,
   senderPhone: string,
@@ -781,12 +782,13 @@ async function handleLeadInboxInbound(
   const skipStore = opts?.skipStore === true;
 
   // Detect short-link signature so we can auto-create / tag the lead before lookup.
-  const shortLink = await resolveShortLinkListing(admin, inboundText);
+  const explicitProperty = await resolveWaPropertyContext(admin, inboundText);
+  const shortLink = explicitProperty ?? (propertyIdsFromText(inboundText).length ? null : await resolveShortLinkListing(admin, inboundText));
   const hasShortLinkSignature = SHORTLINK_ANCHOR_RE.test(inboundText);
   // Facebook campaign short links mark the WhatsApp opener with [src:fb].
   const fromFbCampaign = extractSourceTag(inboundText) === "fb";
   // Property shared to this exact phone from the share dialog / affiliate share.
-  const sharedContext = await resolveSharedPropertyForPhone(admin, senderPhone);
+  const sharedContext = explicitProperty ? null : await resolveSharedPropertyForPhone(admin, senderPhone);
   if (sharedContext) {
     console.log("[whatsapp-webhook] share context resolved", {
       listing_id: sharedContext.listing_id,
@@ -800,7 +802,7 @@ async function handleLeadInboxInbound(
   // ignored so the conversation always continues normally.
   const refCode = extractRefCode(inboundText);
   let referral: InboundReferral | null = null;
-  if (refCode) {
+  if (refCode && !explicitProperty) {
     referral = await resolveAffiliateReferral(admin, refCode);
     console.log("[whatsapp-webhook] inbound ref tag", {
       code: refCode,
@@ -815,9 +817,9 @@ async function handleLeadInboxInbound(
   // workspace scoping, constraint) NEVER halts the AI reply path.
   // The inbox is restored by always inserting the message row with the
   // sender_phone in metadata, even when lead resolution fails.
-  const LEAD_COLS = "id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type, preferences, gender";
+  const LEAD_COLS = "id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type, preferences, gender, workspace_owner_id";
   let lead: any = null;
-  if (opts?.leadId) {
+  if (opts?.leadId && !explicitProperty) {
     try {
       const r = await admin.from("leads").select(LEAD_COLS).eq("id", opts.leadId).maybeSingle();
       lead = r.data;
@@ -840,7 +842,7 @@ async function handleLeadInboxInbound(
     // phone can exist as a lead in several of them. Pick the tenant whose
     // conversation with this phone is the most recent (last outbound session).
     try {
-      const ctx = await resolveWaContext(admin, senderPhone);
+      const ctx = await resolveWaContext(admin, senderPhone, inboundText);
       if (ctx.leadId) {
         const r = await admin.from("leads").select(LEAD_COLS).eq("id", ctx.leadId).maybeSingle();
         lead = r.data;
@@ -849,7 +851,7 @@ async function handleLeadInboxInbound(
     } catch (e) {
       console.warn("context routing threw:", e instanceof Error ? e.message : e);
     }
-    if (!lead?.id) {
+    if (!lead?.id && !explicitProperty) {
       try {
         const r = await admin
           .from("leads")
@@ -901,8 +903,8 @@ async function handleLeadInboxInbound(
           status: "contacted",
           sentiment: "positive",
           assigned_to: assignTo,
-          ...(referral?.broker_id ?? sharedContext?.owner_id
-            ? { workspace_owner_id: referral?.broker_id ?? sharedContext?.owner_id }
+          ...(explicitProperty?.owner_id ?? referral?.broker_id ?? shortLink?.owner_id ?? sharedContext?.owner_id
+            ? { workspace_owner_id: explicitProperty?.owner_id ?? referral?.broker_id ?? shortLink?.owner_id ?? sharedContext?.owner_id }
             : {}),
           preferences: {
             source: fromFbCampaign ? "shortlink" : "whatsapp",
@@ -938,7 +940,7 @@ async function handleLeadInboxInbound(
     }
   }
   const tagSource = shortLink ?? sharedContext ?? null;
-  if (lead?.id && tagSource && !lead.interest_tag) {
+  if (lead?.id && tagSource && (explicitProperty || !lead.interest_tag)) {
     try {
       await admin
         .from("leads")
@@ -949,6 +951,7 @@ async function handleLeadInboxInbound(
         })
         .eq("id", lead.id);
       lead.interest_tag = tagSource.listing_id;
+      if (explicitProperty) lead.deal_type = explicitProperty.deal_type ?? lead.deal_type;
     } catch (e) {
       console.warn("lead tag update soft-fail:", e instanceof Error ? e.message : e);
     }
@@ -1067,13 +1070,13 @@ async function handleLeadInboxInbound(
   if (lead?.id) {
     // Fire-and-forget bookkeeping — never block the reply on these writes.
     if (!alreadyStored) {
-      admin.from("chat_history").insert({ lead_id: lead.id, role: "user", content: inboundText, is_demo: false })
+      Promise.resolve(admin.from("chat_history").insert({ lead_id: lead.id, role: "user", content: inboundText, is_demo: false }))
         .then(({ error }: any) => { if (error) console.warn("chat_history insert soft-fail:", error.message); })
-        .catch?.((e: unknown) => console.warn("chat_history insert threw:", e));
+        .catch((e: unknown) => console.warn("chat_history insert threw:", e));
     }
-    admin.from("leads").update({ last_interaction_at: now, status: "contacted" }).eq("id", lead.id)
+    Promise.resolve(admin.from("leads").update({ last_interaction_at: now, status: "contacted" }).eq("id", lead.id))
       .then(({ error }: any) => { if (error) console.warn("lead touch soft-fail:", error.message); })
-      .catch?.((e: unknown) => console.warn("lead touch threw:", e));
+      .catch((e: unknown) => console.warn("lead touch threw:", e));
     // Fire-and-forget AI metadata extraction from inbound text.
     extractAndApplyLeadMetadata(admin, lead, inboundText).catch((e) =>
       console.warn("[lead-metadata-extract] failed:", e instanceof Error ? e.message : e),
@@ -1090,7 +1093,7 @@ async function handleLeadInboxInbound(
   // Explicit agent-tool commands bypass the autopilot gates: users typing
   // "find me a 4-room in Herzliya" or "add this lead" always get routed to
   // the AI agent so webtiv_search / Market Intel / CRM actions can run.
-  const agentCommand = isAgentCommand(inboundText);
+  const agentCommand = !explicitProperty && isAgentCommand(inboundText);
 
   // Rita's recruitment mode: this workspace only talks to agents/brokers, so a
   // reply to the outreach template is answered with the TORAFF pitch + Zoom ask
@@ -1109,7 +1112,7 @@ async function handleLeadInboxInbound(
       console.warn("[autopilot] sender role lookup soft-fail:", e instanceof Error ? e.message : e);
     }
   }
-  const staffSender = senderRole?.isStaff ? senderRole : null;
+  const staffSender = !explicitProperty && senderRole?.isStaff ? senderRole : null;
   if (staffSender) {
     console.log("[autopilot] internal sender recognised", JSON.stringify({
       role: staffSender.label,
@@ -1122,9 +1125,9 @@ async function handleLeadInboxInbound(
   // reply to the outreach template is answered with the TORAFF pitch + Zoom ask
   // instead of property talk. Internal staff are never in recruitment mode.
   // Deterministic intent: a question about TORAFF itself never enters buyer qualification.
-  const productInquiry = !staffSender && classifyInquiryIntent(stripRefTag(inboundText)) === "product";
+  const productInquiry = !explicitProperty && !staffSender && classifyInquiryIntent(stripRefTag(inboundText)) === "product";
   const recruitmentMode =
-    !staffSender &&
+    !explicitProperty && !staffSender &&
     (BROKER_RECRUITMENT_WORKSPACE ||
       String(leadPrefs.lead_kind ?? "") === "broker" ||
       opts?.recruitment === true ||
@@ -1147,7 +1150,7 @@ async function handleLeadInboxInbound(
   // Chat autopilot requires BOTH switches: the contact-level autopilot and the
   // global AI autopilot switch for the owning/assigned workspace user. Agent
   // commands skip this — a direct request is a direct request.
-  const aiOwnerId = lead.assigned_to ? String(lead.assigned_to) : "";
+  const aiOwnerId = explicitProperty?.owner_id ?? (lead.workspace_owner_id ? String(lead.workspace_owner_id) : lead.assigned_to ? String(lead.assigned_to) : "");
   if (!aiOwnerId) {
     console.warn("[autopilot] blocked: lead has no assigned_to owner", { lead_id: lead.id });
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "missing_owner_for_ai_autopilot" };
@@ -1266,7 +1269,7 @@ async function handleLeadInboxInbound(
     // Live CRM counters. Staff always get them (they manage the workspace), and
     // anyone explicitly asking "how many contacts do we have" gets the exact
     // number instead of a fallback sentence.
-    const wantsCounts = !!staffSender || asksForCrmCounts(inboundText);
+    const wantsCounts = !explicitProperty && (!!staffSender || asksForCrmCounts(inboundText));
 
     // FOCUS PROPERTY — the property this specific inbound message is about.
     // The current message always wins over the contact's older interest_tag,
@@ -1284,6 +1287,7 @@ async function handleLeadInboxInbound(
         : Promise.resolve(null),
       (async () => {
         try {
+          if (explicitProperty) return explicitProperty.row;
           const matched = await matchListingFromText(admin as any, aiOwnerId, promptInboundText);
           if (matched) return matched;
           if (textNamesAddress(promptInboundText)) return null;
@@ -1329,6 +1333,7 @@ async function handleLeadInboxInbound(
       }
     }
     const focusProperty = productInquiry ? "" : renderFocusPropertyBlock(focusRow as any);
+    if (explicitProperty) contextBlock += EXPLICIT_PROPERTY_PROMPT;
     let listingScreeningQuestion = '';
     if (!staffSender && !productInquiry && focusRow?.id) {
       try {
@@ -1403,7 +1408,7 @@ async function handleLeadInboxInbound(
         // System context: the webhook has no interactive user session, so we
         // hand ai-agent the verified workspace owner explicitly.
         workspace_owner_id: aiOwnerId || undefined,
-        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${promptInboundText}${referral ? `\n[REFERRAL_CONTEXT] The contact arrived through an affiliate marketing link for this property: ${referralPropertyLabel(referral)}. It is ALREADY linked to their CRM card — never say you failed to find it. Greet warmly, confirm the property by name and offer a viewing.` : ""}${!referral && sharedContext ? `\n[SHARED_PROPERTY_CONTEXT] listing_id=${sharedContext.listing_id}. This contact received a link to THIS property from the office. It is already linked to their CRM card — never ask which property they mean and never say you could not find it. Confirm the property by name, answer about it, and offer a viewing.` : ""}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
+        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${promptInboundText}${explicitProperty ? EXPLICIT_PROPERTY_PROMPT + renderFocusPropertyBlock(explicitProperty.row) : ""}${referral ? `\n[REFERRAL_CONTEXT] The contact arrived through an affiliate marketing link for this property: ${referralPropertyLabel(referral)}. It is ALREADY linked to their CRM card — never say you failed to find it. Greet warmly, confirm the property by name and offer a viewing.` : ""}${!referral && sharedContext ? `\n[SHARED_PROPERTY_CONTEXT] listing_id=${sharedContext.listing_id}. This contact received a link to THIS property from the office. It is already linked to their CRM card — never ask which property they mean and never say you could not find it. Confirm the property by name, answer about it, and offer a viewing.` : ""}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
         messages: aiMessages,
         enable_research: agentCommand ? true : undefined,
       }),
@@ -1489,6 +1494,8 @@ async function handleLeadInboxInbound(
     });
     reply = ritaRecruitmentFallback(lead.full_name, resolveLeadGender(lead));
   }
+
+  if (explicitProperty) reply = retainPropertyReply(reply, explicitProperty);
 
   if (!reply) {
     console.error("[autopilot] no AI text produced — nothing to send", { lead_id: lead.id });
@@ -1597,7 +1604,7 @@ async function handleLeadInboxInbound(
 }
 
 async function ensurePhoneConversationLead(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient<any>,
   phone: string,
   ownerUserId: string | null,
   label?: string | null,
@@ -1644,7 +1651,7 @@ async function ensurePhoneConversationLead(
 }
 
 async function persistCompanionBubble(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient<any>,
   args: { phone: string; ownerUserId: string | null; label?: string | null; direction: "inbound" | "outbound"; content: string; messageId?: string | null; action?: string | null },
 ): Promise<string | null> {
   const leadId = await ensurePhoneConversationLead(admin, args.phone, args.ownerUserId, args.label);
@@ -1924,7 +1931,7 @@ Deno.serve(async (req) => {
     // ============================================================
     const LEAD_INQUIRY_ANCHOR = "אני פונה אליך לגבי הדירה";
     const normalizedInbound = (msg.text || "").trim();
-    if (normalizedInbound.includes(LEAD_INQUIRY_ANCHOR)) {
+    if (propertyIdsFromText(normalizedInbound).length || normalizedInbound.includes(LEAD_INQUIRY_ANCHOR)) {
       console.log(`[LEAD ANCHOR] Customer inquiry detected from ${senderPhone} → lead pipeline`);
       try {
         const result = await handleLeadInboxInbound(
@@ -2557,7 +2564,7 @@ async function sendRawWhatsApp(
   serviceKey: string,
   phone: string,
   body: string,
-  opts?: { admin?: ReturnType<typeof createClient>; ownerUserId?: string | null; label?: string | null; action?: string | null; markAi?: boolean },
+  opts?: { admin?: SupabaseClient<any>; ownerUserId?: string | null; label?: string | null; action?: string | null; markAi?: boolean },
 ): Promise<void> {
   const leadId = opts?.admin
     ? await ensurePhoneConversationLead(opts.admin, phone, opts.ownerUserId ?? null, opts.label ?? null)

@@ -13,6 +13,7 @@
 // Nothing matched → caller keeps its own fallback (provider row / admin).
 
 type MinimalClient = { from: (t: string) => any };
+import { resolveWaPropertyContext } from './waPropertyContext.ts';
 
 export function waPhoneVariants(raw: string): string[] {
   const digits = String(raw ?? "").replace(/\D/g, "");
@@ -29,15 +30,23 @@ export interface WaContext {
   ownerId: string | null;
   /** How the workspace was chosen, for logging only. */
   reason: string;
+  listingId?: string;
 }
 
 export async function resolveWaContext(
   admin: MinimalClient,
   rawPhone: string,
+  text = '',
 ): Promise<WaContext> {
   const empty: WaContext = { leadId: null, ownerId: null, reason: "no_match" };
   const variants = waPhoneVariants(rawPhone);
   if (!variants.length) return empty;
+  const property = await resolveWaPropertyContext(admin, text);
+  if (property) {
+    const { data, error } = await admin.from('leads').select('id').eq('workspace_owner_id', property.owner_id).in('phone_number', variants).limit(1).maybeSingle();
+    if (error) throw new Error('property_sender_lookup_failed');
+    return { leadId: data?.id ?? null, ownerId: property.owner_id, listingId: property.listing_id, reason: 'explicit_property_uuid' };
+  }
 
   let leads: Array<{ id: string; assigned_to: string | null; updated_at: string | null }> = [];
   try {
