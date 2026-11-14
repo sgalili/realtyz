@@ -1,5 +1,10 @@
 # Roadmap
 
+## Card menus and avatar-only profiles November 14
+- [x] Lead/peer/group cards share target-bound header action content; directory cards reuse peer actions and saved rows have top-left menus. Clicks close menus while preserving favorite/block/delete confirmations; no destructive backend changes.
+- [x] Lead/peer/header/directory/group sender/roster public profiles open only from circular avatars. Names/card bodies open conversations or remain text; authorized lead editing stays in the menu and unmapped leads never borrow account identities.
+- [x] Five focused tests pass; authenticated four lead cards and ten peer cards checked, lead card/header options identical, delete confirmations cancelled, name/header/avatar navigation verified desktop/mobile, favorites row menu visible, no overflow/runtime errors. Populated group interaction remains unverified because the available account has no joined groups; shared group implementation updated without creating any.
+
 ## Rita autonomous messaging and conclusion actions November 14
 - [x] Replaced draft-only Rita conversation instructions with authorized tools: direct official WhatsApp replies, internal Rita messages, follow-up tasks, known-property sharing and bounded lead stages. Existing incoming-message autopilot remains enabled-state gated; no Green messaging fallback or provider-window bypass.
 - [x] Added server-owned actions with single-use claims, fresh target/workspace checks and persistent conclusion buttons; community delivery retains Rita identity and no private CRM tools. Explicit sends execute immediately; proposed next steps require a button click.

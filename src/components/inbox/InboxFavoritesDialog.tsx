@@ -6,8 +6,12 @@ import { ChatFavoriteButton } from './ChatFavoriteButton';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useInboxFavorites, type InboxFavoriteKind } from '@/hooks/useInboxFavorites';
+import { ChatHeaderActions } from './ChatHeaderActions';
+import { CommunityPeerActions } from './CommunityPeerActions';
+import { MessageCircle } from 'lucide-react';
+import type { ReactNode } from 'react';
 
-export function InboxFavoritesDialog({ open, onOpenChange, community = false }: { open: boolean; onOpenChange: (open: boolean) => void; community?: boolean }) {
+export function InboxFavoritesDialog({ open, onOpenChange, community = false, renderLeadActions }: { open: boolean; onOpenChange: (open: boolean) => void; community?: boolean; renderLeadActions?: (id: string) => ReactNode }) {
   const favorites = useInboxFavorites();
   const navigate = useNavigate();
   const rows = (favorites.data ?? []).filter(r => community ? r.target_kind.startsWith('peer') || r.target_kind === 'group' : !r.target_kind.startsWith('peer') && r.target_kind !== 'group');
@@ -41,6 +45,6 @@ export function InboxFavoritesDialog({ open, onOpenChange, community = false }: 
     {(favorites.isLoading || details.isLoading) && <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
     {(favorites.isError || details.isError) && <p role="alert" className="text-destructive">טעינת המועדפים נכשלה</p>}
     {!favorites.isLoading && !rows.length && <p className="text-muted-foreground">אין מועדפים שמורים</p>}
-    <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-border">{details.data?.filter(row => rows.some(r => r.target_id === row.target_id && r.target_kind === row.target_kind)).map(row => <div key={`${row.target_kind}:${row.target_id}`} className="flex items-center gap-2 py-3"><Button variant="ghost" className="h-auto min-w-0 flex-1 justify-start whitespace-pre-wrap break-words text-start" disabled={!row.path} onClick={() => { if (row.path) { onOpenChange(false); navigate(row.path); } }}>{row.label}</Button><ChatFavoriteButton kind={row.target_kind as InboxFavoriteKind} id={row.target_id} /></div>)}</div>
+    <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-border">{details.data?.filter(row => rows.some(r => r.target_id === row.target_id && r.target_kind === row.target_kind)).map(row => <div key={`${row.target_kind}:${row.target_id}`} className="relative flex items-center gap-2 py-3 pl-14"><Button variant="ghost" className="h-auto min-w-0 flex-1 justify-start whitespace-pre-wrap break-words text-start" disabled={!row.path} onClick={() => { if (row.path) { onOpenChange(false); navigate(row.path); } }}>{row.label}</Button><div className="absolute left-1 top-1"><ChatHeaderActions label="פעולות כרטיס">{row.target_kind === 'lead' && renderLeadActions ? renderLeadActions(row.target_id) : row.target_kind === 'peer' ? <CommunityPeerActions id={row.target_id} name={row.label} /> : <><ChatFavoriteButton label kind={row.target_kind as InboxFavoriteKind} id={row.target_id} /><Button variant="ghost" disabled={!row.path} onClick={() => { if (row.path) { onOpenChange(false); navigate(row.path); } }}><MessageCircle className="h-5 w-5" />פתיחת שיחה</Button></>}</ChatHeaderActions></div></div>)}</div>
   </section>;
 }

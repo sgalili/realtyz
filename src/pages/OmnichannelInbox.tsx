@@ -569,6 +569,12 @@ const OmnichannelInbox = () => {
     setContactDetailsId(leadId);
   };
 
+  const openLeadPublicProfile = (id: string) => {
+    const realId = id.startsWith('phone:') ? threadGroups.get(id)?.ids[0] : id;
+    if (!realId) { toast.error('אין פרופיל זמין לשיחה זו'); return; }
+    navigate(`/lead-profile/${realId}`, { state: { returnTo: window.location.pathname + window.location.search, profileReturnLeadId: realId } });
+  };
+
   const { data: dbChatMessages } = useQuery({
     queryKey: ['chat-messages', workspaceScope, selectedVoterId, selectedThread.ids.join(','), selectedThread.phones.join(',')],
     enabled: !!selectedVoterId && !isDemoMode && !!workspaceScope,
@@ -667,6 +673,21 @@ const OmnichannelInbox = () => {
       try { await _updatePlatformSettings({ enable_ai_autopilot: true }); } catch { /* surfaced below */ }
     }
     if (leadAutopilot !== value) await setLeadAutopilot(value);
+  };
+
+  const leadActions = (id: string) => {
+    const lead = voters?.find(v => v.id === id);
+    const enabled = lead ? activeChatAutopilot(lead, aiAutopilot) : false;
+    const realId = id.startsWith('phone:') ? threadGroups.get(id)?.ids[0] : id;
+    return <>
+      <ChatFavoriteButton label kind={id.startsWith('phone:') ? 'message' : 'lead'} id={id.startsWith('phone:') ? lastMessages.get(id)?.id ?? '' : id} />
+      {realId && <RitaChatButton kind="lead" target={realId} label />}
+      <Button variant="ghost" disabled={!realId} onClick={() => { if (realId) openCrmContact(realId); }}><UserRound className="h-5 w-5" />פרטי ליד ועריכה</Button>
+      <Button variant="ghost" disabled={!realId} onClick={() => { setSelectedVoterId(id); setManualTakeoverWarning(true); if (realId) void updateCardAutopilot(realId, false); }}><UserRoundCheck className="h-5 w-5" />העברה לנציג</Button>
+      <Button variant="ghost" disabled={!realId || !!autopilotBusy} onClick={() => { if (realId) void updateCardAutopilot(realId, !enabled); }}><Power className="h-5 w-5" />{enabled ? 'כיבוי ריטה לשיחה זו' : 'הפעלת ריטה לשיחה זו'}</Button>
+      <Button variant="ghost" disabled={!realId} onClick={() => { if (realId) openCrmContact(realId); }}><Flag className="h-5 w-5" />מעקב ותזכורות</Button>
+      <Button variant="ghost" className="text-destructive" onClick={() => setDeleteTargetId(id)}><Trash2 className="h-4 w-4" />מחיקת שיחה</Button>
+    </>;
   };
 
   // Contact identity for the chat header — mirrors the CRM card exactly and
@@ -1081,7 +1102,7 @@ const OmnichannelInbox = () => {
         <CommunityInbox key={`${user?.id}:${workspaceScope}`} active={inboxSection === 'community'} />
       </TabsContent>
       <TabsContent value="leads" forceMount className="m-0 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden data-[state=inactive]:hidden">
-      {favoritesOpen && <InboxFavoritesDialog open onOpenChange={setFavoritesOpen} />}
+      {favoritesOpen && <InboxFavoritesDialog open onOpenChange={setFavoritesOpen} renderLeadActions={leadActions} />}
       <div className={`${favoritesOpen ? "hidden" : "grid"} min-h-0 flex-1 w-full grid-cols-1 overflow-hidden bg-card lg:grid-cols-[20rem_minmax(0,1fr)]`}>
         {/* Right panel - Contact List */}
         <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col overflow-hidden bg-card`}>
@@ -1152,7 +1173,7 @@ const OmnichannelInbox = () => {
                 const lastMsg = lastMessages?.get(voter.id);
                 const isActive = voter.id === selectedVoterId;
                 return (
-                  <SwipeChatCard key={voter.id} kind={voter.id.startsWith('phone:') ? 'message' : 'lead'} id={voter.id.startsWith('phone:') ? lastMsg?.id ?? '' : voter.id} onDelete={() => setDeleteTargetId(voter.id)} autopilot={activeChatAutopilot(voter, aiAutopilot)} onAutopilot={voter.id.startsWith('phone:') ? undefined : () => void updateCardAutopilot(voter.id, !activeChatAutopilot(voter, aiAutopilot))} busy={autopilotBusy === voter.id}>
+                  <SwipeChatCard actions={<ChatHeaderActions label="פעולות כרטיס">{leadActions(voter.id)}</ChatHeaderActions>} key={voter.id} kind={voter.id.startsWith('phone:') ? 'message' : 'lead'} id={voter.id.startsWith('phone:') ? lastMsg?.id ?? '' : voter.id} onDelete={() => setDeleteTargetId(voter.id)} autopilot={activeChatAutopilot(voter, aiAutopilot)} onAutopilot={voter.id.startsWith('phone:') ? undefined : () => void updateCardAutopilot(voter.id, !activeChatAutopilot(voter, aiAutopilot))} busy={autopilotBusy === voter.id}>
                   <motion.div
                     layout
                     initial={{ opacity: 0, y: -24, scale: 0.98 }}
@@ -1166,16 +1187,16 @@ const OmnichannelInbox = () => {
                   >
                     <button
                       type="button"
-                      onClick={(event) => { event.stopPropagation(); openCrmContact(voter.id); }}
+                      onClick={(event) => { event.stopPropagation(); openLeadPublicProfile(voter.id); }}
                       className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      title="פתיחת כרטיס ליד"
-                      aria-label="פתיחת כרטיס ליד"
+                      title="פתיחת פרופיל ציבורי"
+                      aria-label="פתיחת פרופיל ציבורי"
                     >
                       <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
                     </button>
                     <div className="flex-1 min-w-0 text-right">
                       <div className="flex min-w-0 items-center justify-between gap-2">
-                        <Button data-chat-title variant="ghost" className="h-auto min-w-0 truncate p-0" onClick={event => { event.stopPropagation(); openCrmContact(voter.id); }}>{voter.full_name || formatPhoneDisplay(voter.phone_number)}</Button>
+                        <span data-chat-title className="min-w-0 truncate">{voter.full_name || formatPhoneDisplay(voter.phone_number)}</span>
                         <span data-chat-timestamp className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
                           {voter.last_interaction_at ? formatDistanceToNow(new Date(voter.last_interaction_at), { addSuffix: true, locale: he }) : ''}
                         </span>
@@ -1220,23 +1241,15 @@ const OmnichannelInbox = () => {
                   </Button>
                   <button
                     type="button"
-                    onClick={openCrmCard}
-                    className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white/50"
-                    title="פתיחת כרטיס מתעניין"
-                    aria-label="פתיחת כרטיס מתעניין"
+                    onClick={() => openLeadPublicProfile(selectedVoterId)}
+                    className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-ring"
+                    title="פתיחת פרופיל ציבורי"
+                    aria-label="פתיחת פרופיל ציבורי"
                   >
                     <VoterAvatar fullName={selectedVoter?.full_name} profilePictureUrl={(selectedVoter as any)?.profile_picture_url} className="h-10 w-10" textClassName="text-xs" />
                   </button>
                   <div className="min-w-0 flex-1">
-                    <button
-                      type="button"
-                      data-chat-title
-                      onClick={openCrmCard}
-                      className="block w-full truncate leading-tight hover:underline text-right"
-                      title="פתיחת כרטיס מתעניין"
-                    >
-                      {contactName}
-                    </button>
+                    <span data-chat-title className="block w-full truncate leading-tight text-right">{contactName}</span>
                   </div>
                 </div>
                 {(() => {
@@ -1246,15 +1259,7 @@ const OmnichannelInbox = () => {
                   if (!channels.length) return null;
                   return <div className="flex min-w-0 max-w-[48%] flex-wrap items-center justify-end gap-1" aria-label="ערוצי שיחה">{channels.map(([channel, count]) => <Button key={channel} variant="ghost" className={`h-8 gap-1 border-0 px-1 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10 hover:text-whatsapp-header-foreground ${channelVisible(channel, disabledChannels[selectedVoterId] ?? new Set()) ? '' : 'grayscale opacity-50'}`} aria-label={`${channel} (${count})`} aria-pressed={channelVisible(channel, disabledChannels[selectedVoterId] ?? new Set())} onClick={() => toggleCardChannel(selectedVoterId, channel)}><ChannelIcon channel={channel} /><span data-chat-preview-text>({count})</span></Button>)}</div>;
                 })()}
-                <ChatHeaderActions>
-                  <ChatFavoriteButton label kind={selectedVoterId.startsWith('phone:') ? 'message' : 'lead'} id={selectedVoterId.startsWith('phone:') ? lastMessages.get(selectedVoterId)?.id ?? '' : selectedVoterId} />
-                  {!selectedVoterId.startsWith('phone:') && <RitaChatButton kind="lead" target={selectedVoterId} label />}
-                  <Button variant="ghost" onClick={openCrmCard}><UserRound className="h-5 w-5" />הצגת פרופיל מתעניין</Button>
-                  <Button variant="ghost" onClick={() => setManualTakeoverWarning(true)}><UserRoundCheck className="h-5 w-5" />העברה לנציג</Button>
-                  <Button variant="ghost" onClick={() => setChatAutopilot(!chatAutopilotOn)}><Power className="h-5 w-5" />{chatAutopilotOn ? 'כיבוי ריטה לשיחה זו' : 'הפעלת ריטה לשיחה זו'}</Button>
-                  <Button variant="ghost" onClick={openCrmCard}><Flag className="h-5 w-5" />מעקב ותזכורות</Button>
-                  <Button variant="ghost" className="text-destructive" onClick={() => setDeleteTargetId(selectedVoterId)}><Trash2 className="h-4 w-4" />מחיקת שיחה</Button>
-                </ChatHeaderActions>
+                <ChatHeaderActions>{leadActions(selectedVoterId)}</ChatHeaderActions>
 
               </div>
 
@@ -1291,7 +1296,7 @@ const OmnichannelInbox = () => {
                       />
                       </Button>
                     ) : (
-                      <button type="button" onClick={openCrmCard} className="shrink-0 rounded-full" aria-label="פתיחת כרטיס ליד">
+                      <button type="button" onClick={() => openLeadPublicProfile(selectedVoterId)} className="shrink-0 rounded-full" aria-label="פתיחת פרופיל ציבורי">
                         <VoterAvatar
                           fullName={selectedVoter?.full_name}
                           profilePictureUrl={(selectedVoter as any)?.profile_picture_url}

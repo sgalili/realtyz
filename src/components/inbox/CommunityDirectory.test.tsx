@@ -1,6 +1,4 @@
-// In the "שיחה חדשה" directory a person's name must never start a chat by itself:
-// the name/avatar row opens their public profile, and the chat opens only from the
-// explicit "שיחה" action, so users can check who they are messaging first.
+// Avatar-only profiles; names open chats, and menu triggers never select a row.
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -9,6 +7,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { CommunityDirectory } from './CommunityDirectory';
 
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'dir-user' } }) }));
+vi.mock('./CommunityPeerActions', () => ({ CommunityPeerActions: () => <button>פעולה</button> }));
 
 const rpc = vi.hoisted(() => vi.fn(async (fn: string) => {
   if (fn === 'community_profile_genders') return { data: [{ id: 'peer-1', gender: 'female' }], error: null };
@@ -26,7 +25,7 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 
 afterEach(cleanup);
 
-it('opens the dedicated public profile page from the contact name without starting a chat', async () => {
+it('opens the dedicated public profile page only from the avatar without starting a chat', async () => {
   const onSelect = vi.fn();
   render(<CommunityDirectory enabled onSelect={onSelect} />, { wrapper });
   const name = await screen.findByRole('button', { name: 'פתיחת הפרופיל הציבורי של דנה כהן' });
@@ -35,10 +34,18 @@ it('opens the dedicated public profile page from the contact name without starti
   await waitFor(() => expect(screen.getByText('profile page peer-1')).toBeInTheDocument());
 });
 
-it('starts the chat only from the explicit chat action', async () => {
+it('starts the chat from the name and never navigates to the profile', async () => {
   const onSelect = vi.fn();
   render(<CommunityDirectory enabled onSelect={onSelect} />, { wrapper });
   fireEvent.click(await screen.findByRole('button', { name: 'פתיחת שיחה עם דנה כהן' }));
   expect(onSelect).toHaveBeenCalledWith({ id: 'peer-1', full_name: 'דנה כהן', avatar_url: null, category: 'broker' });
-  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(screen.queryByText('profile page peer-1')).toBeNull();
+});
+it('menu trigger and selection do not start a chat', async () => {
+  const onSelect = vi.fn();
+  render(<CommunityDirectory enabled onSelect={onSelect} />, { wrapper });
+  await screen.findByRole('button', { name: 'פתיחת שיחה עם דנה כהן' });
+  fireEvent.click(screen.getByRole('button', { name: 'פעולות כרטיס' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'פעולה' }));
+  expect(onSelect).not.toHaveBeenCalled();
 });

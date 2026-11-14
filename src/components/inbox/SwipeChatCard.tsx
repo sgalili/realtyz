@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ChatFavoriteButton } from './ChatFavoriteButton';
 import type { InboxFavoriteKind } from '@/hooks/useInboxFavorites';
 
-export function SwipeChatCard({ children, kind, id, onDelete, autopilot, onAutopilot, busy = false }: { children: ReactNode; kind: InboxFavoriteKind; id: string; onDelete: () => void; autopilot: boolean; onAutopilot?: () => void; busy?: boolean }) {
+export function SwipeChatCard({ children, actions, kind, id, onDelete, autopilot, onAutopilot, busy = false }: { children: ReactNode; actions?: ReactNode; kind: InboxFavoriteKind; id: string; onDelete: () => void; autopilot: boolean; onAutopilot?: () => void; busy?: boolean }) {
   const [open, setOpen] = useState(false);
   const start = useRef<{ x: number; y: number } | null>(null);
   const swiped = useRef(false);
@@ -20,6 +20,6 @@ export function SwipeChatCard({ children, kind, id, onDelete, autopilot, onAutop
       if (!start.current) return;
       const dx = event.clientX - start.current.x, dy = event.clientY - start.current.y;
       if (Math.abs(dx) > 35 && Math.abs(dx) > Math.abs(dy) * 1.5) { if (event.pointerType === 'touch') event.currentTarget.setPointerCapture(event.pointerId); swiped.current = true; setOpen(dx < 0); }
-    }} onPointerUp={() => { start.current = null; }} onPointerCancel={() => { start.current = null; }} onClickCapture={event => { if (swiped.current || open) { event.preventDefault(); event.stopPropagation(); if (!swiped.current) setOpen(false); swiped.current = false; } }} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'ArrowLeft') setOpen(true); if (event.key === 'Escape' || event.key === 'ArrowRight') setOpen(false); }} tabIndex={0} aria-label="כרטיס שיחה">{children}</motion.div>
+    }} onPointerUp={() => { start.current = null; }} onPointerCancel={() => { start.current = null; }} onClickCapture={event => { if (swiped.current || open) { event.preventDefault(); event.stopPropagation(); if (!swiped.current) setOpen(false); swiped.current = false; } }} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'ArrowLeft') setOpen(true); if (event.key === 'Escape' || event.key === 'ArrowRight') setOpen(false); }} tabIndex={0} aria-label="כרטיס שיחה"><div className={actions ? '[&>*]:pl-14' : undefined}>{children}</div>{actions && <div data-card-actions className="absolute left-1 top-1">{actions}</div>}</motion.div>
   </div>;
 }
