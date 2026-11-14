@@ -2,13 +2,22 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { genderText, localizeCommand, personalizeMessage, profileGender, profileGenderByAddress, recipientProfileGender } from '../../supabase/functions/_shared/personalLanguage';
+import { professionalRole, genderText, localizeCommand, personalizeMessage, profileGender, profileGenderByAddress, recipientProfileGender } from '../../supabase/functions/_shared/personalLanguage';
 import { PersonalLanguageProvider, personalGenderKey, usePersonalLanguage } from './personalLanguage';
 const mocks = vi.hoisted(() => ({ userId: 'personal-user', gender: 'female' as string | null, ids: [] as string[] }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: mocks.userId } }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: () => ({ select: () => ({ eq: (_key: string, id: string) => { mocks.ids.push(id); return { maybeSingle: async () => ({ data: { gender: mocks.gender } }) }; } }) }) } }));
 afterEach(() => { cleanup(); mocks.userId = 'personal-user'; mocks.gender = 'female'; mocks.ids = []; });
 describe('personal gender rules', () => {
+  it.each([
+    ['broker', 'מתווך', 'מתווכת'], ['developer', 'יזם', 'יזמית'], ['partner', 'שותף', 'שותפה'],
+    ['seller', 'מוכר', 'מוכרת'], ['landlord', 'משכיר', 'משכירה'], ['dealer', 'סוחר', 'סוחרת'],
+  ])('inflects %s using the subject gender', (role, male, female) => {
+    expect(professionalRole(role, 'female')).toBe(female);
+    expect(professionalRole(role, 'male')).toBe(male);
+    expect(professionalRole(role, null)).not.toBe(male);
+    expect(professionalRole(role, null)).not.toBe(female);
+  });
   it('selects female, male and neutral forms without inferring from names', () => {
     const forms = { male: 'בחר', female: 'בחרי', neutral: 'בחירה' };
     expect(genderText('female', forms)).toBe('בחרי');

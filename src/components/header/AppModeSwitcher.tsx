@@ -31,7 +31,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
   const queryClient = useQueryClient();
   const { loading: workspaceLoading, activeWorkspaceId } = useWorkspace();
   const baseIdentity = useAccountIdentity();
-  const { gender } = usePersonalLanguage();
+  const { gender, text } = usePersonalLanguage();
   const fem: Record<string, string> = { 'מפרסם': 'מפרסמת', 'מתווך': 'מתווכת', 'יזם': 'יזמית', 'קבלן': 'קבלנית', 'שותף': 'שותפה' };
   const identity = gender === 'female' ? { ...baseIdentity, label: fem[baseIdentity.label] ?? baseIdentity.label } : baseIdentity;
   const partnerLabel = gender === 'female' ? 'שותפה' : 'שותף';
@@ -51,7 +51,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
         }
         setMode('partner');
         navigate('/affiliate-network');
-        toast.success('עברת למצב שותף');
+        toast.success(text({ male: 'עברת למצב שותף', female: 'עברת למצב שותפה', neutral: 'מצב השותפות הופעל' }));
       } else {
         setMode('broker');
         navigate(identity.home);
@@ -62,7 +62,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
         requestAnimationFrame(() => isMobile ? setOpenMobile(true) : setOpen(true));
       } else { setOpenMobile(false); setOpen(false); }
     },
-    onError: (error) => { console.warn('[partner-mode]', { code: (error as { code?: string }).code ?? 'activation_failed' }); toast.error('לא ניתן להפעיל מצב שותף כרגע. נסו שוב או אשרו מחדש את התקנון.'); },
+    onError: (error) => { console.warn('[partner-mode]', { code: (error as { code?: string }).code ?? 'activation_failed' }); toast.error('לא ניתן להפעיל את מצב השותפות כרגע. אפשר לנסות שוב או לאשר מחדש את התקנון.'); },
   });
 
   if (!user) return null;

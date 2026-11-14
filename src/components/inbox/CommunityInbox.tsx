@@ -18,7 +18,9 @@ import { ChatMessageText } from './ChatMessageText';
 import { communityMessageContent } from '@/lib/communityChat';
 import { toast } from 'sonner';
 import { CommunityGroups } from './CommunityGroups';
-import { CommunityDirectory, ROLE_BADGE } from './CommunityDirectory';
+import { CommunityDirectory } from './CommunityDirectory';
+import { useCommunityGenders } from '@/hooks/useCommunityGenders';
+import { professionalRole } from '../../../supabase/functions/_shared/personalLanguage';
 import { Badge } from '@/components/ui/badge';
 import { playSoftDing, showGroupedChatNotification } from '@/lib/communityNotify';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -187,11 +189,12 @@ export function CommunityInbox({ active }: { active: boolean }) {
       return new Map((data as Card[]).map(card => [card.id, card]));
     },
   });
+  const genders = useCommunityGenders(peers.map(p => p.id));
   const Identity = ({ id, name, fallback, unread, messageId, outgoing }: { id: string; name: string | null; fallback?: string; unread?: boolean; messageId?: string; outgoing?: boolean }) => {
     const card = cards.data?.get(id);
     const sub = [card?.office_name, card?.license_number ? `רישיון ${card.license_number}` : null].filter(Boolean).join(' · ');
     return <span className="min-w-0 flex-1">
-      <span className="flex min-w-0 items-center gap-1.5"><span className="truncate font-semibold">{card?.full_name ?? name}</span>{card && <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[11px]">{ROLE_BADGE[card.category] ?? 'משתמש'}</Badge>}</span>
+      <span className="flex min-w-0 items-center gap-1.5"><span className="truncate font-semibold">{card?.full_name ?? name}</span>{card && <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[11px]">{professionalRole(card.category, genders.data?.get(id) ?? null)}</Badge>}</span>
       {sub && <span className="block truncate text-xs text-muted-foreground">{sub}</span>}
       {fallback !== undefined && <span className={`flex items-center gap-1 text-xs ${unread ? 'font-bold text-foreground' : 'font-normal text-muted-foreground'}`}>{outgoing && messageId && <WhatsAppTicks status={previewReceipts.status(messageId)} />}<span className="truncate">{fallback}</span></span>}
     </span>;
@@ -220,7 +223,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
           const latest = previews.data?.find(m => (m.sender_id === contact.id || m.recipient_id === contact.id));
           return <div key={contact.id} role="button" tabIndex={0} aria-label={`פתיחת שיחה עם ${contact.full_name ?? 'חבר קהילה'}`} onClick={() => setPeer(contact)} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setPeer(contact); } }} className={`flex min-h-16 w-full items-center gap-3 border-b border-border px-3 py-3 ${peer?.id === contact.id ? 'bg-muted' : ''}`}>
             <button type="button" className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`פתיחת הפרופיל הציבורי של ${contact.full_name ?? 'חבר קהילה'}`} onClick={e => { e.stopPropagation(); navigate(`/community/profile/${contact.id}`, { state: { returnTo: window.location.pathname + window.location.search } }); }}><Avatar className="h-10 w-10"><AvatarImage src={contact.avatar_url ?? undefined} /><AvatarFallback><Users className="h-4 w-4" /></AvatarFallback></Avatar></button>
-            <Identity id={contact.id} name={contact.full_name} fallback={last?.content ?? 'שיחה חדשה'} messageId={latest?.id} outgoing={latest?.sender_id === user?.id} unread={!!latest && unreadIncoming(latest.recipient_id === user?.id, previewReceipts.isRead(latest.id))} />
+            <Identity id={contact.id} name={contact.full_name} fallback={last?.content ?? undefined} messageId={latest?.id} outgoing={latest?.sender_id === user?.id} unread={!!latest && unreadIncoming(latest.recipient_id === user?.id, previewReceipts.isRead(latest.id))} />
             <Button variant="ghost" size="icon" aria-label={favorites.has('peer', contact.id) ? 'הסרת שיחת קהילה מהמועדפים' : 'שמירת שיחת קהילה במועדפים'} title="מועדפים" onClick={e => { e.stopPropagation(); void favorites.toggle('peer', contact.id); }}><Star className={`h-4 w-4 ${favorites.has('peer', contact.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>
           </div>;
         })}
@@ -230,7 +233,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
       {!peer ? <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"><MessageCircle className="h-10 w-10" /><span>מועדון הקהילה</span></div> : <>
         <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-border px-3">
           <Button size="icon" variant="ghost" aria-label="חזרה לשיחות הקהילה" className="lg:hidden" onClick={() => setPeer(null)}><ArrowRight className="h-5 w-5" /></Button>
-          <div className="min-w-0 flex-1 text-start"><PublicIdentityLink userId={peer.id} label="פתיחת פרופיל ציבורי" className="block"><span className="font-semibold">{cards.data?.get(peer.id)?.full_name ?? peer.full_name}</span>{cards.data?.get(peer.id) && <Badge variant="secondary" className="ms-2">{ROLE_BADGE[cards.data.get(peer.id)?.category ?? ''] ?? 'משתמש'}</Badge>}</PublicIdentityLink><span className="block truncate text-xs text-muted-foreground"><PublicIdentityLink userId={peer.id} office>{cards.data?.get(peer.id)?.office_name}</PublicIdentityLink>{cards.data?.get(peer.id)?.license_number && <span className="ms-2">{cards.data.get(peer.id)?.license_number}</span>}</span></div>
+          <div className="min-w-0 flex-1 text-start"><PublicIdentityLink userId={peer.id} label="פתיחת פרופיל ציבורי" className="block"><span className="font-semibold">{cards.data?.get(peer.id)?.full_name ?? peer.full_name}</span>{cards.data?.get(peer.id) && <Badge variant="secondary" className="ms-2">{professionalRole(cards.data.get(peer.id)?.category ?? '', genders.data?.get(peer.id) ?? null)}</Badge>}</PublicIdentityLink><span className="block truncate text-xs text-muted-foreground"><PublicIdentityLink userId={peer.id} office>{cards.data?.get(peer.id)?.office_name}</PublicIdentityLink>{cards.data?.get(peer.id)?.license_number && <span className="ms-2">{cards.data.get(peer.id)?.license_number}</span>}</span></div>
           <DealTermsDialog peerId={peer.id} peerName={cards.data?.get(peer.id)?.full_name ?? peer.full_name} />
           <Button size="icon" variant="ghost" aria-label={blocked ? 'הסרת חסימה' : 'חסימת משתמש'} title={blocked ? 'הסרת חסימה' : 'לא מעוניין לקבל יותר הודעות ממשתמש זה'} onClick={() => setBlockOpen(true)}><Ban className={`h-5 w-5 ${blocked ? 'text-destructive' : ''}`} /></Button>
           <RitaChatButton kind="peer" target={peer.id} />

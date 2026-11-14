@@ -6,32 +6,12 @@
  * resolving a contact's gender and for writing correct Hebrew to them.
  *
  * Resolution order: the explicit `leads.gender` column, then the legacy
- * `preferences.gender` value, then a first-name heuristic (never a guess about
- * anything else).
+ * `preferences.gender` value, unknown remains neutral.
  */
 export type HebrewGender = 'male' | 'female';
 
-/** Common Israeli female first names that do NOT end with a feminine suffix. */
-const FEMALE_NAMES = new Set([
-  'רות', 'אסתר', 'מרים', 'שרון', 'יעל', 'איריס', 'שיר', 'תמר', 'ליאור', 'רחל',
-  'נועם', 'אור', 'מיכל', 'אביגיל', 'אורית', 'סמדר', 'דגנית', 'שירן', 'ענת', 'גל',
-  'נעמי', 'חן', 'רון', 'עדן', 'רעות', 'שני', 'סיון', 'לימור', 'מאיה', 'נטלי',
-  'ריטה', 'שגית', 'הילה', 'טל', 'קרן', 'ליהי', 'רימון', 'אפרת', 'זהבית', 'עינת',
-]);
-
-/** Male names that end with a feminine-looking suffix and must not be misread. */
-const MALE_NAMES = new Set([
-  'יהודה', 'משה', 'נחמיה', 'עזריה', 'ירמיה', 'שלמה', 'נתנאל', 'אליה', 'זכריה',
-  'חנניה', 'ישעיה', 'עובדיה', 'אריה', 'נוריאל', 'שמריה', 'עמיחי', 'אלישע',
-]);
-
-/** Best-effort gender from a Hebrew first name. Returns null when unclear. */
-export function guessGenderFromHebrewName(fullName?: string | null): HebrewGender | null {
-  const first = String(fullName ?? '').trim().split(/\s+/)[0] ?? '';
-  if (!first || !/[\u0590-\u05FF]/.test(first)) return null;
-  if (MALE_NAMES.has(first)) return 'male';
-  if (FEMALE_NAMES.has(first)) return 'female';
-  if (/(ה|ת|ית|לי)$/.test(first)) return 'female';
+/** Compatibility helper: names are not evidence of a person's gender. */
+export function guessGenderFromHebrewName(_fullName?: string | null): HebrewGender | null {
   return null;
 }
 
@@ -43,9 +23,9 @@ export function resolveLeadGender(lead: {
 } | null | undefined): HebrewGender | null {
   const direct = String(lead?.gender ?? '').toLowerCase();
   if (direct === 'male' || direct === 'female') return direct;
-  const pref = String((lead?.preferences as any)?.gender ?? '').toLowerCase();
+  const pref = String(lead?.preferences?.gender ?? '').toLowerCase();
   if (pref === 'male' || pref === 'female') return pref;
-  return guessGenderFromHebrewName(lead?.full_name);
+  return null;
 }
 
 /** Hebrew labels for the CRM picker. */

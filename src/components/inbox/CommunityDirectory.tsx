@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ClearFilterButton } from '@/components/ui/clear-filter-button';
+import { useCommunityGenders } from '@/hooks/useCommunityGenders';
+import { professionalRole } from '../../../supabase/functions/_shared/personalLanguage';
 
 export type DirectoryUser = { id: string; full_name: string | null; avatar_url: string | null; category: string };
 export const DIRECTORY_CATEGORIES = [
@@ -38,6 +40,7 @@ export function CommunityDirectory({ enabled, exclude = [], renderAction, onSele
   const [profileId, setProfileId] = useState<string | null>(null);
   const directory = useCommunityDirectory(enabled, search, category);
   const rows = (directory.data ?? []).filter(u => !exclude.includes(u.id));
+  const genders = useCommunityGenders(rows.map(u => u.id));
   return <div className="space-y-2">
     <ClearFilterButton active={!!search.trim() || category !== 'all'} onClear={() => { setSearch(''); setCategory('all'); }} />
     <div className="relative"><Search className="absolute end-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -51,7 +54,7 @@ export function CommunityDirectory({ enabled, exclude = [], renderAction, onSele
         const name = u.full_name ?? 'משתמש';
         const identity = <><Avatar className="h-9 w-9 shrink-0"><AvatarImage src={u.avatar_url ?? undefined} /><AvatarFallback>{u.full_name?.charAt(0)}</AvatarFallback></Avatar>
           <span className="min-w-0 flex-1 truncate text-start underline-offset-2 group-hover:underline">{u.full_name}</span>
-          <Badge variant="secondary" className="shrink-0">{ROLE_BADGE[u.category] ?? 'משתמש'}</Badge></>;
+          <Badge variant="secondary" className="shrink-0">{professionalRole(u.category, genders.data?.get(u.id) ?? null)}</Badge></>;
         const openProfile = <button key={u.id} type="button" className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 text-start hover:bg-muted" aria-label={`פתיחת הפרופיל הציבורי של ${name}`} title="פתיחת הפרופיל הציבורי" onClick={() => setProfileId(u.id)}>{identity}</button>;
         if (onSelect) return <div key={u.id} className="flex min-h-12 items-center gap-2 px-1">
           {openProfile}

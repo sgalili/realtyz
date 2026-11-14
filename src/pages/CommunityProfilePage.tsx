@@ -16,7 +16,8 @@ import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { useUserRole } from '@/hooks/useUserRole';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import { ProfileAssetMenu } from '@/components/community/ProfileAssetActions';
-import { ROLE_BADGE } from '@/components/inbox/CommunityDirectory';
+import { professionalRole } from '../../supabase/functions/_shared/personalLanguage';
+import { useCommunityGenders } from '@/hooks/useCommunityGenders';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 
 export const communityProfilePath = (id: string) => `/community/profile/${encodeURIComponent(id)}`;
@@ -57,6 +58,7 @@ export default function CommunityProfilePage() {
   });
   const feed = useQuery({ queryKey: ['partner-activity-board', user?.id, 'profile'], queryFn: fetchPublicBoardFeed, enabled: !!user, staleTime: 60_000 });
   const cards = (feed.data ?? []).filter(card => listingIds.data?.has(card.id));
+  const genders = useCommunityGenders([userId]);
   const p = profile.data;
   const office = useQuery({ queryKey: ['community-office', user?.id, userId], enabled: !!p, queryFn: async () => {
     const { data, error } = await supabase.rpc('community_office_members', { _user: userId });
@@ -82,7 +84,7 @@ export default function CommunityProfilePage() {
         <Button variant="ghost" disabled={!p.avatar_url} aria-label={`הצגת תמונת הפרופיל של ${p.full_name}`} onClick={() => setImageOpen(true)} className="h-28 w-28 rounded-full p-0 sm:h-32 sm:w-32 disabled:opacity-100">
           <Avatar className="h-full w-full"><AvatarImage src={p.avatar_url ?? undefined} alt={p.full_name ?? ''} className="object-cover" /><AvatarFallback className="text-3xl font-bold text-foreground">{initials}</AvatarFallback></Avatar>
         </Button>
-        <h1 className="max-w-full break-words text-xl font-bold leading-relaxed sm:text-2xl">{p.full_name} - {ROLE_BADGE[p.category] ?? 'משתמש'}{p.category === 'broker' && p.license_number ? <span className="ms-2 inline text-base font-medium"><bdi>{p.license_number}</bdi></span> : null}</h1>
+        <h1 className="max-w-full break-words text-xl font-bold leading-relaxed sm:text-2xl">{p.full_name} - {professionalRole(p.category, genders.data?.get(p.id) ?? null)}{p.category === 'broker' && p.license_number ? <span className="ms-2 inline text-base font-medium"><bdi>{p.license_number}</bdi></span> : null}</h1>
         {cities && <p className="max-w-full break-words text-base text-muted-foreground">{cities}</p>}
         {p.bio && <p className="max-w-2xl whitespace-pre-line break-words text-base leading-relaxed text-muted-foreground">{p.bio}</p>}
         <div className="!mt-5 flex flex-wrap justify-center gap-2">

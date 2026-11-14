@@ -1,0 +1,3 @@
+CREATE OR REPLACE FUNCTION public.community_profile_genders(_ids uuid[]) RETURNS TABLE(id uuid, gender text) LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT p.id, CASE WHEN p.gender IN ('male','female') THEN p.gender ELSE NULL END FROM public.community_profile_cards(_ids) c JOIN public.profiles p ON p.id=c.id WHERE auth.uid() IS NOT NULL; $$;
+REVOKE ALL ON FUNCTION public.community_profile_genders(uuid[]) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.community_profile_genders(uuid[]) TO authenticated,service_role;

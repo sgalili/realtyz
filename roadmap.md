@@ -1,5 +1,10 @@
 # Roadmap
 
+## Gender-aware localization and clean chat cards November 14
+- [x] Removed empty-history label; inbox add icon 20→26px and control 36→46.8px, exactly 30% larger.
+- [x] Community/directory/office/profile titles use saved subject gender via authorized projection and shared role formatter. Shared UI commands/recipient slots remain active; Rita conversation gets participant-specific grammar. CRM/automated lead gender no longer guesses from names; approved template text/user messages remain unchanged. A shared hook exposes gender-aware personal roles; partner success/error notifications updated.
+- [x] Seventeen focused tests pass; authenticated populated desktop/mobile cards checked, exact icon/control dimensions verified and authorized gender RPC returned 200 with no page errors. Rita/WhatsApp/IVR affected workers deployed. Existing every-page prose and every notification/template have not been exhaustively converted or live-verified; no AI responses, calls or messages generated.
+
 ## Chat card navigation and genuine receipts November 14
 - [x] Card bodies open chats; only avatars open public profiles; favorites remain separate. Authenticated community body/avatar navigation verified desktop and mobile; directory invitation pickers remain explicit actions.
 - [x] Recipient-authorized receipt storage/RPCs acknowledge fetched delivery and visible active-chat reading. Incoming unread previews are bold; outgoing previews normal. Shared WhatsApp-style ticks in inbox/private/group/channel bubbles use actual receipt/provider evidence, removing inferred reads and default-delivered states.

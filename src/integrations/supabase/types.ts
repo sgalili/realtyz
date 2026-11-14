@@ -9993,6 +9993,13 @@ export type Database = {
           office_name: string
         }[]
       }
+      community_profile_genders: {
+        Args: { _ids: string[] }
+        Returns: {
+          gender: string
+          id: string
+        }[]
+      }
       community_profile_listings: {
         Args: { _user: string }
         Returns: {

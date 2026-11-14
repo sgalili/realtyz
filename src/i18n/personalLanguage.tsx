@@ -2,8 +2,8 @@ import { createContext, useContext, useEffect, type ReactNode, isValidElement, c
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { profileGender, genderText, localizeCommand, type PersonalGender, type GenderText } from '../../supabase/functions/_shared/personalLanguage';
-export { genderText, profileGender, localizeCommand };
+import { profileGender, genderText, localizeCommand, professionalRole, type PersonalGender, type GenderText } from '../../supabase/functions/_shared/personalLanguage';
+export { genderText, profileGender, localizeCommand, professionalRole };
 export type { PersonalGender, GenderText };
 export const personalGenderKey = (userId: string) => ['personal-language', userId] as const;
 const Context = createContext<PersonalGender>(null);
@@ -37,7 +37,7 @@ export function PersonalLanguageProvider({ children }: { children: ReactNode }) 
 }
 export function usePersonalLanguage() {
   const gender = useContext(Context);
-  return { gender, text: (forms: GenderText) => genderText(gender, forms), command: (text?: string) => localizeCommand(text, gender) };
+  return { gender, role: (role: string) => professionalRole(role, gender), text: (forms: GenderText) => genderText(gender, forms), command: (text?: string) => localizeCommand(text, gender) };
 }
 /** For authored control labels only; does not walk the DOM or edit input values. */
 export function localizeControlNode(node: ReactNode, gender: PersonalGender): ReactNode {

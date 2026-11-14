@@ -5,6 +5,19 @@ export type GenderText = { male: string; female: string; neutral: string };
 export function genderText(gender: PersonalGender, forms: GenderText): string {
   return forms[gender ?? 'neutral'];
 }
+const ROLE_FORMS: Record<string, GenderText> = {
+  broker: { male: 'מתווך', female: 'מתווכת', neutral: 'תיווך' },
+  developer: { male: 'יזם', female: 'יזמית', neutral: 'יזמות' },
+  partner: { male: 'שותף', female: 'שותפה', neutral: 'שותפות' },
+  buyer: { male: 'קונה', female: 'קונה', neutral: 'רכישה' },
+  seller: { male: 'מוכר', female: 'מוכרת', neutral: 'מכירה' },
+  dealer: { male: 'סוחר', female: 'סוחרת', neutral: 'מסחר' },
+  landlord: { male: 'משכיר', female: 'משכירה', neutral: 'השכרה' },
+};
+/** Subject's saved gender, not the viewer's preference. Unknown remains neutral. */
+export function professionalRole(role: string, gender: PersonalGender): string {
+  return genderText(gender, ROLE_FORMS[role] ?? { male: 'משתמש', female: 'משתמשת', neutral: 'חשבון' });
+}
 /** Only authored UI commands are translated, never arbitrary user content. */
 const COMMANDS: Record<string, GenderText> = {
   'בחר': { male: 'בחר', female: 'בחרי', neutral: 'בחירה' },

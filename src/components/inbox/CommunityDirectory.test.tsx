@@ -11,6 +11,7 @@ import { CommunityDirectory } from './CommunityDirectory';
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'dir-user' } }) }));
 
 const rpc = vi.hoisted(() => vi.fn(async (fn: string) => {
+  if (fn === 'community_profile_genders') return { data: [{ id: 'peer-1', gender: 'female' }], error: null };
   if (fn === 'community_directory') return { data: [{ id: 'peer-1', full_name: 'דנה כהן', avatar_url: null, category: 'broker' }], error: null };
   if (fn === 'community_profile_cards') return { data: [{ id: 'peer-1', full_name: 'דנה כהן', category: 'broker', office_name: 'משרד הדס', license_number: '123456789' }], error: null };
   if (fn === 'community_profile_listings') return { data: [], error: null };
