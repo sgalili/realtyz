@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ClearFilterButton } from '@/components/ui/clear-filter-button';
 
 export type DirectoryUser = { id: string; full_name: string | null; avatar_url: string | null; category: string };
 export const DIRECTORY_CATEGORIES = [
@@ -38,6 +39,7 @@ export function CommunityDirectory({ enabled, exclude = [], renderAction, onSele
   const directory = useCommunityDirectory(enabled, search, category);
   const rows = (directory.data ?? []).filter(u => !exclude.includes(u.id));
   return <div className="space-y-2">
+    <ClearFilterButton active={!!search.trim() || category !== 'all'} onClear={() => { setSearch(''); setCategory('all'); }} />
     <div className="relative"><Search className="absolute end-3 top-3 h-4 w-4 text-muted-foreground" />
       <Input aria-label="חיפוש במדריך המשתמשים" placeholder="חיפוש משתמשים במערכת..." className="pe-9" value={search} onChange={e => setSearch(e.target.value)} /></div>
     <div className="flex flex-wrap gap-1.5">{DIRECTORY_CATEGORIES.map(c => <Button key={c.value} type="button" size="sm" variant={category === c.value ? 'default' : 'outline'} className="h-8 rounded-full px-3" onClick={() => setCategory(c.value)}>{c.label}</Button>)}</div>

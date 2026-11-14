@@ -461,7 +461,7 @@ export function ConnectionsTab() {
       titleLead: (
         <BrandIcon name="facebook" className={cn('h-5 w-5 shrink-0 text-[#1877F2]', !fbConnected && 'grayscale opacity-40')} />
       ),
-      status: metaStatus[0],
+      status: fbConnected ? metaStatus[0] : 'בקרוב',
       tone: metaStatus[1],
       headerAside: fbConnected && fbPagePicture ? (
         <img
@@ -478,9 +478,9 @@ export function ConnectionsTab() {
       id: 'facebook-groups',
       title: 'קבוצות פייסבוק',
       titleLead: <FacebookGroupsIcon className="h-5 w-5" />,
-      status: '',
+      status: 'בקרוב',
       tone: 'idle',
-      headerAside: <span className="shrink-0 text-xs text-muted-foreground">{activeGroups?.owner === workspaceOwnerId ? activeGroups.count : 0} קבוצות פעילות</span>,
+      headerAside: <div className="flex shrink-0 items-center gap-2"><span className="text-xs text-muted-foreground">{activeGroups?.owner === workspaceOwnerId ? activeGroups.count : 0} קבוצות פעילות</span><StatusPill label="בקרוב" tone="idle" /></div>,
       node: <div data-plain className="p-3"><FacebookTargetsCard onActiveCount={reportActiveGroups} /></div>,
     },
     {
@@ -663,7 +663,7 @@ export function ConnectionsTab() {
   return (
     <div dir="rtl" className="space-y-3 text-right">
       {sections.map((s) => (
-        <InventoryToolSoftLock key={`${activeWorkspaceId}:${s.id}`} tool={s.id}>
+        <InventoryToolSoftLock key={`${activeWorkspaceId}:${s.id}`} tool={s.id} showLabel={false}>
         <ConnectionSection
           key={`${activeWorkspaceId}:${s.id}`}
           title={s.title}

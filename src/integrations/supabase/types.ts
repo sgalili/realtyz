@@ -4798,6 +4798,30 @@ export type Database = {
           },
         ]
       }
+      inbox_favorites: {
+        Row: {
+          created_at: string
+          target_id: string
+          target_kind: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          target_id: string
+          target_kind: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Update: {
+          created_at?: string
+          target_id?: string
+          target_kind?: string
+          user_id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       inquiry_guard_challenges: {
         Row: {
           attempts: number
@@ -10766,6 +10790,10 @@ export type Database = {
         }[]
       }
       in_current_workspace: { Args: { _row_owner: string }; Returns: boolean }
+      inbox_favorite_target_access: {
+        Args: { _kind: string; _target: string; _workspace: string }
+        Returns: boolean
+      }
       inquiry_is_suspicious: { Args: { _phone: string }; Returns: boolean }
       internal_call_headers: { Args: never; Returns: Json }
       is_admin_or_above: { Args: { _uid: string }; Returns: boolean }

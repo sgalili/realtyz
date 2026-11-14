@@ -24,10 +24,10 @@ export function TutorialHost() {
     if (role.loading || role.error) return false;
     if (role.isSuperAdmin) return true;
     const shared = ['page:/profile', 'page:/wallet'];
-    if (isPartnerMode) return [...shared, 'page:/affiliate-network'].includes(t.id);
+    if (isPartnerMode) return [...shared, 'page:/affiliate-network', 'page:/inbox', 'page:/campaigns', 'page:/referral'].includes(t.id);
     if (role.isPropertySeekerOnly) return shared.includes(t.id);
     if (role.isPropertyOwnerOnly) return [...shared, 'page:/owner/properties'].includes(t.id);
-    if (role.isAffiliateOnly) return [...shared, 'page:/affiliate-network'].includes(t.id);
+    if (role.isAffiliateOnly) return [...shared, 'page:/affiliate-network', 'page:/inbox', 'page:/campaigns', 'page:/referral'].includes(t.id);
     if (role.isDeveloper) return !['page:/properties', 'page:/deal-room', 'page:/dashboard'].includes(t.id);
     return role.isTeamMember;
   };
@@ -98,11 +98,10 @@ export function TutorialHost() {
   );
 }
 
-/** ❓ trigger; hidden once the user chose "אל תציג לי את זה יותר". */
+/** Manual help stays available even when automatic guides are dismissed. */
 export function HelpHint({ tutorial, path, className }: { tutorial?: Tutorial | null; path?: string; className?: string }) {
-  const st = useTutorialState();
-  const t = tutorial ?? (path ? tutorialForPath(path) : null);
-  if (!t || st.dismissed.includes(t.id)) return null;
+  const t = tutorial ?? (path ? tutorialForPath(path) ?? { id: `page:${path}`, title: 'עזרה', slides: [{ emoji: '❓', title: 'הפעולות במסך', body: 'פותחים פריט לצפייה בפרטים. עריכה ושמירה זמינות דרך הפעולות המוצגות לצד הפריט.' }] } : null);
+  if (!t) return null;
   return (
     <Button
       variant="ghost"

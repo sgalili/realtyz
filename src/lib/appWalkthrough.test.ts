@@ -4,7 +4,7 @@ import { buildWalkthrough, walkthroughStore } from './appWalkthrough';
 describe('global walkthrough', () => {
   it('starts with the concept and ends with completion', () => {
     const steps = buildWalkthrough([]);
-    expect(steps[0].title).toBe('ברוכים הבאים לרילטיז');
+    expect(steps[0].title).toBe('ברוכים הבאים ל־TORAFF');
     expect(steps.at(-1)?.title).toBe('יוצאים לדרך');
     expect(steps.some((step) => step.title.includes('ריטה'))).toBe(true);
   });

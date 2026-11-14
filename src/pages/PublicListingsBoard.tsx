@@ -390,7 +390,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
               </div>
             </div>
           )}
-          <BoardSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} query={query} onQueryChange={setQuery} onSearch={() => void load()} resultCount={filtered.length} dealType={propFilter.dealType} onDealTypeChange={dealType => setPropFilter({ ...propFilter, dealType: dealType as typeof propFilter.dealType })} filters={<LeadTypeFilterButton panelOnly hideDealType state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} priceBounds={priceBounds} rewardBounds={rewardBounds} />} />
+          <BoardSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} query={query} onQueryChange={setQuery} activeFilters={appliedFilterCount > 0} onReset={resetFilters} onSearch={() => void load()} resultCount={filtered.length} dealType={propFilter.dealType} onDealTypeChange={dealType => setPropFilter({ ...propFilter, dealType: dealType as typeof propFilter.dealType })} filters={<LeadTypeFilterButton panelOnly hideDealType state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} priceBounds={priceBounds} rewardBounds={rewardBounds} />} />
         </div>
       </header>
 

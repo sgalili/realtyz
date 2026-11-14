@@ -940,7 +940,7 @@ const ApiSettings = () => {
 
       </SectionShell>
 
-      <SectionShell title="אוטומציית ענן (24/7)" subtitle="חיבור פייסבוק בענן — סנכרון קבוצות, פרסום ומעקב">
+      <SectionShell title="אוטומציית ענן" subtitle="מצב החיבור ושירות הפרסום; כלי פייסבוק מסומנים כרגע בקרוב">
         <div id="cloud-automation" className="scroll-mt-24">
           <CloudPostingSessionCard />
         </div>

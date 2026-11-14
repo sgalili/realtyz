@@ -8678,8 +8678,7 @@ const CampaignCenter = () => {
       {isTargetedMode && (
         <div className="relative -mx-3 sm:-mx-6 -mt-6 mb-2 overflow-hidden text-primary-foreground"
              style={{ backgroundColor: 'hsl(var(--header-bg))' }} data-no-hero-wave>
-          <div className="relative z-10 grid items-center px-4 sm:px-6"
-               style={{ minHeight: '88px', gridTemplateColumns: '1fr auto 1fr' }}>
+          <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-center px-4 py-[10px] sm:px-6">
             <div className="flex justify-start">
               <Button variant="ghost" size="icon"
                 onClick={() => fromCrm ? navigate(`/lead-crm?lead=${encodeURIComponent(leadId!)}`) : navigate('/lead-crm')}
@@ -8695,9 +8694,6 @@ const CampaignCenter = () => {
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight whitespace-nowrap">{displayName}</h1>
             </div>
             <div />
-          </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6">
-            <RealtyzWave position="bottom" variant="wave-soft" fill="hsl(var(--background))" seed={7} />
           </div>
         </div>
       )}

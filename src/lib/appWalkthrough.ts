@@ -31,13 +31,13 @@ const PAGE_COPY: Record<string, string> = {
   '/public-listings': 'מחפשים נכס, משווים מודעות ושומרים את הנכסים שאהבתם.',
   '/command-center': 'מרכזים מטלות, שיחות חוזרות ומעקבים, ומעדכנים את ההתקדמות.',
   '/dashboard': 'בודקים את תמונת הפעילות העדכנית של המשרד.',
-  '/campaigns': 'יוצרים תוכן, בוחרים יעדים ומתזמנים פרסומים.',
+  '/campaigns': 'מכינים תוכן וטיוטות; כלי פייסבוק המסומנים בקרוב עדיין אינם זמינים.',
   '/posts': 'עוקבים אחרי הקמפיינים והשיתופים שלכם.',
   '/lead-crm': 'מחפשים לידים, מעדכנים פרטים ועוקבים אחרי הפעילות.',
   '/properties': 'מנהלים את מלאי הנכסים, מייבאים מיד2 ומכינים מודעות לפרסום.',
   '/developers': 'מנהלים חברות יזמיות ואת פרטי הפרויקטים שלהן.',
   '/developer-dashboard': 'מנהלים פרויקטים, תמהיל יחידות, תמונות ומפרטים, או מייבאים מעמוד היזם ביד2.',
-  '/inbox': 'קוראים שיחות וממשיכים את התקשורת עם הלידים.',
+  '/inbox': 'עוברים בין שיחות לקוחות לקהילה, מחפשים ושומרים שיחות והודעות במועדפים.',
   '/deal-room': 'עוקבים אחרי התקדמות העסקאות ומעדכנים את השלבים.',
   '/affiliate-network': 'בוחרים נכסים לשיתוף, מעתיקים קישור אישי ועוקבים אחרי הפניות והתגמולים.',
   '/referral': 'משתפים הזמנה אישית ועוקבים אחרי ההזמנות שלכם.',
@@ -59,7 +59,7 @@ const ACTION_COPY: Record<string, { selector: string; title: string; body: strin
 /** Use only navigation actually rendered by the authorized role/workspace/mode. */
 export function buildWalkthrough(menus: { path: string; title: string }[]): WalkthroughStep[] {
   const steps: WalkthroughStep[] = [
-    { title: 'ברוכים הבאים לרילטיז', body: '' },
+    { title: 'ברוכים הבאים ל־TORAFF', body: '' },
     { title: 'התפריט שלכם', body: 'מכאן מגיעים למסכים של הפעילות שלכם.', selector: '[data-walkthrough="menu"]' },
   ];
   const paths = new Set<string>();

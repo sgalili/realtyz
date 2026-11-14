@@ -113,7 +113,7 @@ const NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-slate-50 text-slate-700 ring-slate-200',
   },
   {
-    title: 'צ׳אטים',
+    title: 'צ׳אטים/קהילה',
     url: '/inbox',
     icon: MessageCircle,
     iconColor: '!text-[hsl(var(--nav-chats))]', // cyan-700
@@ -158,7 +158,7 @@ const PARTNER_NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-violet-50 text-violet-700 ring-violet-200',
   },
   {
-    title: 'צ׳אטים',
+    title: 'צ׳אטים/קהילה',
     url: '/partner/chats',
     icon: MessageCircle,
     iconColor: '!text-[hsl(var(--nav-chats))]', // cyan-700

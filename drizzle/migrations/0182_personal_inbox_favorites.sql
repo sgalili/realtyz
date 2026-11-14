@@ -1,0 +1,11 @@
+CREATE TABLE public.inbox_favorites (user_id uuid NOT NULL, workspace_owner_id uuid NOT NULL, target_kind text NOT NULL CHECK (target_kind IN ('lead','message','peer','peer_message')), target_id uuid NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(user_id,workspace_owner_id,target_kind,target_id));
+GRANT SELECT, INSERT, DELETE ON public.inbox_favorites TO authenticated;
+GRANT ALL ON public.inbox_favorites TO service_role;
+ALTER TABLE public.inbox_favorites ENABLE ROW LEVEL SECURITY;
+CREATE FUNCTION public.inbox_favorite_target_access(_workspace uuid,_kind text,_target uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public AS $$ SELECT ws_current_access(_workspace) AND CASE _kind WHEN 'lead' THEN EXISTS (SELECT 1 FROM leads l WHERE l.id=_target AND l.workspace_owner_id=_workspace) WHEN 'message' THEN EXISTS (SELECT 1 FROM messages m JOIN leads l ON l.id=m.lead_id WHERE m.id=_target AND l.workspace_owner_id=_workspace) WHEN 'peer' THEN EXISTS (SELECT 1 FROM community_chat_messages c WHERE (c.sender_id=auth.uid() AND c.recipient_id=_target) OR (c.recipient_id=auth.uid() AND c.sender_id=_target)) WHEN 'peer_message' THEN EXISTS (SELECT 1 FROM community_chat_messages c WHERE c.id=_target AND (c.sender_id=auth.uid() OR c.recipient_id=auth.uid())) ELSE false END $$;
+REVOKE ALL ON FUNCTION public.inbox_favorite_target_access(uuid,text,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.inbox_favorite_target_access(uuid,text,uuid) TO authenticated,service_role;
+CREATE POLICY favorite_read ON public.inbox_favorites FOR SELECT TO authenticated USING(user_id=auth.uid() AND inbox_favorite_target_access(workspace_owner_id,target_kind,target_id));
+CREATE POLICY favorite_insert ON public.inbox_favorites FOR INSERT TO authenticated WITH CHECK(user_id=auth.uid() AND inbox_favorite_target_access(workspace_owner_id,target_kind,target_id));
+CREATE POLICY favorite_delete ON public.inbox_favorites FOR DELETE TO authenticated USING(user_id=auth.uid());
+CREATE INDEX inbox_favorites_scope ON public.inbox_favorites(user_id,workspace_owner_id,created_at DESC);

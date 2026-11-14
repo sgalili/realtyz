@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 
 type Card = { id: string; full_name: string | null; category: string; office_name: string | null; license_number: string | null };
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, Ban, UserPlus, Loader2, MessageCircle, Search, Send, Users } from 'lucide-react';
+import { ArrowRight, Ban, Bookmark, X, SlidersHorizontal, UserPlus, Loader2, MessageCircle, Search, Send, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -24,6 +24,11 @@ import { CommunityProfileDialog } from './CommunityProfileDialog';
 import { DealTermsDialog } from './DealTermsDialog';
 import { DEAL_SAFETY_TIP } from '@/lib/communityChat';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ClearFilterButton } from '@/components/ui/clear-filter-button';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useInboxFavorites } from '@/hooks/useInboxFavorites';
+import { InboxFavoritesDialog } from './InboxFavoritesDialog';
+import { DIRECTORY_CATEGORIES } from './CommunityDirectory';
 
 type Peer = { id: string; full_name: string | null; avatar_url: string | null };
 
@@ -35,6 +40,12 @@ export function CommunityInbox({ active }: { active: boolean }) {
   const [view, setView] = useState('private');
   const [peer, setPeer] = useState<Peer | null>(null);
   const [directoryOpen, setDirectoryOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [category, setCategory] = useState('all');
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
+  const favorites = useInboxFavorites();
+  useEffect(() => { const add = () => { if (active) setDirectoryOpen(true); }; window.addEventListener('inbox:add-user', add); return () => window.removeEventListener('inbox:add-user', add); }, [active]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const endRef = useRef<HTMLDivElement>(null);
   const contacts = useQuery({
@@ -170,22 +181,21 @@ export function CommunityInbox({ active }: { active: boolean }) {
     <TabsContent value="private" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
     <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[20rem_minmax(0,1fr)]">
     <aside className={`${peer ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col border-e border-border`}>
-      <div className="m-3 flex shrink-0 gap-2"><div className="relative flex-1">
-        <Search className="absolute end-3 top-3 h-4 w-4 text-muted-foreground" />
-        <Input aria-label="חיפוש בקהילה" placeholder="חיפוש בקהילה..." className="pe-9" value={search} onChange={event => setSearch(event.target.value)} />
-      </div><Button variant="outline" size="icon" className="h-10 w-10 shrink-0" aria-label="שיחה חדשה ממדריך המשתמשים" disabled={eligibility.data !== true} onClick={() => setDirectoryOpen(true)}><UserPlus className="h-4 w-4" /></Button></div>
-      <Dialog open={directoryOpen} onOpenChange={setDirectoryOpen}><DialogContent dir="rtl" aria-describedby={undefined}><DialogHeader><DialogTitle>שיחה חדשה</DialogTitle></DialogHeader><CommunityDirectory enabled={directoryOpen && eligibility.data === true} listClassName="max-h-[55dvh]" onSelect={u => { setPeer({ id: u.id, full_name: u.full_name, avatar_url: u.avatar_url }); setDirectoryOpen(false); }} /></DialogContent></Dialog>
+      <div className="m-3 flex shrink-0 items-center justify-between gap-2"><Button variant="ghost" size="icon" aria-label="מועדפי הקהילה" title="מועדפים" onClick={() => setFavoritesOpen(true)}><Bookmark className="h-4 w-4" /></Button><Button variant="ghost" size="icon" aria-label={searchOpen ? 'סגירת חיפוש בקהילה' : 'חיפוש בקהילה'} title={searchOpen ? 'סגירת חיפוש' : 'חיפוש בקהילה'} onClick={() => setSearchOpen(v => !v)}>{searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}</Button></div>
+      <AnimatePresence initial={false}>{searchOpen && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="shrink-0 overflow-hidden border-b"><div className="space-y-2 p-3"><ClearFilterButton active={!!search.trim() || category !== 'all'} onClear={() => { setSearch(''); setCategory('all'); }} /><div className="flex gap-2"><Input aria-label="חיפוש בקהילה" placeholder="שם חבר קהילה..." value={search} onChange={e => setSearch(e.target.value)} /><Button variant={filtersOpen ? 'default' : 'outline'} size="icon" className="shrink-0" aria-label="סינון חברי קהילה" title="סינון חברי קהילה" onClick={() => setFiltersOpen(v => !v)}><SlidersHorizontal className="h-4 w-4" /></Button></div>{filtersOpen && <div className="flex flex-wrap gap-1">{DIRECTORY_CATEGORIES.map(c => <Button key={c.value} size="sm" variant={category === c.value ? 'default' : 'outline'} onClick={() => setCategory(c.value)}>{c.label}</Button>)}</div>}</div></motion.div>}</AnimatePresence>
+      <InboxFavoritesDialog open={favoritesOpen} onOpenChange={setFavoritesOpen} community />
       <div data-route-scroll className="min-h-0 flex-1 overflow-y-auto">
         {(contacts.isLoading || threads.isLoading) && <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />}
         {(contacts.isError || threads.isError || eligibility.isError) && <div role="alert" className="p-4 text-destructive">טעינת השיחות נכשלה<Button variant="ghost" onClick={() => { void contacts.refetch(); void threads.refetch(); void eligibility.refetch(); }}>נסה שוב</Button></div>}
         {eligibility.data === false && <p className="p-4 text-sm text-muted-foreground">מועדון הקהילה פתוח לסוכנים, למתווכים וליזמים.</p>}
         {eligibility.data && !contacts.isLoading && !threads.isLoading && !peers.length && <p className="p-4 text-sm text-muted-foreground">לא נמצאו חברי קהילה</p>}
-        {peers.map(contact => {
+        {peers.filter(contact => category === 'all' || cards.data?.get(contact.id)?.category === category).map(contact => {
           const last = threads.data?.find(thread => thread.peer_id === contact.id);
           return <div key={contact.id} className={`flex min-h-16 w-full items-center gap-3 border-b border-border px-3 py-3 ${peer?.id === contact.id ? 'bg-muted' : ''}`}>
             <button type="button" className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`פתיחת הפרופיל הציבורי של ${contact.full_name ?? 'חבר קהילה'}`} onClick={() => setProfileId(contact.id)}><Avatar className="h-10 w-10"><AvatarImage src={contact.avatar_url ?? undefined} /><AvatarFallback><Users className="h-4 w-4" /></AvatarFallback></Avatar></button>
             <Button variant="ghost" className="h-auto min-w-0 flex-1 justify-start whitespace-normal p-0 text-start" onClick={() => setProfileId(contact.id)}><Identity id={contact.id} name={contact.full_name} fallback={last?.content ?? 'שיחה חדשה'} /></Button>
             <Button variant="ghost" size="icon" aria-label={`פתיחת שיחה עם ${contact.full_name ?? 'חבר קהילה'}`} onClick={() => setPeer(contact)}><MessageCircle className="h-4 w-4" /></Button>
+            {(threads.data ?? []).some(t => t.peer_id === contact.id) && <Button variant="ghost" size="icon" aria-label={favorites.has('peer', contact.id) ? 'הסרת שיחת קהילה מהמועדפים' : 'שמירת שיחת קהילה במועדפים'} title="מועדפים" onClick={() => void favorites.toggle('peer', contact.id)}><Bookmark className={`h-4 w-4 ${favorites.has('peer', contact.id) ? 'fill-current text-primary' : ''}`} /></Button>}
           </div>;
         })}
       </div>
@@ -204,7 +214,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
           {messages.isLoading && <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
           {messages.isError && <div role="alert" className="text-destructive">טעינת ההודעות נכשלה<Button variant="ghost" onClick={() => void messages.refetch()}>נסה שוב</Button></div>}
           <div role="note" className="mx-auto mb-4 max-w-md rounded-xl border border-border bg-muted/50 px-3 py-2 text-center text-sm text-muted-foreground"><span className="block text-xs font-semibold">TORAFF · ריטה</span>{DEAL_SAFETY_TIP}</div>
-          {messages.data?.map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-2xl rounded-ss-sm bg-primary text-primary-foreground' : 'rounded-2xl rounded-se-sm border border-border bg-muted text-foreground'}`}><ChatMessageText content={message.content} /><time className="mt-1 block text-end text-xs opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time></div></div>; })}
+          {messages.data?.map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-2xl rounded-ss-sm bg-primary text-primary-foreground' : 'rounded-2xl rounded-se-sm border border-border bg-muted text-foreground'}`}><Button variant="ghost" size="icon" className="h-6 w-6 text-inherit" aria-label="שמירת הודעת קהילה במועדפים" title="מועדפים" onClick={() => void favorites.toggle('peer_message', message.id)}><Bookmark className={`h-3 w-3 ${favorites.has('peer_message', message.id) ? 'fill-current' : ''}`} /></Button><ChatMessageText content={message.content} /><time className="mt-1 block text-end text-xs opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time></div></div>; })}
           <div ref={endRef} />
         </div>
         <form className="flex shrink-0 gap-2 border-t border-border p-3" onSubmit={event => { event.preventDefault(); submit(); }}>
@@ -214,6 +224,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
       </>}
     </section>
   </div></TabsContent>
+    <Dialog open={directoryOpen} onOpenChange={setDirectoryOpen}><DialogContent dir="rtl" aria-describedby={undefined}><DialogHeader><DialogTitle>חברי הקהילה</DialogTitle></DialogHeader><CommunityDirectory enabled={directoryOpen && eligibility.data === true} listClassName="max-h-[55dvh]" onSelect={u => { setView('private'); setPeer({ id: u.id, full_name: u.full_name, avatar_url: u.avatar_url }); setDirectoryOpen(false); }} /></DialogContent></Dialog>
     <CommunityProfileDialog userId={profileId} onOpenChange={open => { if (!open) setProfileId(null); }} />
   </Tabs>;
 }

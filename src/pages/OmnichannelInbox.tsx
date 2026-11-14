@@ -3,6 +3,10 @@ import { supabase } from '@/lib/supabaseClient';
 import { useInboxLiveUpdates } from '@/hooks/useInboxLiveUpdates';
 import { CommunityInbox } from '@/components/inbox/CommunityInbox';
 import { RitaChatButton } from '@/components/inbox/RitaChatButton';
+import NewLeadDialog from '@/components/leads/NewLeadDialog';
+import { ClearFilterButton } from '@/components/ui/clear-filter-button';
+import { useInboxFavorites } from '@/hooks/useInboxFavorites';
+import { InboxFavoritesDialog } from '@/components/inbox/InboxFavoritesDialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useState, useRef, useEffect, useMemo, cloneElement, type ReactElement } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -16,7 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CheckCheck, FolderInput } from 'lucide-react';
 import { SelectModeToggle, SelectBox, SelectAllRow } from '@/components/ui/multi-select-controls';
-import { Search, Send, Bot, MessageSquare, MessageCircle, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark, Trash2, Mail, Plug, Inbox as InboxIcon, RefreshCw } from 'lucide-react';
+import { Search, X, SlidersHorizontal, Send, Bot, MessageSquare, MessageCircle, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark, Trash2, Mail, Plug, Inbox as InboxIcon, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -158,7 +162,7 @@ const OmnichannelInbox = () => {
   useEffect(() => {
     const v = searchParams.get('chat') || searchParams.get('lead');
     if (v) { setSelectedVoterId(v); setInboxSection('leads'); }
-    if (searchParams.get('community') || searchParams.get('section') === 'community') setInboxSection('community');
+    setInboxSection(searchParams.get('community') || searchParams.get('section') === 'community' ? 'community' : 'leads');
     setHighlightMessageId(searchParams.get('message'));
     const requestedChannel = searchParams.get('channel');
     if (requestedChannel && channelConfig[requestedChannel]) setSendChannel(requestedChannel);
@@ -173,12 +177,17 @@ const OmnichannelInbox = () => {
   const [channelFilter, setChannelFilter] = useState<Set<string>>(new Set());
   const [leadChannelCounts, setLeadChannelCounts] = useState<Map<string, Map<string, number>>>(new Map());
   const [searchOpen, setSearchOpen] = useState(false);
+  const [addClientOpen, setAddClientOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set());
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
+  const favorites = useInboxFavorites();
+  const hasSearchFilter = !!(search.trim() || dateFrom || dateTo || categoryFilter.size || unreadOnly || channelFilter.size);
+  const clearSearch = () => { setSearch(''); setDateFrom(''); setDateTo(''); setCategoryFilter(new Set()); setUnreadOnly(false); setChannelFilter(new Set()); };
   const [newMessage, setNewMessage] = useState('');
   // Tracks the last AI-generated draft (e.g. from Undo & Regenerate) so manual
   // edits before send can be shipped to learn-from-edit. Cleared on send/switch.
@@ -212,6 +221,20 @@ const OmnichannelInbox = () => {
     if (!ids.length) { toast.error('אין שיחות שניתן לעדכן בבחירה'); return; }
     setBulkBusy(true);
     try {
+      if (typeof patch.is_bookmarked === 'boolean') {
+        for (const id of ids) {
+          if (favorites.has('lead', id) !== patch.is_bookmarked && !(await favorites.toggle('lead', id))) throw new Error('שמירת המועדף נכשלה');
+        }
+        const { is_bookmarked: _legacyBookmark, ...rest } = patch;
+        if (Object.keys(rest).length) {
+          const { error } = await supabase.from('leads').update(rest as any).in('id', ids);
+          if (error) throw error;
+        }
+        toast.success(okMsg);
+        setSelectedChats(new Set());
+        await refreshInbox();
+        return;
+      }
       const { error } = await supabase.from('leads').update(patch as any).in('id', ids);
       if (error) throw error;
       toast.success(okMsg);
@@ -1035,7 +1058,7 @@ const OmnichannelInbox = () => {
     // When the user is searching, also surface CRM leads that don't have an
     // active conversation yet, so the broker can initiate a chat via any
     // available channel (WhatsApp / invite link / etc.).
-    if (search.trim() && activeTab === 'all' && !bookmarkedOnly) {
+    if (search.trim() && activeTab === 'all' && !bookmarkedOnly && !dateFrom && !dateTo && !categoryFilter.size && !unreadOnly && !channelFilter.size) {
       const known = new Set(base.map((v: any) => v.id));
       const extras = (dbVoters ?? [])
         .filter((v: any) => v?.id && !known.has(v.id) && matchesLeadSearch(v, search))
@@ -1112,6 +1135,11 @@ const OmnichannelInbox = () => {
     window.addEventListener('realtyz:inbox-back', closeChat);
     return () => window.removeEventListener('realtyz:inbox-back', closeChat);
   }, []);
+  useEffect(() => {
+    const add = () => { if (inboxSection === 'leads') setAddClientOpen(true); };
+    window.addEventListener('inbox:add-user', add);
+    return () => window.removeEventListener('inbox:add-user', add);
+  }, [inboxSection]);
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('realtyz:inbox-chat-state', { detail: { open: inboxSection === 'leads' && !!selectedVoterId } }));
@@ -1122,10 +1150,8 @@ const OmnichannelInbox = () => {
 
   return (
     <Tabs dir="rtl" value={inboxSection} onValueChange={value => { setInboxSection(value); setSearchParams(current => { const next = new URLSearchParams(current); next.set('section', value); if (value === 'leads') next.delete('community'); return next; }, { replace: true }); }} className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-      <TabsList aria-label="סוג שיחות" className="grid h-auto min-h-11 w-full shrink-0 grid-cols-2 gap-1">
-        <TabsTrigger value="leads" className="min-h-10 min-w-0 whitespace-normal px-2 text-base">צ'אטים נכסים ולידים</TabsTrigger>
-        <TabsTrigger value="community" className="min-h-10 min-w-0 whitespace-normal px-2 text-base">מועדון הקהילה</TabsTrigger>
-      </TabsList>
+      <NewLeadDialog open={addClientOpen} onOpenChange={setAddClientOpen} onCreated={lead => { void refreshInbox(); navigate(`/lead-crm/${encodeURIComponent(lead.id)}`, { state: { returnTo: '/inbox' } }); }} />
+      <InboxFavoritesDialog open={favoritesOpen} onOpenChange={setFavoritesOpen} />
       <TabsContent value="community" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
         <CommunityInbox key={`${user?.id}:${workspaceScope}`} active={inboxSection === 'community'} />
       </TabsContent>
@@ -1166,8 +1192,9 @@ const OmnichannelInbox = () => {
           variant="ghost"
           type="button"
           size="icon"
-          onClick={() => { setBookmarkedOnly((v) => !v); setSelectedVoterId(null); }}
-          aria-label="סימניות"
+          onClick={() => setFavoritesOpen(true)}
+          aria-label="מועדפים"
+          title="מועדפים"
           className={`h-11 w-11 shrink-0 rounded-lg border border-border/60 p-0 ${bookmarkedOnly ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'bg-muted/40 text-muted-foreground hover:text-foreground'}`}
         >
           <Bookmark className="h-4 w-4" />
@@ -1180,6 +1207,7 @@ const OmnichannelInbox = () => {
           <div className="p-3 border-b">
             <div className="flex items-center gap-1.5">
               <SelectModeToggle
+                closeAction
                 total={filteredVoters?.length ?? 0}
                 onSelectAll={() => setSelectedChats(new Set((filteredVoters ?? []).map((v: any) => v.id)))}
                 active={chatSelectMode}
@@ -1239,22 +1267,22 @@ const OmnichannelInbox = () => {
                   );
                 })}</div>;
               })() ?? <div className="flex-1" />}
-              <Button type="button" variant="ghost" size="icon" aria-label="חיפוש וסינון שיחות" title="חיפוש וסינון" onClick={() => setSearchOpen(true)}
+              <Button type="button" variant="ghost" size="icon" aria-label={searchOpen ? 'סגירת חיפוש שיחות' : 'חיפוש וסינון שיחות'} title={searchOpen ? 'סגירת חיפוש' : 'חיפוש וסינון'} onClick={() => setSearchOpen(v => !v)}
                 className={`relative h-9 w-9 shrink-0 rounded-lg ${(search.trim() || dateFrom || dateTo || categoryFilter.size || unreadOnly || channelFilter.size) ? 'text-primary' : 'text-muted-foreground'}`}>
-                <Search className="h-5 w-5" />
+                {searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
                 {(search.trim() || dateFrom || dateTo || categoryFilter.size || unreadOnly || channelFilter.size) ? <span className="absolute end-1 top-1 h-2 w-2 rounded-full bg-primary" /> : null}
               </Button>
             </div>
           </div>
-          <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-            <DialogContent dir="rtl" aria-describedby={undefined} className="max-h-[85dvh] overflow-y-auto">
-              <DialogHeader><DialogTitle>חיפוש שיחות</DialogTitle></DialogHeader>
+          <AnimatePresence initial={false}>{searchOpen && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="shrink-0 overflow-hidden border-b">
+            <div dir="rtl" className="max-h-[50dvh] space-y-3 overflow-y-auto p-3">
+              <ClearFilterButton active={hasSearchFilter} onClear={clearSearch} />
               <div className="flex gap-2">
                 <div className="relative flex-1 min-w-0">
                   <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input autoFocus aria-label="חיפוש שיחות" placeholder="שם, טלפון או כינוי..." className="pr-9" value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
-                <Button type="button" variant={filtersOpen ? 'default' : 'outline'} onClick={() => setFiltersOpen((v) => !v)}>פילטר</Button>
+                <Button type="button" size="icon" aria-label="סינון שיחות" title="סינון שיחות" variant={filtersOpen ? 'default' : 'outline'} onClick={() => setFiltersOpen((v) => !v)}><SlidersHorizontal className="h-4 w-4" /></Button>
               </div>
               {filtersOpen && <div className="space-y-4 rounded-lg border border-border p-3">
                 <div className="grid grid-cols-2 gap-2">
@@ -1276,11 +1304,10 @@ const OmnichannelInbox = () => {
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-primary" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />רק שיחות שלא נענו</label>
               </div>}
               <div className="flex justify-between gap-3">
-                <Button type="button" variant="outline" onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); setCategoryFilter(new Set()); setUnreadOnly(false); setChannelFilter(new Set()); }}>ניקוי</Button>
                 <Button type="button" onClick={() => setSearchOpen(false)}>הצגת {filteredVoters?.length ?? 0} שיחות</Button>
               </div>
-            </DialogContent>
-          </Dialog>
+            </div>
+          </motion.div>}</AnimatePresence>
 
           {chatSelectMode && (
             <SelectAllRow
@@ -1354,6 +1381,7 @@ const OmnichannelInbox = () => {
                     {chatSelectMode && (
                       <SelectBox className="mt-3" checked={selectedChats.has(voter.id)} onChange={() => toggleChat(voter.id)} />
                     )}
+                    {!voter.id.startsWith('phone:') && <Button variant="ghost" size="icon" className="absolute left-1 bottom-1 h-7 w-7" aria-label={favorites.has('lead', voter.id) ? 'הסרת שיחה מהמועדפים' : 'שמירת שיחה במועדפים'} title="מועדפים" onClick={event => { event.stopPropagation(); void favorites.toggle('lead', voter.id); }}><Bookmark className={`h-3.5 w-3.5 ${favorites.has('lead', voter.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>}
                     <button
                       type="button"
                       onClick={(event) => { event.stopPropagation(); setDeleteTargetId(voter.id); }}
@@ -1528,6 +1556,7 @@ const OmnichannelInbox = () => {
                           />
                         )}
                         <div className="mb-1 flex items-center justify-end gap-1.5">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={favorites.has('message', msg.id) ? 'הסרת הודעה מהמועדפים' : 'שמירת הודעה במועדפים'} title="מועדפים" onClick={() => void favorites.toggle('message', msg.id)}><Bookmark className={`h-3 w-3 ${favorites.has('message', msg.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>
                           <ChannelIcon channel={msg.channel} />
                         </div>
                         {(() => {

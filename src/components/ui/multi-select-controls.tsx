@@ -1,4 +1,4 @@
-import { Check, ListChecks } from 'lucide-react';
+import { Check, ListChecks, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -14,7 +14,8 @@ export const SelectModeToggle = ({
   total,
   onSelectAll,
   className,
-}: { active: boolean; onToggle: () => void; count?: number; total?: number; onSelectAll?: () => void; className?: string }) => {
+  closeAction = false,
+}: { active: boolean; onToggle: () => void; count?: number; total?: number; onSelectAll?: () => void; className?: string; closeAction?: boolean }) => {
   if (total === 0) return null;
   return (
     <div className="flex items-center gap-2" dir="rtl">
@@ -22,8 +23,8 @@ export const SelectModeToggle = ({
         variant="ghost"
         size="icon"
         type="button"
-        aria-label="בחירה מרובה"
-        title="בחירה מרובה"
+        aria-label={active && closeAction ? 'סגירת בחירה מרובה' : 'בחירה מרובה'}
+        title={active && closeAction ? 'סגירה' : 'בחירה מרובה'}
         aria-pressed={active}
         onClick={onToggle}
         className={cn(
@@ -32,9 +33,9 @@ export const SelectModeToggle = ({
           className,
         )}
       >
-        <ListChecks className="h-4 w-4" />
+        {active && closeAction ? <ChevronUp className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}
       </Button>
-      {active && onSelectAll && (
+      {active && onSelectAll && !closeAction && (
         <button
           type="button"
           onClick={onSelectAll}

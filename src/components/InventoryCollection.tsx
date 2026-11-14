@@ -42,12 +42,12 @@ export function InventoryComingSoonHost() {
 }
 
 /** Visible controls keep their layout, while pointer and keyboard actions stop before their handlers. */
-export function InventoryToolSoftLock({ tool, children }: { tool: string; children: ReactNode }) {
+export function InventoryToolSoftLock({ tool, children, showLabel = true }: { tool: string; children: ReactNode; showLabel?: boolean }) {
   if (!inventoryToolLocked(tool)) return <>{children}</>;
   return <div className="relative" onClickCapture={event => { event.preventDefault(); event.stopPropagation(); showInventoryComingSoon(tool); }}
     onKeyDownCapture={event => { if (event.key === 'Tab') return; event.preventDefault(); event.stopPropagation(); showInventoryComingSoon(tool); }}
     onPointerDownCapture={event => { event.preventDefault(); event.stopPropagation(); }}>
-    <div className="mb-2 flex justify-end"><Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" title="ייפתח בקרוב לצד רשת השותפים"><Clock3 className="h-3.5 w-3.5" />בקרוב</Button></div>
+    {showLabel && <div className="mb-2 flex justify-end"><Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" title="ייפתח בקרוב לצד רשת השותפים"><Clock3 className="h-3.5 w-3.5" />בקרוב</Button></div>}
     {children}
   </div>;
 }

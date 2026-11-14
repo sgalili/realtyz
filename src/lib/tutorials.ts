@@ -1,6 +1,6 @@
 // Contextual tutorials: content registry + per-user seen/dismissed state.
 // "seen" = user clicked הבנתי (no more auto-open, ❓ stays).
-// "dismissed" = אל תציג לי את זה יותר (no auto-open and ❓ hidden) until restored in settings.
+// Dismissal suppresses automatic guides only; manual help remains visible.
 import { useSyncExternalStore } from 'react';
 
 export type TutorialSlide = { emoji: string; title: string; body: string; bullets?: string[] };
@@ -9,24 +9,24 @@ export type Tutorial = { id: string; title: string; slides: TutorialSlide[] };
 export const TUTORIALS: Record<string, Tutorial> = {
   'page:/command-center': { id: 'page:/command-center', title: 'מטלות', slides: [
     { emoji: '✅', title: 'כל המשימות שלך במקום אחד', body: 'כאן מופיעות המטלות של היום: שיחות חוזרות, סיורים ומעקבים.', bullets: ['📅 מסודר לפי מועד', '⚡ לחיצה על משימה פותחת את הליד'] },
-    { emoji: '🤖', title: 'ריטה עוזרת', body: 'ריטה מציעה מטלות לפי הפעילות של הלידים שלך. אפשר לאשר, לדחות או לתזמן.' },
+    { emoji: '🤖', title: 'ניהול אישי', body: 'מוסיפים מטלה, בוחרים מועד ומעדכנים כשהטיפול הסתיים.' },
   ]},
   'page:/dashboard': { id: 'page:/dashboard', title: 'לוח בקרה', slides: [
     { emoji: '📊', title: 'תמונת מצב מהירה', body: 'נתונים חיים על לידים, נכסים, פניות ועסקאות.', bullets: ['📈 מגמות של 7 ימים', '🔥 לידים חמים'] },
   ]},
   'page:/campaigns': { id: 'page:/campaigns', title: 'קמפיינים', slides: [
-    { emoji: '📣', title: 'פרסום לקבוצות ולדף העסקי', body: 'יוצרים קמפיין אחד ומפיצים לכל הקבוצות שבחרת.', bullets: ['🕒 תזמון מראש', '🔁 פרסום מחדש בלחיצה', '✅ סטטוס לכל קבוצה'] },
-    { emoji: '☁️', title: 'חיבור מהיר לפייסבוק', body: '**חיבור באמצעות פייסבוק** מסנכרן את הקבוצות שלכם בענן. מייבאים קבוצות קיימות, מוצאים קבוצות נוספות בחיפוש ועוקבים אחר הפרסום והביצועים.' },
+    { emoji: '📣', title: 'מכינים קמפיין', body: 'בוחרים נכס, יוצרים תוכן ובודקים טיוטה. כלי פייסבוק המסומנים **בקרוב** עדיין אינם זמינים.' },
   ]},
   'page:/lead-crm': { id: 'page:/lead-crm', title: 'לידים', slides: [
     { emoji: '👥', title: 'כל הלידים', body: 'חיפוש, סינון ומיון של כל הלידים במשרד.', bullets: ['📥 ייבוא מקובץ', '🏷️ תגיות ושלבים', '☑️ בחירה מרובה לפעולות'] },
   ]},
   'page:/properties': { id: 'page:/properties', title: 'נכסים', slides: [
-    { emoji: '🏠', title: 'מלאי הנכסים שלך', body: 'כל הנכסים של המשרד, כולל ייבוא מיד2.', bullets: ['🔗 הדבקת קישור יד2 מייבאת אוטומטית', '🚀 פרסום ללוח הציבורי'] },
-    { emoji: '🤝', title: 'שיתוף עם שותפים', body: 'קבעו עמלה לשותפים והנכס יופץ ברשת השותפים.' },
+    { emoji: '🏠', title: 'מלאי הנכסים שלך', body: 'מייבאים או מוסיפים נכס, בודקים פרטים ושומרים טיוטה. לפני פרסום משלימים ושומרים **מחירים ותגמולים**.' },
+    { emoji: '🤝', title: 'ניהול מודעות', body: 'פותחים שורה לפרטים, תמונות ופעולות. עצירת הפצה דורשת אישור.' },
   ]},
-  'page:/inbox': { id: 'page:/inbox', title: 'צ׳אטים', slides: [
-    { emoji: '💬', title: 'כל השיחות במסך אחד', body: 'וואטסאפ, SMS, פייסבוק ואימייל מגיעים לתיבה אחת.', bullets: ['🤖 ריטה יכולה לענות אוטומטית', '✋ אפשר להשתלט על שיחה בכל רגע'] },
+  'page:/inbox': { id: 'page:/inbox', title: 'צ׳אטים/קהילה', slides: [
+    { emoji: '💬', title: 'צ׳אטים וקהילה', body: '**צ׳אטים** מרכזת שיחות לקוחות. **קהילה** פותחת שיחות וקבוצות עם חברי המערכת. החיפוש והמועדפים נפרדים בכל לשונית.' },
+    { emoji: '👥', title: 'מוסיפים ושומרים', body: '**הוסף משתמש** פותח כרטיס לקוח בצ׳אטים ומדריך חברים בקהילה. סימניית שיחה או הודעה נשמרת בחלון **מועדפים**.' },
   ]},
   'page:/deal-room': { id: 'page:/deal-room', title: 'עסקאות', slides: [
     { emoji: '🤝', title: 'מעקב עסקאות', body: 'גוררים כל עסקה בין השלבים עד לסגירה.', bullets: ['💰 רישום עמלה', '✍️ חתימה דיגיטלית'] },
@@ -46,12 +46,14 @@ export const TUTORIALS: Record<string, Tutorial> = {
     { emoji: '🪪', title: 'הפרטים שלך', body: 'עדכנו את **הפרטים והתמונה** שלכם ושמרו את השינויים.', bullets: ['✏️ **עריכת פרופיל**', '❓ **המדריכים** זמינים בסימן השאלה'] },
   ]},
   'page:/owner/properties': { id: 'page:/owner/properties', title: 'הנכסים שלי', slides: [
-    { emoji: '🏡', title: 'הנכסים שפרסמת', body: 'כאן רואים את הנכסים, הצפיות והפניות.', bullets: ['✅ אישור זמינות פעם בשבוע', '🤝 הפצה לשותפים'] },
+    { emoji: '🏡', title: 'הנכסים שפרסמת', body: 'רואים נכסים, צפיות ופניות; פותחים מודעה כדי לעדכן פרטים ולאשר זמינות.' },
   ]},
 };
 
 /** Menu-item tutorials reuse page tutorials by URL. */
 export const tutorialForPath = (path: string): Tutorial | null => {
+  const aliases: Record<string, string> = { '/partner/chats': '/inbox', '/communication': '/inbox', '/posts': '/campaigns', '/developers': '/developer-dashboard' };
+  path = aliases[path] ?? path;
   const key = Object.keys(TUTORIALS).filter((k) => k.startsWith('page:')).sort((a, b) => b.length - a.length)
     .find((k) => { const p = k.slice(5); return path === p || path.startsWith(`${p}/`); });
   return key ? TUTORIALS[key] : null;

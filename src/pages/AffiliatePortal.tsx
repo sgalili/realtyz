@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
+import { ClearFilterButton } from '@/components/ui/clear-filter-button';
 import LeftoverLeadsDialog from '@/components/affiliate/LeftoverLeadsDialog';
 import LeadPricingDialog from '@/components/affiliate/LeadPricingDialog';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -1345,6 +1346,7 @@ export default function AffiliatePortal({ activityOnly = false, initialTab = 'ma
               <SheetTitle className="text-center">סינון נכסים לשיווק אוטומטי</SheetTitle>
             </SheetHeader>
             <div className="space-y-6 py-6">
+              <ClearFilterButton active={activeFilterCount > 0 || !!search.trim()} onClear={clearFilters} />
               <div className="space-y-3">
                 <Label>סוג הליד</Label>
                 <div className="flex flex-wrap gap-2">
@@ -1424,7 +1426,7 @@ export default function AffiliatePortal({ activityOnly = false, initialTab = 'ma
             </div>
             <SheetFooter className="flex-row items-center justify-between gap-2 sm:flex-row sm:justify-between sm:space-x-0">
               <Button onClick={() => setFiltersOpen(false)}>הצגת {filtered.length} נכסים</Button>
-              <Button variant="outline" onClick={clearFilters}>ביטול</Button>
+              <Button variant="outline" onClick={() => setFiltersOpen(false)}>ביטול</Button>
             </SheetFooter>
           </SheetContent>
         </Sheet>

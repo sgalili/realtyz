@@ -32,22 +32,22 @@ const BROKER_STEPS: TourStep[] = [
   { title: 'נכיר אותך רגע לפני שמתחילים', profileForm: true },
   { title: 'לוח הבקרה אומר לך מה לעשות עכשיו', cta: { label: 'פתח את משימות היום', to: '/command-center' } },
   { title: 'תיבה אחת לכל הערוצים', cta: { label: 'פתח שיחות', to: '/live-conversations' } },
-  { title: 'נכס נכנס - קמפיין יוצא', cta: { label: 'פתח נכסים', to: '/properties' } },
-  { title: 'חיבור חשבון Facebook', connections: true },
+  { title: 'מכינים נכס לפרסום ושומרים מחירים ותגמולים', cta: { label: 'פתח נכסים', to: '/properties' } },
+  { title: 'חיבורי פייסבוק ייפתחו בקרוב', connections: true },
 ];
 
 /** Partner (affiliate) flow: marketing links, rewards and Rita on autopilot. */
 const PARTNER_STEPS: TourStep[] = [
-  { title: 'משווקים נכסים, מקבלים תגמול על כל עסקה' },
+  { title: 'בוחרים נכסים ומתכוננים לשיווק; רשת השותפים בקרוב' },
   { title: 'נכיר אותך רגע לפני שמתחילים', profileForm: true },
   { title: 'בוחרים נכס ומקבלים קישור שיווק אישי', cta: { label: 'פתח שיווק שותפים', to: '/affiliate-network' } },
-  { title: 'ריטה עונה לכל פנייה במקומכם, גם כשאתם לא מול המסך', cta: { label: 'פתח צ׳אטים', to: '/partner/chats' } },
+  { title: 'צ׳אטים ללקוחות וקהילה לשיתופי פעולה', cta: { label: 'פתח צ׳אטים', to: '/partner/chats' } },
   { title: 'כל ליד, פנייה ותגמול במקום אחד', cta: { label: 'פתח לידים', to: '/partner/contacts' } },
 ];
 
 /** Private property owner flow: their own properties, leads and rewards. */
 const OWNER_STEPS: TourStep[] = [
-  { title: 'מפרסמים נכס ומפעילים עבורו רשת שיווק של שותפים' },
+  { title: 'מכינים מודעה; הפצה לרשת השותפים בקרוב' },
   { title: 'נכיר אותך רגע לפני שמתחילים', profileForm: true },
   { title: 'מוסיפים תמונות, מחיר ופרטי נכס מלאים במקום אחד', cta: { label: 'פתח את הנכס שלי', to: '/my-ads' } },
   { title: 'כל מתעניין נשמר, נענה ומטופל', cta: { label: 'פתח מתעניינים', to: '/owner/leads' } },
@@ -57,7 +57,7 @@ const OWNER_STEPS: TourStep[] = [
 
 const SEEKER_STEPS: TourStep[] = [
   { title: 'מגדירים עיר, תקציב ומספר חדרים ומקבלים התאמות מדויקות' },
-  { title: 'ריטה מרכזת עבורכם נכסים מכל רשת השותפים' },
+  { title: 'מחפשים נכסים פעילים בלוח הציבורי' },
   { title: 'שומרים נכסים ומשאירים פרטים בלי לחפש פרטי קשר', cta: { label: 'פתח את הלוח השיתופי', to: '/public-listings' } },
   { title: 'ריטה ממשיכה את השיחה בווטסאפ ומעדכנת כשנמצא נכס מתאים', cta: { label: 'חיפוש נכסים', to: '/public-listings' } },
 ];

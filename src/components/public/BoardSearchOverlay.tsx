@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
+import { ClearFilterButton } from '@/components/ui/clear-filter-button';
 
 export const BOARD_SEARCH_OPEN_EVENT = 'toraff:board-search-open';
 export const BOARD_SEARCH_STATE_EVENT = 'toraff:board-search-state';
@@ -13,9 +14,10 @@ export const BOARD_VIEW_STATE_EVENT = 'toraff:board-view-state';
 /** Inline search panel: free text on top, all filters under one "חיפוש מתקדם" row.
  *  Renders in normal flow below the header so it pushes the listings down instead
  *  of covering them; results stay visible and update live under the panel. */
-export default function BoardSearchOverlay({ open, onClose, query, onQueryChange, onSearch, filters, resultCount, dealType, onDealTypeChange }: {
+export default function BoardSearchOverlay({ open, onClose, query, onQueryChange, onSearch, filters, resultCount, dealType, onDealTypeChange, activeFilters = false, onReset }: {
   dealType: string; onDealTypeChange: (v: string) => void;
   open: boolean; onClose: () => void; query: string; onQueryChange: (v: string) => void; onSearch: () => void; filters: ReactNode; resultCount: number;
+  activeFilters?: boolean; onReset?: () => void;
 }) {
   const [advanced, setAdvanced] = useState(false);
   useEffect(() => {
@@ -91,6 +93,7 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
       }}
       className="relative flex w-full flex-col overflow-hidden border-b border-border bg-background motion-reduce:!transition-none">
       <div data-search-head className="relative shrink-0 border-b border-border px-[15px] pb-3 pt-0">
+        <ClearFilterButton active={!!query.trim() || activeFilters || dealType !== 'all'} onClear={() => { if (onReset) onReset(); else { onQueryChange(''); onDealTypeChange('all'); } }} />
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <Input autoFocus value={query} onChange={e => onQueryChange(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit(); }} placeholder="חיפוש נכס, עיר, רחוב…" className="h-11 text-[16px]" />

@@ -13,8 +13,8 @@ export function AffiliateProgramHelp() {
     { icon: ClipboardList, tone: 'text-warning', title: 'מביאים ליד מתאים', text: 'התגמול תלוי בסוג הפנייה: שדות מטופס בעמוד נחיתה, סינון ב־WhatsApp או שיחת טלפון, ובמילוי תנאי הנכס. אפשר גם להגיש ליד מתוך הנכס.' },
     { icon: Wallet, tone: 'text-success', title: 'עוקבים אחר הרווחים', text: 'ב״לידים״ רואים את ההגשות והתקדמותן; ב״רווחים״ את התגמולים שנצברו. רק תגמולים מאושרים מזוכים לפי תנאי התוכנית, ואין הבטחה להכנסה.' },
     { icon: Inbox, tone: 'text-primary', title: 'לידים עודפים', text: 'בלשונית הלידים, ״לידים עודפים״ מציגה פניות מעבר למכסה היומית. רכישתן נפרדת ואופציונלית, במחיר המוזל שקבע השותף.' },
-    { icon: ShieldCheck, tone: 'text-warning', title: 'שיווק אמין ומאושר', text: 'מגישים פניות אמיתיות בלבד, ללא פניות עצמיות או כפולות. פרסום מתבצע רק לאחר אישור מפורש; זמינות האוטומציה תלויה בחיבורים הפעילים.' },
-    { icon: Gift, tone: 'text-primary', title: 'מזמינים חברים', text: 'קישור הזמנה אישי מעניק לכם 5k קרדיטים ולחבר 2.5k קרדיטים, רק אחרי העסקה הראשונה שלו שאומתה ואושרה, לא בהרשמה בלבד.' },
+    { icon: ShieldCheck, tone: 'text-warning', title: 'מכינים לשיווק', text: 'בודקים פרטים ותגמולים לפני פרסום. כלי פייסבוק המסומנים בקרוב עדיין אינם זמינים.' },
+    { icon: Gift, tone: 'text-primary', title: 'מזמינים חברים', text: 'משתפים קישור הזמנה ועוקבים אחרי ההזמנות והתגמולים בעמוד ההזמנות.' },
   ];
   return <>
     <Button size="icon" variant="ghost" aria-label="איך עובד שיווק השותפים" title="איך עובד שיווק השותפים" onClick={() => setOpen(true)} className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground">

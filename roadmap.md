@@ -1,5 +1,11 @@
 # Roadmap
 
+## Connections and inbox refinements November 14
+- [x] Facebook business/groups rows show coming soon; removed duplicate labels above connection fields. Shared hero and targeted campaign header use 10px top/bottom spacing, centered titles and horizontal actions.
+- [x] URL-driven hero chat/community tabs preserve mounted panes; add opens existing full client form or community directory (including from groups). Animated inline search uses X, distinct chat/member filters and conditional top-left clear buttons; shared board/global search/filter windows updated.
+- [x] Added personal account/workspace-keyed chat/message/peer favorites under RLS target checks; row/message and batch actions share the same list/modal. Real chat and message saves survived reload and displayed in modal; test-added favorites removed afterwards. No messages sent.
+- [x] Sidebar renamed and question marks survive dismissed guides; shared tutorial registry, walkthrough, product-tour and relevant partner/connection help refreshed. Thirteen focused tests pass; authenticated desktop/mobile header, add forms, search/filter/clear flows checked; manual dismissed guide reopens and Facebook badges verified; preview build OK. Individual unrelated inline tooltips were not exhaustively rewritten.
+
 ## Compact profile rows and stable expanded actions November 14
 - [x] Lead profile icon moved to top action row; separate authorized lead-profile page returns to full details with history-entry selection, never treats a lead UUID as a platform account. Community unchanged.
 - [x] Profile list reuses compact homepage summary cells, with no collapsed images/publisher details; grid unchanged. Inline details retain gallery and bottom contact actions outside clipped expansion.

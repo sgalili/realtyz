@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { ClearFilterButton } from '@/components/ui/clear-filter-button';
 import { Search, User, MapPin, Radio, LayoutDashboard, Building2, MessageSquare, CalendarClock, Loader2 } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
@@ -267,6 +268,7 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-lg p-0 gap-0 glass-card" dir="rtl">
+        <div className="px-4 pt-3"><ClearFilterButton active={!!query.trim()} onClear={() => { setQuery(''); setResults([]); }} /></div>
         <div className="flex items-center border-b border-border/50 px-4">
           {loading ? (
             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />

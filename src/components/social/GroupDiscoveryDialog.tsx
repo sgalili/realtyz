@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ClearFilterButton } from '@/components/ui/clear-filter-button';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { shortenName } from "@/lib/shortenName";
@@ -259,6 +260,7 @@ export function GroupDiscoveryDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!joining) onOpenChange(v); }}>
       <DialogContent dir="rtl" className="w-[calc(100vw-1.5rem)] max-w-lg p-4">
+        <ClearFilterButton active={!!query.trim() || keywords.length > 0} onClear={() => { setQuery(''); setKeywords([]); }} />
         <DialogTitle className="sr-only">חיפוש והצטרפות לקבוצות</DialogTitle>
 
         <div className="flex items-center justify-center gap-2 text-center text-base font-semibold"><BrandIcon name="facebook" className="h-6 w-6 text-social-facebook" /> קבוצות בפייסבוק</div>

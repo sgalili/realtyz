@@ -25,6 +25,7 @@ import {
   Bot,
   Megaphone,
   X,
+  UserPlus,
 } from "lucide-react";
 import { SuperAdminSectionSelect } from "@/components/admin/SuperAdminSectionSelect";
 import { useAffiliatePreferences } from "@/hooks/useAffiliate";
@@ -245,7 +246,7 @@ function resolvePageTitle(pathname: string): string {
 export function PageHero() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const communityUserId = location.pathname.match(/^\/community\/profile\/([^/]+)$/)?.[1];
   const { isPartnerMode } = useAppMode();
@@ -328,14 +329,12 @@ export function PageHero() {
     <div
       dir="rtl"
       data-page-hero
-      className="relative w-full shrink-0 overflow-hidden text-white print:hidden mb-0"
-      style={{ backgroundColor: "#0b3982" }}
+      className="relative mb-0 w-full shrink-0 overflow-hidden bg-[hsl(var(--page-hero-bg))] text-primary-foreground print:hidden"
     >
       {/* 3-zone toolbar — title is absolutely centered to the viewport so it
           stays perfectly centered regardless of side controls' widths. */}
       <div
-        className="app-header-content relative z-10 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-0"
-        style={{ minHeight: "85px", paddingTop: "30px", paddingBottom: "10px" }}
+        className="app-header-content relative z-10 flex min-h-[56px] items-center justify-between gap-2 px-4 py-[10px] sm:px-6 lg:px-0"
       >
         {/* Visual right (RTL flex start): Burger / nav toggle + AI response + optional history */}
         <div className="flex items-center gap-1">
@@ -378,6 +377,13 @@ export function PageHero() {
           <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <SuperAdminSectionSelect />
           </div>
+        ) : location.pathname.startsWith('/inbox') ? (
+          <div role="tablist" aria-label="צ׳אטים וקהילה" className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1">
+            {([['leads', 'צ׳אטים'], ['community', 'קהילה']] as const).map(([value, label]) => {
+              const selected = value === (searchParams.get('section') === 'community' || searchParams.has('community') ? 'community' : 'leads');
+              return <Button key={value} role="tab" aria-selected={selected} variant="ghost" className={cn('h-9 px-2 text-base font-bold text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground', selected && 'bg-primary-foreground/15')} onClick={() => setSearchParams(current => { const next = new URLSearchParams(current); next.set('section', value); if (value === 'leads') next.delete('community'); next.delete('lead'); next.delete('chat'); return next; }, { replace: true })}>{label}</Button>;
+            })}
+          </div>
         ) : (
           <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
             {displayTitle}
@@ -386,6 +392,7 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
+          {location.pathname.startsWith('/inbox') && <Button variant="ghost" size="icon" className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" aria-label="הוסף משתמש" title="הוסף משתמש" onClick={() => window.dispatchEvent(new Event('inbox:add-user'))}><UserPlus className="h-5 w-5" /></Button>}
           {location.pathname.startsWith('/wallet') && <Button size="icon" variant="ghost" onClick={() => {
             const returnTo = location.state?.walletReturnTo;
             if (typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//') && !returnTo.startsWith('/wallet')) navigate(returnTo);
@@ -475,9 +482,6 @@ export function PageHero() {
 
       {/* Decorative wave at the bottom edge — fill matches the page surface
           (#f1f5f9) so the wave melts seamlessly into the content below. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6">
-        <RealtyzWave position="bottom" variant="wave-soft" fill="#0b3982" seed={7} />
-      </div>
     </div>
   );
 }

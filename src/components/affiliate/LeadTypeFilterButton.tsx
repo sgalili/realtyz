@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, ClipboardList, Phone, Filter, Trophy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ClearFilterButton } from '@/components/ui/clear-filter-button';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { closingLevelClass, LEAD_PRICE_RANGES } from '@/lib/leadPriceRanges';
@@ -255,10 +256,10 @@ export default function LeadTypeFilterButton({
   );
   const content = (
     <>
-      {panelOnly ? (active ? <div className="flex justify-end"><Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[13px]" onClick={reset}>ניקוי סינון</Button></div> : null) : <div className="flex items-center justify-start gap-1">
+      {panelOnly ? <ClearFilterButton active={active > 0} onClear={reset} /> : <div className="flex items-center justify-start gap-1">
         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="סגירת סינון" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
         <h2 className="text-[17px] font-semibold leading-none">חיפוש מתקדם</h2>
-        {active ? <Button type="button" size="sm" variant="ghost" className="ms-auto h-7 px-2 text-[12px]" onClick={reset}>ניקוי סינון</Button> : null}
+        <div className="ms-auto"><ClearFilterButton active={active > 0} onClear={reset} /></div>
       </div>}
       {property && show('dealType') && !hideDealType ? (
         <div className="flex items-center gap-1" role="group" aria-label="סוג עסקה">

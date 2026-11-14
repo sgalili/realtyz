@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ClearFilterButton } from '@/components/ui/clear-filter-button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -598,6 +599,7 @@ export default function DealRoom() {
           </SheetHeader>
 
           <div className="mt-6 space-y-6">
+            <ClearFilterButton active={activeFilterCount > 0} onClear={() => setFilters(EMPTY_FILTERS)} />
             {/* Stage */}
             <div className="space-y-2">
               <div className="text-sm font-medium">שלב בעסקה</div>
@@ -721,9 +723,6 @@ export default function DealRoom() {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => setFilters(EMPTY_FILTERS)}>
-                איפוס
-              </Button>
               <Button className="flex-1" onClick={() => setFiltersOpen(false)}>
                 הצג {visibleLeads.length} תוצאות
               </Button>
