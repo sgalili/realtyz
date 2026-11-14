@@ -2244,3 +2244,7 @@ svg.lucide-megaphone {
 .chat-typography [data-swipe-chat] [data-chat-preview],
 .chat-typography [data-swipe-chat] [role="button"],
 .chat-typography [data-swipe-chat] button.border-b { border-bottom: 0; }
+
+:root { --payment-logo-surface: 0 0% 100%; --payment-option-font-size: 18px; }
+.payment-logo { background: hsl(var(--payment-logo-surface)); }
+.payment-option-label { font-size: var(--payment-option-font-size); line-height: 1.4; }

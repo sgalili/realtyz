@@ -36,7 +36,14 @@ Live completion atomically enqueues a transaction SMS in service-only `payment_s
 
 ## Wallet deposits
 
-`topup_offer` exposes only live configured methods; `topup_create` snapshots the authorized active wallet owner, customer mobile and exact positive ILS amount (up to 10,000 with two decimal places). Make receives `purpose: "wallet_topup"` and the selected amount; never replace it with the subscription's 6,500 amount. The same independent verify/notify flow credits that wallet exactly once via the transaction ledger and dispatches the existing live-payment SMS. Wallet deposits do not create subscription entitlements, save card mandates or enable recurring charges. Customer checkout never displays keys, terminals or environment switches. Until live Make credentials/capabilities are configured, the selector displays methods as unavailable and secure payment is disabled.
+`topup_offer` exposes only live configured methods; `topup_create` snapshots the authorized active wallet owner, customer mobile and exact positive ILS amount (up to 10,000 with two decimal places). Make receives `purpose: "wallet_topup"` and the selected amount; never replace it with the subscription's 6,500 amount. The same independent verify/notify flow credits that wallet exactly once via the transaction ledger and dispatches the existing live-payment SMS. Wallet deposits do not create subscription entitlements, save card mandates or enable recurring charges. Customer checkout never displays keys, terminals or environment switches. The selector omits unavailable badges; unconfigured methods open preparation forms but payment remains disabled.
+
+### Method-specific hosted completion
+
+- `card`: collect PAN, expiry and CVV only in provider-hosted PCI-compliant checkout, never TORAFF/Make webhook fields. Declare `national_id` when the provider requires it.
+- `bit`: collect mobile in TORAFF; actual phone verification and transaction approval occur in the provider/Bit flow. Do not mark the number verified from a local format check.
+- `apple_pay` / `google_pay`: selected express actions open provider checkout restricted to that wallet; Make must confirm merchant/device capability. No synthetic wallet sheet or token handling in TORAFF.
+- `bank_transfer`: provider checkout supplies verified beneficiary/bank/branch/account/reference and instructions. No bank details are invented or placed in public settings; settlement remains independently verified before credit/SMS.
 
 The requested price is ₪6,500, separate from wallet funds. Title, duration and benefits are unset until the owner supplies them. Automatic renewal is not configured and must not be advertised. Settings are Super Admin-only; orders and entitlements are self-readable, and financial completion is service-only.
 

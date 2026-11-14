@@ -1,5 +1,11 @@
 # Roadmap
 
+## Payment method presentation November 14
+- [x] Removed option unavailability badges; labels 14→18px, requested card/mobile copy and original Bit/Apple/Google/Mastercard assets. Bank transfer retains neutral bank symbol because no beneficiary bank/brand is supplied.
+- [x] Tailored Bit/card/express-wallet/bank preparation forms and Make contract; card number/expiry/CVV and actual wallet/mobile verification/bank instructions stay provider-hosted. No sensitive-card collection or invented bank account.
+- [x] Twelve focused tests pass; authenticated desktop/mobile all five preparation flows verified, no overflow/runtime errors, disabled live checkout preserved. Logo rendering verified by supplying original files to localhost asset requests (local Vite does not serve hosted asset URLs).
+- [ ] Live method completion, Bit verification, express wallet sheet and bank instructions require working Grow/Make capabilities and provider integration; no payment/SMS performed. Hosted asset delivery outside localhost remains unverified.
+
 ## User management refinements November 14
 - [x] Email invitations follow upgrade requests; empty queues hide, query failures remain visible. Toolbar and invitation/consent row actions use labeled icons.
 - [x] Expandable search includes saved-role/access/gender filters and active-only clear; shared Table page mode removes nested scroll ownership while retaining column customization and native sticky headers.
