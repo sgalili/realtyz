@@ -34,6 +34,10 @@ Live completion atomically enqueues a transaction SMS in service-only `payment_s
 
 ## Subscription and acceptance checks
 
+## Wallet deposits
+
+`topup_offer` exposes only live configured methods; `topup_create` snapshots the authorized active wallet owner, customer mobile and exact positive ILS amount (up to 10,000 with two decimal places). Make receives `purpose: "wallet_topup"` and the selected amount; never replace it with the subscription's 6,500 amount. The same independent verify/notify flow credits that wallet exactly once via the transaction ledger and dispatches the existing live-payment SMS. Wallet deposits do not create subscription entitlements, save card mandates or enable recurring charges. Customer checkout never displays keys, terminals or environment switches. Until live Make credentials/capabilities are configured, the selector displays methods as unavailable and secure payment is disabled.
+
 The requested price is ₪6,500, separate from wallet funds. Title, duration and benefits are unset until the owner supplies them. Automatic renewal is not configured and must not be advertised. Settings are Super Admin-only; orders and entitlements are self-readable, and financial completion is service-only.
 
 Before enabling live: test completed sandbox checkout, denied/incorrect callbacks, duplicate notification acknowledgment, amount/currency/environment mismatches, and no live entitlement from sandbox. Supply agreed benefits and test their actual feature access before claiming subscription functionality complete. Current entitlements record the paid term; they do not grant broker privileges or bypass existing workspace/licensing/credit guards.

@@ -4481,10 +4481,12 @@ export type Database = {
           paid_at: string | null
           payment_method: string | null
           payment_url: string | null
+          purpose: string
           status: string
           title: string
           transaction_id: string | null
           user_id: string
+          workspace_owner_id: string | null
         }
         Insert: {
           amount_ils?: number
@@ -4499,10 +4501,12 @@ export type Database = {
           paid_at?: string | null
           payment_method?: string | null
           payment_url?: string | null
+          purpose?: string
           status?: string
           title: string
           transaction_id?: string | null
           user_id: string
+          workspace_owner_id?: string | null
         }
         Update: {
           amount_ils?: number
@@ -4517,10 +4521,12 @@ export type Database = {
           paid_at?: string | null
           payment_method?: string | null
           payment_url?: string | null
+          purpose?: string
           status?: string
           title?: string
           transaction_id?: string | null
           user_id?: string
+          workspace_owner_id?: string | null
         }
         Relationships: []
       }

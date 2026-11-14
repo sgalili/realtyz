@@ -11,10 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { SaveCardForm } from '@/components/billing/SaveCardForm';
-import { ZCreditSettingsCard } from '@/components/billing/ZCreditSettingsCard';
+import { WalletTopUp } from '@/components/billing/WalletTopUp';
 import { GrowSubscriptionPurchase } from '@/components/billing/GrowSubscriptionPurchase';
-import { useUserRole } from '@/hooks/useUserRole';
 
 type LedgerRow = {
   id: string; amount_ils: number; type: string; note: string | null; created_at: string; reference_id: string | null;
@@ -46,11 +44,9 @@ export default function Wallet() {
     const { error } = await supabase.rpc('revoke_grow_card_mandate');
     if (error) throw error;
   }, onSuccess: async () => { await qc.invalidateQueries({ queryKey: ['grow-saved-card'] }); toast.success('ההרשאה לחיובים עתידיים בוטלה'); }, onError: () => toast.error('ביטול ההרשאה נכשל') });
-  const { isSuperAdmin } = useUserRole();
   const { data: wallet } = useCreditWallet();
   const [detail, setDetail] = useState<LedgerRow | null>(null);
   const [topupOpen, setTopupOpen] = useState(false);
-  const [cardOpen, setCardOpen] = useState(false);
 
   const { data: ledger = [] } = useQuery({
     queryKey: ['wallet-ledger', ws], enabled: !!ws,
@@ -174,31 +170,10 @@ export default function Wallet() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={topupOpen} onOpenChange={(open) => { setTopupOpen(open); if (!open) setCardOpen(false); }}>
+      <Dialog open={topupOpen} onOpenChange={setTopupOpen}>
         <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><WalletIcon className="h-5 w-5" />טעינת ארנק</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-3 gap-2">
-            {[200, 500, 1000].map((a) => <Button key={a} variant="outline" disabled>{ils(a)}</Button>)}
-          </div>
-          <p className="text-sm text-muted-foreground">טעינה בכרטיס וחיוב אוטומטי עדיין אינם זמינים. לטעינת הארנק יש לפנות לצוות TORAFF.</p>
-        <div className="space-y-3 border-t border-border pt-4">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="flex items-center gap-2 text-sm text-muted-foreground"><CreditCard className="h-4 w-4" />כרטיס לחיוב אוטומטי</p>
-            <Button size="sm" variant="outline" onClick={() => setCardOpen(v => !v)}>{cards.length ? 'החלפת כרטיס' : 'הוספת כרטיס'}</Button>
-          </div>
-          {cards.length === 0 ? (
-            <p className="text-sm">לא נשמר כרטיס. שמירת כרטיס אינה מחייבת אותו או טוענת את הארנק.</p>
-          ) : cards.map((c) => (
-            <div key={c.id} className="text-sm">
-              <span className="font-bold">{c.brand ?? 'כרטיס'} •••• {c.last4}</span>
-              {c.exp_month && <span className="ms-2 text-muted-foreground">{String(c.exp_month).padStart(2, '0')}/{c.exp_year}</span>}
-              <div className="text-muted-foreground">{c.auto_recharge_enabled ? `טעינה אוטומטית של ${ils(c.recharge_amount)}` : 'טעינה אוטומטית כבויה'}</div>
-              {c.last_charge_error && <div className="text-destructive">{c.last_charge_error}</div>}
-            </div>
-          ))}
-          {cardOpen && <SaveCardForm onDone={() => setCardOpen(false)} />}
-        </div>
-          {isSuperAdmin && <ZCreditSettingsCard />}
+          <WalletTopUp key={String(topupOpen)} />
         </DialogContent>
       </Dialog>
     </div>

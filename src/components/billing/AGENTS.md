@@ -1,4 +1,5 @@
 # Payment architecture
+- WalletTopUp never mounts gateway settings or card-token setup; only Super Admin payments mounts Z-Credit configuration. Grow top-up orders snapshot the authorized wallet owner and deposit amount separately from subscriptions; verified atomic completion credits that wallet once before the existing SMS dispatch. Why: no exposed settings, wrong-wallet deposits or duplicate credits.
 - Grow uses environment-specific secret Make webhooks, independent provider readback and a service-only atomic completion RPC; checkout redirects never prove payment. Why: no forged or duplicated entitlements.
 - Grow subscription terms are snapshotted per self-owned order; sandbox never activates live entitlements or changes wallet credits. Make connection OTP stays in Make; admin fields are configuration, not credentials. Why: no invented terms or credential exposure.
 - Make declares enabled checkout methods/customer fields; card, wallet and bank fields stay on hosted Grow checkout. Why: no invented support or sensitive card collection.

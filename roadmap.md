@@ -1,5 +1,12 @@
 # Roadmap
 
+## Wallet top-up cleanup November 14
+- [x] Removed gateway credentials/testing controls and saved-card setup from customer top-up; Z-Credit configuration is mounted only under Super Admin payments.
+- [x] Added all five method choices and minimal amount/provider-declared customer fields plus receipt mobile; single secure-payment action opens hosted Grow checkout.
+- [x] Added purpose-separated authorized-wallet deposit orders; independent Make verification credits the exact snapshotted wallet once, with existing paid-only SMS dispatch and no subscription entitlement/card mandate.
+- [x] Ten focused tests pass; authenticated desktop/mobile customer selector and unavailable payment state checked, intercepted Bit capability/form validates 200.25 ILS and mobile without payment, no overflow/errors. Real Super Admin terminal/API fields visible only in payments; worker deployed, preview clean.
+- [ ] Live deposit and SMS delivery require live Grow/Make credentials, enabled method capability mapping and notification secret; all actual methods currently unavailable. No charge or SMS performed.
+
 ## Chat header channels and matching lists November 14
 - [x] Moved channel count/filter controls from previews into the open lead header, aggregating the selected thread's authorized IDs.
 - [x] Shared stable 18px/600 name/header and 16px preview/subtab typography across lead, peer and group lists; timestamps unchanged and existing main tabs identical.
