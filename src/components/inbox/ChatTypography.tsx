@@ -7,7 +7,7 @@ export function ChatTypography({ children }: { children: ReactNode }) {
     const container = root.current;
     if (!container) return;
     const apply = () => {
-      const elements = Array.from(container.querySelectorAll<HTMLElement>('*')).filter(element => !element.closest('svg, [data-chat-timestamp], time') && !element.dataset.chatOriginalSize);
+      const elements = Array.from(container.querySelectorAll<HTMLElement>('*')).filter(element => !element.closest('svg, [data-chat-timestamp], time, [data-chat-title], [data-chat-preview-text], [role="tab"], [data-chat-header]') && !element.dataset.chatOriginalSize);
       const sizes = elements.map(element => [element, getComputedStyle(element).fontSize] as const);
       sizes.forEach(([element, size]) => { element.dataset.chatOriginalSize = size; element.style.fontSize = `${parseFloat(size) + 2}px`; });
     };
@@ -16,5 +16,5 @@ export function ChatTypography({ children }: { children: ReactNode }) {
     observer.observe(container, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, []);
-  return <div ref={root} className="flex h-full min-h-0 flex-col">{children}</div>;
+  return <div ref={root} className="chat-typography flex h-full min-h-0 flex-col">{children}</div>;
 }

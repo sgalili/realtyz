@@ -1,5 +1,11 @@
 # Roadmap
 
+## Chat header channels and matching lists November 14
+- [x] Moved channel count/filter controls from previews into the open lead header, aggregating the selected thread's authorized IDs.
+- [x] Shared stable 18px/600 name/header and 16px preview/subtab typography across lead, peer and group lists; timestamps unchanged and existing main tabs identical.
+- [x] Removed lead/peer/group list enclosure frames and side borders; SwipeChatCard owns horizontal between-row dividers.
+- [x] Nine focused tests passed; authenticated 1280×1800 and 411×801 populated lead/community views verified, zero preview badges, header counts Facebook 236/WhatsApp 26 and functional toggle. Names read back 18px/600 in both tabs, no overflow or runtime errors; no messages sent. Group styles share implementation but populated groups unavailable.
+
 ## Lead form and first official WhatsApp November 14
 - [x] Clean lead fields and replace kind buttons with a dropdown; unspecified gender remains neutral, never name-guessed.
 - [x] Preserve background Green API avatar hydration after phone save; secure all avatar paths by caller/workspace and unchanged phone. Existing DB phone-write trigger verified.

@@ -204,9 +204,9 @@ export function CommunityInbox({ active }: { active: boolean }) {
     const card = cards.data?.get(id);
     const sub = [card?.office_name, card?.license_number ? `רישיון ${card.license_number}` : null].filter(Boolean).join(' · ');
     return <span className="min-w-0 flex-1">
-      <span className="flex min-w-0 items-center gap-1.5"><span className="truncate font-semibold">{card?.full_name ?? name}</span>{card && <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[11px]">{professionalRole(card.category, genders.data?.get(id) ?? null)}</Badge>}</span>
-      {sub && <span className="block truncate text-xs text-muted-foreground">{sub}</span>}
-      {fallback !== undefined && <span className={`flex items-center gap-1 text-xs ${unread ? 'font-bold text-foreground' : 'font-normal text-muted-foreground'}`}>{outgoing && messageId && <WhatsAppTicks status={previewReceipts.status(messageId)} />}<span className="truncate">{fallback}</span></span>}
+      <span className="flex min-w-0 items-center gap-1.5"><span data-chat-title className="truncate">{card?.full_name ?? name}</span>{card && <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[11px]">{professionalRole(card.category, genders.data?.get(id) ?? null)}</Badge>}</span>
+      {sub && <span data-chat-preview-text className="block truncate text-muted-foreground">{sub}</span>}
+      {fallback !== undefined && <span data-chat-preview-text className={`flex items-center gap-1 ${unread ? 'font-bold text-foreground' : 'font-normal text-muted-foreground'}`}>{outgoing && messageId && <WhatsAppTicks status={previewReceipts.status(messageId)} />}<span className="truncate">{fallback}</span></span>}
     </span>;
   };
   return <Tabs dir="rtl" value={view} onValueChange={setView} className="flex h-full min-h-0 flex-col gap-2">
@@ -219,8 +219,8 @@ export function CommunityInbox({ active }: { active: boolean }) {
       <InboxFavoritesDialog open={favoritesOpen} onOpenChange={setFavoritesOpen} community />
     <TabsContent value="groups" forceMount className={`${favoritesOpen ? "hidden" : ""} m-0 min-h-0 flex-1 data-[state=inactive]:hidden`}><CommunityGroups key={user?.id} eligible={eligibility.data === true} active={active && view === 'groups'} blockedIds={blocks.data} /></TabsContent>
     <TabsContent value="private" forceMount className={`${favoritesOpen ? "hidden" : ""} m-0 min-h-0 flex-1 data-[state=inactive]:hidden`}>
-    <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[20rem_minmax(0,1fr)]">
-    <aside className={`${peer ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col border-e border-border`}>
+    <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden bg-card lg:grid-cols-[20rem_minmax(0,1fr)]">
+    <aside className={`${peer ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col`}>
 
 
       <div data-route-scroll className="min-h-0 flex-1 overflow-y-auto">
@@ -241,7 +241,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
     </aside>
     <section className={`${peer ? 'flex' : 'hidden lg:flex'} min-h-0 min-w-0 flex-col`}>
       {!peer ? <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"><MessageCircle className="h-10 w-10" /><span>מועדון הקהילה</span></div> : <>
-        <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-border px-3">
+        <header data-chat-header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-border px-3">
           <Button size="icon" variant="ghost" aria-label="חזרה לשיחות הקהילה" className="lg:hidden" onClick={() => setPeer(null)}><ArrowRight className="h-5 w-5" /></Button>
           <div className="min-w-0 flex-1 text-start"><PublicIdentityLink userId={peer.id} label="פתיחת פרופיל ציבורי" className="block"><span className="font-semibold">{cards.data?.get(peer.id)?.full_name ?? peer.full_name}</span>{cards.data?.get(peer.id) && <Badge variant="secondary" className="ms-2">{professionalRole(cards.data.get(peer.id)?.category ?? '', genders.data?.get(peer.id) ?? null)}</Badge>}</PublicIdentityLink><span className="block truncate text-xs text-muted-foreground"><PublicIdentityLink userId={peer.id} office>{cards.data?.get(peer.id)?.office_name}</PublicIdentityLink>{cards.data?.get(peer.id)?.license_number && <span className="ms-2">{cards.data.get(peer.id)?.license_number}</span>}</span></div>
           <ChatHeaderActions>

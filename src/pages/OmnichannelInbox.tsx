@@ -1082,9 +1082,9 @@ const OmnichannelInbox = () => {
       </TabsContent>
       <TabsContent value="leads" forceMount className="m-0 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden data-[state=inactive]:hidden">
       {favoritesOpen && <InboxFavoritesDialog open onOpenChange={setFavoritesOpen} />}
-      <div className={`${favoritesOpen ? "hidden" : "grid"} min-h-0 flex-1 w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:grid-cols-[20rem_minmax(0,1fr)]`}>
+      <div className={`${favoritesOpen ? "hidden" : "grid"} min-h-0 flex-1 w-full grid-cols-1 overflow-hidden bg-card lg:grid-cols-[20rem_minmax(0,1fr)]`}>
         {/* Right panel - Contact List */}
-        <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col overflow-hidden border-l bg-card`}>
+        <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col overflow-hidden bg-card`}>
           <div className="shrink-0 border-b">
             <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-1" data-chat-list-toolbar dir="rtl">
               <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label={searchOpen ? 'סגירת חיפוש שיחות' : 'חיפוש שיחות'} title={searchOpen ? 'סגירת חיפוש' : 'חיפוש שיחות'} onClick={() => setSearchOpen(v => !v)}>{searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}</Button>
@@ -1175,20 +1175,14 @@ const OmnichannelInbox = () => {
                     </button>
                     <div className="flex-1 min-w-0 text-right">
                       <div className="flex min-w-0 items-center justify-between gap-2">
-                        <Button variant="ghost" className="h-auto min-w-0 truncate p-0 text-base font-medium" onClick={event => { event.stopPropagation(); openCrmContact(voter.id); }}>{voter.full_name || formatPhoneDisplay(voter.phone_number)}</Button>
+                        <Button data-chat-title variant="ghost" className="h-auto min-w-0 truncate p-0" onClick={event => { event.stopPropagation(); openCrmContact(voter.id); }}>{voter.full_name || formatPhoneDisplay(voter.phone_number)}</Button>
                         <span data-chat-timestamp className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
                           {voter.last_interaction_at ? formatDistanceToNow(new Date(voter.last_interaction_at), { addSuffix: true, locale: he }) : ''}
                         </span>
                       </div>
-                      {(() => {
-                        const counts = leadChannelCounts.get(voter.id);
-                        const channels = Array.from(counts?.entries() ?? []).filter(([, count]) => count > 0);
-                        if (channels.length < 2) return null;
-                        return <div className="flex min-w-0 flex-wrap items-center justify-center gap-2" aria-label="ערוצי שיחה">{channels.map(([channel, count]) => <Button key={channel} variant="ghost" className={`h-8 gap-1 border-0 p-1 text-sm ${channelVisible(channel, disabledChannels[voter.id] ?? new Set()) ? '' : 'grayscale opacity-50'}`} aria-label={`${channel} (${count})`} aria-pressed={channelVisible(channel, disabledChannels[voter.id] ?? new Set())} onClick={event => { event.stopPropagation(); toggleCardChannel(voter.id, channel); }}><ChannelIcon channel={channel} /><span>({count})</span></Button>)}</div>;
-                      })()}
                       <div className="flex items-start gap-1 mt-0.5">
                         {lastMsg?.direction === 'outbound' && <WhatsAppTicks status={providerDeliveryStatus(lastMsg.metadata)} />}
-                        <p className={`text-sm flex-1 min-w-0 max-w-full overflow-hidden break-all whitespace-pre-wrap leading-snug line-clamp-2 ${unreadIncoming(lastMsg?.direction === 'inbound', previewReceipts.isRead(lastMsg?.id)) ? 'font-bold text-foreground' : 'font-normal text-muted-foreground'}`}>
+                        <p data-chat-preview-text className={`text-sm flex-1 min-w-0 max-w-full overflow-hidden break-all whitespace-pre-wrap leading-snug line-clamp-2 ${unreadIncoming(lastMsg?.direction === 'inbound', previewReceipts.isRead(lastMsg?.id)) ? 'font-bold text-foreground' : 'font-normal text-muted-foreground'}`}>
                           {(voter as any)._noConversation
                             ? 'ללא שיחה פעילה — לחץ להתחלת צ׳אט'
                             : (sanitizeChatText(lastMsg?.content).replace(/\n+/g, ' · ') || 'אין הודעות')}
@@ -1219,8 +1213,8 @@ const OmnichannelInbox = () => {
           ) : (
             <>
               {/* Chat Header */}
-              <div className="h-16 border-b border-whatsapp-header/20 bg-whatsapp-header text-whatsapp-header-foreground flex items-center justify-between px-3 sm:px-4 shrink-0">
-                <div className="flex min-w-0 items-center gap-3">
+              <div data-chat-header className="min-h-16 border-b border-whatsapp-header/20 bg-whatsapp-header text-whatsapp-header-foreground flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 sm:px-4 shrink-0">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
                   <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10 lg:hidden" onClick={() => setSelectedVoterId(null)}>
                     <span className="text-xl leading-none scale-x-[-1]">›</span>
                   </Button>
@@ -1233,17 +1227,25 @@ const OmnichannelInbox = () => {
                   >
                     <VoterAvatar fullName={selectedVoter?.full_name} profilePictureUrl={(selectedVoter as any)?.profile_picture_url} className="h-10 w-10" textClassName="text-xs" />
                   </button>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <button
                       type="button"
+                      data-chat-title
                       onClick={openCrmCard}
-                      className="block truncate text-[17px] font-semibold leading-tight hover:underline text-right"
+                      className="block w-full truncate leading-tight hover:underline text-right"
                       title="פתיחת כרטיס מתעניין"
                     >
                       {contactName}
                     </button>
                   </div>
                 </div>
+                {(() => {
+                  const counts = new Map<string, number>();
+                  for (const id of selectedThread.ids) for (const [channel, count] of leadChannelCounts.get(id) ?? []) counts.set(channel, (counts.get(channel) ?? 0) + count);
+                  const channels = Array.from(counts).filter(([, count]) => count > 0);
+                  if (!channels.length) return null;
+                  return <div className="flex min-w-0 max-w-[48%] flex-wrap items-center justify-end gap-1" aria-label="ערוצי שיחה">{channels.map(([channel, count]) => <Button key={channel} variant="ghost" className={`h-8 gap-1 border-0 px-1 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10 hover:text-whatsapp-header-foreground ${channelVisible(channel, disabledChannels[selectedVoterId] ?? new Set()) ? '' : 'grayscale opacity-50'}`} aria-label={`${channel} (${count})`} aria-pressed={channelVisible(channel, disabledChannels[selectedVoterId] ?? new Set())} onClick={() => toggleCardChannel(selectedVoterId, channel)}><ChannelIcon channel={channel} /><span data-chat-preview-text>({count})</span></Button>)}</div>;
+                })()}
                 <ChatHeaderActions>
                   <ChatFavoriteButton label kind={selectedVoterId.startsWith('phone:') ? 'message' : 'lead'} id={selectedVoterId.startsWith('phone:') ? lastMessages.get(selectedVoterId)?.id ?? '' : selectedVoterId} />
                   {!selectedVoterId.startsWith('phone:') && <RitaChatButton kind="lead" target={selectedVoterId} label />}

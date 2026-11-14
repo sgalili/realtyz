@@ -2208,3 +2208,34 @@ svg.lucide-megaphone {
 .publication-globe-slash {
   box-shadow: 0 0 0 1px hsl(var(--publication-neutral-dark));
 }
+
+/* Identical semantic typography across lead, private and group conversations. */
+:root {
+  --chat-title-size: 18px;
+  --chat-copy-size: 16px;
+  --chat-title-weight: 600;
+}
+.chat-typography [data-chat-title],
+.chat-typography [data-chat-header] [data-chat-title] {
+  font-size: var(--chat-title-size);
+  font-weight: var(--chat-title-weight);
+  line-height: 1.35;
+}
+.chat-typography [data-chat-preview-text],
+.chat-typography [data-chat-header] .text-xs {
+  font-size: var(--chat-copy-size);
+  line-height: 1.4;
+}
+.chat-typography [role="tab"] {
+  font-size: var(--chat-copy-size);
+  font-weight: var(--chat-title-weight);
+}
+.chat-typography [data-chat-header] .font-semibold {
+  font-size: var(--chat-title-size);
+  font-weight: var(--chat-title-weight);
+}
+.chat-typography [data-swipe-chat] { border-bottom: 1px solid hsl(var(--border)); }
+.chat-typography [data-swipe-chat]:last-child { border-bottom: 0; }
+.chat-typography [data-swipe-chat] [data-chat-preview],
+.chat-typography [data-swipe-chat] [role="button"],
+.chat-typography [data-swipe-chat] button.border-b { border-bottom: 0; }
