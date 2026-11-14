@@ -114,6 +114,8 @@ button.publication-limit-link:focus-visible {
    ============================================================ */
 @layer base {
   :root {
+    --chat-tick-muted: 203 12% 58%;
+    --chat-tick-read: 197 79% 62%;
     --instagram-pink: 337 79% 54%;
     --instagram-purple: 280 65% 42%;
     --instagram-orange: 29 98% 64%;

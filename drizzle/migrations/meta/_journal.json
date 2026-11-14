@@ -1289,6 +1289,20 @@
       "when": 1794626570475,
       "tag": "0183_favorite_new_community_conversations",
       "breakpoints": true
+    },
+    {
+      "idx": 184,
+      "version": "7",
+      "when": 1794626921500,
+      "tag": "0184_chat_message_delivery_and_read_receipts",
+      "breakpoints": true
+    },
+    {
+      "idx": 185,
+      "version": "7",
+      "when": 1794627010668,
+      "tag": "0185_existing_chat_receipt_recipients",
+      "breakpoints": true
     }
   ]
 }

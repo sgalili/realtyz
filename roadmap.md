@@ -1,5 +1,10 @@
 # Roadmap
 
+## Chat card navigation and genuine receipts November 14
+- [x] Card bodies open chats; only avatars open public profiles; favorites remain separate. Authenticated community body/avatar navigation verified desktop and mobile; directory invitation pickers remain explicit actions.
+- [x] Recipient-authorized receipt storage/RPCs acknowledge fetched delivery and visible active-chat reading. Incoming unread previews are bold; outgoing previews normal. Shared WhatsApp-style ticks in inbox/private/group/channel bubbles use actual receipt/provider evidence, removing inferred reads and default-delivered states.
+- [x] Fourteen focused tests cover sent/delivered/read, incoming-only bold, visible reads, hidden panes and sender restrictions. Authenticated populated inbox/community checked without errors; existing messages showed outgoing ticks. Two-account live delivery/read transition and new incoming arrival remain unverified; no messages sent.
+
 ## Universal inbox stars and header alignment November 14
 - [x] Persistent outlined/filled stars on all private chat/community rows, including new contacts and phone-only recovery threads; message/modal icons match. New community favorites remain role-gated, orphan favorites reuse authorized message access.
 - [x] Contextual search/favorites flank centered hero tabs at 1280×1800 and 411×801. Authenticated chat/member saves display in modal, community save survives reload; six focused tests pass, no page errors, preview build OK. Read-only gateway refused SQL-context authorization tests; new-contact save verified through authenticated UI instead.

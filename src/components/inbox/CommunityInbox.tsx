@@ -1,6 +1,9 @@
+import { WhatsAppTicks } from './WhatsAppTicks';
+import { useChatReceipts } from '@/hooks/useChatReceipts';
+import { unreadIncoming } from '@/lib/chatReceipts';
 import { useEffect, useRef, useState } from 'react';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type Card = { id: string; full_name: string | null; category: string; office_name: string | null; license_number: string | null };
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -34,6 +37,7 @@ type Peer = { id: string; full_name: string | null; avatar_url: string | null };
 
 export function CommunityInbox({ active }: { active: boolean }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const workspace = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -94,6 +98,13 @@ export function CommunityInbox({ active }: { active: boolean }) {
       return data.reverse();
     },
   });
+  const previews = useQuery({ queryKey: ['community-preview-messages', user?.id], enabled: !!user, refetchInterval: 3000, queryFn: async () => {
+    const { data, error } = await supabase.from('community_chat_messages').select('*').order('created_at', { ascending: false }).limit(200);
+    if (error) throw error;
+    return data;
+  } });
+  const previewReceipts = useChatReceipts('peer', (previews.data ?? []).map(m => ({ id: m.id, incoming: m.recipient_id === user?.id })), false);
+  const receipts = useChatReceipts('peer', (messages.data ?? []).map(m => ({ id: m.id, incoming: m.recipient_id === user?.id })), active && view === 'private' && !!peer);
   const send = useMutation({
     mutationFn: async ({ target, text }: { target: string; text: string }) => {
       if (!user || !workspace) throw new Error('לא ניתן לשלוח כרגע');
@@ -176,13 +187,13 @@ export function CommunityInbox({ active }: { active: boolean }) {
       return new Map((data as Card[]).map(card => [card.id, card]));
     },
   });
-  const Identity = ({ id, name, fallback }: { id: string; name: string | null; fallback?: string }) => {
+  const Identity = ({ id, name, fallback, unread, messageId, outgoing }: { id: string; name: string | null; fallback?: string; unread?: boolean; messageId?: string; outgoing?: boolean }) => {
     const card = cards.data?.get(id);
     const sub = [card?.office_name, card?.license_number ? `רישיון ${card.license_number}` : null].filter(Boolean).join(' · ');
     return <span className="min-w-0 flex-1">
       <span className="flex min-w-0 items-center gap-1.5"><span className="truncate font-semibold">{card?.full_name ?? name}</span>{card && <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[11px]">{ROLE_BADGE[card.category] ?? 'משתמש'}</Badge>}</span>
       {sub && <span className="block truncate text-xs text-muted-foreground">{sub}</span>}
-      {fallback !== undefined && <span className="block truncate text-xs text-muted-foreground">{fallback}</span>}
+      {fallback !== undefined && <span className={`flex items-center gap-1 text-xs ${unread ? 'font-bold text-foreground' : 'font-normal text-muted-foreground'}`}>{outgoing && messageId && <WhatsAppTicks status={previewReceipts.status(messageId)} />}<span className="truncate">{fallback}</span></span>}
     </span>;
   };
   return <Tabs dir="rtl" value={view} onValueChange={setView} className="flex h-full min-h-0 flex-col gap-2">
@@ -201,11 +212,11 @@ export function CommunityInbox({ active }: { active: boolean }) {
         {eligibility.data && !contacts.isLoading && !threads.isLoading && !peers.length && <p className="p-4 text-sm text-muted-foreground">לא נמצאו חברי קהילה</p>}
         {peers.filter(contact => category === 'all' || cards.data?.get(contact.id)?.category === category).map(contact => {
           const last = threads.data?.find(thread => thread.peer_id === contact.id);
-          return <div key={contact.id} className={`flex min-h-16 w-full items-center gap-3 border-b border-border px-3 py-3 ${peer?.id === contact.id ? 'bg-muted' : ''}`}>
-            <button type="button" className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`פתיחת הפרופיל הציבורי של ${contact.full_name ?? 'חבר קהילה'}`} onClick={() => setProfileId(contact.id)}><Avatar className="h-10 w-10"><AvatarImage src={contact.avatar_url ?? undefined} /><AvatarFallback><Users className="h-4 w-4" /></AvatarFallback></Avatar></button>
-            <Button variant="ghost" className="h-auto min-w-0 flex-1 justify-start whitespace-normal p-0 text-start" onClick={() => setProfileId(contact.id)}><Identity id={contact.id} name={contact.full_name} fallback={last?.content ?? 'שיחה חדשה'} /></Button>
-            <Button variant="ghost" size="icon" aria-label={`פתיחת שיחה עם ${contact.full_name ?? 'חבר קהילה'}`} onClick={() => setPeer(contact)}><MessageCircle className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon" aria-label={favorites.has('peer', contact.id) ? 'הסרת שיחת קהילה מהמועדפים' : 'שמירת שיחת קהילה במועדפים'} title="מועדפים" onClick={() => void favorites.toggle('peer', contact.id)}><Star className={`h-4 w-4 ${favorites.has('peer', contact.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>
+          const latest = previews.data?.find(m => (m.sender_id === contact.id || m.recipient_id === contact.id));
+          return <div key={contact.id} role="button" tabIndex={0} aria-label={`פתיחת שיחה עם ${contact.full_name ?? 'חבר קהילה'}`} onClick={() => setPeer(contact)} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setPeer(contact); } }} className={`flex min-h-16 w-full items-center gap-3 border-b border-border px-3 py-3 ${peer?.id === contact.id ? 'bg-muted' : ''}`}>
+            <button type="button" className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`פתיחת הפרופיל הציבורי של ${contact.full_name ?? 'חבר קהילה'}`} onClick={e => { e.stopPropagation(); navigate(`/community/profile/${contact.id}`, { state: { returnTo: window.location.pathname + window.location.search } }); }}><Avatar className="h-10 w-10"><AvatarImage src={contact.avatar_url ?? undefined} /><AvatarFallback><Users className="h-4 w-4" /></AvatarFallback></Avatar></button>
+            <Identity id={contact.id} name={contact.full_name} fallback={last?.content ?? 'שיחה חדשה'} messageId={latest?.id} outgoing={latest?.sender_id === user?.id} unread={!!latest && unreadIncoming(latest.recipient_id === user?.id, previewReceipts.isRead(latest.id))} />
+            <Button variant="ghost" size="icon" aria-label={favorites.has('peer', contact.id) ? 'הסרת שיחת קהילה מהמועדפים' : 'שמירת שיחת קהילה במועדפים'} title="מועדפים" onClick={e => { e.stopPropagation(); void favorites.toggle('peer', contact.id); }}><Star className={`h-4 w-4 ${favorites.has('peer', contact.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>
           </div>;
         })}
       </div>
@@ -224,7 +235,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
           {messages.isLoading && <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
           {messages.isError && <div role="alert" className="text-destructive">טעינת ההודעות נכשלה<Button variant="ghost" onClick={() => void messages.refetch()}>נסה שוב</Button></div>}
           <div role="note" className="mx-auto mb-4 max-w-md rounded-xl border border-border bg-muted/50 px-3 py-2 text-center text-sm text-muted-foreground"><span className="block text-xs font-semibold">TORAFF · ריטה</span>{DEAL_SAFETY_TIP}</div>
-          {messages.data?.map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-2xl rounded-ss-sm bg-primary text-primary-foreground' : 'rounded-2xl rounded-se-sm border border-border bg-muted text-foreground'}`}><Button variant="ghost" size="icon" className="h-6 w-6 text-inherit" aria-label="שמירת הודעת קהילה במועדפים" title="מועדפים" onClick={() => void favorites.toggle('peer_message', message.id)}><Star className={`h-3 w-3 ${favorites.has('peer_message', message.id) ? 'fill-current' : ''}`} /></Button><ChatMessageText content={message.content} /><time className="mt-1 block text-end text-xs opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time></div></div>; })}
+          {messages.data?.map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-2xl rounded-ss-sm bg-primary text-primary-foreground' : 'rounded-2xl rounded-se-sm border border-border bg-muted text-foreground'}`}><Button variant="ghost" size="icon" className="h-6 w-6 text-inherit" aria-label="שמירת הודעת קהילה במועדפים" title="מועדפים" onClick={() => void favorites.toggle('peer_message', message.id)}><Star className={`h-3 w-3 ${favorites.has('peer_message', message.id) ? 'fill-current' : ''}`} /></Button><ChatMessageText content={message.content} /><span className="mt-1 flex items-center justify-end gap-1 text-xs"><time className="opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time>{mine && <WhatsAppTicks status={receipts.status(message.id)} />}</span></div></div>; })}
           <div ref={endRef} />
         </div>
         <form className="flex shrink-0 gap-2 border-t border-border p-3" onSubmit={event => { event.preventDefault(); submit(); }}>

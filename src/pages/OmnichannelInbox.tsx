@@ -1,3 +1,6 @@
+import { WhatsAppTicks } from '@/components/inbox/WhatsAppTicks';
+import { useChatReceipts } from '@/hooks/useChatReceipts';
+import { providerDeliveryStatus, unreadIncoming } from '@/lib/chatReceipts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useInboxLiveUpdates } from '@/hooks/useInboxLiveUpdates';
@@ -132,22 +135,6 @@ const ChannelIcon = ({ channel, size = 'sm' }: { channel: string | null; size?: 
 };
 
 
-// WhatsApp-style delivery ticks (SVG). Status: 'sent' = single gray, 'delivered' = double gray, 'read' = double blue.
-const WhatsAppTicks = ({ status = 'delivered' }: { status?: 'sent' | 'delivered' | 'read' }) => {
-  const color = status === 'read' ? '#53BDEB' : '#8696A0';
-  if (status === 'sent') {
-    return (
-      <svg viewBox="0 0 16 15" width="16" height="15" aria-hidden="true" className="shrink-0">
-        <path fill={color} d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 16 15" width="16" height="15" aria-hidden="true" className="shrink-0">
-      <path fill={color} d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.064-.51zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z" />
-    </svg>
-  );
-};
 
 const OmnichannelInbox = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -879,18 +866,6 @@ const OmnichannelInbox = () => {
     return null;
   }, [chatMessages]);
 
-  // Simulated WhatsApp read receipt: the moment an inbound message arrives (i.e.
-  // Rita's webhook received and processed a reply from the contact), every
-  // outbound message sent before it is marked as read (blue double tick).
-  const lastInboundIndex = useMemo(() => {
-    if (!chatMessages?.length) return -1;
-    for (let i = chatMessages.length - 1; i >= 0; i--) {
-      if ((chatMessages[i] as any)?.direction !== 'outbound') return i;
-    }
-    return -1;
-  }, [chatMessages]);
-
-
   // Edge functions return a short, already-humanized Hebrew reason in `error`.
   // Prefer it over raw provider payloads so the broker never sees JSON blobs.
   const readFunctionError = async (err: any) => {
@@ -1067,6 +1042,9 @@ const OmnichannelInbox = () => {
     }
     return base;
   })();
+
+  const previewReceipts = useChatReceipts('inbox', [...lastMessages.values()].map(m => ({ id: m.id, incoming: m.direction === 'inbound' })), false);
+  useChatReceipts('inbox', (dbChatMessages ?? []).map(m => ({ id: m.id, incoming: m.direction === 'inbound' })), inboxSection === 'leads' && !!selectedVoterId);
 
   // ── Direct-dial search: typing a raw Israeli mobile number lets the broker
   // start a WhatsApp chat immediately. A CRM lead card is created on the spot.
@@ -1371,7 +1349,7 @@ const OmnichannelInbox = () => {
                     exit={{ opacity: 0, y: -12, scale: 0.98 }}
                     transition={{ type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }}
                     dir="ltr"
-                    onClick={() => (chatSelectMode ? toggleChat(voter.id) : setSelectedVoterId(isActive ? null : voter.id))}
+                    onClick={() => (chatSelectMode ? toggleChat(voter.id) : setSelectedVoterId(voter.id))}
                     className={`relative flex min-w-0 flex-row-reverse items-start gap-3 overflow-hidden px-3 py-3 ps-8 cursor-pointer border-b border-border/30 transition-colors ${isActive || selectedChats.has(voter.id) ? 'bg-accent' : 'hover:bg-muted/50'}`}
                   >
                     {chatSelectMode && (
@@ -1389,7 +1367,7 @@ const OmnichannelInbox = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={(event) => { event.stopPropagation(); openCrmContact(voter.id); }}
+                      onClick={(event) => { event.stopPropagation(); navigate(`/lead-profile/${encodeURIComponent(voter.id)}`, { state: { returnTo: window.location.pathname + window.location.search } }); }}
                       className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50"
                       title="פתיחת כרטיס ליד"
                       aria-label="פתיחת כרטיס ליד"
@@ -1398,21 +1376,17 @@ const OmnichannelInbox = () => {
                     </button>
                     <div className="flex-1 min-w-0 text-right">
                       <div className="flex min-w-0 flex-row-reverse items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={(event) => { event.stopPropagation(); openCrmContact(voter.id); }}
-                          className="text-sm font-medium truncate min-w-0 text-right"
-                          title="פתיחת פרופיל"
-                        >
+                        <span className="text-sm font-medium truncate min-w-0 text-right">
                           {voter.full_name || formatPhoneDisplay(voter.phone_number)}
-                        </button>
+                        </span>
                         <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
                           {voter.last_interaction_at ? formatDistanceToNow(new Date(voter.last_interaction_at), { addSuffix: true, locale: he }) : ''}
                         </span>
                       </div>
                       <div className="flex flex-row-reverse items-start gap-1 mt-0.5">
+                        {lastMsg?.direction === 'outbound' && <WhatsAppTicks status={providerDeliveryStatus(lastMsg.metadata)} />}
                         {lastMsg?.channel && <span className="shrink-0 mt-0.5"><ChannelIcon channel={lastMsg.channel} /></span>}
-                        <p className="text-xs text-muted-foreground flex-1 min-w-0 max-w-full overflow-hidden break-all whitespace-pre-wrap leading-snug line-clamp-2">
+                        <p className={`text-xs flex-1 min-w-0 max-w-full overflow-hidden break-all whitespace-pre-wrap leading-snug line-clamp-2 ${unreadIncoming(lastMsg?.direction === 'inbound', previewReceipts.isRead(lastMsg?.id)) ? 'font-bold text-foreground' : 'font-normal text-muted-foreground'}`}>
                           {(voter as any)._noConversation
                             ? 'ללא שיחה פעילה — לחץ להתחלת צ׳אט'
                             : (sanitizeChatText(lastMsg?.content).replace(/\n+/g, ' · ') || 'אין הודעות')}
@@ -1565,13 +1539,7 @@ const OmnichannelInbox = () => {
                         <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
                           <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
                           {isOutbound && (
-                            <WhatsAppTicks
-                              status={
-                                idx < lastInboundIndex
-                                  ? 'read'
-                                  : ((msg as any)?.metadata?.status as 'sent' | 'delivered' | 'read') || 'delivered'
-                              }
-                            />
+                            <WhatsAppTicks status={providerDeliveryStatus(msg.metadata)} />
                           )}
                         </p>
                       </MessageContent>

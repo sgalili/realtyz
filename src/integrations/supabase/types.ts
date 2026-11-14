@@ -2114,6 +2114,30 @@ export type Database = {
           },
         ]
       }
+      chat_message_receipts: {
+        Row: {
+          delivered_at: string | null
+          kind: string
+          message_id: string
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          delivered_at?: string | null
+          kind: string
+          message_id: string
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          delivered_at?: string | null
+          kind?: string
+          message_id?: string
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       city_alert_requests: {
         Row: {
           consent_at: string
@@ -9665,6 +9689,10 @@ export type Database = {
           name: string
         }[]
       }
+      acknowledge_chat_messages: {
+        Args: { _ids: string[]; _kind: string; _read?: boolean }
+        Returns: undefined
+      }
       acquire_scheduler_lock: {
         Args: { _job: string; _lease_seconds?: number; _worker?: string }
         Returns: boolean
@@ -9802,6 +9830,14 @@ export type Database = {
           _tier: number
         }
         Returns: Json
+      }
+      chat_receipt_states: {
+        Args: { _ids: string[]; _kind: string }
+        Returns: {
+          delivery_status: string
+          message_id: string
+          viewer_read: boolean
+        }[]
       }
       claim_autopilot_jobs: {
         Args: { p_limit?: number; p_worker?: string }

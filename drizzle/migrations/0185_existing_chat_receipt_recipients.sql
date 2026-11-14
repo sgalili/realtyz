@@ -1,0 +1,3 @@
+INSERT INTO public.chat_message_receipts(kind,message_id,user_id) SELECT 'peer',m.id,m.recipient_id FROM public.community_chat_messages m ON CONFLICT DO NOTHING;
+INSERT INTO public.chat_message_receipts(kind,message_id,user_id) SELECT 'group',m.id,g.user_id FROM public.community_group_messages m JOIN public.community_group_members g ON g.group_id=m.group_id WHERE g.user_id<>m.sender_id ON CONFLICT DO NOTHING;
+COMMENT ON TABLE public.chat_message_receipts IS 'Recipient acknowledgements only; historical targets have no inferred delivery or read timestamp.';
