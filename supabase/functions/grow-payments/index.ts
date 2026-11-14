@@ -6,6 +6,7 @@ import { GROW_CUSTOMER_FIELDS, GROW_PAYMENT_METHODS, GROW_SUBSCRIPTION_AMOUNT_IL
 import { deliverPaymentSms } from './paymentSms.ts';
 import { callGrowMake } from '../_shared/growMake.ts';
 import { canSaveGrowCard } from '../_shared/growLeadBilling.ts';
+import { validWalletPackage } from '../_shared/walletPackage.ts';
 
 const capabilitySchema = z.object({ methods: z.array(z.object({ id: z.enum(GROW_PAYMENT_METHODS), fields: z.array(z.enum(GROW_CUSTOMER_FIELDS)).max(4) })).max(5) });
 async function capabilities(environment: string) {
@@ -19,7 +20,7 @@ const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('status') }), z.object({ action: z.literal('test') }),
   z.object({ action: z.literal('offer') }),
   z.object({ action: z.literal('topup_offer') }),
-  z.object({ action: z.literal('topup_create'), amount_ils: z.number().positive().max(10000).refine(value => Math.abs(value * 100 - Math.round(value * 100)) < 0.000001), payment_method: z.enum(GROW_PAYMENT_METHODS), full_name: z.string().trim().max(150).default(''), phone: z.string().regex(/^05\d{8}$/), email: z.string().max(254).optional(), national_id: z.string().max(9).optional() }),
+  z.object({ action: z.literal('topup_create'), amount_ils: z.number().refine(validWalletPackage), payment_method: z.enum(GROW_PAYMENT_METHODS), full_name: z.string().trim().max(150).default(''), phone: z.string().regex(/^05\d{8}$/), email: z.string().max(254).optional(), national_id: z.string().max(9).optional() }),
   z.object({ action: z.literal('create'), payment_method: z.enum(GROW_PAYMENT_METHODS), card_mandate: z.boolean().default(false), full_name: z.string().trim().max(150).default(''), phone: z.string().regex(/^05\d{8}$/), email: z.string().max(254).optional(), national_id: z.string().max(9).optional() }),
   z.object({ action: z.literal('notify'), order_id: z.string().uuid(), transaction_id: z.string().min(1).max(128) }),
 ]);

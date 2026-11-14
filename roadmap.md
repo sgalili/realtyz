@@ -1,5 +1,10 @@
 # Roadmap
 
+## Wallet credit package slider November 14
+- [x] Synchronized 5–2500 ILS slider/input, reached-threshold bonuses and credit/value display; unchanged four-credit conversion yields 20/210/880/2300/4800/12500 credits at requested tiers.
+- [x] Applied immutable server bonus snapshots for new deposit orders; verified completion credits paid amount plus bonus once, while old orders/subscriptions remain unchanged. Deployed payment endpoint rejects out-of-range packages before creation.
+- [x] Twenty-eight focused tests pass; authenticated desktop/mobile all six tier values, input/slider readback, keyboard endpoints and drag checked with no overflow/runtime errors. Server conversion=4, completion service-only, preview clean. No payment/SMS; live settlement still awaits existing Grow/Make setup.
+
 ## Payment method presentation November 14
 - [x] Removed option unavailability badges; labels 14→18px, requested card/mobile copy and original Bit/Apple/Google/Mastercard assets. Bank transfer retains neutral bank symbol because no beneficiary bank/brand is supplied.
 - [x] Tailored Bit/card/express-wallet/bank preparation forms and Make contract; card number/expiry/CVV and actual wallet/mobile verification/bank instructions stay provider-hosted. No sensitive-card collection or invented bank account.

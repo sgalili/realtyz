@@ -4486,6 +4486,9 @@ export type Database = {
           title: string
           transaction_id: string | null
           user_id: string
+          wallet_bonus_ils: number
+          wallet_bonus_percent: number
+          wallet_credit_rate: number | null
           workspace_owner_id: string | null
         }
         Insert: {
@@ -4506,6 +4509,9 @@ export type Database = {
           title: string
           transaction_id?: string | null
           user_id: string
+          wallet_bonus_ils?: number
+          wallet_bonus_percent?: number
+          wallet_credit_rate?: number | null
           workspace_owner_id?: string | null
         }
         Update: {
@@ -4526,6 +4532,9 @@ export type Database = {
           title?: string
           transaction_id?: string | null
           user_id?: string
+          wallet_bonus_ils?: number
+          wallet_bonus_percent?: number
+          wallet_credit_rate?: number | null
           workspace_owner_id?: string | null
         }
         Relationships: []
