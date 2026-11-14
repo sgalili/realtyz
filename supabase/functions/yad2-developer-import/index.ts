@@ -1,9 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.45.0';
-import { mergeProject, readPage } from './extract.ts';
+import { readPage } from './extract.ts';
 import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
-import { DEVELOPER_CACHE_SECONDS, uniqueScrapingUrls } from '../_shared/scrapingPolicy.ts';
+import { DEVELOPER_CACHE_SECONDS } from '../_shared/scrapingPolicy.ts';
 import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
 import { ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
+import { rotatingUnlockerPayload, UNLOCKER_USER_AGENTS } from '../_shared/brightDataRotation.ts';
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 Deno.serve(async req => {
@@ -43,15 +44,13 @@ Deno.serve(async req => {
   const token = Deno.env.get('BRIGHTDATA_API_TOKEN');
   const zone = Deno.env.get('BRIGHTDATA_UNLOCKER_ZONE') ?? Deno.env.get('BRIGHTDATA_ZONE') ?? 'web_unlocker4';
   if (!token) return json({ error: 'not_configured', message: 'שירות הייבוא מיד2 אינו מוגדר' }, 503);
-  const failed: string[] = [];
   const deadline = Date.now() + 125000;
-  const failReasons: Record<string, string> = {};
   const fetchPage = async (url: string) => {
     const remaining = deadline - Date.now();
     if (remaining < 1500) throw new Error('import_deadline');
     const html = await cachedScrapingText('developer_import', url, DEVELOPER_CACHE_SECONDS, async () => {
       const result = await trackScraping('developer_import', 'rest', url, async () => {
-        const res = await fetch('https://api.brightdata.com/request', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ zone, url, format: 'raw' }), signal: AbortSignal.timeout(Math.min(120000, remaining)) });
+        const res = await fetch('https://api.brightdata.com/request', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(rotatingUnlockerPayload(zone, url, Math.floor(Math.random() * UNLOCKER_USER_AGENTS.length))), signal: AbortSignal.timeout(Math.min(120000, remaining)) });
         return { status: res.status, html: await res.text(), retryAfterMs: retryAfterMs(res.headers.get('retry-after')) };
       }, value => ({ status: value.status, bytes: new TextEncoder().encode(value.html).length }));
       if (result.status === 429) throw new ProviderRateLimitError(result.retryAfterMs);
@@ -61,42 +60,14 @@ Deno.serve(async req => {
     });
     return readPage(html, url);
   };
+  // Multi-page account imports must use developer-import-jobs. This endpoint
+  // deliberately performs only one leased page read for the background workers.
+  if (!pageOnly) return json({ error: 'background_queue_required', message: 'הייבוא מתבצע כעת ברקע, עמוד אחד בכל משימה' }, 400);
   try {
     const first = await fetchPage(pageUrl.href);
-    if (pageOnly) return json({ ok: true, source_url: pageUrl.href, ...first });
-    const result = { developer: first.developer, projects: [...first.projects] };
-    // Follow only links belonging to projects discovered on the developer's page.
-    // Never discover projects globally or mix related advertiser recommendations.
-    const visited = new Set<string>([pageUrl.href]);
-    const pending = uniqueScrapingUrls(first.links);
-    for (let i = 0; i < pending.length; i++) {
-      const url = pending[i].split('?')[0];
-      if (Date.now() >= deadline - 1500) { pending.slice(i).filter(item => !visited.has(item)).forEach(item => { failed.push(item); failReasons[item] = 'import_deadline'; }); break; }
-      if (i > 0) await new Promise(r => setTimeout(r, 1500));
-      if (visited.has(url)) continue;
-      visited.add(url);
-      try {
-        const details = await fetchPage(url);
-        const parent = result.projects.findIndex(p => p.source_url === url);
-        if (parent >= 0) {
-          const old = result.projects[parent];
-          const matching = details.projects.find(p => p.source_project_id === old.source_project_id || p.name === old.name || p.source_url === url) ?? (details.projects.length === 1 ? details.projects[0] : null);
-          if (matching) result.projects[parent] = mergeProject(old, { ...matching, source_project_id: old.source_project_id ?? matching.source_project_id, source_url: url });
-          else failed.push(url);
-        } else {
-          const matching = details.projects.find(p => p.source_url === url) ?? (details.projects.length === 1 ? details.projects[0] : null);
-          if (matching) {
-            const existing = result.projects.findIndex(p => matching.source_project_id && p.source_project_id === matching.source_project_id);
-            if (existing >= 0) result.projects[existing] = mergeProject(result.projects[existing], matching);
-            else result.projects.push({ ...matching, source_url: url });
-          } else failed.push(url);
-        }
-      } catch (e) { console.error('project page failed', url, e instanceof Error ? e.message : e); failed.push(url); failReasons[url] = e instanceof Error ? e.message : String(e); }
-    }
-    const missingHierarchy = result.projects.filter(project => !project.apartments.length).map(project => project.name);
-    return json({ ok: true, source_url: pageUrl.href, ...result, completeness: { complete: failed.length === 0 && result.projects.length > 0 && missingHierarchy.length === 0, pages_read: visited.size - failed.filter(url => visited.has(url)).length, failed_urls: failed, fail_reasons: failReasons, projects_without_unit_details: missingHierarchy }, warnings: [...(failed.length ? ['חלק מעמודי הפרויקטים לא נקראו. הפרטים הזמינים נשמרו בתצוגה המקדימה; אפשר לנסות שוב.'] : []), ...(missingHierarchy.length ? ['בחלק מהפרויקטים לא נמצאו פרטי יחידות במקור. הפרויקטים נשמרים בלי להמציא דירות או מחירים.'] : []), ...(result.projects.length === 0 ? ['לא נמצאו פרויקטים שניתן לקרוא בעמוד היזם.'] : [])] });
+    return json({ ok: true, source_url: pageUrl.href, ...first });
   } catch (error) {
-    console.error('Developer import failed', { error: error instanceof Error ? error.message : 'unknown', source_url: pageUrl.href });
+    console.error('Developer page import failed', { error: error instanceof Error ? error.message : 'unknown', source_url: pageUrl.href });
     if (error instanceof ProviderRateLimitError) return json({ error: 'brightdata_rate_limited', retry_after_ms: error.retryAfterMs, message: 'Bright Data הגביל זמנית את קצב הבקשות. ההתקדמות נשמרה לניסיון החוזר.' }, 429);
     return json({ error: 'fetch_failed', message: 'לא ניתן לקרוא את עמוד היזם ביד2 כרגע. נסו שוב או הוסיפו פרויקטים ידנית.' }, 502);
   }

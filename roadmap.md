@@ -1,5 +1,11 @@
 # Roadmap
 
+## Background developer project imports November 14
+- [x] Replaced the direct long preview request with durable developer jobs and one queue row per developer/project page, authorized to the requesting workspace and active subscription; the legacy multi-page request is disabled.
+- [x] Each invocation processes one 40-second-maximum page with a 55-second lease, automatic transient/429 backoff, crash-recovery watchdog, safe private upserts and live resumable UI progress; manual project edits and publication state remain preserved.
+- [x] Added bounded desktop/mobile user-agent rotation without sticky sessions; retained exact-source parsing/cache and existing Super Admin background checkpoints.
+- [x] Twenty-four focused tests, typecheck, authorization checks, queue-claim/watchdog checks and mocked mobile/desktop progress passed. Two no-network worker runs completed with project/company readback and full test cleanup. No paid full import was run.
+
 ## Horizontal table overflow fades November 14
 - [x] Added semantic, pointer-transparent start/end fades to shared table scrollers only while more columns exist in that direction; 20px mobile and 36px desktop edges use the surrounding background.
 - [x] Covered native tables and page-owned user-table scrolling without adding a scrollbar or changing expanded fixed panels, sticky headings or clicks.

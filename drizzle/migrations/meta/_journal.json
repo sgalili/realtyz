@@ -1394,6 +1394,27 @@
       "when": 1794680138782,
       "tag": "0198_autonomous_developer_import_retries",
       "breakpoints": true
+    },
+    {
+      "idx": 199,
+      "version": "7",
+      "when": 1794681020963,
+      "tag": "0199_background_developer_page_imports",
+      "breakpoints": true
+    },
+    {
+      "idx": 200,
+      "version": "7",
+      "when": 1794681125138,
+      "tag": "0200_developer_import_claim_service_grant",
+      "breakpoints": true
+    },
+    {
+      "idx": 201,
+      "version": "7",
+      "when": 1794681360546,
+      "tag": "0201_developer_import_lease_watchdog",
+      "breakpoints": true
     }
   ]
 }

@@ -1,222 +1,120 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { normalizePhoneForStorage } from '@/lib/formatPhone';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { developerImportUrl } from '@/lib/developerImportUrl';
-import { mergeImportedProject } from '@/lib/developerProjectBoard';
-import ProjectHierarchyDetails from '@/components/developers/ProjectHierarchyDetails';
-import type { DeveloperProject } from '@/lib/developerProjectForm';
-
-type ImportedProject = {
-  source_project_id: string | null; name: string; city: string | null; neighborhood: string | null;
-  address: string | null; total_units: number | null; available_units: number | null; price_from: number | null;
-  delivery_date: string | null; status: string | null; description: string | null; images: string[];
-  source_url: string | null; apartments: unknown[]; source_details: Record<string, unknown>;
-};
-type Preview = { source_url: string; developer: { company_name: string | null; phone: string | null; logo_url: string | null; bio?: string | null }; projects: ImportedProject[]; warnings?: string[] };
 
 const YAD2_RE = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i;
-const STAGES = ['מתחבר לעמוד היזם ביד2', 'קורא את פרטי החברה', 'אוסף את רשימת הפרויקטים', 'סופר יחידות דיור ודירות', 'מכין דוח סיכום'];
 
-/** Animated staged loader shown while the Yad2 page is being read. */
-function ImportProgress() {
-  const [pct, setPct] = useState(4);
-  useEffect(() => {
-    const t = window.setInterval(() => setPct((p) => (p < 92 ? p + Math.max(1, (92 - p) / 14) : p)), 400);
-    return () => window.clearInterval(t);
-  }, []);
-  const stage = Math.min(STAGES.length - 1, Math.floor((pct / 100) * STAGES.length));
-  return (
-    <div role="status" aria-live="polite" className="space-y-3 rounded-lg border bg-card p-4">
-      <Progress value={pct} className="h-2" />
-      <ul className="space-y-1.5 text-sm">
-        {STAGES.map((s, i) => (
-          <li key={s} className={`flex items-center gap-2 ${i > stage ? 'text-muted-foreground/50' : i === stage ? 'font-semibold' : 'text-muted-foreground'}`}>
-            {i < stage ? <CheckCircle2 className="h-4 w-4 text-primary" /> : i === stage ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <span className="h-4 w-4 rounded-full border" />}
-            {s}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-/** Paste a Yad2 developer page, preview every project/apartment, then save on confirm. */
+/** Starts a durable import; every developer/project page runs in its own background chunk. */
 export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summary: { projects: number; units: number }) => void; initialUrl?: string | null }) {
-  const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const [url, setUrl] = useState(initialUrl ?? '');
-  const [blocked, setBlocked] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [preview, setPreview] = useState<Preview | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
+  const reported = useRef<string | null>(null);
   const workspaceRef = useRef(activeWorkspaceId);
   workspaceRef.current = activeWorkspaceId;
-  useEffect(() => { setPreview(null); setError(''); setBlocked(false); setLoading(false); setUrl(initialUrl ?? ''); }, [activeWorkspaceId, initialUrl]);
 
-  const fetchPreview = async (value: string) => {
-    if (loading) return;
+  useEffect(() => { setUrl(initialUrl ?? ''); setJobId(null); setError(''); setStarting(false); reported.current = null; }, [activeWorkspaceId, initialUrl]);
+
+  const { data: recovered } = useQuery({
+    queryKey: ['developer-import-active', activeWorkspaceId, initialUrl],
+    enabled: !!activeWorkspaceId && !jobId,
+    queryFn: async () => {
+      const { data, error: queryError } = await supabase.from('developer_import_jobs').select('id').eq('workspace_owner_id', activeWorkspaceId!).eq('status', 'running').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (queryError) throw queryError;
+      return data;
+    },
+  });
+  useEffect(() => { if (recovered?.id && !jobId) setJobId(recovered.id); }, [recovered, jobId]);
+
+  const { data: job } = useQuery({
+    queryKey: ['developer-import-job', activeWorkspaceId, jobId],
+    enabled: !!activeWorkspaceId && !!jobId,
+    refetchInterval: query => query.state.data?.status === 'running' ? 2000 : false,
+    queryFn: async () => {
+      const { data, error: queryError } = await supabase.from('developer_import_jobs').select('id,status,stage,error,source_url').eq('workspace_owner_id', activeWorkspaceId!).eq('id', jobId!).single();
+      if (queryError) throw queryError;
+      return data;
+    },
+  });
+  const { data: pages = [] } = useQuery({
+    queryKey: ['developer-import-pages', activeWorkspaceId, jobId],
+    enabled: !!activeWorkspaceId && !!jobId,
+    refetchInterval: job?.status === 'running' ? 2000 : false,
+    queryFn: async () => {
+      const { data, error: queryError } = await supabase.from('developer_import_pages').select('id,kind,status,attempts,error,next_attempt_at').eq('job_id', jobId!).order('created_at');
+      if (queryError) throw queryError;
+      return data;
+    },
+  });
+
+  const projectPages = pages.filter(page => page.kind === 'project');
+  const completed = projectPages.filter(page => page.status === 'completed').length;
+  const failed = projectPages.filter(page => page.status === 'failed').length;
+  const progress = job?.stage === 'profile' ? 5 : projectPages.length ? Math.round((completed + failed) / projectPages.length * 100) : 10;
+  const waiting = pages.find(page => page.status === 'pending' && page.next_attempt_at && new Date(page.next_attempt_at).getTime() > Date.now());
+
+  useEffect(() => {
+    if (!job || job.status !== 'completed' || reported.current === job.id) return;
+    reported.current = job.id;
+    toast.success(failed ? `הייבוא הסתיים: ${completed} פרויקטים נשמרו, ${failed} נכשלו` : `נשמרו ${completed} פרויקטים`);
+    onSaved?.({ projects: completed, units: 0 });
+  }, [job, completed, failed, onSaved]);
+
+  const start = async (value: string) => {
+    if (starting || !activeWorkspaceId) return;
     const clean = developerImportUrl(value);
     if (!clean) { setError('הדביקו את הקישור לעמוד הראשי של היזם ביד2, ולא למודעה או לפרויקט בודד'); return; }
-    setUrl(clean);
     const originWorkspace = activeWorkspaceId;
-    setLoading(true); setError(''); setBlocked(false); setPreview(null);
-    const { data, error: fnError } = await supabase.functions.invoke('yad2-developer-import', { body: { url: clean } });
+    setStarting(true); setError(''); setUrl(clean); reported.current = null;
+    const { data, error: invokeError } = await supabase.functions.invoke('developer-import-jobs', { body: { action: 'start', url: clean, workspace_owner_id: originWorkspace } });
     if (workspaceRef.current !== originWorkspace) return;
-    setLoading(false);
-    if (fnError || !data?.ok) {
-      let msg = 'הייבוא נכשל. אפשר להמשיך ולהוסיף פרויקטים ידנית.';
-      try { const b = await (fnError as any)?.context?.json?.(); if (b?.message) msg = b.message; } catch { /* keep default */ }
-      const status = (fnError as any)?.context?.status;
-      if (status === 502 || status === 503 || status === 429 || !data) setBlocked(true);
-      setError(data?.message ?? msg);
-      return;
+    setStarting(false);
+    if (invokeError || !data?.job_id) {
+      let message = data?.message ?? 'פתיחת הייבוא נכשלה. נסו שוב.';
+      try { const body = await (invokeError as { context?: { json?: () => Promise<{ message?: string }> } })?.context?.json?.(); if (body?.message) message = body.message; } catch { /* retain safe message */ }
+      setError(message); return;
     }
-    if (!Array.isArray(data.projects) || data.projects.length === 0) { setBlocked(true); return; }
-    setPreview(data as Preview);
+    setJobId(data.job_id);
   };
 
-  const sum = (k: 'total_units' | 'available_units') => (preview?.projects ?? []).reduce((s, p) => s + (p[k] ?? 0), 0);
-  const apartments = (preview?.projects ?? []).reduce((s, p) => s + (p.apartments?.length ?? 0), 0);
-  const cities = [...new Set((preview?.projects ?? []).map((p) => p.city).filter(Boolean))] as string[];
-
-  const save = async () => {
-    if (!preview || !user || !activeWorkspaceId) return;
-    const ws = activeWorkspaceId;
-    setSaving(true);
-    try {
-      const { data: existing, error: existingError } = await supabase.from('developers').select('id,company_name,phone,logo_url,first_project_name,first_project_units').eq('workspace_owner_id', ws).eq('source_url', preview.source_url).maybeSingle();
-      if (existingError) throw existingError;
-      const first = preview.projects[0];
-      const devRow = {
-        workspace_owner_id: ws,
-        owner_user_id: user.id,
-        company_name: preview.developer.company_name || existing?.company_name || 'החברה שלי',
-        phone: preview.developer.phone ? normalizePhoneForStorage(preview.developer.phone) : existing?.phone ?? null,
-        logo_url: preview.developer.logo_url ?? existing?.logo_url ?? null,
-        source_url: preview.source_url,
-        first_project_name: first?.name ?? existing?.first_project_name ?? null,
-        first_project_units: first?.total_units ?? existing?.first_project_units ?? null,
-        last_synced_at: new Date().toISOString(),
-      };
-      let devId = existing?.id as string | undefined;
-      if (devId) {
-        const { error: e } = await supabase.from('developers').update(devRow).eq('id', devId);
-        if (e) throw e;
-      } else {
-        const { data, error: e } = await supabase.from('developers').insert(devRow).select('id').single();
-        if (e) throw e;
-        devId = data.id;
-      }
-      if (preview.projects.length) {
-        if (preview.developer.bio) {
-          const { error: bioError } = await supabase.from('profiles').update({ imported_public_bio: preview.developer.bio }).eq('id', ws).is('imported_public_bio', null);
-          if (bioError) throw bioError;
-        }
-        if (!devId) throw new Error('שמירת החברה לא הושלמה');
-        const { data: savedProjects, error: readError } = await supabase.from('developer_projects').select('*').eq('workspace_owner_id', ws).eq('developer_id', devId);
-        if (readError) throw readError;
-        const rows = preview.projects.map((p) => {
-          const old = savedProjects?.find(row => row.source_project_id === (p.source_project_id ?? p.source_url ?? p.name) || !!p.source_url && row.source_url === p.source_url);
-          const imported = {
-          workspace_owner_id: ws, developer_id: devId, name: p.name, city: p.city, neighborhood: p.neighborhood,
-          address: p.address, total_units: p.total_units, available_units: p.available_units, price_from: p.price_from,
-          delivery_date: p.delivery_date, description: p.description, image_url: p.images[0] ?? null,
-          images: p.images.length ? p.images : old?.images ?? [], apartments: p.apartments.length ? p.apartments as any : old?.apartments ?? [], source_url: p.source_url,
-          source_details: p.source_details as any,
-          source_project_id: old?.source_project_id ?? p.source_project_id ?? p.source_url ?? p.name, status: old?.status ?? 'marketing',
-          };
-          // Partial source reads must not erase previously saved project details.
-          return mergeImportedProject(old, imported) as typeof imported;
-        });
-        const { error: e } = await supabase.from('developer_projects').upsert(rows, { onConflict: 'developer_id,source_project_id' });
-        if (e) throw e;
-      }
-      const summary = { projects: preview.projects.length, units: sum('total_units') };
-      toast.success(`נשמרו ${summary.projects} פרויקטים`);
-      setPreview(null); setUrl('');
-      onSaved?.(summary);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'השמירה נכשלה');
-    } finally { setSaving(false); }
-  };
-
-  return (
-    <div className="space-y-3">
+  return <div className="space-y-4">
+    <div className="space-y-2">
       <Label htmlFor="dev-yad2-url" className="text-base font-bold">הקישור לעמוד הראשי של היזם ביד2</Label>
-      <p id="dev-yad2-help" className="text-base text-muted-foreground">עמוד החברה, עם כל הפרויקטים.</p>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Input id="dev-yad2-url" aria-describedby="dev-yad2-help" dir="ltr" type="url" placeholder="https://www.yad2.co.il/yad1/developers/..." value={url} disabled={loading || saving}
-          onChange={(e) => setUrl(e.target.value)}
-          onPaste={(e) => { const t = e.clipboardData.getData('text').trim(); if (YAD2_RE.test(t)) { e.preventDefault(); setUrl(t.match(YAD2_RE)?.[0] ?? t); setError(''); } }} />
-        <Button type="button" onClick={() => void fetchPreview(url)} disabled={loading || saving || !url.trim()}>ייבוא כל הפרויקטים</Button>
-      </div>
-      {loading && <ImportProgress />}
-      {!loading && (blocked || error) && (
-        <div role="alert" className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
-          <p className="text-sm font-semibold text-destructive">{blocked ? 'הייבוא נתקל בהגנה זמנית מיד2, נסה שוב בעוד מספר דקות' : error}</p>
-          {developerImportUrl(url) && <Button type="button" size="sm" variant="outline" onClick={() => void fetchPreview(url)}>נסה שוב</Button>}
-        </div>
-      )}
-      {preview && (
-        <div className="space-y-3 rounded-lg border bg-card p-3 animate-in fade-in">
-          {preview.warnings?.map(warning => <p role="status" key={warning} className="text-sm text-muted-foreground">{warning}</p>)}
-          <div className="flex items-center gap-3">
-            {preview.developer.logo_url && <img src={preview.developer.logo_url} alt="" className="h-10 w-10 rounded object-contain" />}
-            <div>
-              <div className="font-bold">{preview.developer.company_name ?? 'שם החברה לא נמצא'}</div>
-              {cities.length > 0 && <div className="text-xs text-muted-foreground">{cities.join(' · ')}</div>}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {([['פרויקטים', preview.projects.length], ['יח״ד', sum('total_units')], ['זמינות', sum('available_units')], ['דירות', apartments]] as const)
-              .filter(([, v]) => v > 0)
-              .map(([l, v]) => (
-                <div key={l} className="rounded-md border p-2 text-center">
-                  <div className="text-xl font-bold">{v.toLocaleString('he-IL')}</div>
-                  <div className="text-xs text-muted-foreground">{l}</div>
-                </div>
-              ))}
-          </div>
-          {preview.projects.length === 0 ? (
-            <p className="text-sm text-muted-foreground">לא נמצאו פרויקטים בעמוד. אפשר לשמור את החברה ולהוסיף פרויקטים ידנית.</p>
-          ) : (
-            <ul className="max-h-80 space-y-2 overflow-y-auto">
-              {preview.projects.map((p) => (
-                <li key={p.source_project_id ?? p.name} className="rounded border p-2">
-                  <div className="flex items-center gap-3">
-                  {p.images[0] ? <img src={p.images[0]} alt="" className="h-12 w-12 shrink-0 rounded object-cover" /> : <div className="h-12 w-12 shrink-0 rounded bg-muted" />}
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold">{p.name}</div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {[p.city, p.neighborhood].filter(Boolean).join(' · ')}
-                      {p.total_units ? ` · ${p.total_units} יח״ד` : ''}
-                      {p.available_units ? ` · ${p.available_units} זמינות` : ''}
-                      {p.apartments.length ? ` · ${p.apartments.length} דירות` : ''}
-                    </div>
-                  </div>
-                  </div>
-                  <details className="mt-2 text-sm"><summary className="cursor-pointer font-semibold">פרטי הפרויקט והדירות</summary><div className="pt-3"><ProjectHierarchyDetails project={{ ...p, id: p.source_project_id ?? p.name } as unknown as DeveloperProject} /></div></details>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="flex gap-2">
-            <Button type="button" onClick={() => void save()} disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}אישור ושמירה</Button>
-            <Button type="button" variant="outline" onClick={() => setPreview(null)}>ביטול</Button>
-          </div>
-        </div>
-      )}
+      <p id="dev-yad2-help" className="text-base text-muted-foreground">החברה, הפרויקטים והדירות נשמרים אוטומטית ברקע. אפשר לסגור את החלון ולחזור מאוחר יותר.</p>
     </div>
-  );
+    <div className="flex flex-col gap-2 sm:flex-row">
+      <Input id="dev-yad2-url" aria-describedby="dev-yad2-help" dir="ltr" type="url" placeholder="https://www.yad2.co.il/yad1/developers/..." value={url} disabled={starting || job?.status === 'running'}
+        onChange={event => setUrl(event.target.value)}
+        onPaste={event => { const text = event.clipboardData.getData('text').trim(); if (YAD2_RE.test(text)) { event.preventDefault(); setUrl(text.match(YAD2_RE)?.[0] ?? text); setError(''); } }} />
+      <Button type="button" onClick={() => void start(url)} disabled={starting || job?.status === 'running' || !url.trim()}>{starting && <Loader2 className="h-4 w-4 animate-spin" />}ייבוא כל הפרויקטים</Button>
+    </div>
+    {error && <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-base text-destructive">{error}</div>}
+    {job && <div role="status" aria-live="polite" className="space-y-3 rounded-lg border bg-card p-4">
+      <div className="flex items-center justify-between gap-3">
+        <strong className="text-base">{job.status === 'completed' ? 'הייבוא הושלם' : job.status === 'failed' ? 'הייבוא נכשל' : job.stage === 'profile' ? 'קורא את עמוד החברה' : 'מייבא כל פרויקט בנפרד'}</strong>
+        {job.status === 'running' ? <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" /> : job.status === 'completed' ? <CheckCircle2 className="h-5 w-5 shrink-0 text-success" /> : <AlertCircle className="h-5 w-5 shrink-0 text-destructive" />}
+      </div>
+      <Progress value={progress} className="h-2" />
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+        <span>{completed} פרויקטים נשמרו</span>
+        {projectPages.length > 0 && <span>{completed + failed} מתוך {projectPages.length} עמודים</span>}
+        {failed > 0 && <span className="text-destructive">{failed} נכשלו</span>}
+      </div>
+      {waiting && job.status === 'running' && <p className="text-sm text-muted-foreground">ניסיון חוזר אוטומטי מתוזמן. כל ההתקדמות נשמרה.</p>}
+      {job.error && <p className={`text-sm ${job.status === 'failed' || failed ? 'text-destructive' : 'text-muted-foreground'}`}>{job.error}</p>}
+      {job.status === 'failed' && <Button type="button" variant="outline" size="sm" onClick={() => { setJobId(null); void start(job.source_url); }}>פתיחת ייבוא חדש</Button>}
+    </div>}
+  </div>;
 }
 
 export default DeveloperYad2Import;

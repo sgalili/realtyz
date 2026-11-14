@@ -3233,6 +3233,127 @@ export type Database = {
         }
         Relationships: []
       }
+      developer_import_jobs: {
+        Row: {
+          company: Json
+          completed_at: string | null
+          created_at: string
+          developer_id: string | null
+          error: string | null
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          next_attempt_at: string
+          requested_by: string
+          source_url: string
+          stage: string
+          status: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          company?: Json
+          completed_at?: string | null
+          created_at?: string
+          developer_id?: string | null
+          error?: string | null
+          id?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          next_attempt_at?: string
+          requested_by: string
+          source_url: string
+          stage?: string
+          status?: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          company?: Json
+          completed_at?: string | null
+          created_at?: string
+          developer_id?: string | null
+          error?: string | null
+          id?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          next_attempt_at?: string
+          requested_by?: string
+          source_url?: string
+          stage?: string
+          status?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "developer_import_jobs_developer_id_fkey"
+            columns: ["developer_id"]
+            isOneToOne: false
+            referencedRelation: "developers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      developer_import_pages: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string | null
+          fetch_required: boolean
+          id: string
+          job_id: string
+          kind: string
+          lease_token: string | null
+          lease_until: string | null
+          next_attempt_at: string
+          payload: Json
+          status: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          fetch_required?: boolean
+          id?: string
+          job_id: string
+          kind: string
+          lease_token?: string | null
+          lease_until?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          status?: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          fetch_required?: boolean
+          id?: string
+          job_id?: string
+          kind?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          status?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "developer_import_pages_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "developer_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       developer_projects: {
         Row: {
           address: string | null
@@ -10083,6 +10204,31 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_developer_import_page: {
+        Args: { _job: string }
+        Returns: {
+          attempts: number
+          created_at: string
+          error: string | null
+          fetch_required: boolean
+          id: string
+          job_id: string
+          kind: string
+          lease_token: string | null
+          lease_until: string | null
+          next_attempt_at: string
+          payload: Json
+          status: string
+          updated_at: string
+          url: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "developer_import_pages"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_fb_group_post_slot: {
         Args: { _group: string; _limit: number; _owner: string }
         Returns: boolean
@@ -10371,6 +10517,10 @@ export type Database = {
       }
       dispatch_automation_run: { Args: { _run_id: string }; Returns: undefined }
       dispatch_broker_import_retry: {
+        Args: { _id: string; _schedule_name: string }
+        Returns: undefined
+      }
+      dispatch_developer_import_retry: {
         Args: { _id: string; _schedule_name: string }
         Returns: undefined
       }

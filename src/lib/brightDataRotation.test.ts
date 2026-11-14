@@ -19,6 +19,14 @@ describe('provider-managed rotation', () => {
         .toEqual({ zone: 'web_unlocker4', url, format: 'raw' });
     }
   });
+  it('rotates bounded desktop and mobile user agents on independent background attempts without sticky sessions', () => {
+    const first = rotatingUnlockerPayload('web_unlocker4', 'https://www.yad2.co.il/yad1/project/p1', 0) as any;
+    const second = rotatingUnlockerPayload('web_unlocker4', 'https://www.yad2.co.il/yad1/project/p2', 1) as any;
+    expect(first.headers['User-Agent']).not.toBe(second.headers['User-Agent']);
+    expect(first.headers['User-Agent']).toContain('Mozilla/5.0');
+    expect(first).not.toHaveProperty('session');
+    expect(second).not.toHaveProperty('ip');
+  });
   it('uses POST with JSON content type and a Bearer credential', () => {
     const request = unlockerRequestOptions('test-key', 'web_unlocker4', 'https://www.yad2.co.il');
     expect(request.method).toBe('POST');
