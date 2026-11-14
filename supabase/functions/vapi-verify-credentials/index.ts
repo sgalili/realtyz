@@ -1,3 +1,4 @@
+import { requireCaller, isSuperAdmin, denied } from "../_shared/authz.ts";
 // Vapi credentials verification — reads the user-saved key from `api_configs`
 // (service_name='Vapi', colon-joined as `${API_KEY}:${PHONE_NUMBER_ID}:${ASSISTANT_ID}`)
 // and pings Vapi's GET /assistant to confirm a HTTP 200 handshake.
@@ -6,6 +7,9 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service","user"]);
+  if (__caller instanceof Response) return __caller;
+  if (__caller.kind === "user" && !(await isSuperAdmin(__caller.userId))) return denied(403);
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

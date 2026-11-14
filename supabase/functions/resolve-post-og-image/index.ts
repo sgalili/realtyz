@@ -1,3 +1,4 @@
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 // Resolves an og:image (or first inline photo) for a Facebook / social post URL
 // using Firecrawl, then permanently caches:
 //   1. The image URL into campaign_logs.provider_response.media_urls
@@ -143,6 +144,10 @@ async function sha1Short(input: string): Promise<string> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service","user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
   try {
     const body = await req.json().catch(() => ({}));
     const campaignLogId: string | null = body?.campaign_log_id ?? null;

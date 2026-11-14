@@ -384,6 +384,13 @@ serve(async (req) => {
     const body = await req.json();
     const { lead_id, lead_name, mode, context, variants: variantsReq, attachments: attachmentsReq, enable_research: enableResearchReq, workspace_owner_id, owner_phone } = body ?? {};
     let { messages } = body ?? {};
+    // Callers may only contribute user/assistant turns; system instructions are server-owned.
+    if (Array.isArray(messages)) {
+      messages = messages.slice(-60).filter((m: any) => m && typeof m === "object").map((m: any) => ({
+        role: m.role === "assistant" ? "assistant" : "user",
+        content: typeof m.content === "string" ? m.content.slice(0, 20000) : Array.isArray(m.content) ? m.content : String(m.content ?? ""),
+      }));
+    }
     const variantCount = Math.max(1, Math.min(5, Number(variantsReq ?? 1) || 1));
     const attachments: Array<{ name?: string; mime?: string; data_url?: string; url?: string }> = Array.isArray(attachmentsReq) ? attachmentsReq : [];
 

@@ -53,11 +53,13 @@ Deno.serve(async (req) => {
 
     let lead: { full_name: string | null; phone_number: string | null; email: string | null } | null = null;
     if (leadId) {
-      const { data } = await admin
+      // RLS-bound read: callers only see leads in workspaces they can access.
+      const { data } = await userClient
         .from('leads')
         .select('full_name, phone_number, email')
         .eq('id', leadId)
         .maybeSingle();
+      if (!data) return json({ error: "lead_not_found" }, 404);
       lead = data as any;
     }
 

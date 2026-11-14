@@ -151,6 +151,22 @@ serve(async (req) => {
       if (owner) workspaceOwnerId = owner as string;
     } catch (_e) { /* fall back to self */ }
 
+    // A direct phone number must belong to a lead the caller can access (RLS) or to the caller.
+    if (phone_number) {
+      const tail = phone_number.replace(/\D/g, "").slice(-9);
+      if (tail.length !== 9) {
+        return new Response(JSON.stringify({ error: "invalid_phone_number" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const { data: me } = await admin.from("profiles").select("phone").eq("id", userData.user.id).maybeSingle();
+      const mine = [me?.phone, userData.user.phone].some((p) => String(p ?? "").replace(/\D/g, "").endsWith(tail));
+      if (!mine) {
+        const { data: match } = await supabase.from("leads").select("id").like("phone_number", `%${tail}`).limit(1);
+        if (!match?.length) {
+          return new Response(JSON.stringify({ error: "recipient_not_authorized" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+    }
+
     const { data: voter } = lead_id
       ? await supabase
         .from("leads")

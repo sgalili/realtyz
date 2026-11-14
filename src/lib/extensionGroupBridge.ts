@@ -147,6 +147,7 @@ export const useExtensionGroups = (owner?: string | null) => {
     };
 
     const onMessage = (e: MessageEvent) => {
+      if (e.source !== window || e.origin !== window.location.origin) return;
       const d: any = e.data;
       if (!d || typeof d !== "object") return;
       if (d.type !== EXT_GROUPS_MESSAGE && d.type !== EXT_SYNC_GROUPS_MESSAGE) return;
@@ -704,6 +705,7 @@ export const useExtensionQueue = (workspaceOwnerId?: string | null): QueuedExten
       commit(undefined);
     };
     const onMessage = (e: MessageEvent) => {
+      if (e.source !== window || e.origin !== window.location.origin) return;
       const d: any = e.data;
       if (!d || typeof d !== 'object') return;
       if (d.type !== EXT_QUEUE_MESSAGE && d.type !== EXT_QUEUE_BROADCAST_MESSAGE) return;
@@ -1064,6 +1066,7 @@ export const startLocalPosting = (payload: ExtensionPublishPayload): number => {
 /** Listen for the extension's local posting result. Returns an unsubscribe fn. */
 export const onLocalPostingResult = (cb: (r: LocalPostingResult) => void): (() => void) => {
   const onMessage = (e: MessageEvent) => {
+      if (e.source !== window || e.origin !== window.location.origin) return;
     const d: any = e.data;
     if (!d || typeof d !== "object") return;
     if (d.source !== "realtyz-extension" || d.type !== EXT_POSTING_RESULT_MESSAGE) return;

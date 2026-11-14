@@ -1,3 +1,4 @@
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 // Predictive Lead Score
 //
 // Computes a 0-100 priority score for a single lead based on:
@@ -197,6 +198,10 @@ async function scoreOneLead(admin: any, leadId: string): Promise<{
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service","cron","user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
 
   try {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -205,6 +210,12 @@ Deno.serve(async (req) => {
     const leadId = body.lead_id || url.searchParams.get("lead_id");
     const recomputeAll = body.recompute_all === true;
 
+    if (recomputeAll && __caller.kind === "user") {
+      return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (!recomputeAll && __caller.kind === "user" && !leadId) {
+      return new Response(JSON.stringify({ error: "lead_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     if (recomputeAll) {
       const { data: leads } = await admin
         .from("leads")

@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
     const candidates: string[] = [];
     const push = (v: unknown) => { if (isHttp(v) && !candidates.includes(v.trim())) candidates.push(v.trim()); };
 
-    (Array.isArray(body?.urls) ? body.urls : []).forEach(push);
+    // Only URLs already stored on the record are mirrored; caller-supplied URLs are ignored.
     (Array.isArray(row.media_urls) ? row.media_urls : []).forEach(push);
     (Array.isArray((pr as any).media_urls) ? (pr as any).media_urls : []).forEach(push);
     push(raw?.fullPicture);

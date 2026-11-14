@@ -8,6 +8,7 @@
 //   schedule_followup -> writes a row to autopilot_queue for Twilio/Vapi cron pickup
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { hmacHex, safeEqual } from "../_shared/authz.ts";
 import { sendSms019 } from "../_shared/sms019.ts";
 
 Deno.serve(async (req) => {
@@ -19,6 +20,12 @@ Deno.serve(async (req) => {
 
     const userId = req.headers.get("x-realtyz-user") || "";
     const leadId = req.headers.get("x-realtyz-lead") || null;
+    // Headers are only trusted when signed by vapi-outbound-call.
+    const sig = req.headers.get("x-realtyz-sig") || "";
+    const expected = userId ? await hmacHex(SERVICE_ROLE, `${userId}|${leadId ?? ""}`) : "";
+    if (!userId || !safeEqual(sig, expected)) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const payload = await req.json().catch(() => ({}));
     // Vapi tool-call payload shape: { message: { type: "tool-calls", toolCallList: [{ id, function: { name, arguments } }] } }

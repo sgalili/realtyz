@@ -1,3 +1,4 @@
+import { isServiceCall, userFromRequest, canAccessWorkspace } from "../_shared/authz.ts";
 /**
  * demo-booking-notify
  * ───────────────────
@@ -84,6 +85,9 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    const caller = isServiceCall(req) ? { kind: "service" as const } : await userFromRequest(req);
+    // Looking a booking up by id is reserved for signed-in workspace members.
+    if (body.demo_request_id && !caller) return json({ ok: false, error: "unauthorized" }, 401);
 
     // Resolve the booking: by id, or the newest request for that phone (the
     // public landing form cannot read back its own inserted row).
@@ -99,6 +103,13 @@ Deno.serve(async (req) => {
     const { data: rows, error } = await query.limit(1);
     const row = (rows ?? [])[0];
     if (error || !row) return json({ ok: false, error: "demo request not found" }, 404);
+    if (caller && "userId" in caller && !(await canAccessWorkspace(caller.userId, (row.workspace_owner_id as string | null) ?? RITA_WORKSPACE_OWNER_ID, admin))) {
+      return json({ ok: false, error: "forbidden" }, 403);
+    }
+    // Each booking is notified exactly once (atomic claim) so it can't be replayed.
+    const { data: claimed } = await admin.from("demo_requests").update({ notified_at: new Date().toISOString() })
+      .eq("id", row.id).is("notified_at", null).select("id");
+    if (!claimed?.length) return json({ ok: true, skipped: "already_notified" });
 
     const ownerId = (row.workspace_owner_id as string | null) ?? RITA_WORKSPACE_OWNER_ID;
     const leadName = [row.first_name, row.last_name].filter(Boolean).join(" ").trim() || "שלום";

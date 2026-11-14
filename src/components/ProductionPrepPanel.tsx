@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { safeCell, safeRows } from '@/lib/spreadsheetSafe';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +26,7 @@ function downloadCSV(filename: string, rows: Record<string, unknown>[]) {
   );
   const escape = (v: unknown) => {
     if (v === null || v === undefined) return '';
-    const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+    const s = String(safeCell(typeof v === 'object' ? JSON.stringify(v) : String(v)));
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const csv = [
@@ -93,7 +94,7 @@ export function ProductionPrepPanel() {
         downloadCSV(`realtyz-leads-${stamp}.csv`, rows);
       } else {
         const XLSX = await import('xlsx');
-        const ws = XLSX.utils.json_to_sheet(rows);
+        const ws = XLSX.utils.json_to_sheet(safeRows(rows));
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Leads');
         XLSX.writeFile(wb, `realtyz-leads-${stamp}.xlsx`);

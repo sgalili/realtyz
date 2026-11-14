@@ -97,7 +97,7 @@ async function fetchStream(guid: string, label: string): Promise<any[]> {
     });
     const status = res.status;
     const raw = await res.clone().text();
-    console.log(`[STREAM-RAW-RESPONSE] ${label} status=${status} bytes=${raw.length} preview=${raw.substring(0, 600)}`);
+    console.log(`[STREAM-RAW-RESPONSE] ${label} status=${status} bytes=${raw.length}`);
     if (!res.ok) {
       console.error(`[STREAM-FETCH-ERROR] ${label} status=${status}`);
       return [];
@@ -573,7 +573,7 @@ Deno.serve(async (req) => {
       if (!insErr) imported += 1;
       else {
         failed += 1;
-        console.error("[STREAM-UPSERT-ERROR]", phone, insErr.message);
+        console.error("[STREAM-UPSERT-ERROR]", insErr.message);
         if (errors.length < 10) errors.push({ phone, message: insErr.message, stage: "lead" });
       }
     }

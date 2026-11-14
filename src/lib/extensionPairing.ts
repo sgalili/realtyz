@@ -22,6 +22,7 @@ export const readRunnerStatus = (timeoutMs = 1500): Promise<ExtensionRunnerStatu
   new Promise((resolve) => {
     let done = false;
     const onMessage = (e: MessageEvent) => {
+      if (e.source !== window || e.origin !== window.location.origin) return;
       const d: any = e.data;
       if (!d || d.source !== 'realtyz-extension' || d.type !== 'RZ_EXT_STATUS') return;
       done = true;

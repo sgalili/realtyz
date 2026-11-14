@@ -3139,6 +3139,7 @@ export type Database = {
           last_name: string
           lead_id: string | null
           notes: string | null
+          notified_at: string | null
           phone: string
           preferred_at: string
           source: string
@@ -3154,6 +3155,7 @@ export type Database = {
           last_name: string
           lead_id?: string | null
           notes?: string | null
+          notified_at?: string | null
           phone: string
           preferred_at: string
           source?: string
@@ -3169,6 +3171,7 @@ export type Database = {
           last_name?: string
           lead_id?: string | null
           notes?: string | null
+          notified_at?: string | null
           phone?: string
           preferred_at?: string
           source?: string
@@ -10794,6 +10797,14 @@ export type Database = {
           publisher_name: string
           publisher_user_name: string
           workspace_owner_id: string
+        }[]
+      }
+      get_market_pool_info: {
+        Args: never
+        Returns: {
+          claimed_at: string
+          finished_at: string
+          new_count: number
         }[]
       }
       get_match_stats: { Args: { p_user_id: string }; Returns: Json }

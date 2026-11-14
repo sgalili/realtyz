@@ -111,6 +111,17 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Recipients must be a lead the caller can access (RLS) or the caller's own address.
+    {
+      const addr = String(recipient_email).trim().toLowerCase();
+      const own = String((claims.claims as any).email ?? "").toLowerCase();
+      if (addr !== own) {
+        const { data: match } = await sb.from("leads").select("id").ilike("email", addr.replace(/[%_\\]/g, "")).limit(1);
+        if (!match?.length) {
+          return new Response(JSON.stringify({ error: "ניתן לשלוח רק לליד במרחב העבודה" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+    }
     // One mailbox per workspace: resolve the active workspace owner.
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
     const { data: ownerId } = await sb.rpc("current_workspace_owner");

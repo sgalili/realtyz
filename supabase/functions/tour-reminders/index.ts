@@ -1,3 +1,4 @@
+import { requireCaller } from "../_shared/authz.ts";
 /**
  * tour-reminders
  * ──────────────
@@ -54,6 +55,8 @@ async function sendWhatsApp(payload: Record<string, unknown>) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service","cron"]);
+  if (__caller instanceof Response) return __caller;
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 

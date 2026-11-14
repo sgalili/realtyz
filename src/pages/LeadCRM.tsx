@@ -1,4 +1,5 @@
 import SmartTimelineCard from '@/components/SmartTimelineCard';
+import { safeRows } from '@/lib/spreadsheetSafe';
 import { LeadPublicProfile } from '@/components/leads/LeadPublicProfile';
 import { useLeadProfileAccess } from '@/hooks/useLeadProfileAccess';
 import QuickMessageCard from '@/components/messaging/QuickMessageCard';
@@ -1216,7 +1217,7 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
       'הצביע': v.is_voted ? 'כן' : 'לא', 'ציון מעורבות': v.engagement_score,
     }));
     if (!rows?.length) { toast.error('אין נתונים לייצוא'); return; }
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const ws = XLSX.utils.json_to_sheet(safeRows(rows));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'לידים');
     XLSX.writeFile(wb, `לידים_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);

@@ -1,3 +1,4 @@
+import { requireCaller } from "../_shared/authz.ts";
 // Generates a personalized initial outreach message for the onboarding wizard.
 import { z } from "https://esm.sh/zod@3.25.76";
 
@@ -23,6 +24,8 @@ const electionTypeLabels: Record<z.infer<typeof Body>["election_type"], string> 
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["user","service"]);
+  if (__caller instanceof Response) return __caller;
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

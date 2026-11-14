@@ -31,7 +31,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { messages } = await req.json();
+    const { messages: rawMessages } = await req.json();
+    // Only user/assistant turns from the caller; system instructions stay server-owned.
+    const messages = Array.isArray(rawMessages)
+      ? rawMessages.slice(-40).filter((m: any) => m && typeof m.content === "string").map((m: any) => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: String(m.content).slice(0, 8000),
+        }))
+      : rawMessages;
     if (!Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: "messages required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

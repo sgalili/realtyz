@@ -1,3 +1,4 @@
+import { requireCaller } from "../_shared/authz.ts";
 // process-activity-queue
 // Cron-invoked drip dispatcher for the campaign_activity_queue Time Bank.
 //
@@ -44,6 +45,8 @@ function applyVariation(row: any): { title: string; body: string } {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service","cron"]);
+  if (__caller instanceof Response) return __caller;
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { persistSession: false },

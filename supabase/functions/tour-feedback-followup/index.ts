@@ -1,3 +1,4 @@
+import { requireCaller } from "../_shared/authz.ts";
 /**
  * tour-feedback-followup
  * ──────────────────────
@@ -15,6 +16,8 @@ const SKIP_STATUS = ["cancelled", "canceled", "archived"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service","cron"]);
+  if (__caller instanceof Response) return __caller;
 
   return await runJob(JOB, 240, async (admin) => {
     const now = Date.now();

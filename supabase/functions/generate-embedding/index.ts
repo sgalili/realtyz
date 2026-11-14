@@ -1,3 +1,4 @@
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 // Generate vector embeddings via Lovable AI Gateway (Gemini text-embedding-004 → 768 dims).
 // Modes:
 //  - { listing_id }            → embed listing, store in listings.embedding, return vector
@@ -45,6 +46,10 @@ function buildListingText(l: any): string {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service","cron","user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
 
   try {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -53,6 +58,7 @@ Deno.serve(async (req) => {
 
     // ---- backfill mode ----
     if (body.backfill === true) {
+      if (__caller.kind === "user") return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const limit = Math.min(Number(body.limit) || 50, 200);
       const { data: rows, error } = await sb
         .from("listings")

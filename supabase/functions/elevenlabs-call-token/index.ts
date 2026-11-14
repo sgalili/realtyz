@@ -1,3 +1,4 @@
+import { requireCaller, enforceRequestScope, canAccessWorkspace } from "../_shared/authz.ts";
 // Returns a short-lived WebRTC conversation token for the caller's UI to connect
 // to the agent's ElevenLabs Conversational AI agent.
 //
@@ -20,10 +21,15 @@ const json = (b: unknown, s = 200) =>
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["user","service"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
   try {
     const body = await req.json().catch(() => ({}));
     const agentUserId: string | undefined = body.agent_user_id;
     if (!agentUserId) return json({ error: "agent_user_id required" }, 400);
+    if (__caller.kind === "user" && !(await canAccessWorkspace(__caller.userId, agentUserId))) return json({ error: "forbidden" }, 403);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
     const { data: cfg } = await admin

@@ -77,6 +77,7 @@ export const requestExtensionPostComments = (
       resolve(bundles);
     };
     const onMessage = (event: MessageEvent) => {
+      if (event.source !== window || event.origin !== window.location.origin) return;
       const data: any = event.data;
       if (!data || data.source !== 'realtyz-extension') return;
       if (data.type !== EXT_COMMENTS_MESSAGE) return;
@@ -165,6 +166,7 @@ export const requestExtensionPagePosts = (
     };
 
     const onMessage = (event: MessageEvent) => {
+      if (event.source !== window || event.origin !== window.location.origin) return;
       const data: any = event.data;
       if (event.source !== window || event.origin !== window.location.origin) return;
       if (!data || data.source !== 'realtyz-extension') return;

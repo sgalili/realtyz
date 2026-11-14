@@ -51,6 +51,12 @@ Deno.serve(async (req) => {
     ? body.listing_ids.map(String)
     : null;
 
+  if (__caller.kind === 'user' && !ids) {
+    return new Response(JSON.stringify({ error: 'listing_ids required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  if (ids && ids.length > 200) {
+    return new Response(JSON.stringify({ error: 'too_many_listings' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
   let query = admin
     .from('listings')
     .select('id, address, city, neighborhood, house_number, apartment_number, description, long_description, source, source_url, source_metadata, created_at')

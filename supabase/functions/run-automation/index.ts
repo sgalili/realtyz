@@ -1,3 +1,4 @@
+import { requireCaller } from "../_shared/authz.ts";
 // Run Automation
 //
 // Executes a single queued automation_run by id.
@@ -220,6 +221,8 @@ async function runOne(supabase: ReturnType<typeof createClient>, runId: string) 
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service","cron"]);
+  if (__caller instanceof Response) return __caller;
   try {
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
     const body = await req.json().catch(() => ({}));

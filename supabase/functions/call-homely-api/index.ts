@@ -67,6 +67,10 @@ Deno.serve(async (req) => {
 
     // Build target URL
     const url = new URL(path.startsWith("http") ? path : `${baseUrl}${path}`);
+    // The stored Homely key may only be sent to Homely's own HTTPS hosts.
+    if (url.protocol !== "https:" || !/(^|\.)homely\.(com|co\.il)$/i.test(url.hostname)) {
+      return new Response(JSON.stringify({ error: "invalid_homely_host" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     Object.entries(query).forEach(([k, v]) => url.searchParams.set(k, String(v)));
 
     // Proxy the request to Homely

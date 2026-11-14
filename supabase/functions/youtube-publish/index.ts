@@ -1,3 +1,4 @@
+import { canAccessWorkspace } from "../_shared/authz.ts";
 // supabase/functions/youtube-publish/index.ts
 //
 // Dedicated YouTube publishing route. YouTube NEVER goes through the Meta /
@@ -245,7 +246,8 @@ Deno.serve(async (req) => {
     }
 
     const watchUrl = `https://www.youtube.com/watch?v=${result.id}`;
-    const owner = body.workspace_owner_id || userId;
+    const requestedOwner = body.workspace_owner_id || userId;
+    const owner = (await canAccessWorkspace(userId, requestedOwner, admin)) ? requestedOwner : userId;
     try {
       await admin.from('campaign_logs').insert({
         user_id: owner,

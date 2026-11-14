@@ -1,3 +1,4 @@
+import { requireCaller, isSuperAdmin, denied } from "../_shared/authz.ts";
 // supabase/functions/monitor-social-connections/index.ts
 //
 // Runs once a day (via pg_cron) and probes every connected social account
@@ -72,6 +73,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+  const __caller = await requireCaller(req, ["service","cron","user"]);
+  if (__caller instanceof Response) return __caller;
+  if (__caller.kind === "user" && !(await isSuperAdmin(__caller.userId))) return denied(403);
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

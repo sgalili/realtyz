@@ -1086,7 +1086,7 @@ async function handleLeadInboxInbound(
 
   // Without any lead row we cannot run autopilot (ai-agent + send require lead_id).
   if (!lead?.id) {
-    console.warn("whatsapp-webhook stored inbound without lead row", { senderPhone, messageId });
+    console.warn("whatsapp-webhook stored inbound without lead row", { messageId });
     return { ok: true, stored: true, lead_id: null, auto_reply: "no_lead_row" };
   }
 
@@ -1731,7 +1731,7 @@ Deno.serve(async (req) => {
     const parsed = await parseWebhookPayload(req);
     payload = parsed.payload;
     rawBody = parsed.rawBody;
-    console.log("Webhook hit raw body text:", previewRawBody(rawBody));
+    console.log("Webhook hit", { bytes: rawBody.length });
   } catch (e) {
     console.warn("whatsapp-webhook body parse threw:", e instanceof Error ? e.message : e);
     rawBody = "";
@@ -1739,7 +1739,7 @@ Deno.serve(async (req) => {
   if (!payload) {
     // Could not parse the body at all — ack with 200 but do NOT insert
     // garbage rows. Only the typed inbound branch ever writes to messages.
-    console.warn("whatsapp-webhook: unparseable payload, raw preview:", previewRawBody(rawBody));
+    console.warn("whatsapp-webhook: unparseable payload", { bytes: rawBody.length });
     return jsonResponse({ ok: true, ignored: "unparseable_payload" }, 200);
   }
 
@@ -1932,7 +1932,7 @@ Deno.serve(async (req) => {
     const LEAD_INQUIRY_ANCHOR = "אני פונה אליך לגבי הדירה";
     const normalizedInbound = (msg.text || "").trim();
     if (propertyIdsFromText(normalizedInbound).length || normalizedInbound.includes(LEAD_INQUIRY_ANCHOR)) {
-      console.log(`[LEAD ANCHOR] Customer inquiry detected from ${senderPhone} → lead pipeline`);
+      console.log(`[LEAD ANCHOR] Customer inquiry detected from [redacted] → lead pipeline`);
       try {
         const result = await handleLeadInboxInbound(
           admin,
@@ -1984,7 +1984,7 @@ Deno.serve(async (req) => {
       const recruitmentThread =
         replyToOutreach || (await isRecruitmentThread(admin as any, senderPhone));
       if (recruitmentThread) {
-        console.log(`[RECRUITMENT ANCHOR] agent reply from ${senderPhone} → Rita recruitment pipeline`);
+        console.log(`[RECRUITMENT ANCHOR] agent reply from [redacted] → Rita recruitment pipeline`);
         const result = await handleLeadInboxInbound(
           admin,
           SUPABASE_URL,
@@ -2032,9 +2032,9 @@ Deno.serve(async (req) => {
     }
 
     if (!ownerUserId) {
-      console.log(`[ADMIN FLOW] No owner match for ${senderPhone} → falling through to lead pipeline`);
+      console.log(`[ADMIN FLOW] No owner match for [redacted] → falling through to lead pipeline`);
     } else {
-      console.log(`[ADMIN FLOW] Owner identified: ${ownerLabel ?? ownerUserId} (phone=${senderPhone})`);
+      console.log(`[ADMIN FLOW] Owner identified: ${ownerLabel ?? ownerUserId}`);
       await persistCompanionBubble(admin, {
         phone: senderPhone,
         ownerUserId,
@@ -2288,14 +2288,14 @@ Deno.serve(async (req) => {
     } else if (msg.kind === "audio") {
       // Guard: MIME allow-list.
       if (!isSupportedMime(msg.mimeType, "audio")) {
-        console.warn("whatsapp-webhook ignored unsupported audio", { senderPhone, messageId, mime: msg.mimeType });
+        console.warn("whatsapp-webhook ignored unsupported audio", { messageId, mime: msg.mimeType });
         return jsonResponse({ ok: true, ignored: "unsupported_audio_mime", mime: msg.mimeType }, 200);
       }
       // Download → store private copy → transcribe → ingest text only.
       const { bytes, contentType } = await fetchBinary(msg.downloadUrl);
       // Guard: size cap (20MB).
       if (bytes.byteLength > MAX_FILE_BYTES) {
-        console.warn("whatsapp-webhook ignored oversized audio", { senderPhone, messageId, bytes: bytes.byteLength });
+        console.warn("whatsapp-webhook ignored oversized audio", { messageId, bytes: bytes.byteLength });
         return jsonResponse({ ok: true, ignored: "audio_too_large", bytes: bytes.byteLength }, 200);
       }
       const ext = (msg.fileName?.match(/\.(\w+)$/i)?.[1] ?? "ogg").toLowerCase();
@@ -2343,13 +2343,13 @@ Deno.serve(async (req) => {
       // media (image / video / document) — store privately, extract text via kb-ingest.
       // Guard: MIME allow-list per media kind.
       if (!isSupportedMime(msg.mimeType, msg.mediaKind)) {
-        console.warn("whatsapp-webhook ignored unsupported media", { senderPhone, messageId, mime: msg.mimeType, kind: msg.mediaKind });
+        console.warn("whatsapp-webhook ignored unsupported media", { messageId, mime: msg.mimeType, kind: msg.mediaKind });
         return jsonResponse({ ok: true, ignored: "unsupported_media_mime", mime: msg.mimeType, kind: msg.mediaKind }, 200);
       }
       const { bytes, contentType } = await fetchBinary(msg.downloadUrl);
       // Guard: size cap (20MB).
       if (bytes.byteLength > MAX_FILE_BYTES) {
-        console.warn("whatsapp-webhook ignored oversized media", { senderPhone, messageId, bytes: bytes.byteLength });
+        console.warn("whatsapp-webhook ignored oversized media", { messageId, bytes: bytes.byteLength });
         return jsonResponse({ ok: true, ignored: "media_too_large", bytes: bytes.byteLength }, 200);
       }
       const safeName = (msg.fileName ?? "attachment").replace(/[^\w.\-]+/g, "_");

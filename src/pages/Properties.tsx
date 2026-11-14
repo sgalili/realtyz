@@ -280,12 +280,7 @@ export default function Properties() {
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const { data } = await supabase
-        .from('market_scrape_runs')
-        .select('finished_at, claimed_at, new_count, shared_count')
-        .eq('status', 'success')
-        .order('claimed_at', { ascending: false })
-        .limit(1);
+      const { data } = await supabase.rpc('get_market_pool_info');
       const row = (data ?? [])[0] as { finished_at: string | null; claimed_at: string; new_count: number } | undefined;
       if (alive && row) setPoolInfo({ last: row.finished_at ?? row.claimed_at, count: row.new_count ?? 0 });
     })();

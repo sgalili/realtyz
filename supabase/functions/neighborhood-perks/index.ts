@@ -1,3 +1,4 @@
+import { isServiceCall, userFromRequest } from "../_shared/authz.ts";
 // neighborhood-perks
 // Enriches a listing with 4-6 short Hebrew bullets describing nearby-area
 // perks (schools, parks, transit, beach, cafes, gyms, etc.) so the AI can
@@ -138,6 +139,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Only signed-in owners/members (or internal services) may run paid enrichment;
+    // everyone else only receives already-cached results.
+    if (!isServiceCall(req) && !(await userFromRequest(req))) viaPublic = true;
+    if (viaPublic && !isFresh((listing as any).area_perks)) {
+      return new Response(JSON.stringify({ ok: false, cached: false, error: "not_available" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if ((!force || viaPublic) && isFresh((listing as any).area_perks)) {
       return new Response(JSON.stringify({ ok: true, cached: true, area_perks: (listing as any).area_perks }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

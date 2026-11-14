@@ -1,3 +1,4 @@
+import { isServiceCall, isCronCall } from "./authz.ts";
 // Shared helpers for direct Meta Graph API access with a workspace Page token.
 //
 // The Page access token is stored server-side in public.messenger_page_bindings
@@ -275,7 +276,8 @@ export async function resolveTenant(
       .maybeSingle();
     ownerId = String((profile as any)?.active_workspace_owner_id || callerId);
   }
-  if (!callerId && typeof body?.user_id === "string") ownerId = body.user_id;
+  // A body-supplied workspace is only trusted for internal service/cron callers.
+  if (!callerId && typeof body?.user_id === "string" && (isServiceCall(req) || await isCronCall(req))) ownerId = body.user_id;
   else if (callerId && typeof body?.user_id === "string" && body.user_id !== callerId) {
     const { data: member } = await db
       .from("workspace_memberships")
