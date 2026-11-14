@@ -56,6 +56,7 @@ import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIco
 import { useAccountIdentity } from '@/hooks/useAccountIdentity';
 import { SidebarRitaChat } from '@/components/sidebar/SidebarRitaChat';
 import { AccessibilityMenu } from '@/components/accessibility/AccessibilityMenu';
+import { Accessibility } from 'lucide-react';
 import { usePersonalLanguage } from '@/i18n/personalLanguage';
 import { Megaphone as MyAdsIcon } from 'lucide-react';
 
@@ -440,8 +441,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
 
       </SidebarContent>
       {!collapsed && <SidebarFooter className="shrink-0 gap-0 border-t border-border bg-background p-0 shadow-none">
+        <div className="relative h-12"><AccessibilityMenu trigger={<Button variant="outline" size="icon" className="absolute -right-3 top-1 h-11 w-11 rounded-full border-primary bg-background text-primary shadow-sm" aria-label="פתיחת תפריט נגישות"><Accessibility className="h-6 w-6" /></Button>} /></div>
         {user && <SidebarRitaChat />}
-        <AccessibilityMenu />
       </SidebarFooter>}
     </Sidebar>
   );

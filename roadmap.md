@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Anonymous visitor navigation November 14
-- [ ] Align visitor header controls and add ordered burger navigation, explanation and canonical legal links.
-- [ ] Add public-only Rita conversation and menu-only peeking accessibility trigger; verify mobile/desktop navigation and safeguards.
+- [x] Aligned visitor controls under the header; ordered burger navigation opens signup, FAQ, four-slide explanation and canonical legal links.
+- [x] Added isolated public-only Rita with one browser-saved conversation and menu-only peeking accessibility trigger. Three boundary tests and eight regression tests passed; anonymous live reply, private-data refusal, reload history, mobile/desktop explanation return and accessibility verified.
 
 ## Continuous developer import November 14
 - [x] Added serialized automatic continuation to both import screens; authorized developer continuation shares server workspace/payment checks, leases and retry deadlines. Active developer jobs cannot be replaced from the frontend.

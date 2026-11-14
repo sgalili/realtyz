@@ -114,6 +114,7 @@ const PartnerChats = lazy(() => import("./pages/partner/PartnerChats"));
 const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
 const PublicListingsBoard = lazy(() => import("./pages/PublicListingsBoard"));
+const AboutToraff = lazy(() => import('./pages/AboutToraff'));
 const Developers = lazy(() => import("./pages/Developers"));
 const Wallet = lazy(() => import("./pages/Wallet"));
 const DeveloperDashboard = lazy(() => import("./pages/DeveloperDashboard"));
@@ -510,6 +511,7 @@ const App = () => (
               <Route path="/" element={<RootRoute />} />
               <Route path="/index" element={<Navigate to="/" replace />} />
               <Route path="/landing" element={<Suspense fallback={<PageLoader />}><Landing /></Suspense>} />
+              <Route path="/about-toraff" element={<Suspense fallback={<PageLoader />}><AboutToraff /></Suspense>} />
               <Route path="/terms" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
               <Route path="/commission-mechanism" element={<Suspense fallback={<PageLoader />}><CommissionMechanism /></Suspense>} />
               <Route path="/privacy-policy" element={<Suspense fallback={<PageLoader />}><PrivacyPolicy /></Suspense>} />

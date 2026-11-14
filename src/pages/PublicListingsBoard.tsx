@@ -51,6 +51,7 @@ import { visibleToListingAudience } from '@/lib/listingAudience';
 import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { selectedMarketingCards } from '@/lib/marketingSelection';
 import { InventoryCollectionBanner, InventoryToolSoftLock } from '@/components/InventoryCollection';
+import { VisitorMenu } from '@/components/public/VisitorMenu';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
@@ -338,15 +339,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
               <h1 className="sr-only">לוח שיווק שותפים</h1>
               <div className="flex items-center justify-start">
-                <div className="relative shrink-0">
-                  <Button variant="ghost" size="icon" className="board-header-icon-btn !h-[44px] !w-[44px] shrink-0" aria-label="חיפוש" onClick={() => setSearchOpen(v => !v)}><Search className="!h-[20px] !w-[20px]" strokeWidth={1.75} /></Button>
-                  {searchOpen ? (
-                    <button type="button" aria-label="סגירת החיפוש" onClick={() => setSearchOpen(false)} className="absolute -top-1 -right-1 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
-                      <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-                    </button>
-                  ) : appliedFilterCount > 0 ? <span aria-label={`${appliedFilterCount} סינונים פעילים`} className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">{appliedFilterCount}</span> : null}
-                </div>
-                <Button variant="ghost" size="icon" className="board-header-icon-btn !h-[44px] !w-[44px] shrink-0" onClick={toggleGrid} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="!h-[18px] !w-[18px]" /> : <LayoutGrid className="!h-[18px] !w-[18px]" />}</Button>
+                <VisitorMenu onSignup={() => navigate('/auth')} />
               </div>
               <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAFF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">
@@ -360,7 +353,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
               The search panel grows below it,
               so this row never moves when the panel opens. */}
           <InventoryCollectionBanner />
-          {embedded && (
+          {(
             <div className="flex shrink-0 items-center justify-between gap-0" style={{ marginInlineEnd: '-5px' }}>
               {marketingOnly && <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <SelectModeToggle active={selectMode} count={chosen.length} total={filtered.length} onToggle={() => { setSelectMode(value => !value); setSelected(new Set()); }} />
