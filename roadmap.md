@@ -1,5 +1,10 @@
 # Roadmap
 
+## Horizontal table overflow fades November 14
+- [x] Added semantic, pointer-transparent start/end fades to shared table scrollers only while more columns exist in that direction; 20px mobile and 36px desktop edges use the surrounding background.
+- [x] Covered native tables and page-owned user-table scrolling without adding a scrollbar or changing expanded fixed panels, sticky headings or clicks.
+- [x] Seven focused tests and typecheck passed. Authenticated RTL property tables on mobile/desktop and the page-owned user table verified at start/middle/end with correct one/two-sided fades and no page errors.
+
 ## Autonomous developer scraping November 14
 - [x] Removed developer-job Continue/cooldown-reset breakpoints and added automatic retry countdowns; broker controls remain unchanged.
 - [x] Developer page/project/unit checkpoints chain unattended; one-off delayed wake-ups retry transient failures and full 429 backoffs without tight loops. Permanent configuration/identity errors fail visibly instead of pretending completion.

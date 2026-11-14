@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
+import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 
 const PAGE = 30;
 const fmt = (d: string) => new Date(d).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
@@ -31,8 +32,8 @@ export default function LeadsHistory() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">סה״כ {data.total} לידים</p>
-      <div className="overflow-auto rounded-xl border border-border">
-        <table className="w-full text-sm">
+      <HorizontalTableScroll className="rounded-xl border border-border">
+        <table className="w-full min-w-max text-sm">
           <thead className="sticky top-0 bg-muted text-muted-foreground">
             <tr>{['זמן', 'שם', 'עיר', 'סוג עסקה', 'סטטוס'].map((h) => <th key={h} className="px-3 py-2 text-right font-semibold">{h}</th>)}</tr>
           </thead>
@@ -48,7 +49,7 @@ export default function LeadsHistory() {
             ))}
           </tbody>
         </table>
-      </div>
+      </HorizontalTableScroll>
       {data.total > PAGE && (
         <div className="flex items-center justify-between">
           <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>הקודם</Button>

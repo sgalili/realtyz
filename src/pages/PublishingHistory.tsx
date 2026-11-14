@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import LeadsHistory from '@/components/campaigns/LeadsHistory';
 import DailyPostingLimitNotice, { useFbPostingCapacity } from '@/components/campaigns/DailyPostingLimitNotice';
+import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 
 type Row = {
   id: string; created_at: string; scheduled_for: string | null; completed_at: string | null; activity_type: string;
@@ -62,8 +63,8 @@ export default function PublishingHistory() {
       ) : !data?.length ? (
         <p className="py-10 text-center text-muted-foreground">עדיין אין פעילות פרסום.</p>
       ) : (
-        <div className="overflow-auto rounded-xl border border-border">
-          <table className="w-full text-sm">
+        <HorizontalTableScroll className="rounded-xl border border-border">
+          <table className="w-full min-w-max text-sm">
             <thead className="sticky top-0 bg-muted text-muted-foreground">
               <tr>{['זמן', 'קבוצה / יעד', 'דף עסקי', 'סטטוס', 'תגובות', 'הערה'].map((h) => <th key={h} className="px-3 py-2 text-right font-semibold">{h}</th>)}</tr>
             </thead>
@@ -80,7 +81,7 @@ export default function PublishingHistory() {
               ))}
             </tbody>
           </table>
-        </div>
+        </HorizontalTableScroll>
       )}
       {total > PAGE && (
         <div className="flex items-center justify-between">

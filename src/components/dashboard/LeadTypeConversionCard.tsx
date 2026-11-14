@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
+import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 
 const ROWS = {
   form: { label: 'פנייה דרך טופס בעמוד נחיתה', Icon: ClipboardList, tone: 'text-lead-form' },
@@ -27,13 +28,13 @@ export function LeadTypeConversionCard({ days }: { days: number }) {
   return <Card dir="rtl">
     <CardHeader><CardTitle className="text-base">אילו סוגי פניות סוגרים עסקאות</CardTitle></CardHeader>
     <CardContent>
-      {isLoading ? <p className="text-sm text-muted-foreground">טוען...</p> : <table className="w-full text-sm">
+      {isLoading ? <p className="text-sm text-muted-foreground">טוען...</p> : <HorizontalTableScroll><table className="w-full min-w-max text-sm">
         <thead><tr className="text-muted-foreground"><th className="text-start font-normal">סוג פנייה</th><th className="font-normal">לחיצות</th><th className="font-normal">לידים</th><th className="font-normal">עסקאות</th><th className="font-normal">המרה</th></tr></thead>
         <tbody>{data?.map(r => { const row = ROWS[r.lead_type as keyof typeof ROWS]; if (!row) return null; const { Icon } = row; return <tr key={r.lead_type} className="border-t">
           <td className="py-2"><span className={`inline-flex items-center gap-2 ${row.tone}`}><Icon className="h-4 w-4 shrink-0" /><span className="text-foreground">{row.label}</span></span></td>
           <td className="text-center">{Number(r.clicks)}</td><td className="text-center">{Number(r.leads)}</td><td className="text-center font-semibold">{Number(r.closed)}</td><td className="text-center">{pct(Number(r.closed), Number(r.leads))}</td>
         </tr>; })}</tbody>
-      </table>}
+      </table></HorizontalTableScroll>}
     </CardContent>
   </Card>;
 }

@@ -2060,12 +2060,32 @@ button.publication-limit-link:focus-visible {
 
 /* A table owns both axes; nested horizontal wrappers must not trap vertical gestures. */
 .app-table-scroll {
+  --table-fade-width: 20px;
   max-height: 70dvh;
   overflow: auto;
   touch-action: pan-x pan-y pinch-zoom;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: var(--table-overflow-mask, none);
+  mask-image: var(--table-overflow-mask, none);
 }
+.app-table-scroll[data-overflow-start="true"][data-overflow-end="true"] { --table-overflow-mask: linear-gradient(to right, transparent 0, black var(--table-fade-width), black calc(100% - var(--table-fade-width)), transparent 100%); }
+.app-table-scroll[data-overflow-start="true"]:not([data-overflow-end="true"])[data-table-direction="ltr"] { --table-overflow-mask: linear-gradient(to right, transparent 0, black var(--table-fade-width)); }
+.app-table-scroll[data-overflow-start="true"]:not([data-overflow-end="true"])[data-table-direction="rtl"] { --table-overflow-mask: linear-gradient(to left, transparent 0, black var(--table-fade-width)); }
+.app-table-scroll[data-overflow-end="true"]:not([data-overflow-start="true"])[data-table-direction="ltr"] { --table-overflow-mask: linear-gradient(to left, transparent 0, black var(--table-fade-width)); }
+.app-table-scroll[data-overflow-end="true"]:not([data-overflow-start="true"])[data-table-direction="rtl"] { --table-overflow-mask: linear-gradient(to right, transparent 0, black var(--table-fade-width)); }
+.table-page-fade {
+  position: fixed;
+  z-index: 25;
+  width: var(--table-fade-width, 20px);
+  pointer-events: none;
+}
+.table-page-fade[data-edge="left"] { background: linear-gradient(to right, hsl(var(--background) / .96), hsl(var(--background) / 0)); }
+.table-page-fade[data-edge="right"] { background: linear-gradient(to left, hsl(var(--background) / .96), hsl(var(--background) / 0)); }
+@media (min-width: 768px) {
+  .app-table-scroll, .table-page-fade { --table-fade-width: 36px; }
+}
+@media print { .table-page-fade { display: none; } }
 /* User management is one page scroller, never a height-bounded nested table. */
 .realtyz-main-surface:has(.admin-users-page) { overflow: auto; }
 .admin-users-page table { border-collapse: separate; border-spacing: 0; }

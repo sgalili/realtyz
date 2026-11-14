@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from './button';
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { HorizontalTableScroll } from "./horizontal-table-scroll";
+import { HorizontalTableScroll, PageTableOverflowFade } from "./horizontal-table-scroll";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuSeparator, DropdownMenuItem } from "./dropdown-menu";
 
 /* ------------------------------------------------------------------ *
@@ -256,7 +256,7 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
             </DropdownMenu>
           </div>
         )}
-        {scrollMode === 'page' ? managedTable : <HorizontalTableScroll>{managedTable}</HorizontalTableScroll>}
+        {scrollMode === 'page' ? <PageTableOverflowFade>{managedTable}</PageTableOverflowFade> : <HorizontalTableScroll>{managedTable}</HorizontalTableScroll>}
       </div>
     );
   },

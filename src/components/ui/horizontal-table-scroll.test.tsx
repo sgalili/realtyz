@@ -1,8 +1,34 @@
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FixedTablePanel, HorizontalTableScroll } from './horizontal-table-scroll';
+import { tableOverflowState } from '@/lib/tableOverflow';
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+describe('horizontal overflow fades', () => {
+  it('marks only the reachable off-screen edges without adding another scroll owner', () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    const { container } = render(<HorizontalTableScroll dir="rtl" style={{ direction: 'rtl' }}><table><tbody><tr><td>Summary</td></tr></tbody></table></HorizontalTableScroll>);
+    const owner = container.querySelector<HTMLDivElement>('[data-table-scroll]');
+    if (!owner) throw new Error('Missing scroll owner');
+    Object.defineProperties(owner, { scrollWidth: { value: 1000 }, clientWidth: { value: 400 } });
+    fireEvent.scroll(owner);
+    expect(owner.dataset.overflowStart).toBe('false');
+    expect(owner.dataset.overflowEnd).toBe('true');
+    Object.defineProperty(owner, 'scrollLeft', { value: -300, writable: true, configurable: true });
+    fireEvent.scroll(owner);
+    expect(owner.dataset.overflowStart).toBe('true');
+    expect(owner.dataset.overflowEnd).toBe('true');
+    owner.scrollLeft = -600;
+    fireEvent.scroll(owner);
+    expect(owner.dataset.overflowStart).toBe('true');
+    expect(owner.dataset.overflowEnd).toBe('false');
+    expect(container.querySelectorAll('[data-table-scroll]')).toHaveLength(1);
+  });
+  it('uses the same edge calculation for page-owned tables', () => {
+    expect(tableOverflowState({ scrollLeft: -200, scrollWidth: 900, clientWidth: 400, rtl: true })).toMatchObject({ start: true, end: true });
+  });
+});
+
 describe('independent expanded listing scrolling', () => {
   it('lets a new summary gesture scroll immediately after touching expanded details', () => {
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });

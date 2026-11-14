@@ -1,6 +1,8 @@
-import { createContext, forwardRef, useContext, useEffect, useRef, type HTMLAttributes } from 'react';
+import { createContext, forwardRef, useContext, useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { tableWheelPosition } from '@/lib/tableWheel';
+import { tableOverflowState } from '@/lib/tableOverflow';
 
 const TableScrollOwner = createContext(false);
 
@@ -14,10 +16,17 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
       if (!element) return;
       const updatePanels = () => {
         element.style.setProperty('--table-viewport-width', `${element.clientWidth}px`);
+        const rtl = getComputedStyle(element).direction === 'rtl';
+        const overflow = tableOverflowState({ scrollLeft: element.scrollLeft, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, rtl });
+        element.dataset.tableDirection = rtl ? 'rtl' : 'ltr';
+        element.dataset.overflowStart = String(overflow.start);
+        element.dataset.overflowEnd = String(overflow.end);
       };
       updatePanels();
       const resize = new ResizeObserver(updatePanels);
       resize.observe(element);
+      const table = element.querySelector('table');
+      if (table) resize.observe(table);
       const wheel = (event: WheelEvent) => {
         if (event.ctrlKey || event.defaultPrevented) return;
         // Preserve native scrolling in independently scrollable expanded content.
@@ -96,6 +105,40 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
   },
 );
 HorizontalTableScroll.displayName = 'HorizontalTableScroll';
+
+type PageFade = { left: number; right: number; top: number; height: number; start: boolean; end: boolean; rtl: boolean };
+
+/** Viewport-anchored fades for tables whose page, not the table, owns scrolling. */
+export function PageTableOverflowFade({ children }: { children: ReactNode }) {
+  const host = useRef<HTMLDivElement>(null);
+  const [fade, setFade] = useState<PageFade | null>(null);
+  useEffect(() => {
+    const table = host.current?.querySelector('table');
+    const owner = table?.closest('.realtyz-main-surface') as HTMLElement | null ?? document.scrollingElement as HTMLElement | null;
+    if (!table || !owner) return;
+    const update = () => {
+      const tableRect = table.getBoundingClientRect();
+      const pageOwner = owner === document.scrollingElement;
+      const ownerRect = pageOwner ? { left: 0, right: window.innerWidth, top: 0, bottom: window.innerHeight } : owner.getBoundingClientRect();
+      const top = Math.max(tableRect.top, ownerRect.top);
+      const bottom = Math.min(tableRect.bottom, ownerRect.bottom);
+      const rtl = getComputedStyle(table).direction === 'rtl';
+      const overflow = tableOverflowState({ scrollLeft: owner.scrollLeft, scrollWidth: owner.scrollWidth, clientWidth: owner.clientWidth, rtl });
+      if (bottom <= top || overflow.max <= 1 || (!overflow.start && !overflow.end)) { setFade(null); return; }
+      setFade({ left: ownerRect.left, right: ownerRect.right, top, height: bottom - top, start: overflow.start, end: overflow.end, rtl });
+    };
+    update();
+    const resize = new ResizeObserver(update);
+    resize.observe(table); resize.observe(owner);
+    owner.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => { resize.disconnect(); owner.removeEventListener('scroll', update); window.removeEventListener('resize', update); };
+  }, []);
+  return <div ref={host} className="contents">{children}{fade && createPortal(<>
+    {fade.start && <div aria-hidden="true" data-table-page-fade data-edge={fade.rtl ? 'right' : 'left'} className="table-page-fade" style={{ top: fade.top, height: fade.height, ...(fade.rtl ? { left: fade.right, transform: 'translateX(-100%)' } : { left: fade.left }) }} />}
+    {fade.end && <div aria-hidden="true" data-table-page-fade data-edge={fade.rtl ? 'left' : 'right'} className="table-page-fade" style={{ top: fade.top, height: fade.height, ...(fade.rtl ? { left: fade.left } : { left: fade.right, transform: 'translateX(-100%)' }) }} />}
+  </>, document.body)}</div>;
+}
 
 /** Native sticky positioning anchors bodies in the same paint as table scrolling. */
 export function FixedTablePanel({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
