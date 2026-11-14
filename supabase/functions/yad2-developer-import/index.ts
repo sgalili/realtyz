@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.45.0';
 import { mergeProject, readPage } from './extract.ts';
 import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
-import { DEVELOPER_CACHE_SECONDS, MAX_DEVELOPER_PAGES, uniqueScrapingUrls } from '../_shared/scrapingPolicy.ts';
+import { DEVELOPER_CACHE_SECONDS, uniqueScrapingUrls } from '../_shared/scrapingPolicy.ts';
 import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
@@ -26,6 +26,9 @@ Deno.serve(async req => {
     if (!user) return json({ error: 'not_authenticated', message: 'יש להתחבר מחדש' }, 401);
     const { data: roles, error: roleError } = await client.from('user_roles').select('role').eq('user_id', user.id);
     if (roleError || !roles?.some(r => r.role === 'developer' || r.role === 'super_admin')) return json({ error: 'forbidden', message: 'הייבוא זמין בחשבון יזם' }, 403);
+    const { data: subscription, error: subscriptionError } = await client.rpc('get_developer_subscription_status');
+    if (subscriptionError) return json({ error: 'subscription_status_unavailable', message: 'לא ניתן לאמת את מנוי היזם כרגע' }, 503);
+    if (!(subscription as { active?: boolean } | null)?.active) return json({ error: 'developer_subscription_required', message: 'ייבוא פרויקטים זמין לאחר אישור תשלום מנוי היזמים' }, 402);
   }
   let pageUrl: URL;
   try {
@@ -65,7 +68,6 @@ Deno.serve(async req => {
     const visited = new Set<string>([pageUrl.href]);
     const pending = uniqueScrapingUrls(first.links);
     for (let i = 0; i < pending.length; i++) {
-      if (visited.size >= MAX_DEVELOPER_PAGES) { pending.slice(i).forEach(url => { failed.push(url); failReasons[url] = 'batch_limit'; }); break; }
       const url = pending[i].split('?')[0];
       if (Date.now() >= deadline - 1500) { pending.slice(i).filter(item => !visited.has(item)).forEach(item => { failed.push(item); failReasons[item] = 'import_deadline'; }); break; }
       if (i > 0) await new Promise(r => setTimeout(r, 1500));

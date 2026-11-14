@@ -4482,6 +4482,7 @@ export type Database = {
       grow_payment_orders: {
         Row: {
           amount_ils: number
+          base_amount_ils: number | null
           benefits: string
           card_mandate: boolean
           created_at: string
@@ -4493,11 +4494,14 @@ export type Database = {
           paid_at: string | null
           payment_method: string | null
           payment_url: string | null
+          plan_code: string | null
           purpose: string
           status: string
+          terms_accepted_at: string | null
           title: string
           transaction_id: string | null
           user_id: string
+          vat_amount_ils: number | null
           wallet_bonus_ils: number
           wallet_bonus_percent: number
           wallet_credit_rate: number | null
@@ -4505,6 +4509,7 @@ export type Database = {
         }
         Insert: {
           amount_ils?: number
+          base_amount_ils?: number | null
           benefits: string
           card_mandate?: boolean
           created_at?: string
@@ -4516,11 +4521,14 @@ export type Database = {
           paid_at?: string | null
           payment_method?: string | null
           payment_url?: string | null
+          plan_code?: string | null
           purpose?: string
           status?: string
+          terms_accepted_at?: string | null
           title: string
           transaction_id?: string | null
           user_id: string
+          vat_amount_ils?: number | null
           wallet_bonus_ils?: number
           wallet_bonus_percent?: number
           wallet_credit_rate?: number | null
@@ -4528,6 +4536,7 @@ export type Database = {
         }
         Update: {
           amount_ils?: number
+          base_amount_ils?: number | null
           benefits?: string
           card_mandate?: boolean
           created_at?: string
@@ -4539,11 +4548,14 @@ export type Database = {
           paid_at?: string | null
           payment_method?: string | null
           payment_url?: string | null
+          plan_code?: string | null
           purpose?: string
           status?: string
+          terms_accepted_at?: string | null
           title?: string
           transaction_id?: string | null
           user_id?: string
+          vat_amount_ils?: number | null
           wallet_bonus_ils?: number
           wallet_bonus_percent?: number
           wallet_credit_rate?: number | null
@@ -4646,25 +4658,31 @@ export type Database = {
           benefits: string
           expires_at: string
           order_id: string
+          plan_code: string | null
           starts_at: string
           title: string
           user_id: string
+          workspace_owner_id: string | null
         }
         Insert: {
           benefits: string
           expires_at: string
           order_id: string
+          plan_code?: string | null
           starts_at: string
           title: string
           user_id: string
+          workspace_owner_id?: string | null
         }
         Update: {
           benefits?: string
           expires_at?: string
           order_id?: string
+          plan_code?: string | null
           starts_at?: string
           title?: string
           user_id?: string
+          workspace_owner_id?: string | null
         }
         Relationships: [
           {
@@ -10347,6 +10365,10 @@ export type Database = {
         Args: { _deal: string; _fees: Json; _price: number }
         Returns: boolean
       }
+      developer_subscription_active: {
+        Args: { _workspace: string }
+        Returns: boolean
+      }
       dispatch_automation_run: { Args: { _run_id: string }; Returns: undefined }
       dispatch_smart_notification: {
         Args: {
@@ -10737,6 +10759,7 @@ export type Database = {
         Returns: Json
       }
       get_credits_per_ils: { Args: never; Returns: number }
+      get_developer_subscription_status: { Args: never; Returns: Json }
       get_dispute_evidence: { Args: { _id: string }; Returns: Json }
       get_effective_meta_page:
         | {

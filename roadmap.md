@@ -1,5 +1,12 @@
 # Roadmap
 
+## Developer paid subscription November 14
+- [x] Developer selection in free posting opens the monthly ₪9,500+VAT plan, diagonal grey ₪13,000 strikethrough, benefits and mandatory terms consent; guest return reopens it on the global homepage.
+- [x] Self-workspace Grow/Make orders snapshot ₪9,500 + ₪1,710 VAT = ₪11,210 and server-timestamped terms. Only independently verified live completion grants the developer role and 30-day workspace entitlement; sandbox/redirects grant nothing.
+- [x] Dashboard, project/company writes, publishing and Yad2 imports enforce active entitlement. Removed the fixed 20-page import cap; source failures remain visible and wallet credits stay separate.
+- [x] Thirty-seven focused tests pass, both workers deployed, typecheck/build clean. Guest and authenticated desktop/mobile plan, auth handoff, disabled unconfigured checkout, unpaid lock and simulated active importer verified without page errors; no payment or source import performed.
+- [ ] Real checkout, all five method completions, verified notification unlock and full live multi-page import require the live Grow/Make scenario, capabilities and secrets. Current gateway is sandbox with no declared usable methods; no live activation claimed.
+
 ## Grow-only settings and agency profiles November 14
 - [x] Removed Z-Credit admin/customer card setup and dormant deployed endpoints, leaving Grow as the only payment configuration; historical payment records remain untouched.
 - [x] Import Yad2 agency descriptions separately from personal bios, save only into empty office fields and expose an authorized exact-office/city description fallback. Both import workers deployed; no paid scan or source text invented.

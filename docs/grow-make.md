@@ -34,6 +34,12 @@ Live completion atomically enqueues a transaction SMS in service-only `payment_s
 
 ## Subscription and acceptance checks
 
+### Developer monthly plan
+
+`developer_offer` returns the fixed developer product and currently declared methods. `developer_create` requires `terms_accepted: true`; TORAFF stamps acceptance itself and creates a self-owned, active-workspace order with `purpose: "developer_subscription"`, `plan_code: "developer_monthly"`, base ₪9,500, 18% VAT ₪1,710 and total charge ₪11,210 for the first 30-day month. The Make `create` route also receives `base_amount_ils`, `vat_amount_ils`, `vat_rate`, `first_month: true` and the developer dashboard success URL. Do not substitute the legacy ₪6,500 amount, create recurring charges or add wallet credits.
+
+Only independently verified live `verify` + `notify` completion creates the workspace-scoped developer entitlement and developer role. Sandbox records no live entitlement. A success redirect, client-supplied amount or notification payload never unlocks access. Active paid imports have no fixed project/unit quantity cap; temporary source-read failures must remain visible rather than being reported as complete.
+
 ## Wallet deposits
 
 `topup_offer` exposes only live configured methods; `topup_create` snapshots the authorized active wallet owner, customer mobile and exact paid ILS amount (5–2,500 with two decimal places). Make receives `purpose: "wallet_topup"` and the selected paid amount; never replace it with the subscription's 6,500 amount or include the bonus in the charge. Server-owned insert snapshots grant reached tiers: 5→0%, 50→5%, 200→10%, 500→15%, 1,000→20%, 2,500→25%. The configured rate remains four credits per shekel; e.g. a paid 1,000 ILS grants 4,800 credits (1,200 ILS wallet spending balance). Bonuses round to two ILS decimal places. Existing orders keep zero bonus. Independent verify/notify credits paid amount plus the immutable bonus exactly once, while SMS reports the actual paid amount. Deposits do not create subscriptions or card mandates. Unconfigured methods open preparation forms but payment remains disabled.

@@ -26,6 +26,8 @@ import DeveloperCommissionEditor from '@/components/developers/DeveloperCommissi
 import { projectCampaignTargets } from '../../supabase/functions/_shared/projectCampaignTargets';
 import type { Json } from '@/integrations/supabase/types';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu, type BoardColumnId } from '@/components/public/PublicBoardTableControls';
+import { DeveloperSubscriptionDialog } from '@/components/billing/DeveloperSubscriptionDialog';
+import { useDeveloperSubscription } from '@/hooks/useDeveloperSubscription';
 
 const projectImages = developerProjectImages;
 const priceLabel = (price: number | null) => price && price > 0 ? `החל מ־₪${Number(price).toLocaleString('he-IL')}` : '';
@@ -33,6 +35,15 @@ const PROJECT_COLUMNS = { columns: [{ id: 'photo', label: 'תמונה' }, { id: 
 
 type Mode = 'choose' | 'import' | 'manual' | null;
 export default function DeveloperDashboard() {
+  const { activeWorkspaceId, loading } = useWorkspace();
+  const navigate = useNavigate();
+  const subscription = useDeveloperSubscription();
+  if (loading || (activeWorkspaceId && subscription.isLoading)) return <div role="status" className="flex min-h-[50vh] items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /><span className="sr-only">בדיקת מנוי יזם</span></div>;
+  if (!subscription.data?.active) return <DeveloperSubscriptionDialog open onOpenChange={open => { if (!open) navigate('/'); }} />;
+  return <DeveloperDashboardContent />;
+}
+
+function DeveloperDashboardContent() {
   const { activeWorkspaceId: ws } = useWorkspace();
   const qc = useQueryClient();
   const [params] = useSearchParams();

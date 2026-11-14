@@ -10,3 +10,7 @@ export function publisherEntryNavigation() {
 export function publisherRequiresOwnership(publisherType: string, pricingOnly = false) {
   return !pricingOnly && publisherType === 'private';
 }
+
+export function publisherRequiresDeveloperSubscription(publisherType: string, pricingOnly = false) {
+  return !pricingOnly && publisherType === 'developer';
+}

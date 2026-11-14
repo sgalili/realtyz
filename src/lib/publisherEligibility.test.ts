@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { brokerInventoryChoices, publisherEntryNavigation, publisherRequiresOwnership } from './publisherEligibility';
+import { brokerInventoryChoices, publisherEntryNavigation, publisherRequiresDeveloperSubscription, publisherRequiresOwnership } from './publisherEligibility';
 describe('broker import choices', () => {
   it('requires verified licensing even for broker roles', () => {
     expect(brokerInventoryChoices(['agent'], false, 1)).toBe(false);
@@ -23,6 +23,11 @@ describe('free ad entry', () => {
   });
   it('skips ownership for the developer branch', () => {
     expect(publisherRequiresOwnership('developer')).toBe(false);
+  });
+  it('intercepts only free developer posting with the paid subscription', () => {
+    expect(publisherRequiresDeveloperSubscription('developer')).toBe(true);
+    expect(publisherRequiresDeveloperSubscription('broker')).toBe(false);
+    expect(publisherRequiresDeveloperSubscription('developer', true)).toBe(false);
   });
   it('keeps broker publication and pricing-only edits exempt', () => {
     expect(publisherRequiresOwnership('broker')).toBe(false);
