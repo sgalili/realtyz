@@ -283,13 +283,13 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               title="פרופיל ציבורי"
               onClick={() => {
                 closeSidebar();
-                navigate(`/community/profile/${user.id}`);
+                navigate(`/broker/${user.id}`);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   closeSidebar();
-                  navigate(`/community/profile/${user.id}`);
+                  navigate(`/broker/${user.id}`);
                 }
               }}
               className="cursor-pointer px-3 py-3 transition-colors hover:bg-slate-50"

@@ -18,11 +18,10 @@ import { publicAdTitle } from '@/lib/publicAdPresentation';
 import { ProfileAssetMenu } from '@/components/community/ProfileAssetActions';
 import { professionalRole } from '../../supabase/functions/_shared/personalLanguage';
 import { useCommunityGenders } from '@/hooks/useCommunityGenders';
-import { ProfilePageClose } from '@/components/community/ProfilePageClose';
 import { scrollProfileProperties } from '@/lib/profilePropertyScroll';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 
-export const communityProfilePath = (id: string) => `/community/profile/${encodeURIComponent(id)}`;
+export const communityProfilePath = (id: string) => `/broker/${encodeURIComponent(id)}`;
 
 export default function CommunityProfilePage() {
   const { userId = '' } = useParams();
@@ -80,8 +79,7 @@ export default function CommunityProfilePage() {
   const isOwner = isSuperAdmin || user?.id === userId;
   const initials = (p?.full_name ?? '').split(' ').map(s => s[0]).slice(0, 2).join('');
   const cities = p?.service_areas?.filter(Boolean).join(', ') || p?.city;
-  return <main dir="rtl" data-no-hero-wave className="relative mx-auto w-full max-w-6xl space-y-6 pb-6">
-    <ProfilePageClose onClose={close} />
+  return <main dir="rtl" data-no-hero-wave className="relative mx-auto w-full max-w-6xl space-y-6 px-2 pb-6 sm:px-6">
     {profile.isLoading && <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />}
     {profile.isError && <p role="alert" className="text-center text-destructive">טעינת הפרופיל נכשלה</p>}
     {!profile.isLoading && !profile.isError && !p && <div className="space-y-3 text-center"><p className="text-muted-foreground">הפרופיל אינו זמין</p><Button variant="outline" onClick={close}>סגירה</Button></div>}

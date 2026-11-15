@@ -20,7 +20,7 @@ const rpc = vi.hoisted(() => vi.fn(async (fn: string) => {
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc } }));
 
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/inbox']}><Routes><Route path="/inbox" element={children} /><Route path="/community/profile/:userId" element={<p>profile page peer-1</p>} /></Routes></MemoryRouter></QueryClientProvider>
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/inbox']}><Routes><Route path="/inbox" element={children} /><Route path="/broker/:userId" element={<p>profile page peer-1</p>} /></Routes></MemoryRouter></QueryClientProvider>
 );
 
 afterEach(cleanup);

@@ -13,6 +13,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { WhiteLabelProvider } from "@/hooks/useWhiteLabel";
 import { AppLayout } from "@/components/AppLayout";
+import { PublicProfileShell } from "@/components/public/PublicProfileShell";
 import { SocialDraftChargeDialog } from '@/components/campaigns/SocialDraftChargeDialog';
 import { InactiveYad2ImportDialog } from '@/components/properties/InactiveYad2ImportDialog';
 import { AppFooter } from "@/components/AppFooter";
@@ -79,6 +80,10 @@ const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
 const PublicListingPage = lazy(() => import("./pages/PublicListingPage"));
 const CommunityProfilePage = lazy(() => import("./pages/CommunityProfilePage"));
 const LeadPublicProfilePage = lazy(() => import("./pages/LeadPublicProfilePage"));
+function LegacyProfileRedirect({ to }: { to: "broker" | "agency" }) {
+  const { userId } = useParams();
+  return <Navigate to={`/${to}/${encodeURIComponent(userId ?? "")}`} replace />;
+}
 const CommunityOfficePage = lazy(() => import("./pages/CommunityOfficePage"));
 const ShortLinkRedirect = lazy(() => import("./pages/ShortLinkRedirect"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
@@ -524,9 +529,11 @@ const App = () => (
               <Route path="/leads" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/lead-crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/lead-crm/:leadId" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
-              <Route path="/community/profile/:userId" element={<Suspense fallback={<PageLoader />}><CommunityProfilePage /></Suspense>} />
+              <Route path="/broker/:userId" element={<PublicProfileShell><Suspense fallback={<PageLoader />}><CommunityProfilePage /></Suspense></PublicProfileShell>} />
+              <Route path="/community/profile/:userId" element={<LegacyProfileRedirect to="broker" />} />
               <Route path="/lead-profile/:leadId" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><LeadPublicProfilePage /></Suspense></ProtectedRoute>} />
-              <Route path="/community/office/:userId" element={<Suspense fallback={<PageLoader />}><CommunityOfficePage /></Suspense>} />
+              <Route path="/agency/:userId" element={<PublicProfileShell><Suspense fallback={<PageLoader />}><CommunityOfficePage /></Suspense></PublicProfileShell>} />
+              <Route path="/community/office/:userId" element={<LegacyProfileRedirect to="agency" />} />
               <Route path="/inbox" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/communication" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/deal-room" element={<DealsRoute><ProtectedRoute allowGuestDemo><RoleTransactions /></ProtectedRoute></DealsRoute>} />

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 /** Broker/office clicks open the office page only when the office has more than one broker; otherwise the broker's own profile. */
 export function identityPath(userId: string, rosterSize: number | null | undefined) {
-  return `/community/${(rosterSize ?? 0) > 1 ? 'office' : 'profile'}/${encodeURIComponent(userId)}`;
+  return `/${(rosterSize ?? 0) > 1 ? 'agency' : 'broker'}/${encodeURIComponent(userId)}`;
 }
 
 function useOfficeRosterSize(userId?: string | null) {
@@ -29,7 +29,7 @@ function useOfficeRosterSize(userId?: string | null) {
 export function PublicIdentityLink({ userId, office = false, exactOffice = false, children, className, label }: { userId?: string | null; office?: boolean; exactOffice?: boolean; children: ReactNode; className?: string; label?: string }) {
   const { data: rosterSize } = useOfficeRosterSize(exactOffice ? null : userId);
   if (!userId) return <span className={className}>{children}</span>;
-  const to = exactOffice ? `/community/office/${encodeURIComponent(userId)}` : identityPath(userId, rosterSize);
+  const to = exactOffice ? `/agency/${encodeURIComponent(userId)}` : identityPath(userId, rosterSize);
   void office;
   return <Link to={to} aria-label={label} className={cn('rounded-sm underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', className)} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>{children}</Link>;
 }

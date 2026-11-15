@@ -250,7 +250,7 @@ export function PageHero() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
-  const communityUserId = location.pathname.match(/^\/community\/profile\/([^/]+)$/)?.[1];
+  const communityUserId = location.pathname.match(/^\/broker\/([^/]+)$/)?.[1];
   const { isPartnerMode } = useAppMode();
   const isPublicBoard = location.pathname === "/" || location.pathname.startsWith("/public-listings");
   const isMyAdsPage = location.pathname.startsWith("/my-ads");
@@ -330,7 +330,7 @@ export function PageHero() {
   // On /campaigns with a lead context, CampaignCenter renders its own
   // avatar+name hero — skip the default hero to avoid a stacked duplicate.
   // The shared board has no blue title banner; the header carries its actions.
-  if (communityUserId || location.pathname.startsWith('/community/office/')) return null;
+  if (communityUserId || location.pathname.startsWith('/agency/')) return null;
   if (isPublicBoard || /^\/affiliate(-network)?(\/|$)/.test(location.pathname)) return null;
   if (
     isPostsPage &&

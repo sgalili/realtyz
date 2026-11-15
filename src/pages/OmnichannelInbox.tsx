@@ -1287,7 +1287,7 @@ const OmnichannelInbox = () => {
                     const avatarNode = isAiMessage ? (
                       <RitaAvatar className="h-7 w-7 shrink-0" />
                     ) : isOutbound ? (
-                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 rounded-full p-0" aria-label="פתיחת הפרופיל שלי" onClick={() => { if (user) navigate(`/community/profile/${user.id}`); }}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 rounded-full p-0" aria-label="פתיחת הפרופיל שלי" onClick={() => { if (user) navigate(`/broker/${user.id}`); }}>
                       <VoterAvatar
                         fullName={agentProfile?.full_name ?? 'סוכן'}
                         profilePictureUrl={agentProfile?.avatar_url ?? null}
