@@ -353,7 +353,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200"
                   >
                     <Globe className="h-4 w-4 shrink-0 !text-[hsl(var(--nav-board))]" />
-                    {!collapsed && <span className="text-sm font-medium">לוח נדל״ן שיתופי</span>}
+                    {!collapsed && <span className="text-sm font-medium">לוח השותפים של המדינה</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
