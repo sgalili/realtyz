@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import { useQuery } from '@tanstack/react-query';
@@ -81,7 +81,7 @@ export function VisitorRitaChat() {
   // Dragging the top divider grows the transcript upward until just below the sign-up/sign-in buttons.
   const convRef = useRef<HTMLDivElement>(null);
   const [chatHeight, setChatHeight] = useState<number | null>(null);
-  const startDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+  const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
     const conv = convRef.current;
     if (!conv) return;
     e.preventDefault();
