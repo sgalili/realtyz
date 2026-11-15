@@ -3594,6 +3594,33 @@ export type Database = {
           },
         ]
       }
+      dynamic_qr_config: {
+        Row: {
+          id: number
+          last_scanned_at: string | null
+          qr_destination_url: string
+          total_scans: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          last_scanned_at?: string | null
+          qr_destination_url: string
+          total_scans?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          last_scanned_at?: string | null
+          qr_destination_url?: string
+          total_scans?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       email_login_otps: {
         Row: {
           attempts: number
@@ -11609,6 +11636,7 @@ export type Database = {
         Returns: Json
       }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
+      resolve_dynamic_qr_destination: { Args: never; Returns: string }
       resume_group_posting: {
         Args: { _campaign_log_id: string }
         Returns: number

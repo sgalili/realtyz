@@ -24,6 +24,7 @@ import { DeletedAccountsArchive } from '@/components/admin/DeletedAccountsArchiv
 import { ErrorLogPanel } from '@/components/admin/ErrorLogPanel';
 import { ScrapingUsageReport } from '@/components/admin/ScrapingUsageReport';
 import { RotatingMessagesManager } from '@/components/admin/RotatingMessagesManager';
+import { DynamicQrManager } from '@/components/admin/DynamicQrManager';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -155,6 +156,7 @@ const SuperAdmin = () => {
       )}
 
       {section === 'messages' && <RotatingMessagesManager />}
+      {section === 'qr' && <DynamicQrManager />}
 
       {section === 'import' && (
         <div className="space-y-4">

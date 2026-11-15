@@ -880,3 +880,9 @@
 - [x] Match composer font and newline/send shortcuts to the visitor chat while preserving workspace-scoped conversation state.
 - [x] Move the Super Admin shortcut beside the top leads control, with a global red unread counter and no old bottom section.
 - [x] Sixteen focused tests passed; signed-in mobile/desktop dragging, input, expand, clear confirmation and admin navigation verified without page errors.
+
+## Dynamic TORAFF QR November 15
+- [ ] Add a singleton dynamic QR destination with public redirect resolution, atomic scan counting and Super Admin-only edits.
+- [ ] Add the public /go redirect and the Super Admin "ניהול QR דינמי" section with destination and usage statistics.
+- [ ] Generate a high-error-correction QR for only the canonical /go URL, with a centered square TORAFF logo and high-resolution PNG export.
+- [ ] Verify redirect, authorization, URL validation, download and responsive admin behavior; run focused tests and save.

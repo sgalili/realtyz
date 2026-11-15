@@ -1506,6 +1506,27 @@
       "when": 1794776576658,
       "tag": "0214_community_chat_agency_logos",
       "breakpoints": true
+    },
+    {
+      "idx": 215,
+      "version": "7",
+      "when": 1794778192868,
+      "tag": "0215_create_dynamic_qr_destination",
+      "breakpoints": true
+    },
+    {
+      "idx": 216,
+      "version": "7",
+      "when": 1794778252748,
+      "tag": "0216_prevent_dynamic_qr_redirect_loop",
+      "breakpoints": true
+    },
+    {
+      "idx": 217,
+      "version": "7",
+      "when": 1794778383218,
+      "tag": "0217_restrict_dynamic_qr_admin_details",
+      "breakpoints": true
     }
   ]
 }
