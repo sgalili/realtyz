@@ -50,7 +50,7 @@ export function VisitorMenu({ onSignup }: { onSignup: () => void }) {
     <SheetContent side="right" dir="rtl" style={box ? { top: box.top, height: box.height, bottom: 'auto' } : undefined} overlayStyle={box ? { top: box.top } : undefined} className="right-0 flex w-[calc(100%-28px)] max-w-sm flex-col gap-0 overflow-visible p-0">
       <SheetTitle className="sr-only">תפריט מבקרים</SheetTitle><SheetDescription className="sr-only">TORAFF</SheetDescription>
       <nav className="min-h-0 flex-1 overflow-y-auto px-3 pt-10" aria-label="ניווט מבקרים">
-        <div className="mb-3 grid grid-cols-2 gap-2">
+        <div data-visitor-auth-actions className="mb-3 grid grid-cols-2 gap-2">
           <Button className="min-h-12 gap-2 text-base" onClick={signup}><UserPlus className="h-5 w-5" aria-hidden="true" />הרשמה חינם</Button>
           <Button variant="outline" className="min-h-12 gap-2 border-primary text-base text-primary hover:bg-primary/10" onClick={login}><LogIn className="h-5 w-5" aria-hidden="true" />כניסה</Button>
         </div>
