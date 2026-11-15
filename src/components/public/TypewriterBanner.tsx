@@ -21,6 +21,14 @@ export function TypewriterBanner() {
   const signature = messages.join('\u0000');
   const [state, setState] = useState(INITIAL_TYPEWRITER_STATE);
 
+  // The whole sentence must stay readable, so the row reserves the space the
+  // longest message in this audience needs instead of clipping text with an
+  // ellipsis.
+  const longestMessage = useMemo(
+    () => messages.reduce((longest, message) => (message.length > longest.length ? message : longest), ''),
+    [messages],
+  );
+
   useEffect(() => setState(INITIAL_TYPEWRITER_STATE), [signature]);
 
   useEffect(() => {
@@ -46,14 +54,17 @@ export function TypewriterBanner() {
         if (!currentAction) return;
         navigate(currentAction.path, { state: currentAction.state });
       }}
-      className="mx-2 flex min-w-0 flex-1 cursor-pointer items-center justify-center overflow-hidden text-center disabled:cursor-default sm:mx-4"
+      className="mx-2 flex min-w-0 flex-1 cursor-pointer items-center text-start disabled:cursor-default sm:mx-4"
       aria-label={currentMessage}
       title={currentMessage}
     >
       <span className="sr-only" aria-live="polite">{currentMessage}</span>
-      <span aria-hidden="true" className="truncate text-[15px] font-medium leading-8 text-muted-foreground">
-        {visibleText}
-        {!reducedMotion && <span className="ms-0.5 inline-block h-[1.05em] w-px translate-y-[2px] animate-pulse bg-primary" />}
+      <span aria-hidden="true" className="relative block w-full text-start text-[15px] font-medium leading-[1.45] text-muted-foreground">
+        <span className="invisible block [overflow-wrap:anywhere]">{longestMessage}</span>
+        <span className="absolute inset-0 block [overflow-wrap:anywhere]">
+          {visibleText}
+          {!reducedMotion && <span className="ms-0.5 inline-block h-[1.05em] w-px translate-y-[2px] animate-pulse bg-primary" />}
+        </span>
       </span>
     </button>
   );
