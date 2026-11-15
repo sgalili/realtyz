@@ -1,5 +1,5 @@
 import { Table } from '@/components/ui/table';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from 'react';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRitaWorkspaceIdentity } from '@/hooks/useRitaWorkspaceIdentity';
@@ -12,16 +12,22 @@ import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { useAppMode } from '@/hooks/useAppMode';
 import { RITA_PROMPTS, ritaWorkflow } from '@/lib/ritaPrompts';
 import { useHomelyConnection } from '@/hooks/useHomelyConnection';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Database, X, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle, Share2, Copy, Trash2, Send, Home } from 'lucide-react';
+import { Database, X, FileText, Paperclip, Globe, MessageCircle, Share2, Copy, Trash2, Send, ArrowUp, Maximize2, Minimize2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { RitaAvatar } from '@/components/RitaAvatar';
+import { RitaUserAvatar } from '@/components/rita/RitaUserAvatar';
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ai-elements/conversation';
-import { Message as AiMessage, MessageContent, MessageResponse } from '@/components/ai-elements/message';
-import { PromptInput, PromptInputTextarea, PromptInputFooter, PromptInputTools, PromptInputButton, PromptInputSubmit } from '@/components/ai-elements/prompt-input';
+import { MessageContent, MessageResponse } from '@/components/ai-elements/message';
+import { PromptInput, PromptInputTextarea, PromptInputButton, PromptInputSubmit } from '@/components/ai-elements/prompt-input';
+import { InputGroupAddon } from '@/components/ui/input-group';
+import { cn } from '@/lib/utils';
+import { ritaChatKeyAction } from '@/lib/ritaChatKeys';
+import { RITA_CHAT_GREETING, resizeRitaTextarea } from '@/lib/ritaChatPresentation';
+import { useVisualViewportBox } from '@/hooks/useVisualViewportBox';
 import { Shimmer } from '@/components/ai-elements/shimmer';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -227,7 +233,7 @@ function ScopedAiAgentDrawer({ identity }: { identity: ReturnType<typeof useRita
   const { connected: homelyConnected } = useHomelyConnection();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { scope, ownerId, firstName, gender, roles, ready, error: rolesError } = identity;
+  const { scope, ownerId, gender, roles, ready, error: rolesError } = identity;
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -247,6 +253,7 @@ function ScopedAiAgentDrawer({ identity }: { identity: ReturnType<typeof useRita
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
   const [researchMode, setResearchMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputWrapRef = useRef<HTMLDivElement>(null);
 
   // Allow opening from header button
   useEffect(() => {
@@ -258,6 +265,7 @@ function ScopedAiAgentDrawer({ identity }: { identity: ReturnType<typeof useRita
     return () => window.removeEventListener('open-ai-drawer', handler);
   }, []);
   const [expanded, setExpanded] = useState(false);
+  const viewportBox = useVisualViewportBox(open, expanded);
 
   const onFilePick = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -323,7 +331,12 @@ function ScopedAiAgentDrawer({ identity }: { identity: ReturnType<typeof useRita
     setInput(prev => (prev ? prev + ' ' + text : text));
   }, []);
 
-  const { isListening, toggle: toggleVoice } = useVoiceInput(handleVoiceResult);
+  const { isListening } = useVoiceInput(handleVoiceResult);
+
+  useEffect(() => {
+    const textarea = inputWrapRef.current?.querySelector('textarea');
+    if (textarea) resizeRitaTextarea(textarea);
+  }, [input]);
 
   useEffect(() => {
     if (!open || !historyLoaded) return;
@@ -352,19 +365,7 @@ function ScopedAiAgentDrawer({ identity }: { identity: ReturnType<typeof useRita
     window.requestAnimationFrame(() => document.getElementById('rita-chat-input')?.focus());
   }, []);
 
-  // When the Home button opens the suggestions panel above the transcript,
-  // jump the chat scroll container back to the very top so the panel is seen.
   const conversationWrapRef = useRef<HTMLDivElement>(null);
-  const scrollConversationToTop = useCallback(() => {
-    // StickToBottom renders: wrapper > Conversation root > scrollRef div (the
-    // real overflow container) > content. Setting scrollTop on anything other
-    // than the scrollRef div has no effect, hence firstElementChild twice.
-    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
-      const root = conversationWrapRef.current?.firstElementChild as HTMLElement | null;
-      const scroller = (root?.firstElementChild ?? root) as HTMLElement | null;
-      if (scroller) scroller.scrollTop = 0;
-    }));
-  }, []);
 
 
 
@@ -599,6 +600,19 @@ ${shareUrl}
   };
 
 
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    const action = ritaChatKeyAction({ key: event.key, metaKey: event.metaKey, ctrlKey: event.ctrlKey, shiftKey: event.shiftKey, isComposing: event.nativeEvent.isComposing });
+    if (action === 'ignore') return;
+    event.preventDefault();
+    if (action === 'send') {
+      event.currentTarget.form?.requestSubmit();
+      return;
+    }
+    const textarea = event.currentTarget;
+    textarea.setRangeText('\n', textarea.selectionStart, textarea.selectionEnd, 'end');
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+
   // Sidebar mini chat shares this exact conversation, persona and tools.
   const sendRef = useRef<(text: string) => void>(() => {});
   sendRef.current = (text: string) => { void sendMessage(text); };
@@ -634,63 +648,66 @@ ${shareUrl}
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {/* Trigger is in AppLayout header */}
-      <SheetContent side="left" className={expanded ? "flex !inset-2 !h-auto !w-auto !max-w-none flex-col overflow-hidden rounded-2xl p-0 sm:!inset-8 lg:!inset-x-[15vw]" : "flex h-[100dvh] max-h-[100dvh] w-full flex-col p-0 sm:max-w-md"} dir="rtl">
-        <div className="relative px-4 py-3 border-b bg-primary/5 flex flex-col items-center justify-center gap-1.5">
-          <RitaAvatar className="h-12 w-12 ring-2 ring-primary/20" />
-          <h3 className="text-[18px] font-bold text-center">ריטה, סוכנת ה-AI של TORAFF</h3>
-
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="שאלות מומלצות"
-            onClick={scrollConversationToTop}
-            className="absolute end-[52px] top-3 text-muted-foreground"
-          >
-            <Home className="h-4 w-4" />
-          </Button>
-
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" aria-label="איפוס צ׳אט" className="absolute end-3 top-3 text-muted-foreground" disabled={messages.length === 0}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent dir="rtl">
-              <AlertDialogHeader>
-                <AlertDialogTitle>לאפס את כל הצ׳אט עם ריטה?</AlertDialogTitle>
-                <AlertDialogDescription>כל היסטוריית השיחה שלך עם ריטה תימחק לצמיתות.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="gap-2">
-                <AlertDialogCancel>ביטול</AlertDialogCancel>
-                <AlertDialogAction onClick={() => void resetChat()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">איפוס צ׳אט</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+      <SheetContent
+        side="left"
+        style={viewportBox}
+        closeAriaLabel="סגירת ריטה"
+        closeClassName="left-3 right-auto top-3 z-20"
+        className={expanded ? "flex left-2 right-2 w-auto max-w-none flex-col overflow-hidden rounded-2xl p-0 sm:left-8 sm:right-8 lg:left-[15vw] lg:right-[15vw]" : "flex h-[100dvh] max-h-[100dvh] w-full flex-col p-0 sm:max-w-md"}
+        dir="rtl"
+      >
+        <div className="relative flex min-h-14 shrink-0 items-center border-b bg-background px-3 py-2 pe-28">
+          <SheetTitle className="w-full text-right text-[15px] font-semibold leading-tight text-foreground">{RITA_CHAT_GREETING}</SheetTitle>
+          <div className="absolute end-12 top-2 flex items-center gap-1">
+            {messages.length > 0 && <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" aria-label="איפוס צ׳אט" className="h-8 w-8 text-muted-foreground"><Trash2 className="h-4 w-4" /></Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent dir="rtl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>לאפס את כל הצ׳אט עם ריטה?</AlertDialogTitle>
+                  <AlertDialogDescription>כל היסטוריית השיחה שלך עם ריטה תימחק לצמיתות.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="sm:justify-between">
+                  <AlertDialogCancel>ביטול</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => void resetChat()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">איפוס צ׳אט</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={expanded ? 'צמצום חלון ריטה' : 'הגדלת חלון ריטה'}
+              title={expanded ? 'צמצום' : 'מסך מלא'}
+              onClick={() => setExpanded((current) => !current)}
+              className="h-8 w-8 text-muted-foreground"
+            >
+              {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
 
         {/* Messages */}
         <div ref={conversationWrapRef} className="flex min-h-0 flex-1 flex-col">
         <Conversation className="min-h-0 flex-1" initial="instant" resize="instant">
           <ConversationContent className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
-            {messages.length === 0 && <div className="space-y-4 py-3">
-              <div className="flex items-center gap-3">
-                <RitaAvatar className="h-12 w-12 shrink-0" />
-                <p className="text-xl font-semibold">{firstName ? `היי ${firstName}, אני ריטה` : 'היי, אני ריטה'}</p>
-              </div>
-              {!rolesLoading && !rolesError && <div className="flex flex-wrap gap-2" aria-label="שאלות לריטה">
-                {RITA_PROMPTS[workflow].map(({ label, prompt }) => <Button
-                  key={label} type="button" variant="outline" disabled={isLoading}
-                  className="h-auto min-h-10 max-w-full whitespace-normal rounded-md px-3 py-2 text-base"
-                  onClick={() => void sendMessage(prompt)}>{label}</Button>)}
-              </div>}
+            <div className="is-assistant group flex w-full items-start gap-2">
+              <RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" />
+              <MessageContent className="max-w-[78%] rounded-lg bg-muted px-3 py-2 text-xs font-normal">{RITA_CHAT_GREETING}</MessageContent>
+            </div>
+            {messages.length === 0 && !rolesLoading && !rolesError && <div className="flex flex-wrap gap-2 py-2" aria-label="שאלות לריטה">
+              {RITA_PROMPTS[workflow].map(({ label, prompt }) => <Button
+                key={label} type="button" variant="outline" disabled={isLoading}
+                className="h-auto min-h-10 max-w-full whitespace-normal rounded-md px-3 py-2 text-base"
+                onClick={() => void sendMessage(prompt)}>{label}</Button>)}
             </div>}
 
-          {messages.map((msg, i) => (
-            <AiMessage key={i} from={msg.role} className={msg.role === 'user' ? 'ms-auto' : 'me-auto'}>
-              <div className="flex items-start gap-2">
-                {msg.role === 'assistant' && <RitaAvatar className="mt-0.5 h-7 w-7" />}
-                <MessageContent className={msg.role === 'user' ? 'bg-primary text-primary-foreground text-[18px]' : msg.type === 'error' ? 'text-destructive text-[18px]' : 'text-[18px]'}>
+          {messages.map((msg, i) => {
+            const mine = msg.role === 'user';
+            return <div key={i} className={cn('group flex w-full max-w-[92%] items-start gap-2', mine ? 'is-user mr-auto flex-row-reverse' : 'is-assistant ml-auto')}>
+              {mine ? <RitaUserAvatar className="mt-0.5 h-7 w-7 shrink-0 border border-border" /> : <RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" />}
+              <MessageContent className={cn('rounded-lg px-3 py-2 text-xs', mine ? 'bg-primary text-primary-foreground' : msg.type === 'error' ? 'bg-muted text-destructive' : 'bg-muted text-foreground')}>
                   <MessageResponse className="leading-relaxed">{msg.content}</MessageResponse>
 
                 {msg.data && Array.isArray(msg.data) && msg.data.length > 0 && (
@@ -945,10 +962,9 @@ ${shareUrl}
                     ))}
                   </div>
                 )}
-                </MessageContent>
-              </div>
-            </AiMessage>
-          ))}
+              </MessageContent>
+            </div>;
+          })}
 
           {isLoading && (
             <div className="flex items-center gap-2">
@@ -981,8 +997,7 @@ ${shareUrl}
           </div>
         )}
 
-        {/* Input — mic on right, slate send on left */}
-        <div className="px-4 py-3 border-t">
+        <div className="shrink-0 border-t px-3 py-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -991,32 +1006,42 @@ ${shareUrl}
             className="hidden"
             onChange={(e) => onFilePick(e.target.files)}
           />
-          <PromptInput
-            onSubmit={() => void sendMessage(input)}
-            className="bg-background"
-          >
-            <PromptInputTextarea
-              id="rita-chat-input"
-              autoFocus
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={isListening ? 'האזנה…' : researchMode ? 'מה נבדוק באזור שמעניין אותך?' : workflow === 'partner' ? 'איזה נכס נשתף היום?' : workflow === 'private' ? 'איך אוכל לעזור לך היום?' : gender === 'female' ? 'מה תרצי לבדוק היום?' : gender === 'male' ? 'מה תרצה לבדוק היום?' : 'מה נבדוק היום?'}
-              className="min-h-20 text-[18px]"
-              disabled={isLoading}
-            />
-            <PromptInputFooter>
-              <PromptInputTools>
+          <div ref={inputWrapRef}>
+            <PromptInput
+              onSubmit={() => {
+                void sendMessage(input);
+                const textarea = inputWrapRef.current?.querySelector('textarea');
+                if (textarea) textarea.style.height = '';
+              }}
+              className="rounded-lg bg-background"
+            >
+              <InputGroupAddon align="inline-start" className="self-end gap-0 px-1 pb-1">
                 <VoiceInputButton disabled={isLoading} title="דיבור לטקסט" language="auto" onTranscript={(value) => setInput((current) => current ? `${current} ${value}` : value)} />
-                <PromptInputButton variant={researchMode ? 'default' : 'ghost'} onClick={() => setResearchMode((v) => !v)} disabled={isLoading} tooltip={researchMode ? 'כבה מצב מחקר חי' : 'הפעל מצב מחקר חי'}>
+                <PromptInputButton variant={researchMode ? 'default' : 'ghost'} onClick={() => setResearchMode((value) => !value)} disabled={isLoading} tooltip={researchMode ? 'כבה מצב מחקר חי' : 'הפעל מצב מחקר חי'}>
                   <Globe className="h-4 w-4" />
                 </PromptInputButton>
                 <PromptInputButton onClick={() => fileInputRef.current?.click()} disabled={isLoading} tooltip="צרף קבצים">
                   <Paperclip className="h-4 w-4" />
                 </PromptInputButton>
-              </PromptInputTools>
-              <PromptInputSubmit status={isLoading ? 'submitted' : 'ready'} disabled={(!input.trim() && pendingAttachments.length === 0) || isLoading} aria-label="שלח" />
-            </PromptInputFooter>
-          </PromptInput>
+              </InputGroupAddon>
+              <PromptInputTextarea
+                id="rita-chat-input"
+                autoFocus
+                rows={1}
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onInput={(event) => resizeRitaTextarea(event.currentTarget)}
+                onKeyDown={handleInputKeyDown}
+                onFocus={(event) => { const textarea = event.currentTarget; window.setTimeout(() => textarea.scrollIntoView({ block: 'nearest' }), 300); }}
+                placeholder={isListening ? 'האזנה…' : researchMode ? 'מה נבדוק באזור שמעניין אותך?' : workflow === 'partner' ? 'איזה נכס נשתף היום?' : workflow === 'private' ? 'איך אוכל לעזור לך היום?' : gender === 'female' ? 'מה תרצי לבדוק היום?' : gender === 'male' ? 'מה תרצה לבדוק היום?' : 'מה נבדוק היום?'}
+                className="!min-h-10 max-h-32 resize-none overflow-y-auto py-2 text-xs [field-sizing:fixed]"
+                disabled={isLoading}
+              />
+              <InputGroupAddon align="inline-end" className="self-end px-2 pb-1.5">
+                <PromptInputSubmit status="ready" disabled={(!input.trim() && pendingAttachments.length === 0) || isLoading} aria-label="שליחה לריטה"><ArrowUp className="h-4 w-4" /></PromptInputSubmit>
+              </InputGroupAddon>
+            </PromptInput>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

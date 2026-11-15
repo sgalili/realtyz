@@ -1,8 +1,6 @@
 /**
- * ritaChatKeys
- * ------------
- * Keyboard contract for the visitor Rita chat input: a plain Enter sends,
- * while Shift, Command (Mac) or Control (PC) + Enter inserts a new line.
+ * Shared Rita keyboard contract: Enter inserts a new line, while
+ * Command (Mac) or Control (PC) + Enter sends the message.
  */
 
 export type RitaChatKeyEvent = {
@@ -18,5 +16,5 @@ export type RitaChatKeyAction = 'send' | 'newline' | 'ignore';
 
 export function ritaChatKeyAction(event: RitaChatKeyEvent): RitaChatKeyAction {
   if (event.key !== 'Enter' || event.isComposing) return 'ignore';
-  return event.metaKey || event.ctrlKey || event.shiftKey ? 'newline' : 'send';
+  return event.metaKey || event.ctrlKey ? 'send' : 'newline';
 }

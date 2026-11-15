@@ -1,5 +1,11 @@
 # Roadmap
 
+## Unified signed-in Rita chat November 15
+- [x] Matched signed-in mini/full Rita to guest presentation, greeting header, conditional clear, user/Rita avatars and alignment, with no redundant footer actions.
+- [x] Added compact auto-growing input with Enter newline and Command/Ctrl+Enter send; send stays inside the input row for guest and signed-in chats.
+- [x] Added visual-viewport keyboard adaptation; 11 focused tests and signed-in desktop/mobile checks passed with mocked replies, including visible inputs at 580px/587px within a 600px keyboard viewport and no page errors.
+
+
 ## Broker navigation and Partner onboarding November 15
 - [x] Show broker menu in the exact requested order, including הנכסים שלי and a standard accessibility row; remove dashboard and activity history.
 - [x] Add icon-only dashboard and activity-history destinations inside the header activity summary as full pages.

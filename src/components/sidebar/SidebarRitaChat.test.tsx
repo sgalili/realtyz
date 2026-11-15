@@ -6,6 +6,7 @@ import { SidebarRitaChat } from './SidebarRitaChat';
 const identity = vi.hoisted(() => ({ scope: 'admin:shafi', ownerId: 'shafi', name: 'שפי ישראלי', firstName: 'שפי', gender: 'female', roles: ['affiliate'], ready: true, error: false }));
 vi.mock('@/hooks/useRitaWorkspaceIdentity', () => ({ useRitaWorkspaceIdentity: () => identity }));
 vi.mock('@/components/RitaAvatar', () => ({ RitaAvatar: () => <span /> }));
+vi.mock('@/components/rita/RitaUserAvatar', () => ({ RitaUserAvatar: () => <span /> }));
 beforeEach(() => {
   identity.scope = 'admin:shafi'; identity.firstName = 'שפי';
   HTMLElement.prototype.scrollTo = vi.fn();
@@ -37,5 +38,17 @@ it('tags send events with the exact account/workspace scope', () => {
   fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לריטה' }), { target: { value: 'היי' } });
   fireEvent.click(screen.getByRole('button', { name: 'שליחה' }));
   expect(received.mock.calls[0][0].detail).toEqual({ text: 'היי', scope: 'admin:shafi' });
+  window.removeEventListener('rita:send', received);
+});
+it('uses Enter for a newline and Control + Enter to send', () => {
+  setup();
+  const received = vi.fn();
+  window.addEventListener('rita:send', received);
+  const input = screen.getByRole('textbox', { name: 'הודעה לריטה' });
+  fireEvent.change(input, { target: { value: 'שורה ראשונה' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  expect(received).not.toHaveBeenCalled();
+  fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
+  expect(received.mock.calls[0][0].detail).toEqual({ text: 'שורה ראשונה', scope: 'admin:shafi' });
   window.removeEventListener('rita:send', received);
 });

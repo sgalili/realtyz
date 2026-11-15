@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
-import { useQuery } from '@tanstack/react-query';
 import { useStickToBottomContext } from 'use-stick-to-bottom';
-import { ArrowUp, Maximize2, Trash2, Square, UserRound } from 'lucide-react';
+import { ArrowUp, Maximize2, Trash2, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { InputGroupAddon } from '@/components/ui/input-group';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ai-elements/conversation';
@@ -13,13 +11,12 @@ import { MessageContent, MessageResponse } from '@/components/ai-elements/messag
 import { PromptInput, PromptInputTextarea, PromptInputSubmit } from '@/components/ai-elements/prompt-input';
 import { Shimmer } from '@/components/ai-elements/shimmer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { ritaChatKeyAction } from '@/lib/ritaChatKeys';
+import { RITA_CHAT_GREETING, resizeRitaTextarea } from '@/lib/ritaChatPresentation';
+import { RitaUserAvatar } from '@/components/rita/RitaUserAvatar';
 
 const KEY = 'toraff-visitor-rita-history';
-const GREETING = 'היי, אני ריטה. מה מביא אותך ל־TORAFF?';
 // Keeps the newest bubble visible: scrolls the transcript to its bottom whenever a message is added or grows.
 function AutoStickBottom({ trigger }: { trigger: unknown }) {
   const { scrollToBottom } = useStickToBottomContext();
@@ -46,23 +43,13 @@ export function VisitorRitaChat() {
   const [initial] = useState(readHistory);
   const { messages, sendMessage, status, error, stop, setMessages } = useChat({ id: 'toraff-visitor', messages: initial, transport });
   const busy = status === 'submitted' || status === 'streaming';
-  const { user } = useAuth();
-  const { data: myAvatar } = useQuery({
-    queryKey: ['visitor-rita-avatar', user?.id ?? null],
-    enabled: !!user?.id,
-    staleTime: 30 * 60 * 1000,
-    queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('avatar_url').eq('id', user?.id ?? '').maybeSingle();
-      return (data as { avatar_url?: string | null } | null)?.avatar_url ?? null;
-    },
-  });
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(messages.slice(-24))); } catch { /* unavailable storage does not block chat */ }
     const el = getTextarea();
     if (el && !el.value) el.style.height = '';
     if (!busy) el?.focus();
   }, [messages, busy]);
-  // Enter sends; Shift/Command/Ctrl + Enter adds a new line.
+  // Enter adds a new line; Command/Ctrl + Enter sends.
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     const action = ritaChatKeyAction({ key: e.key, metaKey: e.metaKey, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey, isComposing: e.nativeEvent.isComposing });
     if (action === 'ignore') return;
@@ -99,12 +86,12 @@ export function VisitorRitaChat() {
     <div ref={convRef} className={expanded ? 'flex min-h-0 flex-1 flex-col' : 'flex min-h-0 flex-col'} style={sized ? { height: chatHeight } : undefined}>
     <Conversation className={expanded || sized ? 'min-h-0 flex-1' : 'max-h-48 min-h-0'}>
       <ConversationContent className="gap-3 px-2 py-2" scrollClassName={expanded || sized ? undefined : 'max-h-48'}>
-        <div className="is-assistant group flex w-full items-start gap-2"><RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" /><MessageContent className="max-w-[78%] rounded-lg bg-muted px-3 py-2 text-xs font-normal">{GREETING}</MessageContent></div>
+        <div className="is-assistant group flex w-full items-start gap-2"><RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" /><MessageContent className="max-w-[78%] rounded-lg bg-muted px-3 py-2 text-xs font-normal">{RITA_CHAT_GREETING}</MessageContent></div>
         {messages.map(message => {
           const mine = message.role === 'user';
           return <div key={message.id} className={cn('group flex w-full max-w-[92%] items-start gap-2', mine ? 'is-user mr-auto flex-row-reverse' : 'is-assistant ml-auto')}>
             {mine
-              ? <Avatar className="mt-0.5 h-7 w-7 shrink-0 border border-border bg-muted"><AvatarImage src={myAvatar ?? undefined} alt="המשתמש" /><AvatarFallback className="text-muted-foreground"><UserRound className="h-4 w-4" /></AvatarFallback></Avatar>
+              ? <RitaUserAvatar className="mt-0.5 h-7 w-7 shrink-0 border border-border" />
               : <RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" />}
             <MessageContent className="rounded-lg bg-muted px-3 py-2 text-xs group-[.is-user]:ml-0 group-[.is-user]:bg-primary group-[.is-user]:text-primary-foreground">{message.parts.map((part, i) => part.type === 'text' ? <MessageResponse key={i}>{part.text}</MessageResponse> : null)}</MessageContent>
           </div>;
@@ -117,7 +104,7 @@ export function VisitorRitaChat() {
     </div>
     {error && <p role="alert" className="px-2 text-sm text-destructive">{error.message || 'ריטה אינה זמינה כרגע. נסו שוב מאוחר יותר.'}</p>}
     <div ref={inputWrapRef}><PromptInput onSubmit={({ text }) => { if (!text.trim() || busy) return; void sendMessage({ text: text.trim().slice(0, 3000) }); const el = getTextarea(); if (el) el.style.height = ''; }} className="rounded-lg">
-      <PromptInputTextarea autoFocus placeholder="איך אוכל לעזור?" aria-label="הודעה לריטה" rows={1} className="!min-h-10 max-h-32 resize-none overflow-y-auto py-2 text-xs [field-sizing:fixed]" onKeyDown={handleKeyDown} onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight, 128)}px`; }} onFocus={e => { const t = e.currentTarget; window.setTimeout(() => t.scrollIntoView({ block: 'nearest' }), 300); }} />
+      <PromptInputTextarea autoFocus placeholder="איך אוכל לעזור?" aria-label="הודעה לריטה" rows={1} className="!min-h-10 max-h-32 resize-none overflow-y-auto py-2 text-xs [field-sizing:fixed]" onKeyDown={handleKeyDown} onInput={e => resizeRitaTextarea(e.currentTarget)} onFocus={e => { const t = e.currentTarget; window.setTimeout(() => t.scrollIntoView({ block: 'nearest' }), 300); }} />
       <InputGroupAddon align="inline-end" className="self-end px-2 pb-1.5">
         <PromptInputSubmit status={status} onStop={stop} aria-label={busy ? 'עצירת תשובה' : 'שליחה לריטה'}>{busy ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}</PromptInputSubmit>
       </InputGroupAddon>
