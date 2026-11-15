@@ -161,15 +161,24 @@ export function TutorialHost() {
 
 /** Manual help stays available even when automatic guides are dismissed. */
 export function HelpHint({ tutorial, path, className }: { tutorial?: Tutorial | null; path?: string; className?: string }) {
+  const st = useTutorialState();
   const t = tutorial ?? (path ? tutorialForPath(path) ?? { id: `page:${path}`, title: 'עזרה', slides: [{ icon: 'guide' as const, title: 'הפעולות במסך', body: 'פותחים פריט לצפייה בפרטים. עריכה ושמירה זמינות דרך הפעולות המוצגות לצד הפריט.' }] } : null);
   if (!t) return null;
+  // Explicitly suppressed guides stay clickable, only the icon fades to a lighter gray.
+  const suppressed = st.dismissed.includes(t.id);
   return (
     <Button
       variant="ghost"
       size="icon"
       aria-label={`מדריך: ${t.title}`}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); import('@/lib/tutorials').then((m) => m.openTutorial(t)); }}
-      className={cn('inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-primary/70 transition-colors hover:bg-primary/10 hover:text-primary', className)}
+      className={cn(
+        'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors',
+        suppressed
+          ? 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+          : 'text-primary/70 hover:bg-primary/10 hover:text-primary',
+        className,
+      )}
     >
       <HelpCircle className="h-3.5 w-3.5" />
     </Button>

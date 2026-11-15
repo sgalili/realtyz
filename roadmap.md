@@ -1,5 +1,10 @@
 # Roadmap
 
+## Suppressed guide help icon November 15
+- [x] Fade the sidebar question-mark icon to a lighter gray once that page's guide was explicitly suppressed.
+- [x] Keep the icon clickable so the slides still open on demand.
+
+
 ## FAQ hero tabs November 15
 - [x] Remove the selected FAQ subtitle and hero title.
 - [x] Move both FAQ tabs into the blue hero without changing tab state or deep links.
