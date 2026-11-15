@@ -338,13 +338,9 @@ function ScopedAiAgentDrawer({ identity }: { identity: ReturnType<typeof useRita
     if (textarea) resizeRitaTextarea(textarea);
   }, [input]);
 
-  useEffect(() => {
-    if (!open || !historyLoaded) return;
-    const frame = window.requestAnimationFrame(() => {
-      document.getElementById('rita-chat-input')?.focus();
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [open, historyLoaded, isLoading]);
+  // The composer is never focused automatically when the chat opens; the user
+  // taps it themselves. Focus is only restored after their own actions (reset,
+  // sending a message).
 
   const resetChat = useCallback(async () => {
     if (!user?.id || !ownerId) return;
