@@ -524,9 +524,9 @@ const App = () => (
               <Route path="/leads" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/lead-crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/lead-crm/:leadId" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
-              <Route path="/community/profile/:userId" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><CommunityProfilePage /></Suspense></ProtectedRoute>} />
+              <Route path="/community/profile/:userId" element={<Suspense fallback={<PageLoader />}><CommunityProfilePage /></Suspense>} />
               <Route path="/lead-profile/:leadId" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><LeadPublicProfilePage /></Suspense></ProtectedRoute>} />
-              <Route path="/community/office/:userId" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><CommunityOfficePage /></Suspense></ProtectedRoute>} />
+              <Route path="/community/office/:userId" element={<Suspense fallback={<PageLoader />}><CommunityOfficePage /></Suspense>} />
               <Route path="/inbox" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/communication" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/deal-room" element={<DealsRoute><ProtectedRoute allowGuestDemo><RoleTransactions /></ProtectedRoute></DealsRoute>} />

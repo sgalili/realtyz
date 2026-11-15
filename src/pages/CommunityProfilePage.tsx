@@ -47,7 +47,7 @@ export default function CommunityProfilePage() {
   }, [expandedId]);
   const [imageOpen, setImageOpen] = useState(false);
   const profile = useQuery({
-    queryKey: ['community-profile-page', user?.id, userId], enabled: !!user && !!userId,
+    queryKey: ['community-profile-page', user?.id, userId], enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('community_profile_page', { _user: userId });
       if (error) throw error;
@@ -60,14 +60,14 @@ export default function CommunityProfilePage() {
     return data === true;
   } });
   const listingIds = useQuery({
-    queryKey: ['community-profile-listings', userId], enabled: !!user && !!userId,
+    queryKey: ['community-profile-listings', user?.id ?? 'guest', userId], enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('community_profile_listings', { _user: userId });
       if (error) throw error;
       return new Set((data ?? []).map(l => l.id));
     },
   });
-  const feed = useQuery({ queryKey: ['partner-activity-board', user?.id, 'profile'], queryFn: fetchPublicBoardFeed, enabled: !!user, staleTime: 60_000 });
+  const feed = useQuery({ queryKey: ['partner-activity-board', user?.id, 'profile'], queryFn: fetchPublicBoardFeed, enabled: !!userId, staleTime: 60_000 });
   const cards = (feed.data ?? []).filter(card => listingIds.data?.has(card.id));
   const genders = useCommunityGenders([userId]);
   const p = profile.data;
@@ -94,7 +94,7 @@ export default function CommunityProfilePage() {
         {cities && <p className="max-w-full break-words text-base text-muted-foreground">{cities}</p>}
         {p.bio && <p className="max-w-2xl whitespace-pre-line break-words text-base leading-relaxed text-muted-foreground">{p.bio}</p>}
         <div className="!mt-5 flex flex-wrap justify-center gap-2">
-          {user?.id !== p.id && <Button className="gap-2" onClick={() => navigate(`/inbox?community=${encodeURIComponent(p.id)}`)}><MessageCircle className="h-4 w-4" />שליחת הודעה</Button>}
+          {user && user.id !== p.id && <Button className="gap-2" onClick={() => navigate(`/inbox?community=${encodeURIComponent(p.id)}`)}><MessageCircle className="h-4 w-4" />שליחת הודעה</Button>}
           {management.data === true && <Button variant="outline" onClick={async () => { if (activeWorkspaceId !== userId) await setActiveWorkspace(userId); navigate('/profile'); }}><Pencil className="h-4 w-4" />עריכה / ניהול</Button>}
         </div>
       </div>
@@ -123,7 +123,7 @@ export default function CommunityProfilePage() {
         const fav = favorites.favoriteIds.has(card.id);
         const toggleFavorite = () => void favorites.toggleFavorite(card.id);
         return <div key={card.id} className="min-w-0">
-          <StandardPropertyCard card={card} signedIn isMine={user?.id === userId} isFav={fav} onFavorite={toggleFavorite}
+          <StandardPropertyCard card={card} signedIn={!!user} isMine={user?.id === userId} isFav={fav} onFavorite={toggleFavorite}
             menu={<ProfileAssetMenu card={card} title={title} isOwner={isOwner} isFav={fav} onFavorite={toggleFavorite} />} />
         </div>;
       })}</div>}

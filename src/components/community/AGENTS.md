@@ -1,0 +1,2 @@
+# Public profile access
+- Public professional profile/office routes bypass auth; narrowly projected RPCs expose active professionals, exact-office rosters and published assets to guests, never private contacts or management. Why: public browsing without tenant leaks.

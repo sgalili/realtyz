@@ -14,10 +14,11 @@ function useOfficeRosterSize(userId?: string | null) {
   const { user } = useAuth();
   return useQuery({
     queryKey: ['office-roster-size', user?.id, userId],
-    enabled: !!user && !!userId,
+    enabled: !!userId,
     staleTime: 300_000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('community_office_roster_size', { _user: userId! });
+      if (!userId) return 0;
+      const { data, error } = await supabase.rpc('community_office_roster_size', { _user: userId });
       if (error) throw error;
       return (data as number | null) ?? 0;
     },

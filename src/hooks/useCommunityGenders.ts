@@ -8,7 +8,7 @@ export function useCommunityGenders(ids: string[]) {
   const { user } = useAuth();
   const targets = [...new Set(ids)].sort().slice(0, 200);
   return useQuery({
-    queryKey: ['community-genders', user?.id, targets], enabled: !!user && targets.length > 0,
+    queryKey: ['community-genders', user?.id, targets], enabled: targets.length > 0,
     staleTime: 0,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('community_profile_genders', { _ids: targets });

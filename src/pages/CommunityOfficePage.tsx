@@ -14,17 +14,17 @@ export default function CommunityOfficePage() {
   const { userId = '' } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const profile = useQuery({ queryKey: ['community-office-profile', user?.id, userId], enabled: !!user && !!userId, queryFn: async () => {
+  const profile = useQuery({ queryKey: ['community-office-profile', user?.id, userId], enabled: !!userId, queryFn: async () => {
     const { data, error } = await supabase.rpc('community_profile_page', { _user: userId });
     if (error) throw error;
     return data?.[0] ?? null;
   } });
-  const details = useQuery({ queryKey: ['community-office-details', user?.id, userId], enabled: !!user && !!userId, queryFn: async () => {
+  const details = useQuery({ queryKey: ['community-office-details', user?.id, userId], enabled: !!userId, queryFn: async () => {
     const { data, error } = await supabase.rpc('community_office_details', { _user: userId });
     if (error) throw error;
     return data?.[0] ?? null;
   } });
-  const members = useQuery({ queryKey: ['community-office-roster', user?.id, userId], enabled: !!user && !!userId, queryFn: async () => {
+  const members = useQuery({ queryKey: ['community-office-roster', user?.id, userId], enabled: !!userId, queryFn: async () => {
     const { data, error } = await supabase.rpc('community_office_members', { _user: userId });
     if (error) throw error;
     if (data?.length) return data;

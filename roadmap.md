@@ -1,5 +1,9 @@
 # Roadmap
 
+## Anonymous professional profiles November 15
+- [x] Open professional and office routes, guest identity links and narrowly projected reads; keep personal profiles and all editing protected.
+- [x] Verified real guest desktop/mobile office description and all five broker cards, profile navigation/back, two published assets and inline details; eight tests and live guest privacy checks pass. Private management and administrator routes remain blocked.
+
 ## Profile navigation and table fades November 15
 - [x] Removed the profile office-return button; X returns to the previous page or homepage on direct entry. The office link is 14px with a dotted underline, and the view switch sits at the row edge.
 - [x] Increased shared table fades from 20/36px to 30/46px on mobile/desktop. Four regression tests and authenticated mobile/desktop checks passed with no page errors.
