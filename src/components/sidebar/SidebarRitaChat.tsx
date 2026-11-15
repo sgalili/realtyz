@@ -174,7 +174,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
         </div>
       </div>
       <form className="mt-2 flex items-end gap-1.5 rounded-lg border border-border bg-background px-1.5 py-1" onSubmit={(event) => { event.preventDefault(); send(); }}>
-        <button type="button" onClick={openFull} aria-label="פתיחת ריטה במסך מלא" title="מסך מלא" className="mb-0.5 shrink-0 rounded-full"><RitaAvatar className="h-7 w-7 ring-0" /></button>
+        <button type="button" onClick={openFull} aria-label="פתיחת ריטה במסך מלא" title="מסך מלא" className="mb-0.5 shrink-0 rounded-full"><RitaUserAvatar className="h-7 w-7" /></button>
         <textarea
           ref={textareaRef}
           value={text}
