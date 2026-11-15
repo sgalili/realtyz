@@ -943,7 +943,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                               </button>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="max-w-[260px] text-[13px] leading-6">
-                              <p>TORAFF היא כלי טכנולוגי בלבד. האחריות על הנכס, התמונות והפרטים שמייבאים חלה עליך, כולל עמידה בתנאי השימוש של הלוח שממנו הועתק הקישור. פירוט מלא בתקנון.</p>
+                              <p>TORAFF היא פלטפורמה טכנולוגית לאחסון ולשיתוף פעולה בלבד. יש להוסיף רק נכסים שבבלעדיותך או שהוסמכת לשווק; האחריות על הנכס, התמונות והפרטים חלה עליך. פירוט מלא בתקנון.</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
