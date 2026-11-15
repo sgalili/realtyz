@@ -16,7 +16,7 @@ export function VisitorMenu({ onSignup }: { onSignup: () => void }) {
   const signup = () => { setOpen(false); onSignup(); };
   const go = (path: string) => { setOpen(false); navigate(path); };
   return <Sheet open={open} onOpenChange={setOpen}>
-    <SheetTrigger asChild><Button variant="ghost" size="icon" className="board-header-icon-btn h-11 w-11" aria-label="תפריט מבקרים"><Menu className="h-5 w-5" /></Button></SheetTrigger>
+    <SheetTrigger asChild><Button variant="ghost" size="icon" className="board-header-icon-btn h-[46.8px] w-[46.8px]" aria-label="תפריט מבקרים"><Menu className="!h-[26px] !w-[26px]" strokeWidth={2} aria-hidden="true" /></Button></SheetTrigger>
     <SheetContent side="right" dir="rtl" className="right-3 flex w-[calc(100%-40px)] max-w-sm flex-col gap-0 overflow-visible p-0 pt-12">
       <SheetTitle className="sr-only">תפריט מבקרים</SheetTitle><SheetDescription className="sr-only">TORAFF</SheetDescription>
       <nav className="min-h-0 flex-1 overflow-y-auto px-3" aria-label="ניווט מבקרים">
