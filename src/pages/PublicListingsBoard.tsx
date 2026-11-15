@@ -43,7 +43,7 @@ import BoardSearchOverlay, { BOARD_SEARCH_OPEN_EVENT, BOARD_SEARCH_STATE_EVENT, 
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { sortListingRows, type ListingSortValue } from '@/lib/listingSortOptions';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
-import { BoardPublishButton, BoardOpenPageButton } from '@/components/properties/BoardRowButtons';
+import { BoardPublishButton, openBoardPage } from '@/components/properties/BoardRowButtons';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
@@ -202,6 +202,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
   const resetFilters = () => { setLeadFilter(EMPTY_LEAD_FILTER); setPropFilter(EMPTY_PROPERTY_FILTER); setQuery(''); };
   useEffect(() => { if (!marketingOnly) window.dispatchEvent(new CustomEvent(BOARD_SEARCH_STATE_EVENT, { detail: { open: searchOpen, count: appliedFilterCount } })); }, [searchOpen, appliedFilterCount, marketingOnly]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [publishCard, setPublishCard] = useState<PublicCard | null>(null);
 
 
   const loadGeneration = useRef(0);
@@ -433,11 +434,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
                         </td>)}
                         <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1">
                           {marketingOnly && selectMode && <SelectBox checked={selected.has(card.id)} label={`בחירת ${title}`} onChange={() => toggleSelected(card.id)} />}
-                          <ProfileAssetMenu card={card} title={title} isOwner={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} />
-                          <BoardPublishButton result={cardResult(card)} />
-                          <BoardOpenPageButton result={cardResult(card)} publicPath={propertyPath} />
-
-                          <Button type="button" size="icon" variant="ghost" aria-label="גרירה לשינוי סדר" title="גרירה לשינוי סדר" className="h-8 w-8 cursor-grab touch-none text-muted-foreground active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => { if (!user) { blockGuests(event); return; } event.stopPropagation(); rowDrag.current = { id: card.id, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={moveRowDrag} onPointerUp={finishRowDrag} onPointerCancel={() => { rowDrag.current = null; setDragGhost(null); }}><GripVertical className="h-4 w-4" /></Button>
+                          <ProfileAssetMenu card={card} title={title} isOwner={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} onOpenNewPage={() => void openBoardPage(cardResult(card), propertyPath)} onPublish={() => setPublishCard(card)} />
                         </div>
                          </td>
                       </tr>,
@@ -467,6 +464,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
         )}
         {!loading && grid && filtered.length > visibleCount && <AutoLoadSentinel key={visibleCount} onReach={() => setVisibleCount(count => count + 10)} />}
       </main>
+      {publishCard && <BoardPublishButton key={publishCard.id} hideTrigger result={cardResult(publishCard)} open onOpenChange={(v) => { if (!v) setPublishCard(null); }} />}
 
       {dragGhost && (() => {
         const card = columns.sorted.find(c => c.id === dragGhost.id);

@@ -3,7 +3,7 @@
 import { returnState } from "@/lib/returnNav";
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Handshake, Heart, Loader2, Megaphone, MoreVertical, Pencil, Share2, Trash2 } from 'lucide-react';
+import { ExternalLink, Handshake, Heart, Loader2, Megaphone, MoreVertical, Pencil, Share2, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -84,7 +84,7 @@ export function PropertyRowActions({
  * belongs to the signed-in user's active workspace. Ownership is decided by
  * the listing's workspace_owner_id read through RLS, never by public data.
  */
-export function OwnerListingActions({ listingId }: { listingId: string }) {
+export function OwnerListingActions({ listingId, onOpenNewPage }: { listingId: string; onOpenNewPage?: () => void }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const navigate = useNavigate();
@@ -138,6 +138,7 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
           <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setRewardOpen(true)}>
             <Handshake className={`h-4 w-4 ${affiliateActive ? 'text-success' : ''}`} /> {affiliateActive ? 'שיווק שותפים פעיל' : 'הגדר שיווק שותפים'}
           </DropdownMenuItem>
+          {onOpenNewPage ? <DropdownMenuItem className="gap-2 text-sm" onSelect={onOpenNewPage}><ExternalLink className="h-4 w-4" /> פתיחה בעמוד חדש</DropdownMenuItem> : null}
           {live ? (
             <DropdownMenuItem asChild className="gap-2 text-sm">
               <a href={live} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>

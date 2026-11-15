@@ -1,4 +1,4 @@
-import { ExternalLink, Heart, MoreVertical, Share2 } from 'lucide-react';
+import { ExternalLink, Heart, Megaphone, MoreVertical, Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -25,9 +25,9 @@ export function QuickShareButton({ title, path, label = false }: { title: string
 }
 
 /** Owners (and Super Admin) get the full management menu; partners get viewer-safe actions. */
-export function ProfileAssetMenu({ card, title, isOwner, isFav, onFavorite }: { card: { id: string; slug?: string | null }; title: string; isOwner: boolean; isFav: boolean; onFavorite: () => void }) {
+export function ProfileAssetMenu({ card, title, isOwner, isFav, onFavorite, onPublish, onOpenNewPage }: { card: { id: string; slug?: string | null }; title: string; isOwner: boolean; isFav: boolean; onFavorite: () => void; onPublish?: () => void; onOpenNewPage?: () => void }) {
   const navigate = useNavigate();
-  if (isOwner) return <OwnerListingActions listingId={card.id} />;
+  if (isOwner) return <OwnerListingActions listingId={card.id} onOpenNewPage={onOpenNewPage} />;
   const path = profileAssetPath(card);
   return <DropdownMenu>
     <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="אפשרויות נכס" title="אפשרויות נכס" onClick={(e) => e.stopPropagation()}><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -35,6 +35,8 @@ export function ProfileAssetMenu({ card, title, isOwner, isFav, onFavorite }: { 
       <DropdownMenuLabel className="text-xs">אפשרויות שותף</DropdownMenuLabel>
       <DropdownMenuItem onSelect={() => void quickShareAsset(title, path)}><Share2 className="me-2 h-4 w-4" />שיתוף מהיר</DropdownMenuItem>
       <DropdownMenuItem onSelect={() => navigate(path)}><ExternalLink className="me-2 h-4 w-4" />פתיחת הנכס</DropdownMenuItem>
+      {onOpenNewPage && <DropdownMenuItem onSelect={onOpenNewPage}><ExternalLink className="me-2 h-4 w-4" />פתיחה בעמוד חדש</DropdownMenuItem>}
+      {onPublish && <DropdownMenuItem onSelect={onPublish}><Megaphone className="me-2 h-4 w-4 text-primary" />פרסום קמפיין</DropdownMenuItem>}
       <DropdownMenuItem onSelect={onFavorite}><Heart className="me-2 h-4 w-4" />{isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}</DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>;
