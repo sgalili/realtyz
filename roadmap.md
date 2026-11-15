@@ -1,5 +1,10 @@
 # Roadmap
 
+## Role-based rotating messages November 15
+- [ ] Add a typewriter banner between homepage search and view controls, with guest, broker/partner, developer and private audiences.
+- [ ] Add at least ten managed messages per audience and instant live updates.
+- [ ] Add the Super Admin rotating-messages section with secure create, edit and confirmed delete actions; verify desktop/mobile and focused tests.
+
 ## Anonymous professional profiles November 15
 - [x] Open professional and office routes, guest identity links and narrowly projected reads; keep personal profiles and all editing protected.
 - [x] Verified real guest desktop/mobile office description and all five broker cards, profile navigation/back, two published assets and inline details; eight tests and live guest privacy checks pass. Private management and administrator routes remain blocked.
