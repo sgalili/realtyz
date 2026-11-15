@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Accessibility, Menu, LogIn, CircleHelp, Info, Scale, ChevronDown, MessageCircle } from 'lucide-react';
+import { Accessibility, ChevronDown, CircleHelp, Info, LogIn, Menu, MessageCircle, Scale, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { AccessibilityMenu } from '@/components/accessibility/AccessibilityMenu';
@@ -8,34 +8,59 @@ import { VisitorRitaChat } from './VisitorRitaChat';
 import { officialWaLink } from '@/lib/officialWa';
 import { VISITOR_WHATSAPP_INTRO } from '@/lib/visitorWhatsApp';
 
+/** Used only when the header row cannot be measured (unexpected layout). */
+const FALLBACK_HEADER_HEIGHT = 64;
+
 export function VisitorMenu({ onSignup }: { onSignup: () => void }) {
   const [open, setOpen] = useState(false);
   const [legal, setLegal] = useState(false);
   const navigate = useNavigate();
   const signup = () => { setOpen(false); onSignup(); };
+  const login = () => { setOpen(false); navigate('/auth', { state: { signup: false } }); };
   const go = (path: string) => { setOpen(false); navigate(path); };
-  // Follow the visual viewport so the mobile keyboard lifts Rita's box instead of covering it.
-  const [vv, setVv] = useState<{ h: number; top: number } | null>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  // The panel opens right below the site header so the header stays fully visible,
+  // and follows the visual viewport so the mobile keyboard lifts Rita's box instead of covering it.
+  const [box, setBox] = useState<{ top: number; height: number } | null>(null);
   useEffect(() => {
-    const v = window.visualViewport;
-    if (!open || !v) return;
-    const sync = () => setVv(window.innerHeight - v.height > 80 ? { h: v.height, top: v.offsetTop } : null);
-    sync(); v.addEventListener('resize', sync); v.addEventListener('scroll', sync);
-    return () => { v.removeEventListener('resize', sync); v.removeEventListener('scroll', sync); setVv(null); };
+    if (!open) return;
+    const measure = () => {
+      const row = anchorRef.current?.closest('div.grid') ?? document.querySelector('[aria-label="TORAFF - דף הבית"]');
+      const headerBottom = Math.max(0, Math.round(row?.getBoundingClientRect().bottom ?? FALLBACK_HEADER_HEIGHT));
+      const viewport = window.visualViewport;
+      const keyboard = viewport && window.innerHeight - viewport.height > 80
+        ? { top: viewport.offsetTop, bottom: viewport.offsetTop + viewport.height }
+        : { top: 0, bottom: window.innerHeight };
+      const top = Math.max(headerBottom, keyboard.top);
+      setBox({ top, height: Math.max(0, keyboard.bottom - top) });
+    };
+    measure();
+    const viewport = window.visualViewport;
+    window.addEventListener('resize', measure);
+    viewport?.addEventListener('resize', measure);
+    viewport?.addEventListener('scroll', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      viewport?.removeEventListener('resize', measure);
+      viewport?.removeEventListener('scroll', measure);
+    };
   }, [open]);
   return <Sheet open={open} onOpenChange={setOpen}>
-    <SheetTrigger asChild><Button variant="ghost" size="icon" className="board-header-icon-btn h-[46.8px] w-[46.8px]" aria-label="תפריט מבקרים"><Menu className="!h-[26px] !w-[26px]" strokeWidth={2} aria-hidden="true" /></Button></SheetTrigger>
-    <SheetContent side="right" dir="rtl" style={vv ? { top: vv.top, height: vv.h, bottom: 'auto' } : undefined} className="right-3 flex w-[calc(100%-40px)] max-w-sm flex-col gap-0 overflow-visible p-0 pt-12">
+    <div ref={anchorRef} className="contents"><SheetTrigger asChild><Button variant="ghost" size="icon" className="board-header-icon-btn h-[46.8px] w-[46.8px]" aria-label="תפריט מבקרים"><Menu className="!h-[26px] !w-[26px]" strokeWidth={2} aria-hidden="true" /></Button></SheetTrigger></div>
+    <SheetContent side="right" dir="rtl" style={box ? { top: box.top, height: box.height, bottom: 'auto' } : undefined} overlayStyle={box ? { top: box.top } : undefined} className="right-3 flex w-[calc(100%-40px)] max-w-sm flex-col gap-0 overflow-visible p-0">
       <SheetTitle className="sr-only">תפריט מבקרים</SheetTitle><SheetDescription className="sr-only">TORAFF</SheetDescription>
-      <nav className="min-h-0 flex-1 overflow-y-auto px-3" aria-label="ניווט מבקרים">
-        <Button className="mb-3 min-h-12 w-full gap-2 text-base" onClick={signup}><LogIn className="h-5 w-5" />הרשמה חינם או כניסה</Button>
-        <Button asChild className="mb-3 min-h-12 w-full gap-2 bg-success text-success-foreground hover:bg-success/90 text-lg"><a href={officialWaLink(VISITOR_WHATSAPP_INTRO)} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}><MessageCircle className="h-5 w-5" />דברו איתנו</a></Button>
+      <nav className="min-h-0 flex-1 overflow-y-auto px-3 pt-10" aria-label="ניווט מבקרים">
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <Button className="min-h-12 gap-2 text-base" onClick={signup}><UserPlus className="h-5 w-5" aria-hidden="true" />הרשמה חינם</Button>
+          <Button variant="outline" className="min-h-12 gap-2 border-primary text-base text-primary hover:bg-primary/10" onClick={login}><LogIn className="h-5 w-5" aria-hidden="true" />כניסה</Button>
+        </div>
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-lg" onClick={() => go('/faq')}><CircleHelp className="h-5 w-5" />שאלות ותשובות</Button>
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-lg" onClick={() => go('/about-toraff')}><Info className="h-5 w-5" />מה זה TORAFF</Button>
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-lg" aria-expanded={legal} onClick={() => setLegal(v => !v)}><Scale className="h-5 w-5" />מידע משפטי<ChevronDown className="ms-auto h-4 w-4" /></Button>
         {legal && <div className="border-s border-border ps-5">{[['תנאי שימוש','/terms'],['מדיניות פרטיות','/privacy-policy'],['עמלות ותגמולים','/commission-mechanism'],['כללי תיווך','/terms#brokerage-commissions']].map(([label,path]) => <Button key={path} variant="ghost" className="min-h-11 w-full justify-start text-base" onClick={() => go(path)}>{label}</Button>)}</div>}
+        <Button asChild className="mt-3 min-h-12 w-full gap-2 bg-success text-success-foreground hover:bg-success/90 text-lg"><a href={officialWaLink(VISITOR_WHATSAPP_INTRO)} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}><MessageCircle className="h-5 w-5" />צרו קשר</a></Button>
       </nav>
-      {open && <div className="relative shrink-0 pt-12"><AccessibilityMenu trigger={<Button variant="outline" size="icon" className="absolute -right-3 -top-[50px] h-11 w-11 rounded-full border-primary bg-background text-primary shadow-sm" aria-label="פתיחת תפריט נגישות"><Accessibility className="h-6 w-6" /></Button>} /><VisitorRitaChat onSignup={signup} /></div>}
+      {open && <div className="relative shrink-0 pt-12"><AccessibilityMenu trigger={<Button variant="outline" size="icon" className="absolute -right-3 -top-[50px] h-11 w-11 rounded-full border-primary bg-background text-primary shadow-sm" aria-label="פתיחת תפריט נגישות"><Accessibility className="h-6 w-6" /></Button>} /><VisitorRitaChat /></div>}
     </SheetContent>
   </Sheet>;
 }

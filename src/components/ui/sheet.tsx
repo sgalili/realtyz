@@ -49,12 +49,16 @@ const sheetVariants = cva(
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+    VariantProps<typeof sheetVariants> {
+  /** Lets one caller keep part of the page (e.g. the site header) undimmed. */
+  overlayClassName?: string;
+  overlayStyle?: React.CSSProperties;
+}
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
-  ({ side = "right", className, children, ...props }, ref) => (
+  ({ side = "right", className, children, overlayClassName, overlayStyle, ...props }, ref) => (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay className={overlayClassName} style={overlayStyle} />
       <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props} data-site-dialog>
         {children}
         <SheetPrimitive.Close className="absolute right-[calc(1rem+5px)] top-[calc(1rem-5px)] rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
