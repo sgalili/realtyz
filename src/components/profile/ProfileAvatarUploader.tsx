@@ -139,7 +139,7 @@ export function ProfileAvatarUploader({ profileOwnerId, gender = null }: { profi
   };
 
   return (
-    <div className="py-3 text-right">
+    <div className="pb-[3px] text-right">
       {pendingFile && <ImageCropDialog file={pendingFile} aspect={1} title="חיתוך תמונת פרופיל" onCancel={() => setPendingFile(null)} onConfirm={uploadAvatar} />}
       <div className="relative mx-auto h-24 w-24">
         <Button
@@ -158,7 +158,7 @@ export function ProfileAvatarUploader({ profileOwnerId, gender = null }: { profi
             <GenderAvatar gender={gender} />
           )}
         </Button>
-        <Button type="button" variant="outline" size="icon" onClick={onPick} disabled={busy} aria-label="העלאת תמונת פרופיל" title="העלאת תמונת פרופיל" className="absolute -bottom-2 -right-3 h-8 w-8 rounded-full bg-background text-primary"><Camera className="h-4 w-4" /></Button>
+        <Button type="button" variant="outline" size="icon" onClick={onPick} disabled={busy} aria-label="העלאת תמונת פרופיל" title="העלאת תמונת פרופיל" className="absolute -top-2 -right-3 h-8 w-8 rounded-full bg-background text-primary"><Camera className="h-4 w-4" /></Button>
         <input
           ref={inputRef}
           type="file"
@@ -177,7 +177,7 @@ export function ProfileAvatarUploader({ profileOwnerId, gender = null }: { profi
               disabled={busy}
               aria-label="מחיקת תמונת פרופיל"
               title="מחיקת תמונת פרופיל"
-              className="absolute -bottom-2 -left-3 h-8 w-8 rounded-full border bg-background text-destructive hover:bg-destructive/10"
+              className="absolute -top-2 -left-3 h-8 w-8 rounded-full border bg-background text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

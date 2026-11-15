@@ -445,18 +445,13 @@ function PersonalTab() {
     <div className="w-full min-w-0">
       <div className="space-y-3 pb-3">
         <ProfileAvatarUploader profileOwnerId={profileOwnerId} gender={gender === 'female' ? 'female' : gender === 'male' ? 'male' : null} />
-        <PublicBioField key={profileOwnerId} ownerId={profileOwnerId} />
 
         {verifiedLicenseLocked ? (
-          <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
-            <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            <span className="shrink-0 text-base font-semibold text-muted-foreground">שם מלא:</span>
-            <span className="min-w-0 flex-1 break-words text-base font-bold" aria-label="שם מלא לפי פנקס המתווכים">{fullName}</span>
-          </div>
+          <p dir="rtl" className="text-center text-lg font-bold break-words" aria-label="שם מלא לפי פנקס המתווכים">{fullName}</p>
         ) : (
           <ProfileFieldRow icon={UserIcon} label="שם מלא" value={fullName} editing={editing.fullName ?? false} onChange={setFullName} onToggleEdit={() => setEdit('fullName')} onSave={() => saveField('fullName', fullName)} saving={savingField !== null} inputDir="rtl" placeholder="הזן שם מלא" />
         )}
-        {verifiedLicenseLocked && <p className="text-sm text-muted-foreground">השם נלקח מפנקס המתווכים הרשמי ואינו ניתן לעריכה</p>}
+        <PublicBioField key={profileOwnerId} ownerId={profileOwnerId} />
 
 
         <ProfileArrayRows rows={emails} setRows={setEmails} icon={Mail} label='דוא"ל' onSave={rows => saveField('emails', rows)} saving={savingField !== null} />
@@ -855,7 +850,7 @@ export default function Profile() {
   };
 
   return (
-    <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4 [&_input]:text-lg md:[&_input]:text-base [&_input]:font-bold [&_input]:placeholder:font-normal [&_textarea]:text-lg md:[&_textarea]:text-base">
+    <div dir="rtl" className="mx-auto w-full max-w-4xl px-2 pb-4 pt-0 sm:px-4 [&_input]:text-lg md:[&_input]:text-base [&_input]:font-bold [&_input]:placeholder:font-normal [&_textarea]:text-lg md:[&_textarea]:text-base">
       <Dialog open={brainPrompt} onOpenChange={setBrainPrompt}>
         <DialogContent dir="rtl" className="max-w-lg">
           <DialogHeader>
@@ -882,7 +877,7 @@ export default function Profile() {
         </DialogContent>
       </Dialog>
 
-      <div className="mb-3">
+      <div className="mt-[15px] mb-3 empty:hidden">
         <CompleteProfileBanner profileOwnerId={activeWorkspaceId} force={params.get('welcome') === 'developer'} />
       </div>
 
@@ -897,21 +892,21 @@ export default function Profile() {
           </TabsList>,
           heroTabsHost,
         )}
-        <TabsContent value="personal" className="mt-[20px] space-y-4">
+        <TabsContent value="personal" className="mt-[15px] space-y-4">
           {activeWorkspaceId && <PersonalTab key={`${user?.id}:${activeWorkspaceId}`} />}
         </TabsContent>
-        <TabsContent value="aibrain" className="mt-[20px] space-y-4" dir="rtl">
+        <TabsContent value="aibrain" className="mt-[15px] space-y-4" dir="rtl">
           <KnowledgeBase key={activeWorkspaceId ?? user?.id ?? 'brain'} />
         </TabsContent>
         {isAgency && (
-          <TabsContent value="managers" className="mt-[20px] space-y-4">
+          <TabsContent value="managers" className="mt-[15px] space-y-4">
             <ManagersTab key={activeWorkspaceId ?? user?.id ?? 'managers'} />
           </TabsContent>
         )}
-        <TabsContent value="workspace" className="mt-[20px] space-y-4">
+        <TabsContent value="workspace" className="mt-[15px] space-y-4">
           {activeWorkspaceId && <WorkspaceTab key={`${user?.id}:${activeWorkspaceId}`} />}
         </TabsContent>
-        <TabsContent value="connections" className="mt-[20px] space-y-4" dir="rtl">
+        <TabsContent value="connections" className="mt-[15px] space-y-4" dir="rtl">
           <ConnectionsTab key={activeWorkspaceId ?? user?.id ?? 'connections'} />
         </TabsContent>
 
