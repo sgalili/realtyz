@@ -13,6 +13,8 @@ export interface WhiteLabelSettings {
   primary_foreground_color: string | null;
   hide_kalpiz_branding: boolean;
   office_address?: string | null;
+  office_city?: string | null;
+  agency_description?: string | null;
   public_email?: string | null;
   brokerage_name?: string | null;
   brokerage_license?: string | null;
@@ -101,7 +103,10 @@ function readBrandCache(ownerId: string | null): WhiteLabelSettings | null {
   if (!ownerId) return null;
   try {
     const raw = localStorage.getItem(`${BRAND_CACHE_KEY}:${ownerId}`);
-    return raw ? (JSON.parse(raw) as WhiteLabelSettings) : null;
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as WhiteLabelSettings & Record<string, unknown>;
+    delete cached.office_phone;
+    return cached;
   } catch {
     return null;
   }
@@ -143,7 +148,7 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
       if (ownerId) {
         const { data: workspaceBrand } = await supabase
           .from('white_label_settings')
-          .select('*')
+          .select('id,user_id,agency_name,logo_url,landscape_logo_url,primary_color,primary_foreground_color,hide_kalpiz_branding,created_at,updated_at,office_address,office_city,agency_description,public_email,brokerage_name,brokerage_license')
           .eq('user_id', ownerId)
           .maybeSingle();
         row = workspaceBrand;

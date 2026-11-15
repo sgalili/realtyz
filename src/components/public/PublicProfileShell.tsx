@@ -6,6 +6,7 @@ import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 import { PageHero } from '@/components/PageHero';
 import { VisitorMenu } from '@/components/public/VisitorMenu';
+import { PageLoadingRegion } from '@/components/ui/full-page-loading';
 
 /** Standalone broker/agency pages: signed-in users get the app shell, guests the public site header. */
 export function PublicProfileShell({ children, hero = false }: { children: ReactNode; hero?: boolean }) {
@@ -20,6 +21,9 @@ export function PublicProfileShell({ children, hero = false }: { children: React
         <div className="flex items-center justify-end"><PublicListingPublisher autoResume triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" /></div>
       </div>
     </header>
-    <div className={`realtyz-main-surface min-h-0 flex-1 overscroll-contain overflow-y-auto overflow-x-hidden pb-[var(--app-footer-space)] ${hero ? '' : 'pt-[15px]'}`}>{hero && <PageHero />}{children}</div>
+    {hero && <PageHero />}
+    <PageLoadingRegion className={`realtyz-main-surface min-h-0 flex-1 overscroll-contain overflow-y-auto overflow-x-hidden pb-[var(--app-footer-space)] ${hero ? '' : 'pt-[15px]'}`}>
+      {children}
+    </PageLoadingRegion>
   </div>;
 }

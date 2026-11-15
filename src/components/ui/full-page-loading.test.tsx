@@ -1,6 +1,6 @@
 import { act, render, screen, cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FullPageLoading, FullPageLoadingProvider } from './full-page-loading';
+import { FullPageLoading, FullPageLoadingProvider, PageLoadingRegion } from './full-page-loading';
 vi.mock('./toraff-loader', () => ({ ToraffLoader: () => <span>video animation</span> }));
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 const overlay = () => screen.queryByRole('status', { name: 'טעינת עמוד' });
@@ -70,5 +70,21 @@ describe('persistent page loading overlay', () => {
     act(() => vi.advanceTimersByTime(5_000));
     expect(overlay()).toBeNull();
     expect(screen.getByText('second page')).toBeVisible();
+  });
+  it('keeps the loaded header and hero outside the hidden and inert loading content', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    render(<FullPageLoadingProvider>
+      <header>main website header</header>
+      <div data-testid="hero">blue hero title</div>
+      <PageLoadingRegion as="main"><FullPageLoading /><div data-testid="page-body">loading page body</div></PageLoadingRegion>
+    </FullPageLoadingProvider>);
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(overlay()).toBeInTheDocument();
+    expect(screen.getByRole('banner')).not.toHaveAttribute('aria-hidden');
+    expect(screen.getByRole('banner')).not.toHaveAttribute('inert');
+    expect(screen.getByTestId('hero')).not.toHaveAttribute('aria-hidden');
+    expect(screen.getByTestId('hero')).not.toHaveAttribute('inert');
+    expect(screen.getByTestId('page-body').parentElement).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByTestId('page-body').parentElement).toHaveAttribute('inert');
   });
 });

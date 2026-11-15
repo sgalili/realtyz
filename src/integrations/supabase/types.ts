@@ -11053,6 +11053,7 @@ export type Database = {
           tier4_type: string
         }[]
       }
+      get_agency_phone_admin: { Args: { _owner_id: string }; Returns: string }
       get_broker_license_state: { Args: { _user_id: string }; Returns: Json }
       get_business_performance: {
         Args: { days_window?: number; user_uuid: string }

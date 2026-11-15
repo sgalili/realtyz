@@ -240,7 +240,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/settings\/branding/, title: "מיתוג הסוכנות" },
   { match: /^\/settings\/system-health/, title: "תקינות המערכת" },
   { match: /^\/leads/, title: "פניות נכנסות" },
-  { match: /^\/profile/, title: "הגדרות" },
+  { match: /^\/profile/, title: "הגדרות חשבון" },
   { match: /^\/billing/, title: "חבילה וחשבוניות" },
   { match: /^\/wallet/, title: "הארנק שלי" },
   { match: /^\/auth/, title: "התחברות" },
@@ -500,6 +500,9 @@ export function PageHero() {
           )}
         </div>
       </div>
+      {location.pathname.startsWith('/profile') && (
+        <div id="profile-hero-tabs" className="relative z-20 mx-auto w-full max-w-4xl px-4 pb-[10px] sm:px-6" />
+      )}
 
       {/* Decorative wave at the bottom edge — fill matches the page surface
           (#f1f5f9) so the wave melts seamlessly into the content below. */}

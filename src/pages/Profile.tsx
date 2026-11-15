@@ -1,8 +1,11 @@
 import { DeleteAccountButton } from '@/components/profile/DeleteAccountButton';
 import { PublicBioField } from '@/components/profile/PublicBioField';
+import { AgencyAddressFields } from '@/components/profile/AgencyAddressFields';
+import { AgencyDescriptionField } from '@/components/profile/AgencyDescriptionField';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { CompleteProfileBanner, type ProfileSavedDetail } from '@/components/profile/CompleteProfileBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import KnowledgeBase from '@/pages/KnowledgeBase';
@@ -574,7 +577,9 @@ function WorkspaceTab() {
   const [agencyName, setAgencyName] = useState('');
   const [savedAgencyName, setSavedAgencyName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
-  const [officeDetails, setOfficeDetails] = useState({ office_address: '', office_city: '', office_phone: '', public_email: '', brokerage_name: '', brokerage_license: '' });
+  const [officeDetails, setOfficeDetails] = useState({ office_address: '', office_city: '', public_email: '', brokerage_name: '', brokerage_license: '' });
+  const [agencyDescription, setAgencyDescription] = useState('');
+  const [savedAgencyDescription, setSavedAgencyDescription] = useState('');
   const [serviceAreas, setServiceAreas] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [savingField, setSavingField] = useState<string | null>(null);
@@ -593,7 +598,7 @@ function WorkspaceTab() {
     (async () => {
       try {
         const { data, error } = await supabase.from('white_label_settings')
-          .select('agency_name, logo_url, office_address, office_city, office_phone, public_email, brokerage_name, brokerage_license')
+          .select('agency_name, logo_url, office_address, office_city, agency_description, public_email, brokerage_name, brokerage_license')
           .eq('user_id', ownerId).maybeSingle();
         if (error) throw error;
         const { data: profile, error: profileError } = await supabase.from('profiles')
@@ -603,7 +608,9 @@ function WorkspaceTab() {
         const name = data?.agency_name || '';
         setAgencyName(name); setSavedAgencyName(name);
         setLogoUrl(data?.logo_url || activeWorkspace?.workspace_logo_url || '');
-        setOfficeDetails({ office_address: data?.office_address || '', office_city: (data as any)?.office_city || '', office_phone: (data as any)?.office_phone || '', public_email: data?.public_email || '', brokerage_name: data?.brokerage_name || '', brokerage_license: data?.brokerage_license || '' });
+        setOfficeDetails({ office_address: data?.office_address || '', office_city: data?.office_city || '', public_email: data?.public_email || '', brokerage_name: data?.brokerage_name || '', brokerage_license: data?.brokerage_license || '' });
+        setAgencyDescription(data?.agency_description || '');
+        setSavedAgencyDescription(data?.agency_description || '');
         setServiceAreas(normalizeCitySelection(profile?.service_areas?.length ? profile.service_areas : [profile?.city || '']));
       } catch (error: any) {
         if (!cancelled) toast.error(error?.message || 'טעינת פרטי המשרד נכשלה');
@@ -617,6 +624,7 @@ function WorkspaceTab() {
     if (!alive.current) return;
     window.dispatchEvent(new Event('realtyz:profile-saved'));
     void queryClient.invalidateQueries({ queryKey: ['service_areas', ownerId] });
+    void queryClient.invalidateQueries({ queryKey: ['community-office-details'] });
   };
 
   const saveOfficeField = async (field: OfficeField, value: string): Promise<boolean> => {
@@ -642,6 +650,28 @@ function WorkspaceTab() {
       return true;
     } catch (error: any) {
       if (alive.current) toast.error(error?.message || 'שמירת השדה נכשלה');
+      return false;
+    } finally { saveLock.current = false; if (alive.current) setSavingField(null); }
+  };
+
+  const saveOfficeAddress = async (city: string, address: string): Promise<boolean> => {
+    if (!ownerId || loading || saveLock.current) return false;
+    saveLock.current = true;
+    setSavingField('office_address');
+    try {
+      const { data, error } = await supabase.from('white_label_settings').upsert({
+        user_id: ownerId,
+        office_city: city.trim() || null,
+        office_address: address.trim() || null,
+      }, { onConflict: 'user_id' }).select('user_id,office_city,office_address').single();
+      if (error) throw error;
+      if (data?.user_id !== ownerId) throw new Error('כתובת המשרד לא נשמרה');
+      if (!alive.current) return false;
+      setOfficeDetails(previous => ({ ...previous, office_city: data.office_city || '', office_address: data.office_address || '' }));
+      await notifySaved();
+      return true;
+    } catch (error: any) {
+      if (alive.current) toast.error(error?.message || 'שמירת כתובת המשרד נכשלה');
       return false;
     } finally { saveLock.current = false; if (alive.current) setSavingField(null); }
   };
@@ -710,19 +740,12 @@ function WorkspaceTab() {
           <IsraeliCityPicker value="" onChange={() => {}} selectedValues={serviceAreas} onSelectionChange={values => void saveServiceAreas(values)} firstOptions={['כל הארץ']} placeholder="אזורי שירות" disabled={busy} className="h-10 text-base" itemClassName="text-base" />
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <label className="text-base text-muted-foreground">עיר המשרד</label>
-          <IsraeliCityPicker value={officeDetails.office_city} onChange={value => { setOfficeDetails(previous => ({ ...previous, office_city: value })); void saveOfficeField('office_city', value); }} placeholder="בחירת עיר" disabled={busy} className="h-10 text-base" itemClassName="text-base" />
-        </div>
-        {([['office_address', 'כתובת המשרד (רחוב ומספר)'], ['office_phone', 'טלפון המשרד']] as const).map(([key, label]) => <div key={key} className="space-y-1.5">
-          <label htmlFor={`office-${key}`} className="text-base text-muted-foreground">{label}</label>
-          <div className="relative">
-            <Input id={`office-${key}`} type={key === 'office_phone' ? 'tel' : 'text'} inputMode={key === 'office_phone' ? 'tel' : undefined} dir={key === 'office_phone' ? 'ltr' : 'rtl'} value={officeDetails[key]} disabled={busy} className="pl-10" onChange={event => setOfficeDetails(previous => ({ ...previous, [key]: event.target.value }))} />
-            <Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 left-0 h-10 w-10" aria-label={`שמירת ${label}`} disabled={busy} onClick={() => void saveOfficeField(key, officeDetails[key])}><Check className="h-4 w-4" /></Button>
-          </div>
-        </div>)}
-      </div>
+      <AgencyAddressFields city={officeDetails.office_city} address={officeDetails.office_address} disabled={busy} onSave={saveOfficeAddress} />
+      <AgencyDescriptionField value={agencyDescription} savedValue={savedAgencyDescription} disabled={busy} saving={savingField === 'agency_description'} onChange={setAgencyDescription} onSave={() => {
+        void saveOfficeField('agency_description', agencyDescription).then(saved => {
+          if (saved) setSavedAgencyDescription(agencyDescription.trim());
+        });
+      }} />
       {isMasterOffice && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {([['public_email', 'דוא״ל ציבורי'], ['brokerage_name', 'שם המתווך האחראי'], ['brokerage_license', 'רישיון תיווך']] as const).map(([key, label]) => <div key={key} className="space-y-1.5">
           <label htmlFor={`office-${key}`} className="text-base text-muted-foreground">{label}</label>
@@ -766,6 +789,10 @@ export default function Profile() {
   const [params, setParams] = useSearchParams();
   const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const { user } = useAuth();
+  const [heroTabsHost, setHeroTabsHost] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setHeroTabsHost(document.getElementById('profile-hero-tabs'));
+  }, []);
   const identity = useAccountIdentity();
   const { canInviteTeam } = useUserRole();
   const officeLabel = ['יזם', 'קבלן'].includes(identity.label) ? 'חברה' : ['מפרסם', 'פרטי', 'שותף'].includes(identity.label) ? 'פרטי מפרסם' : 'משרד';
@@ -860,15 +887,16 @@ export default function Profile() {
       </div>
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
-        <div className="sticky top-0 z-30 -mx-2 mb-[15px] h-16 bg-background px-2 py-2 before:absolute before:inset-x-0 before:bottom-full before:h-6 before:bg-background sm:-mx-4 sm:px-4">
-        <TabsList className={`grid h-12 w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} bg-muted`}>
-          <TabsTrigger className="text-base" value="personal">פרופיל</TabsTrigger>
-          <TabsTrigger className="text-base" value="workspace">{officeLabel}</TabsTrigger>
-          <TabsTrigger className="text-base" value="aibrain">מח AI</TabsTrigger>
-          <TabsTrigger className="text-base" value="connections">חיבורים</TabsTrigger>
-          {isAgency && <TabsTrigger className="text-base" value="managers">מנהלים</TabsTrigger>}
-        </TabsList>
-        </div>
+        {heroTabsHost && createPortal(
+          <TabsList className={`grid h-12 w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} rounded-lg bg-primary-foreground/15 text-primary-foreground`}>
+            <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="personal">פרופיל</TabsTrigger>
+            <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="workspace">{officeLabel}</TabsTrigger>
+            <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="aibrain">מח AI</TabsTrigger>
+            <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="connections">חיבורים</TabsTrigger>
+            {isAgency && <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="managers">מנהלים</TabsTrigger>}
+          </TabsList>,
+          heroTabsHost,
+        )}
         <TabsContent value="personal" className="mt-[20px] space-y-4">
           {activeWorkspaceId && <PersonalTab key={`${user?.id}:${activeWorkspaceId}`} />}
         </TabsContent>

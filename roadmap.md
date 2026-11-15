@@ -1,5 +1,13 @@
 # Roadmap
 
+## Loading and agency settings overhaul November 15
+- [x] Keep the main header and loaded blue hero visible during every page loading overlay or skeleton.
+- [x] Replace agency city fields with national city/settlement and street autocomplete plus a manual house number.
+- [x] Restrict agency phone visibility to authorized system managers, including public projections.
+- [x] Add instantly saved editable company description sourced from existing/imported agency profiles.
+- [x] Rename the settings hero and move all four profile tabs into it; verify desktop/mobile and focused rules.
+
+
 ## Page explainer revamp November 15
 - [x] Rewrote all shared page-guide copy with one bold title and relevant global icons per slide; added specific homepage and My Ads guides.
 - [x] Automatic guides repeat on later visits until explicitly suppressed; manual help omits permanent suppression and leaves dismissal unchanged.

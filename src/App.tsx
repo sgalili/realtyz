@@ -228,20 +228,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   const partnerConsent = usePartnerConsent();
   const location = useLocation();
   const { isDeveloperWorkspace } = useWorkspaceFeatures();
-  if (loading) return (
+  if (loading) return user ? <AppLayout><PageLoader /></AppLayout> : (
     <div className="min-h-screen flex items-center justify-center">
       <RealtyzLoader size="lg" label="מאמת זהות..." />
     </div>
   );
   if (!user) return <Navigate to="/auth" replace />;
-  if (roleLoading || !rolesFetched || !roleApplied) return <PageLoader />;
+  if (roleLoading || !rolesFetched || !roleApplied) return <AppLayout><PageLoader /></AppLayout>;
 
   // Brand-new account (no role yet): pick מתווך / שותף once, then continue.
-  if (roleError) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <RealtyzLoader size="lg" label="מסנכרן הרשאות..." />
-    </div>
-  );
+  if (roleError) return <AppLayout><div className="min-h-[60vh] flex items-center justify-center"><RealtyzLoader size="lg" label="מסנכרן הרשאות..." /></div></AppLayout>;
 
   if (rolesFetched && !roleLoading && (accountRoles.length === 0 || accountRoles.every(role => role === 'user'))) {
     if (!roleApplied) return <PageLoader />;
@@ -293,7 +289,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   }
 
   if ((isPartnerMode || isAffiliateOnly) && isAffiliate && !['/', '/wallet', '/profile', '/public-listings', '/referral'].some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
-    if (partnerConsent.isLoading) return <PageLoader />;
+    if (partnerConsent.isLoading) return <AppLayout><PageLoader /></AppLayout>;
     if (partnerConsent.data !== true && !readPostSignupWelcome()) return <AppLayout><PartnerOnboarding onComplete={() => void partnerConsent.refetch()} /></AppLayout>;
   }
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
@@ -326,7 +322,7 @@ function RootRoute() {
 function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const { isSuperAdmin, loading: roleLoading } = useUserRole();
-  if (loading || roleLoading) return (
+  if (loading || roleLoading) return user ? <AppLayout><PageLoader /></AppLayout> : (
     <div className="min-h-screen flex items-center justify-center">
       <RealtyzLoader size="lg" label="מאמת הרשאות..." />
     </div>

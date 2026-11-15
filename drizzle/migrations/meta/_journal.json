@@ -1485,6 +1485,13 @@
       "when": 1794771325853,
       "tag": "0211_distribution_funnel_queue",
       "breakpoints": true
+    },
+    {
+      "idx": 212,
+      "version": "7",
+      "when": 1794775873259,
+      "tag": "0212_restrict_agency_phone_to_system_managers",
+      "breakpoints": true
     }
   ]
 }
