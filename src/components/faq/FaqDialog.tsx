@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CircleHelp } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -42,13 +43,27 @@ function useRoleFaqs() {
 /** Standalone FAQ content for the /faq page. */
 export function FaqContent() {
   const { roleKey, roleFaqs } = useRoleFaqs();
-  return <div dir="rtl" className="space-y-4">
-    <p className="text-[16px] leading-relaxed text-muted-foreground">כל מה שרציתם לדעת על TORAFF{roleFaqs ? ' — כולל שאלות שמותאמות במיוחד אליכם' : ''}.</p>
-    {roleFaqs ? <Tabs defaultValue="general" dir="rtl">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="general" className="text-[15px] focus-visible:ring-0">שאלות כלליות</TabsTrigger>
-        <TabsTrigger value="role" className="text-[15px] focus-visible:ring-0">{FAQ_ROLE_LABELS[roleKey!]}</TabsTrigger>
-      </TabsList>
+  const [params, setParams] = useSearchParams();
+  const [heroTabsHost, setHeroTabsHost] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setHeroTabsHost(document.getElementById('faq-hero-tabs'));
+  }, []);
+  const tab = roleFaqs && params.get('tab') === 'role' ? 'role' : 'general';
+  const setTab = (value: string) => {
+    const next = new URLSearchParams(params);
+    next.set('tab', value);
+    setParams(next, { replace: true });
+  };
+
+  return <div dir="rtl">
+    {roleFaqs ? <Tabs value={tab} onValueChange={setTab} dir="rtl">
+      {heroTabsHost && createPortal(
+        <TabsList className="grid h-12 w-full grid-cols-2 rounded-lg bg-primary-foreground/15 text-primary-foreground">
+          <TabsTrigger value="general" className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:ring-0 data-[state=active]:bg-primary-foreground data-[state=active]:text-primary">שאלות כלליות</TabsTrigger>
+          <TabsTrigger value="role" className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:ring-0 data-[state=active]:bg-primary-foreground data-[state=active]:text-primary">{FAQ_ROLE_LABELS[roleKey!]}</TabsTrigger>
+        </TabsList>,
+        heroTabsHost,
+      )}
       <TabsContent value="general"><FaqAccordion items={GENERAL_FAQS} prefix="g" /></TabsContent>
       <TabsContent value="role"><FaqAccordion items={roleFaqs} prefix="r" /></TabsContent>
     </Tabs> : <FaqAccordion items={GENERAL_FAQS} prefix="g" />}

@@ -1,5 +1,11 @@
 # Roadmap
 
+## FAQ hero tabs November 15
+- [x] Remove the selected FAQ subtitle and hero title.
+- [x] Move both FAQ tabs into the blue hero without changing tab state or deep links.
+- [x] Verify desktop/mobile layout and save with the pending broker-table work kept separate.
+
+
 ## Broker table agency identity November 15
 - [ ] Trace every broker/agent table row and reuse the authorized public-profile agency name/logo relationship.
 - [ ] Render consistent agency name and logo in each relevant broker row without exposing private office data.
