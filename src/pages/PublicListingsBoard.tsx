@@ -52,6 +52,7 @@ import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-contro
 import { selectedMarketingCards } from '@/lib/marketingSelection';
 import { InventoryCollectionBanner, InventoryToolSoftLock } from '@/components/InventoryCollection';
 import { VisitorMenu } from '@/components/public/VisitorMenu';
+import { TypewriterBanner } from '@/components/public/TypewriterBanner';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
@@ -377,6 +378,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
                   </button>
                 ) : appliedFilterCount > 0 ? <span aria-label={`${appliedFilterCount} סינונים פעילים`} className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">{appliedFilterCount}</span> : null}
               </div>}
+              {!marketingOnly && <TypewriterBanner />}
               <div className="flex shrink-0 items-center gap-0">
                 {marketingOnly && <Button type="button" size="icon" variant="ghost" className="h-8 w-9 text-muted-foreground" aria-label="חיפוש" title="חיפוש" aria-expanded={searchOpen} onClick={() => setSearchOpen(value => !value)}>{searchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}</Button>}
                 <ViewModeSwitch isGrid={grid} onToggle={toggleGrid} />

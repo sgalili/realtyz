@@ -53,17 +53,24 @@ interface SheetContentProps
   /** Lets one caller keep part of the page (e.g. the site header) undimmed. */
   overlayClassName?: string;
   overlayStyle?: React.CSSProperties;
+  closeClassName?: string;
+  closeStyle?: React.CSSProperties;
+  closeAriaLabel?: string;
 }
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
-  ({ side = "right", className, children, overlayClassName, overlayStyle, ...props }, ref) => (
+  ({ side = "right", className, children, overlayClassName, overlayStyle, closeClassName, closeStyle, closeAriaLabel = "Close", ...props }, ref) => (
     <SheetPortal>
       <SheetOverlay className={overlayClassName} style={overlayStyle} />
       <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props} data-site-dialog>
         {children}
-        <SheetPrimitive.Close className="absolute right-[calc(1rem+5px)] top-[calc(1rem-5px)] rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+        <SheetPrimitive.Close
+          aria-label={closeAriaLabel}
+          style={closeStyle}
+          className={cn("absolute right-[calc(1rem+5px)] top-[calc(1rem-5px)] rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none", closeClassName)}
+        >
           <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
+          <span className="sr-only">{closeAriaLabel}</span>
         </SheetPrimitive.Close>
       </SheetPrimitive.Content>
     </SheetPortal>

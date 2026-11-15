@@ -1450,6 +1450,13 @@
       "when": 1794763205582,
       "tag": "0206_office_details_return_address",
       "breakpoints": true
+    },
+    {
+      "idx": 207,
+      "version": "7",
+      "when": 1794768720467,
+      "tag": "0207_role_rotating_messages",
+      "breakpoints": true
     }
   ]
 }

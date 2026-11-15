@@ -12,6 +12,7 @@ describe('super admin hero dropdown', () => {
     expect(labels).toEqual(
       expect.arrayContaining([
         'ניהול משתמשים',
+        'ניהול מסרים מתחלפים',
         'ייבוא מתווכים ויזמים',
         'חיבורים',
         'פיננסי',
@@ -36,6 +37,7 @@ describe('super admin hero dropdown', () => {
 
   it('falls back to user management for unknown section values', () => {
     expect(resolveAdminSection('connections')).toBe('connections');
+    expect(resolveAdminSection('messages')).toBe('messages');
     expect(resolveAdminSection(null)).toBe('users');
     expect(resolveAdminSection('bogus')).toBe('users');
   });

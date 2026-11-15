@@ -1,8 +1,9 @@
-import { Activity, PlugZap, ScanSearch, ServerCog, Trash2, UserPlus, Users, Wallet } from 'lucide-react';
+import { Activity, MessageSquareText, PlugZap, ScanSearch, ServerCog, Trash2, UserPlus, Users, Wallet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type AdminSection =
   | 'users'
+  | 'messages'
   | 'import'
   | 'deletion'
   | 'finance'
@@ -22,6 +23,7 @@ export interface AdminSectionOption {
 // page can render has to appear here.
 export const ADMIN_SECTIONS: readonly AdminSectionOption[] = [
   { value: 'users', label: 'ניהול משתמשים', icon: Users },
+  { value: 'messages', label: 'ניהול מסרים מתחלפים', icon: MessageSquareText },
   { value: 'import', label: 'ייבוא מתווכים ויזמים', icon: UserPlus },
   { value: 'deletion', label: 'מחיקה וארכיון', icon: Trash2 },
   { value: 'finance', label: 'פיננסי', icon: Wallet },

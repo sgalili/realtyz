@@ -8312,6 +8312,33 @@ export type Database = {
           },
         ]
       }
+      rotating_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          message_text: string
+          role_key: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          message_text: string
+          role_key: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          message_text?: string
+          role_key?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       scheduled_items: {
         Row: {
           approval_queue_id: string | null

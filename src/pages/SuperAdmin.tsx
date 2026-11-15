@@ -23,6 +23,7 @@ import { BrokerEmailBatchCard } from '@/components/admin/BrokerEmailInvitations'
 import { DeletedAccountsArchive } from '@/components/admin/DeletedAccountsArchive';
 import { ErrorLogPanel } from '@/components/admin/ErrorLogPanel';
 import { ScrapingUsageReport } from '@/components/admin/ScrapingUsageReport';
+import { RotatingMessagesManager } from '@/components/admin/RotatingMessagesManager';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -152,6 +153,8 @@ const SuperAdmin = () => {
           <SuperAdminUsersTable />
         </div>
       )}
+
+      {section === 'messages' && <RotatingMessagesManager />}
 
       {section === 'import' && (
         <div className="space-y-4">
