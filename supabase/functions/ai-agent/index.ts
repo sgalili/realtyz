@@ -1,3 +1,4 @@
+import { RITA_PLATFORM_KNOWLEDGE } from '../_shared/ritaPlatformKnowledge.ts';
 import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { safeTool, logToolFailure, GRACEFUL_TOOL_FALLBACK_HE, GRACEFUL_ACTION_FALLBACK_HE } from "../_shared/safeToolError.ts";
 import { fetchWorkspaceCrmCounts, renderCrmCountsAnswer } from "../_shared/crmCounts.ts";
@@ -1896,7 +1897,7 @@ ${liveDataBlock || "LIVE WORKSPACE SNAPSHOT לא נטען. ענה עדיין כ�
     ].join("\n");
 
 
-    const systemPrompt = masterDirective + "\n\n" + (systemRulesBlock ? systemRulesBlock + "\n\n" : "") + (isInternalDashboard
+    const systemPrompt = masterDirective + "\n\n" + RITA_PLATFORM_KNOWLEDGE + "\n\n" + (systemRulesBlock ? systemRulesBlock + "\n\n" : "") + (isInternalDashboard
       ? MASTER_AGENT_PROMPT + "\n\n" + CRM_ACTIONS_CONTRACT + (webtivBlock ? "\n\n" + webtivBlock : "") + (marketIntelBlock ? "\n\n" + marketIntelBlock : "")
 
       : SCHEMA_CONTEXT
