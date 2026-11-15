@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import { useQuery } from '@tanstack/react-query';
+import { useStickToBottomContext } from 'use-stick-to-bottom';
 import { ArrowUp, Maximize2, Trash2, Square, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -19,6 +20,12 @@ import { ritaChatKeyAction } from '@/lib/ritaChatKeys';
 
 const KEY = 'toraff-visitor-rita-history';
 const GREETING = 'היי, אני ריטה. מה מביא אותך ל־TORAFF?';
+// Keeps the newest bubble visible: scrolls the transcript to its bottom whenever a message is added or grows.
+function AutoStickBottom({ trigger }: { trigger: unknown }) {
+  const { scrollToBottom } = useStickToBottomContext();
+  useEffect(() => { scrollToBottom(); }, [trigger, scrollToBottom]);
+  return null;
+}
 function readHistory(): UIMessage[] {
   try {
     const data = JSON.parse(localStorage.getItem(KEY) ?? '[]');
@@ -28,7 +35,9 @@ function readHistory(): UIMessage[] {
 
 export function VisitorRitaChat() {
   const [expanded, setExpanded] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  // PromptInputTextarea does not forward refs, so reach the textarea through the wrapper instead.
+  const inputWrapRef = useRef<HTMLDivElement>(null);
+  const getTextarea = () => inputWrapRef.current?.querySelector('textarea') ?? null;
   const transport = useMemo(() => new DefaultChatTransport({
     api: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/visitor-rita`,
     headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
@@ -49,7 +58,7 @@ export function VisitorRitaChat() {
   });
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(messages.slice(-24))); } catch { /* unavailable storage does not block chat */ }
-    const el = inputRef.current;
+    const el = getTextarea();
     if (el && !el.value) el.style.height = '';
     if (!busy) el?.focus();
   }, [messages, busy]);
@@ -71,8 +80,8 @@ export function VisitorRitaChat() {
   };
   const content = <div className="flex min-h-0 flex-1 flex-col gap-2" dir="rtl">
     <Conversation className={expanded ? 'min-h-0 flex-1' : 'max-h-48 min-h-0'}>
-      <ConversationContent className="gap-3 px-2 py-2">
-        <div className="is-assistant group flex w-full items-start gap-2"><RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" /><MessageContent className="max-w-[78%] rounded-lg bg-muted px-3 py-2 text-sm font-normal">{GREETING}</MessageContent>{!expanded && <Button variant="ghost" size="icon" className="ms-auto h-8 w-8 shrink-0 self-center" aria-label="הגדלת שיחה עם ריטה" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" /></Button>}</div>
+      <ConversationContent className="gap-3 px-2 py-2" scrollClassName={expanded ? undefined : 'max-h-48'}>
+        <div className="is-assistant group flex w-full items-start gap-2"><RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" /><MessageContent className="max-w-[78%] rounded-lg bg-muted px-3 py-2 text-sm font-normal">{GREETING}</MessageContent><div className="ms-auto flex shrink-0 items-center gap-1 self-center">{messages.length > 0 && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="איפוס שיחת ריטה" disabled={busy} onClick={() => { if (window.confirm('למחוק את שיחת ריטה שנשמרה בדפדפן?')) setMessages([]); }}><Trash2 className="h-4 w-4" /></Button>}{!expanded && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="הגדלת שיחה עם ריטה" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" /></Button>}</div></div>
         {messages.map(message => {
           const mine = message.role === 'user';
           return <div key={message.id} className={cn('group flex w-full max-w-[92%] items-start gap-2', mine ? 'is-user mr-auto flex-row-reverse' : 'is-assistant ml-auto')}>
@@ -85,23 +94,18 @@ export function VisitorRitaChat() {
         {status === 'submitted' && <Shimmer>ריטה חושבת…</Shimmer>}
       </ConversationContent>
       <ConversationScrollButton />
+      <AutoStickBottom trigger={messages} />
     </Conversation>
     {error && <p role="alert" className="px-2 text-sm text-destructive">{error.message || 'ריטה אינה זמינה כרגע. נסו שוב מאוחר יותר.'}</p>}
-    <PromptInput onSubmit={({ text }) => { if (!text.trim() || busy) return; void sendMessage({ text: text.trim().slice(0, 3000) }); }} className="rounded-lg">
-      <PromptInputTextarea ref={inputRef} autoFocus placeholder="איך אוכל לעזור?" aria-label="הודעה לריטה" rows={1} className="!min-h-10 max-h-32 resize-none overflow-y-auto py-2 text-sm [field-sizing:fixed]" onKeyDown={handleKeyDown} onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight, 128)}px`; }} onFocus={e => { const t = e.currentTarget; window.setTimeout(() => t.scrollIntoView({ block: 'nearest' }), 300); }} />
+    <div ref={inputWrapRef}><PromptInput onSubmit={({ text }) => { if (!text.trim() || busy) return; void sendMessage({ text: text.trim().slice(0, 3000) }); const el = getTextarea(); if (el) el.style.height = ''; }} className="rounded-lg">
+      <PromptInputTextarea autoFocus placeholder="איך אוכל לעזור?" aria-label="הודעה לריטה" rows={1} className="!min-h-10 max-h-32 resize-none overflow-y-auto py-2 text-sm [field-sizing:fixed]" onKeyDown={handleKeyDown} onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight, 128)}px`; }} onFocus={e => { const t = e.currentTarget; window.setTimeout(() => t.scrollIntoView({ block: 'nearest' }), 300); }} />
       <InputGroupAddon align="inline-end" className="self-end px-2 pb-1.5">
         <PromptInputSubmit status={status} onStop={stop} aria-label={busy ? 'עצירת תשובה' : 'שליחה לריטה'}>{busy ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}</PromptInputSubmit>
       </InputGroupAddon>
-    </PromptInput>
+    </PromptInput></div>
   </div>;
   return <>
     <div className="border-t border-border px-3 pb-2 pt-3">
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <span />
-        <div className="flex shrink-0 gap-1">
-          {messages.length > 0 && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="איפוס שיחת ריטה" disabled={busy} onClick={() => { if (window.confirm('למחוק את שיחת ריטה שנשמרה בדפדפן?')) setMessages([]); }}><Trash2 className="h-4 w-4" /></Button>}
-        </div>
-      </div>
       {!expanded && content}
     </div>
     <Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className="flex h-[85dvh] max-w-2xl flex-col" dir="rtl"><DialogHeader><DialogTitle className="flex items-center gap-3"><RitaAvatar className="h-10 w-10" />ריטה</DialogTitle><DialogDescription>נעים להכיר</DialogDescription></DialogHeader>{expanded && content}</DialogContent></Dialog>
