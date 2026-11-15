@@ -1,5 +1,10 @@
 # Roadmap
 
+## Guest typewriter actions November 15
+- [x] Replaced guest rotation with the ten requested messages and persisted each message's internal destination; the live database returns exactly ten active guest messages.
+- [x] Increased rendered banner text from 14px to 15px and linked messages to signup, the explainer or FAQ; added the requested `/what-is-toraff` explainer URL.
+- [x] Fourteen focused tests passed; mobile clicks reached visible explainer, signup and FAQ content without 404s or page errors, and mobile/desktop text measured 15px.
+
 ## Role-based rotating messages November 15
 - [x] Added the typewriter banner between homepage search and view controls, with guest, broker/partner, developer and private audiences; signed-in broker targeting and guest animation verified.
 - [x] Seeded exactly ten live messages per audience; a Super Admin edit appeared on a separate open guest homepage without reloading and was restored.

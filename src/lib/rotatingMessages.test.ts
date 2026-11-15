@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanRotatingMessageText, resolveRotatingMessageAudience, validRotatingMessageText } from './rotatingMessages';
+import { cleanRotatingMessageText, resolveRotatingMessageAudience, rotatingMessageNavigation, validRotatingMessageText } from './rotatingMessages';
 
 describe('rotating message audiences', () => {
   it('uses guest messages only for signed-out visitors', () => {
@@ -30,5 +30,24 @@ describe('rotating message validation', () => {
     expect(validRotatingMessageText('   ')).toBe(false);
     expect(validRotatingMessageText('א'.repeat(241))).toBe(false);
     expect(validRotatingMessageText('מסר תקין')).toBe(true);
+  });
+});
+
+describe('rotating message actions', () => {
+  it('opens the explainer for explainer-linked messages', () => {
+    expect(rotatingMessageNavigation('/what-is-toraff')).toEqual({ path: '/what-is-toraff' });
+  });
+
+  it('opens FAQ for FAQ-linked messages', () => {
+    expect(rotatingMessageNavigation('/faq')).toEqual({ path: '/faq' });
+  });
+
+  it('opens the signup screen for registration-linked messages', () => {
+    expect(rotatingMessageNavigation('/auth')).toEqual({ path: '/auth', state: { signup: true, tab: 'signup' } });
+  });
+
+  it('does not navigate to missing or unapproved destinations', () => {
+    expect(rotatingMessageNavigation(null)).toBeNull();
+    expect(rotatingMessageNavigation('https://example.com')).toBeNull();
   });
 });

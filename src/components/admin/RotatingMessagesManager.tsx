@@ -6,11 +6,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { ROTATING_MESSAGES_QUERY_KEY, useAllRotatingMessages } from '@/hooks/useRotatingMessages';
 import {
+  ROTATING_MESSAGE_ACTION_LABELS,
+  ROTATING_MESSAGE_ACTION_PATHS,
   ROTATING_MESSAGE_AUDIENCES,
   ROTATING_MESSAGE_AUDIENCE_LABELS,
   cleanRotatingMessageText,
   validRotatingMessageText,
   type RotatingMessage,
+  type RotatingMessageActionPath,
   type RotatingMessageAudience,
 } from '@/lib/rotatingMessages';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const db = supabase as any;
+type ActionSelection = RotatingMessageActionPath | 'none';
 
 export function RotatingMessagesManager() {
   const queryClient = useQueryClient();
@@ -37,7 +41,9 @@ export function RotatingMessagesManager() {
   const { data: messages = [], isLoading, error } = useAllRotatingMessages(isSuperAdmin);
   const [newAudience, setNewAudience] = useState<RotatingMessageAudience>('guest');
   const [newText, setNewText] = useState('');
+  const [newAction, setNewAction] = useState<ActionSelection>('none');
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [actionEdits, setActionEdits] = useState<Record<string, ActionSelection>>({});
   const [deleteTarget, setDeleteTarget] = useState<RotatingMessage | null>(null);
 
   const grouped = useMemo(() => Object.fromEntries(
@@ -57,6 +63,7 @@ export function RotatingMessagesManager() {
       const { error: insertError } = await db.from('rotating_messages').insert({
         role_key: newAudience,
         message_text: messageText,
+        action_path: newAction === 'none' ? null : newAction,
         sort_order: nextOrder,
         is_active: true,
       });
@@ -64,6 +71,7 @@ export function RotatingMessagesManager() {
     },
     onSuccess: () => {
       setNewText('');
+      setNewAction('none');
       toast.success('המסר נוסף ויופיע בלוח');
       void refresh();
     },
@@ -71,18 +79,20 @@ export function RotatingMessagesManager() {
   });
 
   const saveMessage = useMutation({
-    mutationFn: async ({ id, text }: { id: string; text: string }) => {
+    mutationFn: async ({ id, text, action }: { id: string; text: string; action: ActionSelection }) => {
       const messageText = cleanRotatingMessageText(text);
       if (!validRotatingMessageText(messageText)) throw new Error('יש להזין מסר של עד 240 תווים');
+      const actionPath = action === 'none' ? null : action;
       const { error: updateError } = await db
         .from('rotating_messages')
-        .update({ message_text: messageText })
+        .update({ message_text: messageText, action_path: actionPath })
         .eq('id', id);
       if (updateError) throw updateError;
-      return { id, messageText };
+      return { id, messageText, action };
     },
-    onSuccess: ({ id, messageText }) => {
+    onSuccess: ({ id, messageText, action }) => {
       setEdits((current) => ({ ...current, [id]: messageText }));
+      setActionEdits((current) => ({ ...current, [id]: action }));
       toast.success('המסר עודכן בכל המערכת');
       void refresh();
     },
@@ -102,6 +112,11 @@ export function RotatingMessagesManager() {
     onError: (mutationError: any) => toast.error(mutationError?.message ?? 'מחיקת המסר נכשלה'),
   });
 
+  const actionOptions = <>
+    <SelectItem value="none">ללא קישור</SelectItem>
+    {ROTATING_MESSAGE_ACTION_PATHS.map((path) => <SelectItem key={path} value={path}>{ROTATING_MESSAGE_ACTION_LABELS[path]}</SelectItem>)}
+  </>;
+
   return (
     <div className="space-y-4" dir="rtl">
       <Card>
@@ -112,7 +127,7 @@ export function RotatingMessagesManager() {
           <CardDescription>המסרים מותאמים לסוג המשתמש ומתעדכנים בלוח מיד לאחר שמירה.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-[220px_1fr]">
+          <div className="grid gap-3 sm:grid-cols-[180px_180px_1fr]">
             <Select value={newAudience} onValueChange={(value) => setNewAudience(value as RotatingMessageAudience)}>
               <SelectTrigger aria-label="קהל למסר חדש"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -120,6 +135,10 @@ export function RotatingMessagesManager() {
                   <SelectItem key={audience} value={audience}>{ROTATING_MESSAGE_AUDIENCE_LABELS[audience]}</SelectItem>
                 ))}
               </SelectContent>
+            </Select>
+            <Select value={newAction} onValueChange={(value) => setNewAction(value as ActionSelection)}>
+              <SelectTrigger aria-label="קישור למסר חדש"><SelectValue /></SelectTrigger>
+              <SelectContent>{actionOptions}</SelectContent>
             </Select>
             <Textarea
               aria-label="תוכן המסר החדש"
@@ -152,38 +171,45 @@ export function RotatingMessagesManager() {
             <CardContent className="space-y-2">
               {grouped[audience].map((message) => {
                 const value = edits[message.id] ?? message.message_text;
-                const changed = cleanRotatingMessageText(value) !== message.message_text;
+                const action = actionEdits[message.id] ?? message.action_path ?? 'none';
+                const changed = cleanRotatingMessageText(value) !== message.message_text || action !== (message.action_path ?? 'none');
                 return (
-                  <div key={message.id} className="flex items-center gap-2 rounded-md border border-border/60 bg-background p-2">
-                    <Input
-                      aria-label={`עריכת מסר עבור ${ROTATING_MESSAGE_AUDIENCE_LABELS[audience]}`}
-                      value={value}
-                      onChange={(event) => setEdits((current) => ({ ...current, [message.id]: event.target.value }))}
-                      maxLength={240}
-                      className="min-w-0 flex-1"
-                    />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label="שמירת מסר"
-                      title="שמירת מסר"
-                      disabled={!changed || !validRotatingMessageText(value) || saveMessage.isPending}
-                      onClick={() => saveMessage.mutate({ id: message.id, text: value })}
-                    >
-                      <Save className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label="מחיקת מסר"
-                      title="מחיקת מסר"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setDeleteTarget(message)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <div key={message.id} className="flex flex-col gap-2 rounded-md border border-border/60 bg-background p-2 sm:flex-row sm:items-center">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <Input
+                        aria-label={`עריכת מסר עבור ${ROTATING_MESSAGE_AUDIENCE_LABELS[audience]}`}
+                        value={value}
+                        onChange={(event) => setEdits((current) => ({ ...current, [message.id]: event.target.value }))}
+                        maxLength={240}
+                        className="min-w-0 flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label="שמירת מסר"
+                        title="שמירת מסר"
+                        disabled={!changed || !validRotatingMessageText(value) || saveMessage.isPending}
+                        onClick={() => saveMessage.mutate({ id: message.id, text: value, action })}
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label="מחיקת מסר"
+                        title="מחיקת מסר"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDeleteTarget(message)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Select value={action} onValueChange={(value) => setActionEdits((current) => ({ ...current, [message.id]: value as ActionSelection }))}>
+                      <SelectTrigger aria-label={`קישור למסר עבור ${ROTATING_MESSAGE_AUDIENCE_LABELS[audience]}`} className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>{actionOptions}</SelectContent>
+                    </Select>
                   </div>
                 );
               })}

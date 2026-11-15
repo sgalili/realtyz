@@ -33,7 +33,7 @@ export function useRotatingMessages(audience: RotatingMessageAudience, enabled =
     queryFn: async () => {
       const { data, error } = await db
         .from('rotating_messages')
-        .select('id, role_key, message_text, sort_order, is_active, created_at')
+        .select('id, role_key, message_text, action_path, sort_order, is_active, created_at')
         .eq('role_key', audience)
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
@@ -55,7 +55,7 @@ export function useAllRotatingMessages(enabled: boolean) {
     queryFn: async () => {
       const { data, error } = await db
         .from('rotating_messages')
-        .select('id, role_key, message_text, sort_order, is_active, created_at')
+        .select('id, role_key, message_text, action_path, sort_order, is_active, created_at')
         .order('role_key', { ascending: true })
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });

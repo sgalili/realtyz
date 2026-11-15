@@ -521,6 +521,7 @@ const App = () => (
               <Route path="/landing" element={<Suspense fallback={<PageLoader />}><Landing /></Suspense>} />
               <Route path="/faq" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><FaqPage /></Suspense></PublicProfileShell>} />
               <Route path="/about-toraff" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><AboutToraff /></Suspense></PublicProfileShell>} />
+              <Route path="/what-is-toraff" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><AboutToraff /></Suspense></PublicProfileShell>} />
               <Route path="/terms" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><Terms /></Suspense></PublicProfileShell>} />
               <Route path="/commission-mechanism" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><CommissionMechanism /></Suspense></PublicProfileShell>} />
               <Route path="/privacy-policy" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><PrivacyPolicy /></Suspense></PublicProfileShell>} />

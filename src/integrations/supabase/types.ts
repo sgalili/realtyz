@@ -8314,6 +8314,7 @@ export type Database = {
       }
       rotating_messages: {
         Row: {
+          action_path: string | null
           created_at: string
           id: string
           is_active: boolean
@@ -8322,6 +8323,7 @@ export type Database = {
           sort_order: number
         }
         Insert: {
+          action_path?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -8330,6 +8332,7 @@ export type Database = {
           sort_order?: number
         }
         Update: {
+          action_path?: string | null
           created_at?: string
           id?: string
           is_active?: boolean

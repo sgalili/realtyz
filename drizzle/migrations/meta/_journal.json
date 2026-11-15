@@ -1457,6 +1457,13 @@
       "when": 1794768720467,
       "tag": "0207_role_rotating_messages",
       "breakpoints": true
+    },
+    {
+      "idx": 208,
+      "version": "7",
+      "when": 1794769273518,
+      "tag": "0208_guest_rotating_message_actions",
+      "breakpoints": true
     }
   ]
 }
