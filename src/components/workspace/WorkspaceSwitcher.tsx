@@ -125,23 +125,24 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
     </div>
   );
 
-  const workspaceLogoSquare = (
-    <span className={cn(
-      'flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-background',
-      cardImage.isAvatar && cardImage.url ? 'rounded-full' : 'rounded-md',
-    )}>
-      {cardImage.url ? (
+  // Office branding only: a personal profile picture never fills this slot, and
+  // an account with neither an office/company nor its logo shows no image at all.
+  const officeLogo = cardImage.isAvatar ? null : cardImage.url;
+
+  const workspaceLogoSquare = officeLogo || card.isOffice ? (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-background">
+      {officeLogo ? (
         <img
-          src={cardImage.url}
+          src={officeLogo}
           alt={identity.name}
-          className={cardImage.isAvatar ? 'h-full w-full object-cover' : 'h-full w-full object-contain p-0.5'}
+          className="h-full w-full object-contain p-0.5"
           referrerPolicy="no-referrer"
         />
       ) : (
         /^\d$/.test(workspaceInitial(card.title)) ? <Building2 className="h-4 w-4 text-primary" /> : <span className="text-xs font-bold text-primary">{workspaceInitial(card.title)}</span>
       )}
     </span>
-  );
+  ) : null;
 
   return (
     <div ref={setPortalContainer} className={cn('flex w-full items-center gap-2', className)}>
