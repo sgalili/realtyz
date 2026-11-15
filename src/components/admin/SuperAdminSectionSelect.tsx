@@ -46,7 +46,7 @@ export function SuperAdminSectionSelect() {
       <Select value={section} onValueChange={choose}>
         <SelectTrigger
           aria-label="אזור ניהול"
-          className="h-10 w-full border-white/35 bg-white/15 text-sm font-semibold text-white shadow-none hover:bg-white/25 focus:ring-white/40 [&>svg]:text-white"
+          className="h-10 w-full border-white/35 bg-white/15 text-[17px] font-semibold text-white shadow-none hover:bg-white/25 focus:ring-white/40 [&_svg]:text-white [&>span]:flex [&>span]:flex-1 [&>span]:justify-center [&>span]:ps-4 [&_svg]:h-5 [&_svg]:w-5"
         >
           <SelectValue />
         </SelectTrigger>
