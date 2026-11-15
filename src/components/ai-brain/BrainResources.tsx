@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import { FileText, Image as ImageIcon, Video, Sparkles, Type, Link, Loader2, Upload, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { cn } from '@/lib/utils';
 
 export type BrainTab = 'ai' | 'files' | 'text' | 'link';
@@ -40,10 +39,7 @@ export function BrainUploadZone({ busy, onFiles }: { busy: boolean; onFiles: (fi
 
 export function BrainTextEntry({ value, onChange, busy, onAdd }: { value: string; onChange: (text: string) => void; busy: boolean; onAdd: () => void }) {
   return <div className="space-y-2">
-    <div className="relative">
-      <Textarea value={value} onChange={e => onChange(e.target.value)} disabled={busy} aria-label="הנחיות או מידע למאגר הידע" placeholder="הנחיות או מידע למאגר הידע" className="min-h-[140px] pt-10" />
-      <div className="absolute top-1 start-1"><VoiceInputButton size="sm" disabled={busy} onTranscript={text => onChange(`${value} ${text}`.trim())} /></div>
-    </div>
+    <Textarea value={value} onChange={e => onChange(e.target.value)} disabled={busy} aria-label="הנחיות או מידע למאגר הידע" placeholder="הנחיות או מידע למאגר הידע" className="min-h-[140px]" />
     <div className="flex justify-end"><Button onClick={onAdd} disabled={busy || !value.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'הוסף'}</Button></div>
   </div>;
 }

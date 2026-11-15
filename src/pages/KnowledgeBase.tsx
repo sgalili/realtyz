@@ -310,20 +310,12 @@ export default function KnowledgeBase() {
 
             {tab === 'ai' && (
               <div className="space-y-3">
-                <div className="relative">
-                  <Textarea
-                    value={geminiPrompt}
-                    onChange={(e) => setGeminiPrompt(e.target.value)}
-                    placeholder="שאל כל דבר על מאגר הידע: פרסונת הסוכן, תבניות קמפיינים, הנחיות כתיבה ומענה וכללי תקשורת. לדוגמה: 'נתח את כללי המענה שלי וכתוב מדריך תגובות לפניות מחיר'"
-                    className="min-h-[120px] pt-10"
-                  />
-                  <div className="absolute top-1 start-1">
-                    <VoiceInputButton
-                      size="sm"
-                      onTranscript={(t) => setGeminiPrompt((p) => (p ? `${p} ${t}` : t))}
-                    />
-                  </div>
-                </div>
+                <Textarea
+                  value={geminiPrompt}
+                  onChange={(e) => setGeminiPrompt(e.target.value)}
+                  placeholder="שאל כל דבר על מאגר הידע: פרסונת הסוכן, תבניות קמפיינים, הנחיות כתיבה ומענה וכללי תקשורת. לדוגמה: 'נתח את כללי המענה שלי וכתוב מדריך תגובות לפניות מחיר'"
+                  className="min-h-[120px]"
+                />
 
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex gap-1 p-1 rounded-lg bg-muted">
