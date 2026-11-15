@@ -3488,6 +3488,47 @@ export type Database = {
         }
         Relationships: []
       }
+      distribution_funnel_items: {
+        Row: {
+          added_by: string
+          blocked_reason: string | null
+          created_at: string
+          id: string
+          listing_id: string
+          status: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          added_by: string
+          blocked_reason?: string | null
+          created_at?: string
+          id?: string
+          listing_id: string
+          status?: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          added_by?: string
+          blocked_reason?: string | null
+          created_at?: string
+          id?: string
+          listing_id?: string
+          status?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distribution_funnel_items_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drip_campaigns: {
         Row: {
           channel: string
@@ -10102,6 +10143,10 @@ export type Database = {
           _user_id: string
         }
         Returns: number
+      }
+      add_listing_to_distribution_funnel: {
+        Args: { _listing: string }
+        Returns: Json
       }
       admin_adjust_credit: {
         Args: { _amount: number; _reason?: string; _user_id: string }

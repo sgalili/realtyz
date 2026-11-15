@@ -5,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { OwnerListingActions } from '@/components/properties/PropertyRowActions';
 import { publicUrl } from '@/lib/publicUrl';
 import { toast } from '@/hooks/use-toast';
+import { addToDistributionFunnel } from '@/lib/distributionFunnel';
 
 export const profileAssetPath = (card: { id: string; slug?: string | null }) => `/p/${encodeURIComponent(card.slug || card.id)}`;
 
@@ -36,7 +37,7 @@ export function ProfileAssetMenu({ card, title, isOwner, isFav, onFavorite, onPu
       <DropdownMenuItem onSelect={() => void quickShareAsset(title, path)}><Share2 className="me-2 h-4 w-4" />שיתוף מהיר</DropdownMenuItem>
       <DropdownMenuItem onSelect={() => navigate(path)}><ExternalLink className="me-2 h-4 w-4" />פתיחת הנכס</DropdownMenuItem>
       {onOpenNewPage && <DropdownMenuItem onSelect={onOpenNewPage}><ExternalLink className="me-2 h-4 w-4" />פתיחה בעמוד חדש</DropdownMenuItem>}
-      {onPublish && <DropdownMenuItem onSelect={onPublish}><Megaphone className="me-2 h-4 w-4 text-primary" />פרסום קמפיין</DropdownMenuItem>}
+      <DropdownMenuItem onSelect={() => void addToDistributionFunnel(card.id)}><Megaphone className="me-2 h-4 w-4 text-primary" />פרסום קמפיין ברשתות</DropdownMenuItem>
       <DropdownMenuItem onSelect={onFavorite}><Heart className="me-2 h-4 w-4" />{isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}</DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>;

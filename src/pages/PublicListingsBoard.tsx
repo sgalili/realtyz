@@ -436,7 +436,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
                         </td>)}
                         <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1">
                           {marketingOnly && selectMode && <SelectBox checked={selected.has(card.id)} label={`בחירת ${title}`} onChange={() => toggleSelected(card.id)} />}
-                          <ProfileAssetMenu card={card} title={title} isOwner={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} onOpenNewPage={() => void openBoardPage(cardResult(card), propertyPath)} onPublish={() => setPublishCard(card)} />
+                          <ProfileAssetMenu card={card} title={title} isOwner={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} onOpenNewPage={() => void openBoardPage(cardResult(card), propertyPath)} />
                         </div>
                          </td>
                       </tr>,
