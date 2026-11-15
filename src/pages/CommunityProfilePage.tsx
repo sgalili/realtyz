@@ -20,6 +20,7 @@ import { professionalRole } from '../../supabase/functions/_shared/personalLangu
 import { useCommunityGenders } from '@/hooks/useCommunityGenders';
 import { scrollProfileProperties } from '@/lib/profilePropertyScroll';
 import { ProfilePageClose } from '@/components/community/ProfilePageClose';
+import { ProfilePageShare } from '@/components/community/ProfilePageShare';
 import { SendProfileMessage } from '@/components/community/SendProfileMessage';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 
@@ -83,6 +84,7 @@ export default function CommunityProfilePage() {
   const cities = p?.service_areas?.filter(Boolean).join(', ') || p?.city;
   return <main dir="rtl" data-no-hero-wave className="relative mx-auto w-full max-w-6xl space-y-6 px-2 pb-6 sm:px-6">
     <ProfilePageClose onClose={close} />
+    <ProfilePageShare path={communityProfilePath(userId)} title={p?.full_name || 'פרופיל מתווך'} />
     {profile.isLoading && <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />}
     {profile.isError && <p role="alert" className="text-center text-destructive">טעינת הפרופיל נכשלה</p>}
     {!profile.isLoading && !profile.isError && !p && <div className="space-y-3 text-center"><p className="text-muted-foreground">הפרופיל אינו זמין</p><Button variant="outline" onClick={close}>סגירה</Button></div>}
