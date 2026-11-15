@@ -888,7 +888,7 @@ export default function Profile() {
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
         {heroTabsHost && createPortal(
-          <TabsList className={`grid h-12 w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} rounded-lg bg-primary-foreground/15 text-primary-foreground`}>
+          <TabsList className={`grid h-[34px] w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} rounded-lg bg-primary-foreground/15 text-primary-foreground`}>
             <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="personal">פרופיל</TabsTrigger>
             <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="workspace">{officeLabel}</TabsTrigger>
             <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="aibrain">מח AI</TabsTrigger>

@@ -274,6 +274,7 @@ export function PageHero() {
   const canSeeBalance = access.providerDiagnostics;
   const title = resolvePageTitle(location.pathname);
   const isFaqPage = location.pathname === '/faq';
+  const isProfilePage = location.pathname.startsWith('/profile');
   const isPostsPage = location.pathname.startsWith("/campaigns") || location.pathname.startsWith("/posts");
   const isPropertyDetail = /^\/properties\/[^/]+/.test(location.pathname);
   // Remember where the user came from for this page, even after in-page
@@ -354,7 +355,7 @@ export function PageHero() {
       {/* 3-zone toolbar — title is absolutely centered to the viewport so it
           stays perfectly centered regardless of side controls' widths. */}
       <div
-        className={cn("app-header-content relative z-10 flex min-h-[56px] items-center justify-between gap-2 px-4 py-[10px] sm:px-6 lg:px-0", isFaqPage && "hidden")}
+        className={cn("app-header-content relative z-10 flex min-h-[56px] items-center justify-between gap-2 px-4 py-[10px] sm:px-6 lg:px-0", (isFaqPage || isProfilePage) && "hidden")}
       >
         {/* Visual right (RTL flex start): Burger / nav toggle + AI response + optional history */}
         <div className="flex items-center gap-1">
@@ -406,7 +407,7 @@ export function PageHero() {
             })}
             </div>
           </div>
-        ) : !isFaqPage ? (
+        ) : !isFaqPage && !isProfilePage ? (
           <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
             {displayTitle}
           </h1>
@@ -502,7 +503,7 @@ export function PageHero() {
         </div>
       </div>
       {location.pathname.startsWith('/profile') && (
-        <div id="profile-hero-tabs" className="relative z-20 mx-auto w-full max-w-4xl px-4 pb-[10px] sm:px-6" />
+        <div id="profile-hero-tabs" className="relative z-20 mx-auto w-full max-w-4xl px-4 py-[10px] sm:px-6" />
       )}
       {isFaqPage && (
         <div id="faq-hero-tabs" className="relative z-20 mx-auto w-full max-w-3xl px-4 py-[10px] sm:px-6" />

@@ -125,7 +125,7 @@ export function AgencyAddressFields({ city, address, disabled, onSave }: {
 
   return <fieldset className="min-w-0 space-y-3" disabled={busy}>
     <legend className="mb-1 text-base font-semibold">כתובת המשרד</legend>
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_110px]">
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_96px] gap-2">
       <NationalCombobox
         label="עיר / יישוב"
         value={cityDraft}

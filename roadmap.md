@@ -1,5 +1,11 @@
 # Roadmap
 
+## Profile hero and office address row November 15
+- [x] Put office city, street and house number on one row at every width.
+- [x] Remove the "הגדרות חשבון" hero title, leaving only the tabs, and tighten tab padding 7px top/bottom.
+- [x] Verify mobile/desktop hero and address row, plus the address field test.
+
+
 ## Suppressed guide help icon November 15
 - [x] Fade the sidebar question-mark icon to a lighter gray once that page's guide was explicitly suppressed.
 - [x] Keep the icon clickable so the slides still open on demand.
