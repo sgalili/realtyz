@@ -304,9 +304,17 @@ export default function KnowledgeBase() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* RIGHT (first in RTL): Resource management */}
-        <Card>
-          <CardContent className="p-5 space-y-4">
-            <BrainTabs value={tab} onChange={setTab} />
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-base font-semibold flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              האישיות והידע של ריטה
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              כאן מגדירים איך ריטה מדברת ומה היא יודעת
+            </p>
+          </div>
+          <BrainTabs value={tab} onChange={setTab} />
 
             {tab === 'ai' && (
               <div className="space-y-3">
@@ -464,8 +472,7 @@ export default function KnowledgeBase() {
                 );
               })()}
             </div>
-          </CardContent>
-        </Card>
+        </div>
 
         {/* LEFT (second in RTL): Knowledge tester */}
         <Card>
