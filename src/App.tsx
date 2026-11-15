@@ -13,6 +13,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { WhiteLabelProvider } from "@/hooks/useWhiteLabel";
 import { AppLayout } from "@/components/AppLayout";
+import { PendingMessageResume } from "@/components/community/SendProfileMessage";
 import { PublicProfileShell } from "@/components/public/PublicProfileShell";
 import { SocialDraftChargeDialog } from '@/components/campaigns/SocialDraftChargeDialog';
 import { InactiveYad2ImportDialog } from '@/components/properties/InactiveYad2ImportDialog';
@@ -499,6 +500,7 @@ const App = () => (
             <PostSignupWelcome />
             <AdminBrokerFirstEntry><WorkspaceScope>
             <div className="app-route-pages">
+            <PendingMessageResume />
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
               <Route path="/.lovable/oauth/consent" element={<Suspense fallback={<PageLoader />}><OAuthConsent /></Suspense>} />

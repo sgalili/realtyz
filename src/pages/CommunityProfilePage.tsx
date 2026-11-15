@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Building2, Loader2, MessageCircle, Pencil } from 'lucide-react';
+import { Building2, Loader2, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -19,6 +19,8 @@ import { ProfileAssetMenu } from '@/components/community/ProfileAssetActions';
 import { professionalRole } from '../../supabase/functions/_shared/personalLanguage';
 import { useCommunityGenders } from '@/hooks/useCommunityGenders';
 import { scrollProfileProperties } from '@/lib/profilePropertyScroll';
+import { ProfilePageClose } from '@/components/community/ProfilePageClose';
+import { SendProfileMessage } from '@/components/community/SendProfileMessage';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 
 export const communityProfilePath = (id: string) => `/broker/${encodeURIComponent(id)}`;
@@ -80,6 +82,7 @@ export default function CommunityProfilePage() {
   const initials = (p?.full_name ?? '').split(' ').map(s => s[0]).slice(0, 2).join('');
   const cities = p?.service_areas?.filter(Boolean).join(', ') || p?.city;
   return <main dir="rtl" data-no-hero-wave className="relative mx-auto w-full max-w-6xl space-y-6 px-2 pb-6 sm:px-6">
+    <ProfilePageClose onClose={close} />
     {profile.isLoading && <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />}
     {profile.isError && <p role="alert" className="text-center text-destructive">טעינת הפרופיל נכשלה</p>}
     {!profile.isLoading && !profile.isError && !p && <div className="space-y-3 text-center"><p className="text-muted-foreground">הפרופיל אינו זמין</p><Button variant="outline" onClick={close}>סגירה</Button></div>}
@@ -92,11 +95,11 @@ export default function CommunityProfilePage() {
         {cities && <p className="max-w-full break-words text-base text-muted-foreground">{cities}</p>}
         {p.bio && <p className="max-w-2xl whitespace-pre-line break-words text-base leading-relaxed text-muted-foreground">{p.bio}</p>}
         <div className="!mt-5 flex flex-wrap justify-center gap-2">
-          {user && user.id !== p.id && <Button className="gap-2" onClick={() => navigate(`/inbox?community=${encodeURIComponent(p.id)}`)}><MessageCircle className="h-4 w-4" />שליחת הודעה</Button>}
+          <SendProfileMessage recipientId={p.id} />
           {management.data === true && <Button variant="outline" onClick={async () => { if (activeWorkspaceId !== userId) await setActiveWorkspace(userId); navigate('/profile'); }}><Pencil className="h-4 w-4" />עריכה / ניהול</Button>}
         </div>
       </div>
-      {(p.office_name || p.logo_url) && <div className="mx-auto flex w-full max-w-2xl items-center gap-4 rounded-md bg-muted/40 p-4">
+      {(p.office_name || p.logo_url) && <div className="mx-auto flex w-full max-w-2xl items-center gap-4 rounded-md bg-muted p-4">
         <PublicIdentityLink userId={userId} office={p.category !== 'developer'} className="shrink-0" label={`פתיחת ${p.office_name ?? 'המשרד'}`}>{p.logo_url ? <img src={p.logo_url} alt={p.office_name ? `לוגו ${p.office_name}` : 'לוגו משרד'} className="h-20 w-20 bg-background object-contain p-1" /> : <Building2 className="h-12 w-12 text-muted-foreground" />}</PublicIdentityLink>
         <div className="min-w-0 flex-1 space-y-1"><h3 className="break-words text-lg font-bold"><PublicIdentityLink userId={userId} office={p.category !== 'developer'}>{p.office_name}</PublicIdentityLink></h3><div className="flex items-start gap-2 text-base"><span className="min-w-0 flex-1 break-words text-muted-foreground">{cities}</span><PublicIdentityLink userId={userId} office exactOffice className="profile-office-link shrink-0 text-sm text-primary">לעמוד המשרד</PublicIdentityLink></div></div>
 
