@@ -10374,6 +10374,7 @@ export type Database = {
       community_office_details: {
         Args: { _user: string }
         Returns: {
+          address: string
           city: string
           description: string
           logo_url: string

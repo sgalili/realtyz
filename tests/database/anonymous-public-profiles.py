@@ -25,7 +25,10 @@ assert not {'phone', 'phone_number', 'email', 'workspace_owner_id'} & profile[0]
 members = rpc('community_office_members', {'_user': broker})
 assert len(members) == 5
 assert rpc('community_office_roster_size', {'_user': broker}) == 5
-assert rpc('community_office_details', {'_user': broker})[0]['description']
+office = rpc('community_office_details', {'_user': broker})[0]
+assert office['description']
+assert office['address'] == 'אורי צבי גרינברג 20', office['address']
+assert 'address' not in profile[0], 'office address leaked to the broker profile RPC'
 assert rpc('community_profile_page', {'_user': private}) == []
 assert rpc('community_profile_listings', {'_user': private}) == []
 for name in ['profile_management_access', 'community_directory']:
