@@ -140,7 +140,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
       >
         <span className="h-1 w-10 rounded-full bg-border" />
       </div>
-      <div className="pointer-events-none absolute inset-x-0 -top-4 z-20 flex h-8 items-center justify-center">
+      <div className="pointer-events-none absolute inset-x-0 -top-4 z-20 flex h-8 items-center justify-start">
         <Button variant="ghost" size="icon" className={actionButton} aria-label="הגדלת שיחה עם ריטה" title="מסך מלא" onClick={openFull}>
           <Maximize2 className="h-4 w-4" />
         </Button>
@@ -162,7 +162,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
         <div ref={listRef} className={cn('space-y-2 overflow-y-auto px-1 pb-2 text-xs', chatHeight == null ? 'max-h-40' : 'min-h-0 flex-1')}>
           <div className="is-assistant group flex w-full items-start gap-2">
             <RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" />
-            <p className="max-w-[78%] whitespace-pre-wrap break-words rounded-lg bg-muted px-3 py-2 text-xs text-foreground">{RITA_CHAT_GREETING}</p>
+            <p className="max-w-[78%] whitespace-pre-wrap break-words rounded-lg bg-muted px-3 py-2 text-xs text-foreground">{firstName ? `היי ${firstName}, מה עושים היום?` : RITA_CHAT_GREETING}</p>
           </div>
           {messages.map((message, index) => {
             const mine = message.role === 'user';
