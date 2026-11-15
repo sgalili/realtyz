@@ -10391,6 +10391,7 @@ export type Database = {
           office_name: string
         }[]
       }
+      community_office_roster_size: { Args: { _user: string }; Returns: number }
       community_profile_cards: {
         Args: { _ids: string[] }
         Returns: {
