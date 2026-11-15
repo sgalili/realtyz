@@ -8,6 +8,7 @@ import { ROTATING_MESSAGES_QUERY_KEY, useAllRotatingMessages } from '@/hooks/use
 import {
   ROTATING_MESSAGE_ACTION_LABELS,
   ROTATING_MESSAGE_ACTION_PATHS,
+  rotatingMessageRequiresLink,
   ROTATING_MESSAGE_AUDIENCES,
   ROTATING_MESSAGE_AUDIENCE_LABELS,
   cleanRotatingMessageText,
@@ -59,6 +60,7 @@ export function RotatingMessagesManager() {
     mutationFn: async () => {
       const messageText = cleanRotatingMessageText(newText);
       if (!validRotatingMessageText(messageText)) throw new Error('יש להזין מסר של עד 240 תווים');
+      if (rotatingMessageRequiresLink(newAudience) && newAction === 'none') throw new Error('מסר למשתמשים מחוברים חייב קישור למסך');
       const nextOrder = Math.max(0, ...grouped[newAudience].map((message) => message.sort_order)) + 10;
       const { error: insertError } = await db.from('rotating_messages').insert({
         role_key: newAudience,
@@ -79,7 +81,8 @@ export function RotatingMessagesManager() {
   });
 
   const saveMessage = useMutation({
-    mutationFn: async ({ id, text, action }: { id: string; text: string; action: ActionSelection }) => {
+    mutationFn: async ({ id, text, action, audience }: { id: string; text: string; action: ActionSelection; audience: RotatingMessageAudience }) => {
+      if (rotatingMessageRequiresLink(audience) && action === 'none') throw new Error('מסר למשתמשים מחוברים חייב קישור למסך');
       const messageText = cleanRotatingMessageText(text);
       if (!validRotatingMessageText(messageText)) throw new Error('יש להזין מסר של עד 240 תווים');
       const actionPath = action === 'none' ? null : action;
@@ -190,7 +193,7 @@ export function RotatingMessagesManager() {
                         aria-label="שמירת מסר"
                         title="שמירת מסר"
                         disabled={!changed || !validRotatingMessageText(value) || saveMessage.isPending}
-                        onClick={() => saveMessage.mutate({ id: message.id, text: value, action })}
+                        onClick={() => saveMessage.mutate({ id: message.id, text: value, action, audience })}
                       >
                         <Save className="h-4 w-4" />
                       </Button>

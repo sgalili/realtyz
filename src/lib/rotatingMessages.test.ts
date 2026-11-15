@@ -51,3 +51,14 @@ describe('rotating message actions', () => {
     expect(rotatingMessageNavigation('https://example.com')).toBeNull();
   });
 });
+
+import { rotatingMessageNavigation as nav2, rotatingMessageRequiresLink } from './rotatingMessages';
+describe('signed-in message links', () => {
+  it('resolves app screens', () => {
+    for (const p of ['/my-ads', '/campaigns', '/inbox', '/invite', '/developer-dashboard']) expect(nav2(p)?.path).toBe(p);
+  });
+  it('requires links for signed-in audiences only', () => {
+    expect(rotatingMessageRequiresLink('guest')).toBe(false);
+    expect(rotatingMessageRequiresLink('developer')).toBe(true);
+  });
+});

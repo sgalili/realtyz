@@ -2,14 +2,28 @@ export const ROTATING_MESSAGE_AUDIENCES = ['guest', 'broker_partner', 'developer
 
 export type RotatingMessageAudience = typeof ROTATING_MESSAGE_AUDIENCES[number];
 
-export const ROTATING_MESSAGE_ACTION_PATHS = ['/auth', '/what-is-toraff', '/faq'] as const;
+export const ROTATING_MESSAGE_ACTION_PATHS = ['/auth', '/what-is-toraff', '/faq', '/', '/my-ads', '/properties', '/campaigns', '/inbox', '/invite', '/developer-dashboard', '/wallet', '/profile'] as const;
 export type RotatingMessageActionPath = typeof ROTATING_MESSAGE_ACTION_PATHS[number];
 
 export const ROTATING_MESSAGE_ACTION_LABELS: Record<RotatingMessageActionPath, string> = {
   '/auth': 'הרשמה',
   '/what-is-toraff': 'מה זה TORAFF',
   '/faq': 'שאלות ותשובות',
+  '/': 'לוח הנכסים',
+  '/my-ads': 'המודעות שלי',
+  '/properties': 'הנכסים שלי',
+  '/campaigns': 'מרכז קמפיינים',
+  '/inbox': 'שיחות ופניות',
+  '/invite': 'הזמנת שותפים',
+  '/developer-dashboard': 'לוח יזמים',
+  '/wallet': 'ארנק',
+  '/profile': 'פרופיל',
 };
+
+/** Signed-in audiences must always carry a working link. */
+export function rotatingMessageRequiresLink(audience: RotatingMessageAudience): boolean {
+  return audience !== 'guest';
+}
 
 export interface RotatingMessage {
   id: string;
