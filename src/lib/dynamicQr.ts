@@ -3,8 +3,8 @@ import { publicUrl } from '@/lib/publicUrl';
 export const DYNAMIC_QR_PATH = '/go';
 export const DEFAULT_DYNAMIC_QR_DESTINATION = publicUrl('/');
 
-export function dynamicQrPublicUrl() {
-  return publicUrl(DYNAMIC_QR_PATH);
+export function dynamicQrPublicUrl(codeId?: string) {
+  return publicUrl(codeId ? `${DYNAMIC_QR_PATH}/${encodeURIComponent(codeId)}` : DYNAMIC_QR_PATH);
 }
 
 /** Only absolute web URLs are valid, and the QR must never redirect to itself. */
@@ -21,7 +21,7 @@ export function normalizeDynamicQrDestination(value: string) {
     throw new Error('היעד חייב להיות כתובת HTTP או HTTPS ציבורית ללא פרטי התחברות');
   }
   const redirect = new URL(dynamicQrPublicUrl());
-  if (url.origin === redirect.origin && (url.pathname === DYNAMIC_QR_PATH || url.pathname === `${DYNAMIC_QR_PATH}/`)) {
+  if ((url.origin === redirect.origin || url.hostname === `www.${redirect.hostname}`) && (url.pathname === DYNAMIC_QR_PATH || url.pathname.startsWith(`${DYNAMIC_QR_PATH}/`))) {
     throw new Error('יעד ה-QR לא יכול להיות קישור ההפניה עצמו');
   }
   return url.toString();

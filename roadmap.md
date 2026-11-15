@@ -1,5 +1,10 @@
 # Roadmap
 
+## Multiple custom QR codes November 15
+- [x] Add independent named QR destinations while retaining the original /go code.
+- [x] Allow creating, selecting, editing and downloading each branded code with separate scan counts.
+- [x] Verified two persisted codes, destination edits, independent guest redirects, desktop/mobile layout, 1024px PNG decoding and 11 regression tests.
+
 ## Profile hero and office address row November 15
 - [x] Put office city, street and house number on one row at every width.
 - [x] Remove the "הגדרות חשבון" hero title, leaving only the tabs, and tighten tab padding 7px top/bottom.

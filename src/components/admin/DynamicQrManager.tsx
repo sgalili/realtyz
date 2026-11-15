@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, ExternalLink, Loader2, QrCode, Save, ScanLine } from 'lucide-react';
+import { Download, ExternalLink, Loader2, Plus, QrCode, Save, ScanLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,33 +11,39 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-const QR_URL = dynamicQrPublicUrl();
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export function DynamicQrManager() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [draft, setDraft] = useState('');
+  const [selectedId, setSelectedId] = useState('original');
+  const [name, setName] = useState('');
   const [saved, setSaved] = useState(false);
   const [logoReady, setLogoReady] = useState(false);
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['dynamic-qr-config'],
+  const { data: codes, isLoading, error } = useQuery({
+    queryKey: ['dynamic-qr-codes', user?.id],
+    enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('dynamic_qr_config')
-        .select('qr_destination_url, total_scans, last_scanned_at, updated_at')
-        .eq('id', 1)
-        .single();
-      if (error) throw error;
-      return data;
+      const [original, custom] = await Promise.all([
+        supabase.from('dynamic_qr_config').select('qr_destination_url, total_scans, last_scanned_at, updated_at').eq('id', 1).single(),
+        supabase.from('dynamic_qr_codes').select('id, name, qr_destination_url, total_scans, last_scanned_at, updated_at').order('updated_at', { ascending: false }),
+      ]);
+      if (original.error) throw original.error;
+      if (custom.error) throw custom.error;
+      return [{ ...original.data, id: 'original', name: 'QR ראשי' }, ...custom.data];
     },
     refetchInterval: 30_000,
   });
+  const data = codes?.find((code) => code.id === selectedId);
+  const isNew = selectedId === 'new';
+  const QR_URL = dynamicQrPublicUrl(selectedId === 'original' || isNew ? undefined : selectedId);
 
   useEffect(() => {
-    if (data?.qr_destination_url) setDraft(data.qr_destination_url);
-  }, [data?.qr_destination_url]);
+    setDraft(data?.qr_destination_url ?? '');
+    setName(data?.name ?? '');
+  }, [selectedId, data?.qr_destination_url, data?.name]);
 
   useEffect(() => {
     const image = new Image();
@@ -49,19 +55,24 @@ export function DynamicQrManager() {
   const [saving, setSaving] = useState(false);
 
   const saveDestination = async () => {
-    if (saving) return;
+    if (saving || !user) return;
     setSaving(true);
     setSaved(false);
     try {
       const destination = normalizeDynamicQrDestination(draft);
-      const { data: updated, error: saveError } = await supabase
-        .from('dynamic_qr_config')
-        .update({ qr_destination_url: destination, updated_at: new Date().toISOString(), updated_by: user?.id ?? null })
-        .eq('id', 1)
-        .select('qr_destination_url, total_scans, last_scanned_at, updated_at')
-        .single();
+      const payload = { qr_destination_url: destination, updated_at: new Date().toISOString(), updated_by: user.id };
+      const codeName = name.trim();
+      if (selectedId !== 'original' && (!codeName || codeName.length > 120)) throw new Error('יש להזין שם של עד 120 תווים');
+      const result = selectedId === 'original'
+        ? await supabase.from('dynamic_qr_config').update(payload).eq('id', 1).select().single()
+        : isNew
+          ? await supabase.from('dynamic_qr_codes').insert({ ...payload, name: codeName }).select().single()
+          : await supabase.from('dynamic_qr_codes').update({ ...payload, name: codeName }).eq('id', selectedId).select().single();
+      const { data: updated, error: saveError } = result;
       if (saveError) throw saveError;
-      queryClient.setQueryData(['dynamic-qr-config'], updated);
+      if (!updated) throw new Error('שמירת ה-QR נכשלה');
+      await queryClient.invalidateQueries({ queryKey: ['dynamic-qr-codes', user.id] });
+      if (isNew) setSelectedId(String(updated.id));
       setDraft(updated.qr_destination_url);
       setSaved(true);
       toast.success('יעד ה-QR עודכן וההפניה כבר פעילה');
@@ -84,7 +95,7 @@ export function DynamicQrManager() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'toraff-dynamic-qr-1024.png';
+        link.download = `toraff-qr-${selectedId}-1024.png`;
         link.click();
         window.setTimeout(() => URL.revokeObjectURL(url), 1000);
         toast.success('קובץ PNG באיכות גבוהה ירד למכשיר');
@@ -93,13 +104,30 @@ export function DynamicQrManager() {
   };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-2 xl:items-start" dir="rtl">
+    <div className="space-y-4" dir="rtl">
+      <div className="flex min-w-0 items-center gap-2">
+        <Select value={selectedId} onValueChange={(id) => { setSelectedId(id); setSaved(false); }} disabled={saving || isLoading}>
+          <SelectTrigger className="min-w-0 flex-1" aria-label="בחירת קוד QR"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {codes?.map((code) => <SelectItem key={code.id} value={code.id}>{code.name}</SelectItem>)}
+            {isNew && <SelectItem value="new">קוד חדש</SelectItem>}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" onClick={() => { setSelectedId('new'); setDraft(''); setName(''); setSaved(false); }} disabled={saving || isLoading}>
+          <Plus className="h-4 w-4" /> קוד חדש
+        </Button>
+      </div>
+    <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><QrCode className="h-5 w-5 text-primary" /> ניהול QR דינמי</CardTitle>
           <CardDescription>הקוד המודפס נשאר קבוע. שינוי היעד כאן מתעדכן מיד בכל סריקה חדשה.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
+          {selectedId !== 'original' && <div className="space-y-2">
+            <Label htmlFor="dynamic-qr-name">שם הקוד</Label>
+            <Input id="dynamic-qr-name" value={name} maxLength={120} onChange={(event) => { setName(event.target.value); setSaved(false); }} disabled={saving} placeholder="שם הקמפיין או המיקום" />
+          </div>}
           <div className="space-y-2">
             <Label htmlFor="dynamic-qr-destination">יעד נוכחי</Label>
             <Input
@@ -120,7 +148,7 @@ export function DynamicQrManager() {
           </div>
           <Button type="button" onClick={() => void saveDestination()} disabled={isLoading || saving || !draft.trim()} className="w-full sm:w-auto">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            שמירת יעד חדש
+            {isNew ? 'יצירת קוד QR' : 'שמירת יעד חדש'}
           </Button>
           {saved && <p role="status" className="text-sm font-medium text-primary">יעד ה-QR עודכן וההפניה כבר פעילה</p>}
           <div className="grid grid-cols-2 gap-3 border-t border-border pt-4" aria-label="סטטיסטיקת שימוש ב-QR">
@@ -136,13 +164,13 @@ export function DynamicQrManager() {
         </CardContent>
       </Card>
 
-      <Card>
+      {!isNew && <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><ScanLine className="h-5 w-5 text-primary" /> קוד QR ממותג להדפסה</CardTitle>
           <CardDescription>הקוד מפנה אך ורק לכתובת הקבועה של TORAFF, עם לוגו מרכזי ותיקון שגיאות גבוה.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
-          <div className="w-full max-w-[340px] rounded-xl border border-border bg-card p-3 shadow-sm">
+          <div className="w-full max-w-[340px] rounded-lg border border-border bg-card p-3 shadow-sm">
             <QRCodeCanvas
               ref={canvasRef}
               value={QR_URL}
@@ -163,7 +191,8 @@ export function DynamicQrManager() {
             <Download className="h-4 w-4" /> הורדת PNG באיכות גבוהה
           </Button>
         </CardContent>
-      </Card>
+      </Card>}
+    </div>
     </div>
   );
 }

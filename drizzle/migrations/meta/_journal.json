@@ -1527,6 +1527,20 @@
       "when": 1794778383218,
       "tag": "0217_restrict_dynamic_qr_admin_details",
       "breakpoints": true
+    },
+    {
+      "idx": 218,
+      "version": "7",
+      "when": 1794779952525,
+      "tag": "0218_multiple_dynamic_qr_codes",
+      "breakpoints": true
+    },
+    {
+      "idx": 219,
+      "version": "7",
+      "when": 1794780047149,
+      "tag": "0219_restrict_custom_qr_table_grants",
+      "breakpoints": true
     }
   ]
 }

@@ -3594,6 +3594,36 @@ export type Database = {
           },
         ]
       }
+      dynamic_qr_codes: {
+        Row: {
+          id: string
+          last_scanned_at: string | null
+          name: string
+          qr_destination_url: string
+          total_scans: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          last_scanned_at?: string | null
+          name: string
+          qr_destination_url: string
+          total_scans?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          last_scanned_at?: string | null
+          name?: string
+          qr_destination_url?: string
+          total_scans?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       dynamic_qr_config: {
         Row: {
           id: number
@@ -11636,6 +11666,10 @@ export type Database = {
         Returns: Json
       }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
+      resolve_custom_qr_destination: {
+        Args: { code_id: string }
+        Returns: string
+      }
       resolve_dynamic_qr_destination: { Args: never; Returns: string }
       resume_group_posting: {
         Args: { _campaign_log_id: string }

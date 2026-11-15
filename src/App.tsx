@@ -519,6 +519,7 @@ const App = () => (
               <Route path="/faq" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><FaqPage /></Suspense></PublicProfileShell>} />
               <Route path="/about-toraff" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><AboutToraff /></Suspense></PublicProfileShell>} />
               <Route path="/go" element={<Suspense fallback={<PageLoader />}><DynamicQrRedirect /></Suspense>} />
+              <Route path="/go/:codeId" element={<Suspense fallback={<PageLoader />}><DynamicQrRedirect key={window.location.pathname} /></Suspense>} />
               <Route path="/what-is-toraff" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><AboutToraff /></Suspense></PublicProfileShell>} />
               <Route path="/terms" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><Terms /></Suspense></PublicProfileShell>} />
               <Route path="/commission-mechanism" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><CommissionMechanism /></Suspense></PublicProfileShell>} />
