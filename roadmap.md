@@ -882,7 +882,7 @@
 - [x] Sixteen focused tests passed; signed-in mobile/desktop dragging, input, expand, clear confirmation and admin navigation verified without page errors.
 
 ## Dynamic TORAFF QR November 15
-- [ ] Add a singleton dynamic QR destination with public redirect resolution, atomic scan counting and Super Admin-only edits.
-- [ ] Add the public /go redirect and the Super Admin "ניהול QR דינמי" section with destination and usage statistics.
-- [ ] Generate a high-error-correction QR for only the canonical /go URL, with a centered square TORAFF logo and high-resolution PNG export.
-- [ ] Verify redirect, authorization, URL validation, download and responsive admin behavior; run focused tests and save.
+- [x] Add a singleton dynamic QR destination with public redirect resolution, atomic scan counting and Super Admin-only edits.
+- [x] Add the public /go redirect and the Super Admin "ניהול QR דינמי" section with destination and usage statistics.
+- [x] Generate a high-error-correction QR for only the canonical /go URL, with a centered square TORAFF logo and high-resolution PNG export.
+- [x] Nine focused tests and TypeScript passed; live guest redirects, scan counting, secured admin saves, mobile layout and 1024px PNG download verified. The decoded PNG contains exactly https://toraff.co.il/go.
