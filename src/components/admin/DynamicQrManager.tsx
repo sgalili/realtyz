@@ -167,7 +167,7 @@ export function DynamicQrManager() {
       {!isNew && <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><ScanLine className="h-5 w-5 text-primary" /> קוד QR ממותג להדפסה</CardTitle>
-          <CardDescription>הקוד מפנה אך ורק לכתובת הקבועה של TORAFF, עם לוגו מרכזי ותיקון שגיאות גבוה.</CardDescription>
+          <CardDescription>{"\n"}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
           <div className="w-full max-w-[340px] rounded-lg border border-border bg-card p-3 shadow-sm">
