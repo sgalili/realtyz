@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { publicProfileShare } from './publicProfileShare';
+import { publicProfileShare, useNativeProfileShare } from './publicProfileShare';
 
 describe('publicProfileShare', () => {
+  it('uses sharing options on desktop even in a narrow window', () => {
+    expect(useNativeProfileShare(true, false, true)).toBe(false);
+    expect(useNativeProfileShare(false, false, true)).toBe(false);
+  });
+
+  it('allows native sharing on touch phones only when available', () => {
+    expect(useNativeProfileShare(true, true, true)).toBe(true);
+    expect(useNativeProfileShare(true, true, false)).toBe(false);
+  });
+
   const share = publicProfileShare('/broker/user%201', 'דולי אידלסון');
 
   it('uses the canonical public profile URL for copying and native sharing', () => {

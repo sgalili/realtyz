@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { publicProfileShare } from '@/lib/publicProfileShare';
+import { publicProfileShare, useNativeProfileShare } from '@/lib/publicProfileShare';
 
 export function ProfilePageShare({ path, title, agency = false }: { path: string; title: string; agency?: boolean }) {
   const button = useRef<HTMLButtonElement>(null);
@@ -32,11 +32,11 @@ export function ProfilePageShare({ path, title, agency = false }: { path: string
   }, []);
 
   const share = async () => {
-    if (isMobile && typeof navigator.share === 'function') {
+    if (useNativeProfileShare(isMobile, window.matchMedia('(pointer: coarse)').matches, typeof navigator.share === 'function')) {
       try {
         await navigator.share({ title: details.title, text: details.text, url: details.url });
       } catch (error) {
-        if (!(error instanceof DOMException && error.name === 'AbortError')) toast.error('שיתוף הקישור נכשל, נסו שוב');
+        if (!(error instanceof DOMException && error.name === 'AbortError')) setOpen(true);
       }
       return;
     }
