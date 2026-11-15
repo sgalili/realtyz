@@ -20,6 +20,7 @@ const Body = z.object({
   action: z.enum(["create", "check_registry"]).default("create"),
   import_job_id: z.string().uuid().optional(),
   import_source_url: z.string().max(500).optional(),
+  pending_contact: z.boolean().default(false), // explicit Super Admin request for a registry-verified broker with no known mobile
   initial_balance_agorot: z.number().int().nonnegative().default(100000),
 });
 
@@ -67,7 +68,8 @@ Deno.serve(async (req) => {
     const normalizedPhone = normalizeIsraeliPhone(phone_e164);
 
     // Queued imports may lack a mobile. Brokers remain pending contact; developers need no license or phone.
-    const pendingContact = !normalizedPhone && allowsQueuedContactlessAccount(user_type, import_job_id);
+    const manualVerifiedPending = !normalizedPhone && !import_job_id && verifiedCaller.kind === 'user' && user_type === 'broker' && parsed.data.pending_contact && registry?.valid === true;
+    const pendingContact = !normalizedPhone && (allowsQueuedContactlessAccount(user_type, import_job_id) || manualVerifiedPending);
     if (!normalizedPhone && !pendingContact) return new Response(JSON.stringify({ error: "נדרש מספר נייד תקין לכניסה באמצעות SMS" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const placeholderId = normalizedPhone ?? (user_type === 'developer' && import_job_id && import_source_url

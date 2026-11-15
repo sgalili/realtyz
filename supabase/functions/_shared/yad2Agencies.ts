@@ -162,6 +162,8 @@ export function parseAgencyProfile($: any, sourceUrl: string, maxListings = 10) 
   if (!email) email = text($('a[href^="mailto:"]').first().attr('href')?.replace(/^mailto:/, '').split('?')[0]);
   if (!bio) bio = text($('[data-testid="broker-bio"], [data-testid="agent-bio"], [class*="brokerBio"], [class*="BrokerBio"]').filter((_: number, el: any) => !$(el).closest('[class*="related"], [class*="recommend"]').length).first().text()).slice(0, 5000);
   if (!agencyDescription) agencyDescription = text($('[data-testid="agency-description"], [data-testid="agency-about"], [class*="agencyDescription"], [class*="AgencyDescription"], [class*="agencyAbout"], [class*="AgencyAbout"]').filter((_: number, el: any) => !$(el).closest('[class*="related"], [class*="recommend"]').length).first().text()).slice(0, 5000);
+  // Yad2 agency pages render the office text under an "על <office>" heading without stable classes.
+  if (!agencyDescription) { $('h1, h2, h3').each((_: number, el: any) => { if (agencyDescription) return; const h = $(el); if (!/^על\s+\S/.test(text(h.text())) || h.closest('[class*="related"], [class*="recommend"]').length) return; agencyDescription = text(h.nextAll().first().text() || h.parent().text().replace(h.text(), '')).slice(0, 5000); }); }
   const deal = /forrent|\/rent/i.test(sourceUrl) ? 'rent' : /forsale/i.test(sourceUrl) ? 'sale' : null;
   const links: string[] = [];
   $('a[href*="/realestate/item/"]').each((_: number, el: any) => {
