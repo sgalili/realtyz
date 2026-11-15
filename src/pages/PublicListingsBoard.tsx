@@ -335,8 +335,8 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
           </div>
         </div>
       )}
-      <header className="relative z-20 shrink-0 bg-card">
-        <div className={cn('mx-auto w-full max-w-6xl pb-0', embedded ? 'px-0 pt-0' : 'px-[15px] pt-2')}>
+      <header className={cn('relative z-20 shrink-0 bg-card', embedded && '-mt-5')}>
+        <div className={cn('mx-auto w-full max-w-6xl pb-0', embedded ? 'px-0 pt-0' : 'px-[15px] pt-0')}>
           {embedded ? null : (
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
               <h1 className="sr-only">לוח שיווק שותפים</h1>
@@ -356,7 +356,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
               so this row never moves when the panel opens. */}
           <InventoryCollectionBanner />
           {(
-            <div className="-mt-5 mb-[10px] flex shrink-0 items-center justify-between gap-0 py-[15px]" style={{ marginInlineEnd: '-5px' }}>
+            <div className="my-[15px] flex shrink-0 items-center justify-between gap-0 py-0" style={{ marginInlineEnd: '-5px' }}>
               {marketingOnly && <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <SelectModeToggle active={selectMode} count={chosen.length} total={filtered.length} onToggle={() => { setSelectMode(value => !value); setSelected(new Set()); }} />
                 {chosen.length > 0 && <InventoryToolSoftLock tool="partner-network"><PropertyShareMenu results={chosen} label="שיווק מיידי" hideOpenPage /></InventoryToolSoftLock>}
