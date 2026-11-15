@@ -52,3 +52,38 @@ it('uses Enter for a newline and Control + Enter to send', () => {
   expect(received.mock.calls[0][0].detail).toEqual({ text: 'שורה ראשונה', scope: 'admin:shafi' });
   window.removeEventListener('rita:send', received);
 });
+it('shows clear only after history arrives and opens the full chat from the divider action', () => {
+  setup();
+  const opened = vi.fn();
+  window.addEventListener('open-ai-drawer', opened);
+  expect(screen.queryByRole('button', { name: 'איפוס צ׳אט' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'הגדלת שיחה עם ריטה' }));
+  expect(opened.mock.calls[0][0].detail).toEqual({ expanded: true });
+  publish('admin:shafi', 'יש היסטוריה');
+  expect(screen.getByRole('button', { name: 'איפוס צ׳אט' })).toBeInTheDocument();
+  window.removeEventListener('open-ai-drawer', opened);
+});
+it('asks before clearing and emits the scoped clear only after confirmation', () => {
+  setup();
+  publish('admin:shafi', 'היסטוריה לבדיקה');
+  const cleared = vi.fn();
+  window.addEventListener('rita:clear', cleared);
+  const confirmation = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  fireEvent.click(screen.getByRole('button', { name: 'איפוס צ׳אט' }));
+  expect(cleared).not.toHaveBeenCalled();
+  confirmation.mockReturnValue(true);
+  fireEvent.click(screen.getByRole('button', { name: 'איפוס צ׳אט' }));
+  expect(cleared.mock.calls[0][0].detail).toEqual({ scope: 'admin:shafi' });
+  confirmation.mockRestore();
+  window.removeEventListener('rita:clear', cleared);
+});
+it('grows the conversation upward when the divider is dragged', () => {
+  setup();
+  const conversation = screen.getByTestId('rita-mini-conversation');
+  vi.spyOn(conversation, 'getBoundingClientRect').mockReturnValue({ height: 160, top: 400 } as DOMRect);
+  const handle = screen.getByRole('separator', { name: 'גרירה להגדלת שיחת ריטה' });
+  fireEvent(handle, new MouseEvent('pointerdown', { bubbles: true, clientY: 400 }));
+  fireEvent(window, new MouseEvent('pointermove', { clientY: 300 }));
+  expect(conversation).toHaveStyle({ height: '260px' });
+  fireEvent(window, new MouseEvent('pointerup'));
+});

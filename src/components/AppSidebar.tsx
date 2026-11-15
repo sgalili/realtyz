@@ -30,7 +30,6 @@ import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { accountIdentity } from '@/lib/accountMode';
 import { activityAudience } from '@/lib/activityAudience';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
-import { SuperAdminLeadAlert } from '@/components/admin/SuperAdminLeadAlert';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Sidebar,
@@ -432,16 +431,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-
-        {/* Super admin section moved BELOW the menu */}
-        {isSuperAdmin && (
-          <SidebarGroup>
-            <SidebarGroupContent className="px-3 py-3 border-t border-primary/10">
-              <SuperAdminLeadAlert collapsed={collapsed} />
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
 
       </SidebarContent>
       {!collapsed && user && <SidebarFooter className="shrink-0 gap-0 border-t border-border bg-background p-0 shadow-none">

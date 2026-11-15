@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { ArrowUp, Maximize2, Trash2, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { ArrowUp, Maximize2, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { RitaAvatar } from '@/components/RitaAvatar';
@@ -8,10 +8,6 @@ import { useRitaWorkspaceIdentity } from '@/hooks/useRitaWorkspaceIdentity';
 import { cn } from '@/lib/utils';
 import { ritaChatKeyAction } from '@/lib/ritaChatKeys';
 import { RITA_CHAT_GREETING, resizeRitaTextarea } from '@/lib/ritaChatPresentation';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 
 type MiniMsg = { role: string; content: string };
 
@@ -26,9 +22,10 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
   const [messages, setMessages] = useState<MiniMsg[]>([]);
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState('');
-  const [collapsed, setCollapsed] = useState(false);
+  const [chatHeight, setChatHeight] = useState<number | null>(null);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -48,7 +45,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
     window.dispatchEvent(new Event('rita:state-request'));
     return () => window.removeEventListener('rita:state', onState);
   }, [scope]);
-  useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight }); }, [messages, loading, collapsed]);
+  useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight }); }, [messages, loading, chatHeight]);
   useEffect(() => { if (textareaRef.current) resizeRitaTextarea(textareaRef.current); }, [text]);
 
   useEffect(() => {
@@ -72,7 +69,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
   const openFull = () => window.dispatchEvent(new CustomEvent('open-ai-drawer', { detail: { expanded: true } }));
   const clearChat = () => {
     setMessages([]);
-    setCollapsed(false);
+    setChatHeight(null);
     window.dispatchEvent(new CustomEvent('rita:clear', { detail: { scope } }));
   };
   const send = () => {
@@ -95,56 +92,89 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
   };
 
-  const iconBtn = 'rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent';
+  const availableHeight = (conversation: HTMLDivElement, handle: HTMLElement) => {
+    const currentHeight = conversation.getBoundingClientRect().height;
+    const sidebarTop = handle.closest('[data-sidebar="sidebar"]')?.getBoundingClientRect().top ?? 0;
+    return currentHeight + Math.max(0, conversation.getBoundingClientRect().top - sidebarTop - 24);
+  };
+  const startDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const conversation = conversationRef.current;
+    if (!conversation) return;
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = conversation.getBoundingClientRect().height;
+    const maxHeight = availableHeight(conversation, event.currentTarget);
+    const move = (pointer: PointerEvent) => setChatHeight(Math.round(Math.min(maxHeight, Math.max(120, startHeight + startY - pointer.clientY))));
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+  const resizeWithKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    const conversation = conversationRef.current;
+    if (!conversation) return;
+    event.preventDefault();
+    const currentHeight = conversation.getBoundingClientRect().height;
+    const maxHeight = availableHeight(conversation, event.currentTarget);
+    const delta = event.key === 'ArrowUp' ? 40 : -40;
+    setChatHeight(Math.round(Math.min(maxHeight, Math.max(120, currentHeight + delta))));
+  };
+
+  const actionButton = 'pointer-events-auto h-8 w-8 rounded-none bg-background text-muted-foreground hover:text-foreground';
 
   return (
-    <div dir="rtl" className="px-2 pb-2 pt-1.5" style={{ paddingBottom: 8 + keyboardInset }}>
-      <div className="flex items-center gap-1 px-0.5 pb-1">
-        <div className="flex shrink-0 items-center gap-0.5">
-          {messages.length > 0 && <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button type="button" aria-label="איפוס צ׳אט" title="איפוס צ׳אט" className={iconBtn}><Trash2 className="h-3.5 w-3.5" /></button>
-            </AlertDialogTrigger>
-            <AlertDialogContent dir="rtl">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-[19px]">לאפס את הצ׳אט?</AlertDialogTitle>
-                <AlertDialogDescription className="text-[15px]">כל היסטוריית השיחה עם ריטה תימחק לצמיתות.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="sm:justify-between">
-                <AlertDialogCancel>ביטול</AlertDialogCancel>
-                <AlertDialogAction onClick={clearChat}>איפוס</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>}
-          <button type="button" onClick={openFull} aria-label="פתיחת ריטה במסך מלא" title="מסך מלא" className={iconBtn}><Maximize2 className="h-3.5 w-3.5" /></button>
-        </div>
-        <p className="min-w-0 flex-1 text-center text-[11px] font-medium leading-tight text-foreground">{RITA_CHAT_GREETING}</p>
-        <button
-          type="button"
-          onClick={() => setCollapsed((current) => !current)}
-          disabled={messages.length === 0 && !loading}
-          aria-label={collapsed ? 'הרחבת צ׳אט' : 'צמצום צ׳אט'}
-          title={collapsed ? 'הרחבה' : 'צמצום'}
-          className={iconBtn}
-        >
-          {collapsed ? <ChevronsUpDown className="h-3.5 w-3.5" /> : <ChevronsDownUp className="h-3.5 w-3.5" />}
-        </button>
+    <div dir="rtl" className="relative px-2 pb-2 pt-3" style={{ paddingBottom: 8 + keyboardInset }}>
+      <div
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="גרירה להגדלת שיחת ריטה"
+        tabIndex={0}
+        className="absolute inset-x-0 -top-2 z-10 flex h-4 cursor-row-resize touch-none items-center justify-center"
+        onPointerDown={startDrag}
+        onKeyDown={resizeWithKeyboard}
+      >
+        <span className="h-1 w-10 rounded-full bg-border" />
       </div>
-      {(messages.length > 0 || loading) && !collapsed && <div ref={listRef} className="max-h-40 space-y-2 overflow-y-auto px-1 pb-2 text-xs">
-        <div className="is-assistant group flex w-full items-start gap-2">
-          <RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" />
-          <p className="max-w-[78%] whitespace-pre-wrap break-words rounded-lg bg-muted px-3 py-2 text-xs text-foreground">{RITA_CHAT_GREETING}</p>
+      <div className="pointer-events-none absolute inset-x-0 -top-4 z-20 flex h-8 items-center justify-center">
+        <Button variant="ghost" size="icon" className={actionButton} aria-label="הגדלת שיחה עם ריטה" title="מסך מלא" onClick={openFull}>
+          <Maximize2 className="h-4 w-4" />
+        </Button>
+        {messages.length > 0 && <div className="absolute left-0 top-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="איפוס צ׳אט"
+            title="איפוס צ׳אט"
+            className={actionButton}
+            onClick={() => { if (window.confirm('למחוק את כל השיחה עם ריטה? ההיסטוריה תימחק לצמיתות.')) clearChat(); }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>}
+      </div>
+
+      <div ref={conversationRef} data-testid="rita-mini-conversation" className="flex min-h-0 flex-col" style={chatHeight == null ? undefined : { height: chatHeight }}>
+        <div ref={listRef} className={cn('space-y-2 overflow-y-auto px-1 pb-2 text-xs', chatHeight == null ? 'max-h-40' : 'min-h-0 flex-1')}>
+          <div className="is-assistant group flex w-full items-start gap-2">
+            <RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" />
+            <p className="max-w-[78%] whitespace-pre-wrap break-words rounded-lg bg-muted px-3 py-2 text-xs text-foreground">{RITA_CHAT_GREETING}</p>
+          </div>
+          {messages.map((message, index) => {
+            const mine = message.role === 'user';
+            return <div key={index} className={cn('group flex w-full max-w-[92%] items-start gap-2', mine ? 'is-user mr-auto flex-row-reverse' : 'is-assistant ml-auto')}>
+              {mine ? <RitaUserAvatar className="mt-0.5 h-7 w-7 shrink-0 border border-border" /> : <RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" />}
+              <p className={cn('whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-xs', mine ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground')}>{message.content}</p>
+            </div>;
+          })}
+          {loading && <div className="flex items-center gap-2"><RitaAvatar className="h-7 w-7" /><p className="animate-pulse text-muted-foreground">ריטה חושבת…</p></div>}
         </div>
-        {messages.map((message, index) => {
-          const mine = message.role === 'user';
-          return <div key={index} className={cn('group flex w-full max-w-[92%] items-start gap-2', mine ? 'is-user mr-auto flex-row-reverse' : 'is-assistant ml-auto')}>
-            {mine ? <RitaUserAvatar className="mt-0.5 h-7 w-7 shrink-0 border border-border" /> : <RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" />}
-            <p className={cn('whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-xs', mine ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground')}>{message.content}</p>
-          </div>;
-        })}
-        {loading && <div className="flex items-center gap-2"><RitaAvatar className="h-7 w-7" /><p className="animate-pulse text-muted-foreground">ריטה חושבת…</p></div>}
-      </div>}
-      <form className="flex items-end gap-1.5 rounded-lg border border-border bg-background px-1.5 py-1" onSubmit={(event) => { event.preventDefault(); send(); }}>
+      </div>
+      <form className="mt-2 flex items-end gap-1.5 rounded-lg border border-border bg-background px-1.5 py-1" onSubmit={(event) => { event.preventDefault(); send(); }}>
         <button type="button" onClick={openFull} aria-label="פתיחת ריטה במסך מלא" title="מסך מלא" className="mb-0.5 shrink-0 rounded-full"><RitaAvatar className="h-7 w-7 ring-0" /></button>
         <textarea
           ref={textareaRef}
@@ -156,7 +186,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
           placeholder={placeholder}
           aria-label="הודעה לריטה"
           rows={1}
-          className="!min-h-8 max-h-32 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-1 text-[16px] text-foreground outline-none placeholder:text-[16px] placeholder:text-muted-foreground [field-sizing:fixed]"
+          className="!min-h-10 max-h-32 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-2 text-xs text-foreground outline-none placeholder:text-xs placeholder:text-muted-foreground [field-sizing:fixed]"
         />
         <Button type="submit" size="icon" disabled={!text.trim() || loading || !ready} className="mb-0.5 h-7 w-7 shrink-0 rounded-full" aria-label="שליחה"><ArrowUp className="h-4 w-4" /></Button>
       </form>

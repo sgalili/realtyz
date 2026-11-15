@@ -874,3 +874,9 @@
 ## Typewriter banner animation November 15
 - [x] Slowed typing 15% (44ms to 52ms per character), kept deletion at 24ms, and added a one-second rest after a comma, period or exclamation mark before the rest of the sentence is written.
 - [x] Eight focused tests passed; the live banner measured 52ms/char typing, 26ms/char deletion and 932-986ms rests after mid-sentence commas and periods.
+
+## Signed-in Rita and Super Admin sidebar November 15
+- [x] Remove the mini-chat greeting header and collapse control; add visitor-style divider dragging, centered expand and history-only clear.
+- [x] Match composer font and newline/send shortcuts to the visitor chat while preserving workspace-scoped conversation state.
+- [x] Move the Super Admin shortcut beside the top leads control, with a global red unread counter and no old bottom section.
+- [x] Sixteen focused tests passed; signed-in mobile/desktop dragging, input, expand, clear confirmation and admin navigation verified without page errors.

@@ -2,21 +2,22 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SidebarWalletIndicator } from './SidebarWalletIndicator';
 
-const mocks = vi.hoisted(() => ({ navigate: vi.fn(), mobile: vi.fn(), desktop: vi.fn(), count: 0 }));
+const mocks = vi.hoisted(() => ({ navigate: vi.fn(), mobile: vi.fn(), desktop: vi.fn(), count: 0, admin: false }));
 vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: mocks.count }) }));
 vi.mock('@/hooks/useSubscription', () => ({ useCreditWallet: () => ({ data: { balance: 200 }, isLoading: false }) }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => 'workspace' }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'test' } }) }));
-vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isTeamMember: true, loading: false }) }));
+vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isTeamMember: true, isSuperAdmin: mocks.admin, loading: false }) }));
+vi.mock('@/components/admin/SuperAdminLeadAlert', () => ({ SuperAdminLeadAlert: ({ onNavigate }: { onNavigate: () => void }) => <button type="button" aria-label="סופר אדמין" onClick={onNavigate} /> }));
 vi.mock('@/hooks/useAppMode', () => ({ useAppMode: () => ({ isPartnerMode: false }) }));
 vi.mock('@/components/ui/sidebar', () => ({ useSidebar: () => ({ setOpen: mocks.desktop, setOpenMobile: mocks.mobile }) }));
 
 describe('sidebar wallet and incoming-lead counter', () => {
-  beforeEach(() => { mocks.count = 0; vi.clearAllMocks(); });
+  beforeEach(() => { mocks.count = 0; mocks.admin = false; vi.clearAllMocks(); });
   it('shows credits, keeps the counter visible at zero and closes drawer on wallet navigation', () => {
     render(<SidebarWalletIndicator />);
-    expect(screen.getByText('5k קרדיטים')).toBeInTheDocument();
+    expect(screen.getByText('800')).toBeInTheDocument();
     expect(screen.getByText('לידים')).toBeInTheDocument();
     expect(screen.getByLabelText('מספר לידים שהתקבלו')).toHaveTextContent('0');
     expect(screen.queryByText('חדשים')).not.toBeInTheDocument();
@@ -37,5 +38,15 @@ describe('sidebar wallet and incoming-lead counter', () => {
     fireEvent.click(button);
     expect(mocks.navigate).toHaveBeenCalledWith('/lead-crm');
     expect(mocks.mobile).toHaveBeenCalledWith(false);
+  });
+  it('shows the global admin shortcut only to a Super Admin and closes the sidebar when used', () => {
+    const first = render(<SidebarWalletIndicator />);
+    expect(screen.queryByRole('button', { name: 'סופר אדמין' })).toBeNull();
+    first.unmount();
+    mocks.admin = true;
+    render(<SidebarWalletIndicator />);
+    fireEvent.click(screen.getByRole('button', { name: 'סופר אדמין' }));
+    expect(mocks.mobile).toHaveBeenCalledWith(false);
+    expect(mocks.desktop).toHaveBeenCalledWith(false);
   });
 });
