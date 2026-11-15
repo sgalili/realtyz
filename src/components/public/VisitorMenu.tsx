@@ -54,13 +54,13 @@ export function VisitorMenu({ onSignup }: { onSignup: () => void }) {
           <Button className="min-h-12 gap-2 text-base" onClick={signup}><UserPlus className="h-5 w-5" aria-hidden="true" />הרשמה חינם</Button>
           <Button variant="outline" className="min-h-12 gap-2 border-primary text-base text-primary hover:bg-primary/10" onClick={login}><LogIn className="h-5 w-5" aria-hidden="true" />כניסה</Button>
         </div>
-        <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-lg" onClick={() => go('/faq')}><CircleHelp className="h-5 w-5" />שאלות ותשובות</Button>
-        <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-lg" onClick={() => go('/about-toraff')}><Info className="h-5 w-5" />מה זה TORAFF</Button>
-        <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-lg" aria-expanded={legal} onClick={() => setLegal(v => !v)}><Scale className="h-5 w-5" />מידע משפטי<ChevronDown className="ms-auto h-4 w-4" /></Button>
-        {legal && <div className="border-s border-border ps-5">{[['תנאי שימוש','/terms'],['מדיניות פרטיות','/privacy-policy'],['עמלות ותגמולים','/commission-mechanism'],['כללי תיווך','/terms#brokerage-commissions']].map(([label,path]) => <Button key={path} variant="ghost" className="min-h-11 w-full justify-start text-base" onClick={() => go(path)}>{label}</Button>)}</div>}
-        <Button asChild className="mt-3 min-h-12 w-full gap-2 bg-success text-success-foreground hover:bg-success/90 text-lg"><a href={officialWaLink(VISITOR_WHATSAPP_INTRO)} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}><MessageCircle className="h-5 w-5" />צרו קשר</a></Button>
+        <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base" onClick={() => go('/faq')}><CircleHelp className="!h-[26px] !w-[26px]" />שאלות ותשובות</Button>
+        <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base" onClick={() => go('/about-toraff')}><Info className="!h-[26px] !w-[26px]" />מה זה TORAFF</Button>
+        <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base" aria-expanded={legal} onClick={() => setLegal(v => !v)}><Scale className="!h-[26px] !w-[26px]" />מידע משפטי<ChevronDown className="ms-auto h-4 w-4" /></Button>
+        {legal && <div className="border-s border-border ps-5">{[['תנאי שימוש','/terms'],['מדיניות פרטיות','/privacy-policy'],['עמלות ותגמולים','/commission-mechanism'],['כללי תיווך','/terms#brokerage-commissions']].map(([label,path]) => <Button key={path} variant="ghost" className="min-h-11 w-full justify-start text-sm" onClick={() => go(path)}>{label}</Button>)}</div>}
+        <Button asChild variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base"><a href={officialWaLink(VISITOR_WHATSAPP_INTRO)} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}><MessageCircle className="!h-[26px] !w-[26px]" />צרו קשר</a></Button>
       </nav>
-      {open && <div className="relative shrink-0 pt-12"><AccessibilityMenu trigger={<Button variant="outline" size="icon" className="absolute -right-3 -top-[50px] h-11 w-11 rounded-full border-primary bg-background text-primary shadow-sm" aria-label="פתיחת תפריט נגישות"><Accessibility className="h-6 w-6" /></Button>} /><VisitorRitaChat /></div>}
+      {open && <div className="relative shrink-0 pt-12"><AccessibilityMenu trigger={<Button variant="ghost" size="icon" className="absolute -right-3 -top-[50px] h-11 w-11 bg-transparent text-primary hover:bg-transparent" aria-label="פתיחת תפריט נגישות"><Accessibility className="!h-[31px] !w-[31px]" /></Button>} /><VisitorRitaChat /></div>}
     </SheetContent>
   </Sheet>;
 }

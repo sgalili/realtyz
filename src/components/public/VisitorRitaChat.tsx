@@ -72,13 +72,14 @@ export function VisitorRitaChat() {
   const content = <div className="flex min-h-0 flex-1 flex-col gap-2" dir="rtl">
     <Conversation className={expanded ? 'min-h-0 flex-1' : 'max-h-48 min-h-0'}>
       <ConversationContent className="gap-3 px-2 py-2">
+        <div className="is-assistant group ml-auto flex w-full max-w-[92%] items-start gap-2"><RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" /><MessageContent className="rounded-lg bg-muted px-3 py-2 text-sm font-normal">{GREETING}</MessageContent></div>
         {messages.map(message => {
           const mine = message.role === 'user';
           return <div key={message.id} className={cn('group flex w-full max-w-[92%] items-start gap-2', mine ? 'is-user mr-auto flex-row-reverse' : 'is-assistant ml-auto')}>
             {mine
               ? <Avatar className="mt-0.5 h-7 w-7 shrink-0 border border-border bg-muted"><AvatarImage src={myAvatar ?? undefined} alt="המשתמש" /><AvatarFallback className="text-muted-foreground"><UserRound className="h-4 w-4" /></AvatarFallback></Avatar>
               : <RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" />}
-            <MessageContent className="rounded-lg bg-muted px-3 py-2 text-base group-[.is-user]:ml-0 group-[.is-user]:bg-primary group-[.is-user]:text-primary-foreground">{message.parts.map((part, i) => part.type === 'text' ? <MessageResponse key={i}>{part.text}</MessageResponse> : null)}</MessageContent>
+            <MessageContent className="rounded-lg bg-muted px-3 py-2 text-sm group-[.is-user]:ml-0 group-[.is-user]:bg-primary group-[.is-user]:text-primary-foreground">{message.parts.map((part, i) => part.type === 'text' ? <MessageResponse key={i}>{part.text}</MessageResponse> : null)}</MessageContent>
           </div>;
         })}
         {status === 'submitted' && <Shimmer>ריטה חושבת…</Shimmer>}
@@ -87,7 +88,7 @@ export function VisitorRitaChat() {
     </Conversation>
     {error && <p role="alert" className="px-2 text-sm text-destructive">{error.message || 'ריטה אינה זמינה כרגע. נסו שוב מאוחר יותר.'}</p>}
     <PromptInput onSubmit={({ text }) => { if (!text.trim() || busy) return; void sendMessage({ text: text.trim().slice(0, 3000) }); }} className="rounded-lg">
-      <PromptInputTextarea ref={inputRef} autoFocus placeholder="איך אוכל לעזור?" aria-label="הודעה לריטה" rows={1} className="!min-h-10 max-h-32 resize-none overflow-y-auto py-2 text-base [field-sizing:fixed]" onKeyDown={handleKeyDown} onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight, 128)}px`; }} onFocus={e => { const t = e.currentTarget; window.setTimeout(() => t.scrollIntoView({ block: 'nearest' }), 300); }} />
+      <PromptInputTextarea ref={inputRef} autoFocus placeholder="איך אוכל לעזור?" aria-label="הודעה לריטה" rows={1} className="!min-h-10 max-h-32 resize-none overflow-y-auto py-2 text-sm [field-sizing:fixed]" onKeyDown={handleKeyDown} onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight, 128)}px`; }} onFocus={e => { const t = e.currentTarget; window.setTimeout(() => t.scrollIntoView({ block: 'nearest' }), 300); }} />
       <InputGroupAddon align="inline-end" className="self-end px-2 pb-1.5">
         <PromptInputSubmit status={status} onStop={stop} aria-label={busy ? 'עצירת תשובה' : 'שליחה לריטה'}>{busy ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}</PromptInputSubmit>
       </InputGroupAddon>
@@ -96,7 +97,7 @@ export function VisitorRitaChat() {
   return <>
     <div className="border-t border-border px-3 pb-2 pt-3">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-2 text-sm font-bold leading-snug"><RitaAvatar className="h-7 w-7 shrink-0" />{GREETING}</span>
+        <span />
         <div className="flex shrink-0 gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="הגדלת שיחה עם ריטה" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" /></Button>
           {messages.length > 0 && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="איפוס שיחת ריטה" disabled={busy} onClick={() => { if (window.confirm('למחוק את שיחת ריטה שנשמרה בדפדפן?')) setMessages([]); }}><Trash2 className="h-4 w-4" /></Button>}
