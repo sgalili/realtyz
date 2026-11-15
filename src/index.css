@@ -2078,7 +2078,7 @@ button.publication-limit-link:focus-visible {
 
 /* A table owns both axes; nested horizontal wrappers must not trap vertical gestures. */
 .app-table-scroll {
-  --table-fade-width: 30px;
+  --table-fade-width: 36px;
   max-height: 70dvh;
   overflow: auto;
   touch-action: pan-x pan-y pinch-zoom;
@@ -2095,13 +2095,13 @@ button.publication-limit-link:focus-visible {
 .table-page-fade {
   position: fixed;
   z-index: 25;
-  width: var(--table-fade-width, 30px);
+  width: var(--table-fade-width, 36px);
   pointer-events: none;
 }
 .table-page-fade[data-edge="left"] { background: linear-gradient(to right, hsl(var(--background) / .96), hsl(var(--background) / 0)); }
 .table-page-fade[data-edge="right"] { background: linear-gradient(to left, hsl(var(--background) / .96), hsl(var(--background) / 0)); }
 @media (min-width: 768px) {
-  .app-table-scroll, .table-page-fade { --table-fade-width: 46px; }
+  .app-table-scroll, .table-page-fade { --table-fade-width: 55px; }
 }
 @media print { .table-page-fade { display: none; } }
 /* User management is one page scroller, never a height-bounded nested table. */
