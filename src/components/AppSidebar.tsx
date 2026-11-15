@@ -1,11 +1,10 @@
-import { History } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { BROKER_NAV_PATHS } from '@/lib/brokerNavigation';
 import { Button } from '@/components/ui/button';
 import { APP_TOUR_EVENT } from '@/lib/appWalkthrough';
 import { HelpHint } from "@/components/tutorial/TutorialHost";
 import { useMemo } from 'react';
 import {
-  Activity,
   Megaphone,
   MessageCircle,
   Home,
@@ -71,6 +70,14 @@ type NavItem = {
   badge?: string;
 };
 
+const MY_ADS_ITEM: NavItem = {
+  title: 'המודעות שלי',
+  url: '/my-ads',
+  icon: MyAdsIcon,
+  iconColor: 'text-primary',
+  badgeClass: 'bg-primary/10 text-primary ring-primary/20',
+};
+
 /**
  * Each destination owns a unique semantic icon token independent of text inheritance.
  */
@@ -84,13 +91,6 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/tasks'],
   },
   {
-    title: 'לוח בקרה',
-    url: '/dashboard',
-    icon: Activity,
-    iconColor: '!text-[hsl(var(--nav-dashboard))]', // indigo-700
-    badgeClass: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
-  },
-  {
     title: 'קמפיינים',
     url: '/campaigns',
     icon: Megaphone,
@@ -99,7 +99,7 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
   },
   {
-    title: 'נכסים',
+    title: 'הנכסים שלי',
     url: '/properties',
     icon: Home,
     iconColor: '!text-[hsl(var(--nav-properties))]', // amber-700
@@ -208,6 +208,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const access = usePropertyPageAccess();
   const affiliateOnlyNav = isAffiliateOnly || isPartnerMode;
   const audience = activityAudience(roles, isPartnerMode);
+  const brokerMenu = audience === 'professional' && !access.projects;
   const navItems = useMemo(() => {
     if (roleLoading || roleError) return [];
     if (audience !== 'professional') {
@@ -229,13 +230,14 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       const projects = NAV_ITEMS.find((i) => i.url === '/developers');
       return projects ? [{ ...projects, title: 'הפרויקטים שלנו', url: '/developer-dashboard' }, ...base] : base;
     }
-    return NAV_ITEMS.filter((item) => {
-      if (item.url === '/developers') return isDeveloper;
-      if (item.url === '/properties') return features.listingsEnabled && access.properties;
-      if (item.url === '/deal-room') return features.dealsEnabled && access.properties;
-      if (item.url === '/affiliate-network') return false;
-      return true;
-    });
+    const availableItems = [...NAV_ITEMS, MY_ADS_ITEM];
+    return BROKER_NAV_PATHS
+      .map((path) => availableItems.find((item) => item.url === path))
+      .filter((item): item is NavItem => {
+        if (!item) return false;
+        if (item.url === '/properties') return features.listingsEnabled && access.properties;
+        return true;
+      });
   }, [audience, features, access.projects, access.properties, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError, identity.label]);
 
   const countFor = (url: string): number | undefined => {
@@ -362,7 +364,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   <SidebarMenuButton asChild><NavLink to="/sharing-pool" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Home className="h-4 w-4 text-primary" />{!collapsed && <span className="text-sm font-medium">נכסים פתוחים לשיתוף</span>}</NavLink></SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              {user && (
+              {user && !brokerMenu && (
                 <SidebarMenuItem key="my-ads">
                   <SidebarMenuButton asChild isActive={location.pathname.startsWith('/my-ads')}>
                     <NavLink to="/my-ads" data-walkthrough-path="/my-ads" data-walkthrough-title="המודעות שלי" onClick={handleNavClick}
@@ -370,18 +372,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                       activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200">
                       <MyAdsIcon className="h-4 w-4 shrink-0 text-primary" />
                       {!collapsed && <span className="text-sm font-medium">המודעות שלי</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              {user && (
-                <SidebarMenuItem key="activity-history">
-                  <SidebarMenuButton asChild isActive={location.pathname.startsWith('/activity-history')}>
-                    <NavLink to="/activity-history" onClick={handleNavClick}
-                      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all"
-                      activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200">
-                      <History className="h-4 w-4 shrink-0 text-primary" />
-                      {!collapsed && <span className="text-sm font-medium">היסטוריית פעילות</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -425,6 +415,18 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   </SidebarMenuItem>
                 );
               })}
+              <SidebarMenuItem key="accessibility">
+                <AccessibilityMenu trigger={
+                  <SidebarMenuButton
+                    type="button"
+                    aria-label="פתיחת תפריט נגישות"
+                    className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all"
+                  >
+                    <Accessibility className="h-4 w-4 shrink-0 text-primary" />
+                    {!collapsed && <span className="text-sm font-medium">נגישות</span>}
+                  </SidebarMenuButton>
+                } />
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -440,9 +442,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         )}
 
       </SidebarContent>
-      {!collapsed && <SidebarFooter className="shrink-0 gap-0 border-t border-border bg-background p-0 shadow-none">
-        <div className="relative h-12"><AccessibilityMenu trigger={<Button variant="outline" size="icon" className="absolute -right-3 top-1 h-11 w-11 rounded-full border-primary bg-background text-primary shadow-sm" aria-label="פתיחת תפריט נגישות"><Accessibility className="h-6 w-6" /></Button>} /></div>
-        {user && <SidebarRitaChat />}
+      {!collapsed && user && <SidebarFooter className="shrink-0 gap-0 border-t border-border bg-background p-0 shadow-none">
+        <SidebarRitaChat />
       </SidebarFooter>}
     </Sidebar>
   );

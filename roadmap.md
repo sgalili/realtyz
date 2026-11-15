@@ -1,5 +1,11 @@
 # Roadmap
 
+## Broker navigation and Partner onboarding November 15
+- [ ] Show broker menu in the exact requested order, including הנכסים שלי and a standard accessibility row; remove dashboard and activity history.
+- [ ] Add icon-only dashboard and activity-history destinations inside the header activity summary as full pages.
+- [ ] Verify first Partner entry requires saved terms approval and later entries bypass onboarding.
+
+
 ## Guest typewriter actions November 15
 - [x] Replaced guest rotation with the ten requested messages and persisted each message's internal destination; the live database returns exactly ten active guest messages.
 - [x] Increased rendered banner text from 14px to 15px and linked messages to signup, the explainer or FAQ; added the requested `/what-is-toraff` explainer URL.

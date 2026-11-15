@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChartNoAxesCombined, Wallet, X } from 'lucide-react';
+import { ChartNoAxesCombined, History, LayoutDashboard, Wallet, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,7 +33,9 @@ export default function HomeActivityPill() {
   const { roles, isAffiliateOnly } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const partnerView = isAffiliateOnly || isPartnerMode;
-  const privateView = activityAudience(roles, isPartnerMode) === 'private';
+  const audience = activityAudience(roles, isPartnerMode);
+  const privateView = audience === 'private';
+  const professionalView = audience === 'professional';
   const [open, setOpen] = useState(false);
   const [activity, setActivity] = useState('properties');
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -86,6 +88,10 @@ export default function HomeActivityPill() {
     {(open || everOpened) && portalAnchor && <PopoverContent forceMount portalContainer={portalAnchor} side="bottom" align="start" className="home-activity-drawer p-0 data-[state=closed]:hidden" aria-label="הפעילות שלי" dir="rtl">
       <div className="flex items-center justify-between gap-2 px-3 py-1.5">
         <Button variant="ghost" size="sm" className="h-8 min-w-0 gap-1.5 px-1 text-xs" aria-label="יתרת קרדיטים בארנק" onClick={() => { setOpen(false); navigate('/wallet'); }}><Wallet className="h-4 w-4 shrink-0 text-primary" /><span className="truncate tabular-nums">{wallet.isError ? 'היתרה אינה זמינה' : wallet.isLoading || !wallet.data ? 'טוען יתרה…' : fmtCompactCredits(ilsToCredits(wallet.data.balance), 2)}</span></Button>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="היסטוריית פעילות" title="היסטוריית פעילות" onClick={() => { setOpen(false); navigate('/activity-history'); }}><History className="h-4 w-4" /></Button>
+          {professionalView && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="לוח בקרה" title="לוח בקרה" onClick={() => { setOpen(false); navigate('/dashboard'); }}><LayoutDashboard className="h-4 w-4" /></Button>}
+        </div>
         <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="סגירת הפעילות" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
       </div>
       <Tabs value={activity} onValueChange={setActivity} className="flex min-h-0 min-w-0 flex-1 flex-col">
