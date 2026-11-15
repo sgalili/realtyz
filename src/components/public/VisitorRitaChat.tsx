@@ -99,7 +99,7 @@ export function VisitorRitaChat() {
     <div ref={convRef} className={expanded ? 'flex min-h-0 flex-1 flex-col' : 'flex min-h-0 flex-col'} style={sized ? { height: chatHeight } : undefined}>
     <Conversation className={expanded || sized ? 'min-h-0 flex-1' : 'max-h-48 min-h-0'}>
       <ConversationContent className="gap-3 px-2 py-2" scrollClassName={expanded || sized ? undefined : 'max-h-48'}>
-        <div className="is-assistant group flex w-full items-start gap-2"><RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" /><MessageContent className="max-w-[78%] rounded-lg bg-muted px-3 py-2 text-xs font-normal">{GREETING}</MessageContent><div className="ms-auto flex shrink-0 items-center gap-1 self-center">{!expanded && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="הגדלת שיחה עם ריטה" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" /></Button>}{messages.length > 0 && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="איפוס שיחת ריטה" disabled={busy} onClick={() => { if (window.confirm('למחוק את שיחת ריטה שנשמרה בדפדפן?')) setMessages([]); }}><Trash2 className="h-4 w-4" /></Button>}</div></div>
+        <div className="is-assistant group flex w-full items-start gap-2"><RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" /><MessageContent className="max-w-[78%] rounded-lg bg-muted px-3 py-2 text-xs font-normal">{GREETING}</MessageContent></div>
         {messages.map(message => {
           const mine = message.role === 'user';
           return <div key={message.id} className={cn('group flex w-full max-w-[92%] items-start gap-2', mine ? 'is-user mr-auto flex-row-reverse' : 'is-assistant ml-auto')}>
@@ -126,8 +126,13 @@ export function VisitorRitaChat() {
   return <>
     <div className="relative border-t border-border px-3 pb-2 pt-3">
       {!expanded && <div role="separator" aria-orientation="horizontal" aria-label="גרירה להגדלת שיחת ריטה" className="absolute inset-x-0 -top-2 z-10 flex h-4 cursor-row-resize touch-none items-center justify-center" onPointerDown={startDrag}><span className="h-1 w-10 rounded-full bg-border" /></div>}
+      {/* Actions sit on the divider line itself: expand on the far right edge, reset on the far left edge. */}
+      {!expanded && <div className="pointer-events-none absolute inset-x-0 -top-4 z-20 flex h-8 items-center justify-between">
+        <Button variant="ghost" size="icon" className="pointer-events-auto h-8 w-8 rounded-none bg-background" aria-label="הגדלת שיחה עם ריטה" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" /></Button>
+        {messages.length > 0 && <Button variant="ghost" size="icon" className="pointer-events-auto h-8 w-8 rounded-none bg-background" aria-label="איפוס שיחת ריטה" disabled={busy} onClick={() => { if (window.confirm('למחוק את שיחת ריטה שנשמרה בדפדפן?')) setMessages([]); }}><Trash2 className="h-4 w-4" /></Button>}
+      </div>}
       {!expanded && content}
     </div>
-    <Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className="flex h-[85dvh] max-w-2xl flex-col" dir="rtl"><DialogHeader><DialogTitle className="flex items-center gap-3"><RitaAvatar className="h-10 w-10" />ריטה</DialogTitle><DialogDescription>נעים להכיר</DialogDescription></DialogHeader>{expanded && content}</DialogContent></Dialog>
+    <Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className="flex h-[85dvh] max-w-2xl flex-col" dir="rtl">{messages.length > 0 && <Button variant="ghost" size="icon" className="absolute end-3 top-3 z-50 h-8 w-8" aria-label="איפוס שיחת ריטה" disabled={busy} onClick={() => { if (window.confirm('למחוק את שיחת ריטה שנשמרה בדפדפן?')) setMessages([]); }}><Trash2 className="h-4 w-4" /></Button>}<DialogHeader><DialogTitle className="flex items-center gap-3"><RitaAvatar className="h-10 w-10" />ריטה</DialogTitle><DialogDescription>נעים להכיר</DialogDescription></DialogHeader>{expanded && content}</DialogContent></Dialog>
   </>;
 }
