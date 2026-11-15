@@ -78,7 +78,7 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
   // smaller, and over-tall content would push the header out of view).
   const panelRect = panelRef.current?.getBoundingClientRect();
   const rootBottom = panelRef.current?.closest('header')?.parentElement?.getBoundingClientRect().bottom ?? viewportHeight;
-  const available = Math.max(0, rootBottom - (panelRect?.top ?? 0));
+  const available = Math.max(0, rootBottom - (panelRect?.top ?? 0) - 15);
   // Collapsed before the measurement lands, "auto" already equals the content
   // height, so the panel never paints full-screen for a frame.
   const height = advanced ? available : (collapsedHeight || 'auto');
@@ -91,7 +91,7 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
         transition: 'clip-path 520ms cubic-bezier(0.22, 1, 0.36, 1), transform 520ms cubic-bezier(0.22, 1, 0.36, 1), height 520ms cubic-bezier(0.22, 1, 0.36, 1)',
         willChange: 'clip-path, transform',
       }}
-      className="relative flex w-full flex-col overflow-hidden border-b border-border bg-background motion-reduce:!transition-none">
+      className="relative mb-[15px] flex w-full flex-col overflow-hidden border-b border-border bg-background motion-reduce:!transition-none">
       <div data-search-head className="relative shrink-0 border-b border-border px-[15px] pb-3 pt-0">
         <ClearFilterButton active={!!query.trim() || activeFilters || dealType !== 'all'} onClear={() => { if (onReset) onReset(); else { onQueryChange(''); onDealTypeChange('all'); } }} />
         <div className="flex items-center gap-2">

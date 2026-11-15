@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useReducedMotion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,14 +21,6 @@ export function TypewriterBanner() {
   const signature = messages.join('\u0000');
   const [state, setState] = useState(INITIAL_TYPEWRITER_STATE);
 
-  // The whole sentence must stay readable, so the row reserves the space the
-  // longest message in this audience needs instead of clipping text with an
-  // ellipsis.
-  const longestMessage = useMemo(
-    () => messages.reduce((longest, message) => (message.length > longest.length ? message : longest), ''),
-    [messages],
-  );
-
   useEffect(() => setState(INITIAL_TYPEWRITER_STATE), [signature]);
 
   useEffect(() => {
@@ -39,12 +31,37 @@ export function TypewriterBanner() {
     return () => window.clearTimeout(timer);
   }, [messages, reducedMotion, state]);
 
-  if (messages.length === 0) return <div className="min-w-0 flex-1" aria-hidden="true" />;
-
-  const messageIndex = state.messageIndex % messages.length;
-  const currentMessage = messages[messageIndex];
+  const messageIndex = messages.length > 0 ? state.messageIndex % messages.length : 0;
+  const currentMessage = messages[messageIndex] ?? '';
   const currentAction = rotatingMessageNavigation(messageRows[messageIndex]?.action_path);
   const visibleText = reducedMotion ? currentMessage : currentMessage.slice(0, state.characterCount);
+
+  // One line only: the sentence never wraps to a second line. When it is longer
+  // than the room left in the toolbar, the line slides sideways inside the same
+  // row so the characters written last stay visible until the end of the text.
+  const clipRef = useRef<HTMLSpanElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [overflow, setOverflow] = useState(0);
+
+  useLayoutEffect(() => {
+    const clip = clipRef.current;
+    const text = textRef.current;
+    if (!clip || !text) {
+      setOverflow(0);
+      return;
+    }
+    const measure = () => setOverflow(Math.max(0, text.offsetWidth - clip.clientWidth));
+    measure();
+    // The text element grows one character at a time, so watching its own box
+    // keeps the sideways position in step with the writing without re-creating
+    // the observer on every character.
+    const observer = new ResizeObserver(measure);
+    observer.observe(clip);
+    observer.observe(text);
+    return () => observer.disconnect();
+  }, [signature]);
+
+  if (messages.length === 0) return <div className="min-w-0 flex-1" aria-hidden="true" />;
 
   return (
     <button
@@ -59,9 +76,15 @@ export function TypewriterBanner() {
       title={currentMessage}
     >
       <span className="sr-only" aria-live="polite">{currentMessage}</span>
-      <span aria-hidden="true" className="relative block w-full text-start text-[15px] font-medium leading-[1.45] text-muted-foreground">
-        <span className="invisible block [overflow-wrap:anywhere]">{longestMessage}</span>
-        <span className="absolute inset-0 block [overflow-wrap:anywhere]">
+      <span ref={clipRef} aria-hidden="true" className="block min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+        <span
+          ref={textRef}
+          className="block w-max max-w-none whitespace-nowrap text-[16px] font-medium leading-[1.45] text-muted-foreground"
+          style={{
+            transform: `translateX(${overflow}px)`,
+            transition: reducedMotion ? 'none' : 'transform 140ms linear',
+          }}
+        >
           {visibleText}
           {!reducedMotion && <span className="ms-0.5 inline-block h-[1.05em] w-px translate-y-[2px] animate-pulse bg-primary" />}
         </span>

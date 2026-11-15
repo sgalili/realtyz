@@ -336,7 +336,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
         </div>
       )}
       <header className="relative z-20 shrink-0 bg-card">
-        <div className={cn('mx-auto w-full max-w-6xl pb-0 pt-2', embedded ? 'px-0' : 'px-[15px]')}>
+        <div className={cn('mx-auto w-full max-w-6xl pb-0', embedded ? 'px-0 pt-0' : 'px-[15px] pt-2')}>
           {embedded ? null : (
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
               <h1 className="sr-only">לוח שיווק שותפים</h1>
@@ -356,7 +356,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
               so this row never moves when the panel opens. */}
           <InventoryCollectionBanner />
           {(
-            <div className="flex shrink-0 items-center justify-between gap-0" style={{ marginInlineEnd: '-5px' }}>
+            <div className="flex shrink-0 items-center justify-between gap-0 py-[15px]" style={{ marginInlineEnd: '-5px' }}>
               {marketingOnly && <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <SelectModeToggle active={selectMode} count={chosen.length} total={filtered.length} onToggle={() => { setSelectMode(value => !value); setSelected(new Set()); }} />
                 {chosen.length > 0 && <InventoryToolSoftLock tool="partner-network"><PropertyShareMenu results={chosen} label="שיווק מיידי" hideOpenPage /></InventoryToolSoftLock>}
@@ -389,7 +389,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
         </div>
       </header>
 
-      <main aria-label="רשימת נכסים" className={cn('mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overscroll-contain pb-0 pt-[15px]', embedded ? 'px-0' : 'px-[15px]', grid || loading || filtered.length === 0 ? 'overflow-y-auto' : 'flex flex-col overflow-hidden')}>
+      <main aria-label="רשימת נכסים" className={cn('mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overscroll-contain pb-0 pt-0', embedded ? 'px-0' : 'px-[15px]', grid || loading || filtered.length === 0 ? 'overflow-y-auto' : 'flex flex-col overflow-hidden')}>
         {loading && cards.length === 0 ? <FullPageLoading /> : filtered.length === 0 ? <div className="flex flex-col items-center justify-center gap-4 py-16 text-center"><p className="text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p>{(appliedFilterCount > 0 || query.trim()) && <Button type="button" onClick={resetFilters}>איפוס סינונים</Button>}</div> : (
           grid ? (
           <div className="property-card-grid">
