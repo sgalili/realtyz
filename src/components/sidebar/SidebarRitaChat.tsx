@@ -103,7 +103,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
     const startY = event.clientY;
     const startHeight = conversation.getBoundingClientRect().height;
     const maxHeight = availableHeight(conversation, event.currentTarget);
-    const move = (pointer: PointerEvent) => setChatHeight(Math.round(Math.min(maxHeight, Math.max(120, startHeight + startY - pointer.clientY))));
+    const move = (pointer: PointerEvent) => setChatHeight(Math.round(Math.min(maxHeight, Math.max(0, startHeight + startY - pointer.clientY))));
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
@@ -121,7 +121,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
     const currentHeight = conversation.getBoundingClientRect().height;
     const maxHeight = availableHeight(conversation, event.currentTarget);
     const delta = event.key === 'ArrowUp' ? 40 : -40;
-    setChatHeight(Math.round(Math.min(maxHeight, Math.max(120, currentHeight + delta))));
+    setChatHeight(Math.round(Math.min(maxHeight, Math.max(0, currentHeight + delta))));
   };
 
   const actionButton = 'pointer-events-auto h-8 w-8 rounded-none bg-background text-muted-foreground hover:text-foreground';
@@ -157,7 +157,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
         </div>}
       </div>
 
-      <div ref={conversationRef} data-testid="rita-mini-conversation" className="flex min-h-0 flex-col" style={chatHeight == null ? undefined : { height: chatHeight }}>
+      <div ref={conversationRef} data-testid="rita-mini-conversation" className="flex min-h-0 flex-col overflow-hidden" style={chatHeight == null ? undefined : { height: chatHeight }}>
         <div ref={listRef} className={cn('space-y-2 overflow-y-auto px-1 pb-2 text-xs', chatHeight == null ? 'max-h-40' : 'min-h-0 flex-1')}>
           <div className="is-assistant group flex w-full items-start gap-2">
             <RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" />
