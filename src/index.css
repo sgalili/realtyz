@@ -1107,6 +1107,7 @@ button.publication-limit-link:focus-visible {
   .app-route-pages { min-height: 100dvh; padding-bottom: var(--app-footer-space); }
   .app-route-pages:has(.auth-gradient-shell),
   .app-route-pages:has(.realtyz-app-shell),
+  .app-route-pages:has(.public-site-shell),
   .app-route-pages:has(.public-board-page) { padding-bottom: 0; }
   .app-route-pages .realtyz-app-shell,
   .app-route-pages .public-board-page { height: calc(100dvh - var(--app-footer-space)); max-height: calc(100dvh - var(--app-footer-space)); }
@@ -1114,9 +1115,12 @@ button.publication-limit-link:focus-visible {
   html:has(.public-board-page),
   body:has(.public-board-page),
   html:has(.realtyz-app-shell),
-  body:has(.realtyz-app-shell) { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body:has(.realtyz-app-shell),
+  html:has(.public-site-shell),
+  body:has(.public-site-shell) { height: 100%; overflow: hidden; overscroll-behavior: none; }
   .app-route-pages:has(.public-board-page),
-  .app-route-pages:has(.realtyz-app-shell) { height: 100dvh; min-height: 0; overflow: hidden; }
+  .app-route-pages:has(.realtyz-app-shell),
+  .app-route-pages:has(.public-site-shell) { height: 100dvh; min-height: 0; overflow: hidden; }
   .app-route-pages .group\/sidebar-wrapper { min-height: 0; height: calc(100dvh - var(--app-footer-space)); overflow: hidden; }
   /* A pinned profile action bar owns the bottom gap so it rests flush above the legal footer. */
   .realtyz-main-surface:has(.profile-sticky-actions) { padding-bottom: 0; }
