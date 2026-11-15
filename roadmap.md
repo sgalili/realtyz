@@ -1,9 +1,10 @@
 # Roadmap
 
 ## Broker navigation and Partner onboarding November 15
-- [ ] Show broker menu in the exact requested order, including הנכסים שלי and a standard accessibility row; remove dashboard and activity history.
-- [ ] Add icon-only dashboard and activity-history destinations inside the header activity summary as full pages.
-- [ ] Verify first Partner entry requires saved terms approval and later entries bypass onboarding.
+- [x] Show broker menu in the exact requested order, including הנכסים שלי and a standard accessibility row; remove dashboard and activity history.
+- [x] Add icon-only dashboard and activity-history destinations inside the header activity summary as full pages.
+- [x] Verify first Partner entry requires saved terms approval and later entries bypass onboarding.
+- [x] Fixed active-workspace broker license lookup for Super Admin workspace views; 24 focused tests and signed-in desktop/mobile navigation checks passed without page errors.
 
 
 ## Guest typewriter actions November 15
