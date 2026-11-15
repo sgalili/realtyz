@@ -1464,6 +1464,20 @@
       "when": 1794769273518,
       "tag": "0208_guest_rotating_message_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 209,
+      "version": "7",
+      "when": 1794771114320,
+      "tag": "0209_widen_rotating_message_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 210,
+      "version": "7",
+      "when": 1794771130860,
+      "tag": "0210_backfill_rotating_message_links",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,2 @@
+ALTER TABLE public.rotating_messages DROP CONSTRAINT rotating_messages_action_path_check;
+ALTER TABLE public.rotating_messages ADD CONSTRAINT rotating_messages_action_path_check CHECK (action_path IS NULL OR action_path = ANY (ARRAY['/auth','/what-is-toraff','/faq','/','/my-ads','/campaigns','/inbox','/wallet','/invite','/developer-dashboard','/profile','/properties']));
