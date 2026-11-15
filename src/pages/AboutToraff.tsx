@@ -31,7 +31,7 @@ export default function AboutToraff() {
       <h2 className="text-2xl font-bold">{slide.title}</h2>
       <p className="mt-5 max-w-xl text-lg leading-8 text-muted-foreground">{slide.text}</p>
     </section>
-    <div className="flex items-center justify-between"><Button variant="ghost" size="icon" aria-label="העמוד הקודם" disabled={index===0} onClick={()=>setIndex(v=>v-1)}><ArrowRight /></Button><span dir="ltr" className="text-sm text-muted-foreground">{index+1}/{slides.length}</span><Button variant="ghost" size="icon" aria-label="העמוד הבא" disabled={index===slides.length-1} onClick={()=>setIndex(v=>v+1)}><ArrowLeft /></Button></div>
+    <div className="flex items-center justify-between"><Button variant="ghost" size="icon" aria-label="העמוד הקודם" disabled={index===0} onClick={()=>setIndex(v=>v-1)}><ArrowRight /></Button><span dir="ltr" className="text-sm text-muted-foreground">{index+1}/{slides.length}</span><Button variant="ghost" size="icon" aria-label={index===slides.length-1 ? 'להרשמה' : 'העמוד הבא'} onClick={()=>index===slides.length-1 ? navigate('/auth', { state: { signup: true } }) : setIndex(v=>v+1)}><ArrowLeft /></Button></div>
     <Button className="mt-5 min-h-12 gap-2 text-lg" onClick={()=>navigate('/auth')}><UserRound className="h-5 w-5" />הרשמה חינם או כניסה</Button>
   </main>;
 }
