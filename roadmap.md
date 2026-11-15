@@ -1,5 +1,9 @@
 # Roadmap
 
+## Profile navigation and table fades November 15
+- [x] Removed the profile office-return button; X returns to the previous page or homepage on direct entry. The office link is 14px with a dotted underline, and the view switch sits at the row edge.
+- [x] Increased shared table fades from 20/36px to 30/46px on mobile/desktop. Four regression tests and authenticated mobile/desktop checks passed with no page errors.
+
 ## Visitor WhatsApp contact November 14
 - [x] Added official WhatsApp introduction below visitor signup; mobile/desktop button and exact link verified.
 - [x] Isolated public WhatsApp welcome sessions from CRM/tools; signed callbacks, atomic claims and quiet Super Admin-only alerts deployed.

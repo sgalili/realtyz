@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Building2, Loader2, MessageCircle, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,8 +27,6 @@ export const communityProfilePath = (id: string) => `/community/profile/${encode
 export default function CommunityProfilePage() {
   const { userId = '' } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const officeReturn = typeof location.state?.agencyId === 'string' ? location.state.agencyId : null;
   const controls = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
@@ -84,7 +82,6 @@ export default function CommunityProfilePage() {
   const cities = p?.service_areas?.filter(Boolean).join(', ') || p?.city;
   return <main dir="rtl" data-no-hero-wave className="relative mx-auto w-full max-w-6xl space-y-6 pb-6">
     <ProfilePageClose onClose={close} />
-    {officeReturn && <Button variant="outline" className="me-14" onClick={() => navigate(`/community/office/${encodeURIComponent(officeReturn)}`)}>חזרה למשרד / לרשימת המתווכים</Button>}
     {profile.isLoading && <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />}
     {profile.isError && <p role="alert" className="text-center text-destructive">טעינת הפרופיל נכשלה</p>}
     {!profile.isLoading && !profile.isError && !p && <div className="space-y-3 text-center"><p className="text-muted-foreground">הפרופיל אינו זמין</p><Button variant="outline" onClick={close}>סגירה</Button></div>}
@@ -103,7 +100,7 @@ export default function CommunityProfilePage() {
       </div>
       {(p.office_name || p.logo_url) && <div className="mx-auto flex w-full max-w-2xl items-center gap-4 rounded-md bg-muted/40 p-4">
         <PublicIdentityLink userId={userId} office={p.category !== 'developer'} className="shrink-0" label={`פתיחת ${p.office_name ?? 'המשרד'}`}>{p.logo_url ? <img src={p.logo_url} alt={p.office_name ? `לוגו ${p.office_name}` : 'לוגו משרד'} className="h-20 w-20 bg-background object-contain p-1" /> : <Building2 className="h-12 w-12 text-muted-foreground" />}</PublicIdentityLink>
-        <div className="min-w-0 flex-1 space-y-1"><h3 className="break-words text-lg font-bold"><PublicIdentityLink userId={userId} office={p.category !== 'developer'}>{p.office_name}</PublicIdentityLink></h3><div className="flex items-start gap-2 text-base"><span className="min-w-0 flex-1 break-words text-muted-foreground">{cities}</span><PublicIdentityLink userId={userId} office className="shrink-0 text-primary underline">לעמוד המשרד</PublicIdentityLink></div></div>
+        <div className="min-w-0 flex-1 space-y-1"><h3 className="break-words text-lg font-bold"><PublicIdentityLink userId={userId} office={p.category !== 'developer'}>{p.office_name}</PublicIdentityLink></h3><div className="flex items-start gap-2 text-base"><span className="min-w-0 flex-1 break-words text-muted-foreground">{cities}</span><PublicIdentityLink userId={userId} office className="profile-office-link shrink-0 text-sm text-primary">לעמוד המשרד</PublicIdentityLink></div></div>
 
       </div>}
       <Dialog open={imageOpen} onOpenChange={setImageOpen}><DialogContent data-fullscreen className="!h-[100dvh] !w-screen !max-w-none !rounded-none border-0 bg-background p-4 pt-14 shadow-none" aria-describedby={undefined}><DialogTitle className="sr-only">תמונת הפרופיל של {p.full_name}</DialogTitle>{p.avatar_url && <img src={p.avatar_url} alt={p.full_name ?? ''} className="h-full max-h-[calc(100dvh-5rem)] w-full object-contain" />}</DialogContent></Dialog>
@@ -115,7 +112,7 @@ export default function CommunityProfilePage() {
       <ul className="divide-y divide-border">{projects.data?.map(project => <li key={project.id} className="flex items-start gap-3 py-4">{project.image_url && <img src={project.image_url} alt={project.name} className="h-24 w-28 shrink-0 rounded-md object-cover" loading="lazy" />}<div className="min-w-0 space-y-1"><h3 className="break-words text-lg font-bold">{project.name}</h3><p className="text-muted-foreground">{[project.city, project.address].filter(Boolean).join(' · ')}</p>{project.price_from != null && <p className="font-semibold">החל מ־₪{project.price_from.toLocaleString('he-IL')}</p>}{project.description && <p className="whitespace-pre-line break-words text-base">{project.description}</p>}{project.delivery_date && <p className="text-sm text-muted-foreground">מסירה: {project.delivery_date}</p>}</div></li>)}</ul>
     </section>}
     {p && <section className="min-h-[calc(100dvh-150px)] space-y-3">
-      <div ref={controls} data-profile-property-controls className="sticky top-0 z-30 flex items-center justify-between gap-2 bg-background py-2 ps-0 pe-14 sm:pe-0"><h2 className="min-w-0 text-xl font-bold">{listingIds.isLoading || feed.isLoading || listingIds.isError || feed.isError ? '' : `${cards.length} `}נכסים פעילים לשיתוף פעולה</h2>
+      <div ref={controls} data-profile-property-controls className="sticky top-0 z-30 flex items-center justify-between gap-2 bg-background py-2"><h2 className="min-w-0 text-xl font-bold">{listingIds.isLoading || feed.isLoading || listingIds.isError || feed.isError ? '' : `${cards.length} `}נכסים פעילים לשיתוף פעולה</h2>
         <ViewModeSwitch isGrid={view === 'grid'} className="!h-11 !w-11" onToggle={() => { setDisplay(current => ({ scope: viewScope, view: current.scope === viewScope && current.view === 'grid' ? 'list' : 'grid' })); setExpandedId(null); requestAnimationFrame(() => scrollProfileProperties(controls.current)); }} />
       </div>
       {(listingIds.isLoading || feed.isLoading) && <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />}
