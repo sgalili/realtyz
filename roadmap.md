@@ -1,5 +1,11 @@
 # Roadmap
 
+## Broker table agency identity November 15
+- [ ] Trace every broker/agent table row and reuse the authorized public-profile agency name/logo relationship.
+- [ ] Render consistent agency name and logo in each relevant broker row without exposing private office data.
+- [ ] Add focused relationship/rendering tests and verify the affected desktop/mobile tables.
+
+
 ## Loading and agency settings overhaul November 15
 - [x] Keep the main header and loaded blue hero visible during every page loading overlay or skeleton.
 - [x] Replace agency city fields with national city/settlement and street autocomplete plus a manual house number.
