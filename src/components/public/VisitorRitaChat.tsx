@@ -72,7 +72,7 @@ export function VisitorRitaChat() {
   const content = <div className="flex min-h-0 flex-1 flex-col gap-2" dir="rtl">
     <Conversation className={expanded ? 'min-h-0 flex-1' : 'max-h-48 min-h-0'}>
       <ConversationContent className="gap-3 px-2 py-2">
-        <div className="is-assistant group ml-auto flex w-full max-w-[92%] items-start gap-2"><RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" /><MessageContent className="rounded-lg bg-muted px-3 py-2 text-sm font-normal">{GREETING}</MessageContent></div>
+        <div className="is-assistant group flex w-full items-start gap-2"><RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" /><MessageContent className="max-w-[78%] rounded-lg bg-muted px-3 py-2 text-sm font-normal">{GREETING}</MessageContent>{!expanded && <Button variant="ghost" size="icon" className="ms-auto h-8 w-8 shrink-0 self-center" aria-label="הגדלת שיחה עם ריטה" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" /></Button>}</div>
         {messages.map(message => {
           const mine = message.role === 'user';
           return <div key={message.id} className={cn('group flex w-full max-w-[92%] items-start gap-2', mine ? 'is-user mr-auto flex-row-reverse' : 'is-assistant ml-auto')}>
@@ -99,7 +99,6 @@ export function VisitorRitaChat() {
       <div className="mb-1 flex items-center justify-between gap-2">
         <span />
         <div className="flex shrink-0 gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="הגדלת שיחה עם ריטה" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" /></Button>
           {messages.length > 0 && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="איפוס שיחת ריטה" disabled={busy} onClick={() => { if (window.confirm('למחוק את שיחת ריטה שנשמרה בדפדפן?')) setMessages([]); }}><Trash2 className="h-4 w-4" /></Button>}
         </div>
       </div>

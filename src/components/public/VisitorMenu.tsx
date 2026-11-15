@@ -47,7 +47,7 @@ export function VisitorMenu({ onSignup }: { onSignup: () => void }) {
   }, [open]);
   return <Sheet open={open} onOpenChange={setOpen}>
     <div ref={anchorRef} className="contents"><SheetTrigger asChild><Button variant="ghost" size="icon" className="board-header-icon-btn h-[46.8px] w-[46.8px]" aria-label="תפריט מבקרים"><Menu className="!h-[26px] !w-[26px]" strokeWidth={2} aria-hidden="true" /></Button></SheetTrigger></div>
-    <SheetContent side="right" dir="rtl" style={box ? { top: box.top, height: box.height, bottom: 'auto' } : undefined} overlayStyle={box ? { top: box.top } : undefined} className="right-3 flex w-[calc(100%-40px)] max-w-sm flex-col gap-0 overflow-visible p-0">
+    <SheetContent side="right" dir="rtl" style={box ? { top: box.top, height: box.height, bottom: 'auto' } : undefined} overlayStyle={box ? { top: box.top } : undefined} className="right-0 flex w-[calc(100%-28px)] max-w-sm flex-col gap-0 overflow-visible p-0">
       <SheetTitle className="sr-only">תפריט מבקרים</SheetTitle><SheetDescription className="sr-only">TORAFF</SheetDescription>
       <nav className="min-h-0 flex-1 overflow-y-auto px-3 pt-10" aria-label="ניווט מבקרים">
         <div className="mb-3 grid grid-cols-2 gap-2">
@@ -59,8 +59,9 @@ export function VisitorMenu({ onSignup }: { onSignup: () => void }) {
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base" aria-expanded={legal} onClick={() => setLegal(v => !v)}><Scale className="!h-[26px] !w-[26px]" />מידע משפטי<ChevronDown className="ms-auto h-4 w-4" /></Button>
         {legal && <div className="border-s border-border ps-5">{[['תנאי שימוש','/terms'],['מדיניות פרטיות','/privacy-policy'],['עמלות ותגמולים','/commission-mechanism'],['כללי תיווך','/terms#brokerage-commissions']].map(([label,path]) => <Button key={path} variant="ghost" className="min-h-11 w-full justify-start text-sm" onClick={() => go(path)}>{label}</Button>)}</div>}
         <Button asChild variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base"><a href={officialWaLink(VISITOR_WHATSAPP_INTRO)} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}><MessageCircle className="!h-[26px] !w-[26px]" />צרו קשר</a></Button>
+        <AccessibilityMenu trigger={<Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base"><Accessibility className="!h-[26px] !w-[26px]" aria-hidden="true" />נגישות</Button>} />
       </nav>
-      {open && <div className="relative shrink-0 pt-12"><AccessibilityMenu trigger={<Button variant="ghost" size="icon" className="absolute -right-3 -top-[50px] h-11 w-11 bg-transparent text-primary hover:bg-transparent" aria-label="פתיחת תפריט נגישות"><Accessibility className="!h-[31px] !w-[31px]" /></Button>} /><VisitorRitaChat /></div>}
+      {open && <div className="shrink-0"><VisitorRitaChat /></div>}
     </SheetContent>
   </Sheet>;
 }
