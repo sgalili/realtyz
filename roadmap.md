@@ -1,5 +1,11 @@
 # Roadmap
 
+## Page explainer revamp November 15
+- [x] Rewrote all shared page-guide copy with one bold title and relevant global icons per slide; added specific homepage and My Ads guides.
+- [x] Automatic guides repeat on later visits until explicitly suppressed; manual help omits permanent suppression and leaves dismissal unchanged.
+- [x] Added homepage and non-broker My Ads sidebar help; five tests and signed-in mobile first/repeat/suppressed/manual flows passed with one header, no generic content icon and no page errors.
+
+
 ## Unified signed-in Rita chat November 15
 - [x] Matched signed-in mini/full Rita to guest presentation, greeting header, conditional clear, user/Rita avatars and alignment, with no redundant footer actions.
 - [x] Added compact auto-growing input with Enter newline and Command/Ctrl+Enter send; send stays inside the input row for guest and signed-in chats.

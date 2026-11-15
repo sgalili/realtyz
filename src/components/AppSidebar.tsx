@@ -351,13 +351,14 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     data-walkthrough-path="/public-listings"
                     data-walkthrough-title="לוח נדל״ן שיתופי"
                     onClick={handleNavClick}
-                    className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all"
+                    className="group flex items-center gap-3 px-3 pl-8 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all"
                     activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200"
                   >
                     <Globe className="h-4 w-4 shrink-0 !text-[hsl(var(--nav-board))]" />
                     {!collapsed && <span className="text-sm font-medium">לוח השותפים של המדינה</span>}
                   </NavLink>
                 </SidebarMenuButton>
+                {!collapsed && <HelpHint path="/public-listings" className="absolute left-1 top-1/2 -translate-y-1/2" />}
               </SidebarMenuItem>
               {user && audience === 'partner' && (
                 <SidebarMenuItem key="partner-pool">
@@ -368,12 +369,13 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                 <SidebarMenuItem key="my-ads">
                   <SidebarMenuButton asChild isActive={location.pathname.startsWith('/my-ads')}>
                     <NavLink to="/my-ads" data-walkthrough-path="/my-ads" data-walkthrough-title="המודעות שלי" onClick={handleNavClick}
-                      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all"
+                      className="group flex items-center gap-3 px-3 pl-8 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all"
                       activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200">
                       <MyAdsIcon className="h-4 w-4 shrink-0 text-primary" />
                       {!collapsed && <span className="text-sm font-medium">המודעות שלי</span>}
                     </NavLink>
                   </SidebarMenuButton>
+                  {!collapsed && <HelpHint path="/my-ads" className="absolute left-1 top-1/2 -translate-y-1/2" />}
                 </SidebarMenuItem>
               )}
               {navItems.map((item) => {
