@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CircleHelp } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -29,6 +30,29 @@ function FaqAccordion({ items, prefix }: { items: FaqItem[]; prefix: string }) {
       ))}
     </Accordion>
   );
+}
+
+function useRoleFaqs() {
+  const { user } = useAuth();
+  const { roles, loading } = useUserRole();
+  const roleKey = user && !loading ? faqRoleFor(roles) : null;
+  return { roleKey, roleFaqs: roleKey ? ROLE_FAQS[roleKey] : null };
+}
+
+/** Standalone FAQ content for the /faq page. */
+export function FaqContent() {
+  const { roleKey, roleFaqs } = useRoleFaqs();
+  return <div dir="rtl" className="space-y-4">
+    <p className="text-[16px] leading-relaxed text-muted-foreground">כל מה שרציתם לדעת על TORAFF{roleFaqs ? ' — כולל שאלות שמותאמות במיוחד אליכם' : ''}.</p>
+    {roleFaqs ? <Tabs defaultValue="general" dir="rtl">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="general" className="text-[15px] focus-visible:ring-0">שאלות כלליות</TabsTrigger>
+        <TabsTrigger value="role" className="text-[15px] focus-visible:ring-0">{FAQ_ROLE_LABELS[roleKey!]}</TabsTrigger>
+      </TabsList>
+      <TabsContent value="general"><FaqAccordion items={GENERAL_FAQS} prefix="g" /></TabsContent>
+      <TabsContent value="role"><FaqAccordion items={roleFaqs} prefix="r" /></TabsContent>
+    </Tabs> : <FaqAccordion items={GENERAL_FAQS} prefix="g" />}
+  </div>;
 }
 
 export function FaqDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -75,13 +99,13 @@ export function FaqDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
 }
 
-/** Mounted once in the app layout; opens the FAQ dialog from anywhere via openFaq(). */
+/** Mounted once in the app layout; openFaq() anywhere navigates to the standalone /faq page. */
 export function FaqHost() {
-  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   useEffect(() => {
-    const handler = () => setOpen(true);
+    const handler = () => navigate('/faq');
     window.addEventListener(FAQ_OPEN_EVENT, handler);
     return () => window.removeEventListener(FAQ_OPEN_EVENT, handler);
-  }, []);
-  return <FaqDialog open={open} onOpenChange={setOpen} />;
+  }, [navigate]);
+  return null;
 }

@@ -31,7 +31,9 @@ export function VisitorRitaChat({ onSignup }: { onSignup: () => void }) {
   const busy = status === 'submitted' || status === 'streaming';
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(messages.slice(-24))); } catch { /* unavailable storage does not block chat */ }
-    if (!busy) inputRef.current?.focus();
+    const el = inputRef.current;
+    if (el && !el.value) el.style.height = '';
+    if (!busy) el?.focus();
   }, [messages, busy]);
   const content = <div className="flex min-h-0 flex-1 flex-col gap-2" dir="rtl">
     <Conversation className={expanded ? 'min-h-0 flex-1' : 'max-h-48 min-h-0'}>
@@ -44,7 +46,7 @@ export function VisitorRitaChat({ onSignup }: { onSignup: () => void }) {
     </Conversation>
     {error && <p role="alert" className="px-2 text-sm text-destructive">{error.message || 'ריטה אינה זמינה כרגע. נסו שוב מאוחר יותר.'}</p>}
     <PromptInput onSubmit={({ text }) => { if (!text.trim() || busy) return; void sendMessage({ text: text.trim().slice(0, 3000) }); }} className="rounded-lg">
-      <PromptInputTextarea ref={inputRef} autoFocus placeholder="איך אוכל לעזור?" aria-label="הודעה לריטה" className="min-h-12 text-base" />
+      <PromptInputTextarea ref={inputRef} autoFocus placeholder="איך אוכל לעזור?" aria-label="הודעה לריטה" rows={1} className="!min-h-10 max-h-32 resize-none overflow-y-auto py-2 text-base [field-sizing:fixed]" onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight, 128)}px`; }} onFocus={e => { const t = e.currentTarget; window.setTimeout(() => t.scrollIntoView({ block: 'nearest' }), 300); }} />
       <PromptInputFooter className="justify-between">
         <Button type="button" variant="ghost" size="icon" aria-label="פתיחת ריטה במסך מלא" onClick={() => setExpanded(true)}><RitaAvatar className="h-8 w-8" /></Button>
         <PromptInputSubmit status={status} onStop={stop} aria-label={busy ? 'עצירת תשובה' : 'שליחה לריטה'}>{busy ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}</PromptInputSubmit>

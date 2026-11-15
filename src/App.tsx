@@ -121,6 +121,7 @@ const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
 const PublicListingsBoard = lazy(() => import("./pages/PublicListingsBoard"));
 const AboutToraff = lazy(() => import('./pages/AboutToraff'));
+const FaqPage = lazy(() => import('./pages/FaqPage'));
 const Developers = lazy(() => import("./pages/Developers"));
 const Wallet = lazy(() => import("./pages/Wallet"));
 const DeveloperDashboard = lazy(() => import("./pages/DeveloperDashboard"));
@@ -518,10 +519,11 @@ const App = () => (
               <Route path="/" element={<RootRoute />} />
               <Route path="/index" element={<Navigate to="/" replace />} />
               <Route path="/landing" element={<Suspense fallback={<PageLoader />}><Landing /></Suspense>} />
-              <Route path="/about-toraff" element={<Suspense fallback={<PageLoader />}><AboutToraff /></Suspense>} />
-              <Route path="/terms" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
-              <Route path="/commission-mechanism" element={<Suspense fallback={<PageLoader />}><CommissionMechanism /></Suspense>} />
-              <Route path="/privacy-policy" element={<Suspense fallback={<PageLoader />}><PrivacyPolicy /></Suspense>} />
+              <Route path="/faq" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><FaqPage /></Suspense></PublicProfileShell>} />
+              <Route path="/about-toraff" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><AboutToraff /></Suspense></PublicProfileShell>} />
+              <Route path="/terms" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><Terms /></Suspense></PublicProfileShell>} />
+              <Route path="/commission-mechanism" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><CommissionMechanism /></Suspense></PublicProfileShell>} />
+              <Route path="/privacy-policy" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><PrivacyPolicy /></Suspense></PublicProfileShell>} />
 
               <Route path="/dashboard" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
               <Route path="/command-center" element={<ProtectedRoute allowGuestDemo><CommandCenter /></ProtectedRoute>} />
