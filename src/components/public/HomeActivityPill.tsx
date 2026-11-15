@@ -91,8 +91,8 @@ export default function HomeActivityPill() {
         <div className="flex shrink-0 items-center gap-0.5">
           <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="היסטוריית פעילות" title="היסטוריית פעילות" onClick={() => { setOpen(false); navigate('/activity-history'); }}><History className="h-4 w-4" /></Button>
           {professionalView && <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="לוח בקרה" title="לוח בקרה" onClick={() => { setOpen(false); navigate('/dashboard'); }}><LayoutDashboard className="h-4 w-4" /></Button>}
+          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="סגירת הפעילות" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="סגירת הפעילות" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
       </div>
       <Tabs value={activity} onValueChange={setActivity} className="flex min-h-0 min-w-0 flex-1 flex-col">
         <TabsList className="grid h-auto w-full grid-cols-3 rounded-none bg-background p-1">
