@@ -27,7 +27,7 @@ export function TypewriterBanner() {
     if (reducedMotion || messages.length === 0) return;
     const timer = window.setTimeout(() => {
       setState((current) => advanceTypewriter(current, messages));
-    }, typewriterDelay(state));
+    }, typewriterDelay(state, messages));
     return () => window.clearTimeout(timer);
   }, [messages, reducedMotion, state]);
 

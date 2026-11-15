@@ -820,3 +820,7 @@
 - [x] Silent active developer provisioning requires no broker license, phone, email or invitation and assigns only the developer role. Exact existing source links are reused; phone-only account matching is forbidden. New projects remain private and preserve manual edits, commissions and existing publication state.
 - [x] Companies/projects/units save under the developer's own workspace for the existing "הפרויקטים שלי" queries, with separate developer/project/detailed-unit queue totals.
 - [x] Twenty-six focused tests and backend checks passed; three functions deployed and authenticated desktop/mobile controls passed without overflow/runtime errors. One source page was fetched during endpoint verification; the accidental queue job was paused/removed and no account/project was created. Full multi-page live import and developer login readback remain unverified.
+
+## Typewriter banner animation November 15
+- [x] Slowed typing 15% (44ms to 52ms per character), kept deletion at 24ms, and added a one-second rest after a comma, period or exclamation mark before the rest of the sentence is written.
+- [x] Eight focused tests passed; the live banner measured 52ms/char typing, 26ms/char deletion and 932-986ms rests after mid-sentence commas and periods.
