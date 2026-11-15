@@ -9,7 +9,6 @@ import { professionalRole } from '../../supabase/functions/_shared/personalLangu
 import { useCommunityGenders } from '@/hooks/useCommunityGenders';
 import { ProfilePageClose } from '@/components/community/ProfilePageClose';
 import { ProfilePageShare } from '@/components/community/ProfilePageShare';
-import { SendProfileMessage } from '@/components/community/SendProfileMessage';
 import { fetchPublicBoardFeed } from '@/lib/publicBoardFeed';
 
 export default function CommunityOfficePage() {
@@ -52,7 +51,6 @@ export default function CommunityOfficePage() {
     <ProfilePageClose onClose={() => window.history.state?.idx > 0 ? navigate(-1) : navigate('/')} />
     <ProfilePageShare agency path={`/agency/${encodeURIComponent(userId)}`} title={profile.data?.office_name ?? members.data?.[0]?.office_name ?? 'עמוד המשרד'} />
     <div className="flex items-center justify-center gap-3 text-center">{profile.data?.logo_url && <img src={profile.data.logo_url} alt={profile.data.office_name ?? 'לוגו משרד'} className="h-16 w-16 shrink-0 object-contain" />}<div className="min-w-0 space-y-1"><h1 className="min-w-0 break-words text-2xl font-bold">{profile.data?.office_name ?? members.data?.[0]?.office_name ?? 'צוות המשרד'}</h1>{addressLine && <p className="break-words text-base text-muted-foreground">{addressLine}</p>}</div></div>
-    <div className="flex justify-center"><SendProfileMessage recipientId={userId} /></div>
     {details.isError && <p role="alert" className="text-destructive">טעינת תיאור המשרד נכשלה</p>}
     {details.data?.description && <section className="max-w-3xl space-y-2"><h2 className="text-xl font-bold">אודות המשרד</h2><p className="whitespace-pre-line break-words text-base leading-relaxed text-muted-foreground">{details.data.description}</p></section>}
     {members.isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}

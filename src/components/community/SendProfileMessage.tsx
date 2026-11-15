@@ -9,7 +9,7 @@ export function SendProfileMessage({ recipientId }: { recipientId: string }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   if (user?.id === recipientId) return null;
-  return <Button className="gap-2" onClick={() => { if (user) navigate(messagePath(recipientId)); else { rememberPendingMessage(recipientId); navigate('/auth'); } }}><MessageCircle className="h-4 w-4" />שלח הודעה</Button>;
+  return <Button className="gap-2" onClick={() => { if (user) navigate(messagePath(recipientId)); else { rememberPendingMessage(recipientId); navigate('/auth'); } }}><MessageCircle className="h-4 w-4" />שליחת הודעה</Button>;
 }
 
 /** After sign-in, reopens the chat a guest asked for. */
