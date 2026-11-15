@@ -124,7 +124,7 @@ export function PageTableOverflowFade({ children }: { children: ReactNode }) {
       const bottom = Math.min(tableRect.bottom, ownerRect.bottom);
       const rtl = getComputedStyle(table).direction === 'rtl';
       const overflow = tableOverflowState({ scrollLeft: owner.scrollLeft, scrollWidth: owner.scrollWidth, clientWidth: owner.clientWidth, rtl });
-      if (bottom <= top || overflow.max <= 1 || (!overflow.start && !overflow.end)) { setFade(null); return; }
+      if (bottom <= top || overflow.max <= 1 || !overflow.end) { setFade(null); return; }
       setFade({ left: ownerRect.left, right: ownerRect.right, top, height: bottom - top, start: overflow.start, end: overflow.end, rtl });
     };
     update();
@@ -135,7 +135,6 @@ export function PageTableOverflowFade({ children }: { children: ReactNode }) {
     return () => { resize.disconnect(); owner.removeEventListener('scroll', update); window.removeEventListener('resize', update); };
   }, []);
   return <div ref={host} className="contents">{children}{fade && createPortal(<>
-    {fade.start && <div aria-hidden="true" data-table-page-fade data-edge={fade.rtl ? 'right' : 'left'} className="table-page-fade" style={{ top: fade.top, height: fade.height, ...(fade.rtl ? { left: fade.right, transform: 'translateX(-100%)' } : { left: fade.left }) }} />}
     {fade.end && <div aria-hidden="true" data-table-page-fade data-edge={fade.rtl ? 'left' : 'right'} className="table-page-fade" style={{ top: fade.top, height: fade.height, ...(fade.rtl ? { left: fade.left } : { left: fade.right, transform: 'translateX(-100%)' }) }} />}
   </>, document.body)}</div>;
 }

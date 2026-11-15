@@ -1402,7 +1402,7 @@ button.publication-limit-link:focus-visible {
 
   /* Exactly 20px between the hero and page content across the whole app:
      the main surface owns that gap, so the first content block adds none. */
-  .realtyz-main-surface > div {
+  .realtyz-main-surface > div:not(.page-loading-content) {
     display: flow-root;
   }
 
@@ -2087,11 +2087,8 @@ button.publication-limit-link:focus-visible {
   -webkit-mask-image: var(--table-overflow-mask, none);
   mask-image: var(--table-overflow-mask, none);
 }
-.app-table-scroll[data-overflow-start="true"][data-overflow-end="true"] { --table-overflow-mask: linear-gradient(to right, transparent 0, black var(--table-fade-width), black calc(100% - var(--table-fade-width)), transparent 100%); }
-.app-table-scroll[data-overflow-start="true"]:not([data-overflow-end="true"])[data-table-direction="ltr"] { --table-overflow-mask: linear-gradient(to right, transparent 0, black var(--table-fade-width)); }
-.app-table-scroll[data-overflow-start="true"]:not([data-overflow-end="true"])[data-table-direction="rtl"] { --table-overflow-mask: linear-gradient(to left, transparent 0, black var(--table-fade-width)); }
-.app-table-scroll[data-overflow-end="true"]:not([data-overflow-start="true"])[data-table-direction="ltr"] { --table-overflow-mask: linear-gradient(to left, transparent 0, black var(--table-fade-width)); }
-.app-table-scroll[data-overflow-end="true"]:not([data-overflow-start="true"])[data-table-direction="rtl"] { --table-overflow-mask: linear-gradient(to right, transparent 0, black var(--table-fade-width)); }
+.app-table-scroll[data-overflow-end="true"][data-table-direction="ltr"] { --table-overflow-mask: linear-gradient(to left, transparent 0, rgb(0 0 0 / .35) calc(var(--table-fade-width) * .5), black calc(var(--table-fade-width) * 1.5)); }
+.app-table-scroll[data-overflow-end="true"][data-table-direction="rtl"] { --table-overflow-mask: linear-gradient(to right, transparent 0, rgb(0 0 0 / .35) calc(var(--table-fade-width) * .5), black calc(var(--table-fade-width) * 1.5)); }
 .table-page-fade {
   position: fixed;
   z-index: 25;
