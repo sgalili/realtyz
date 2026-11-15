@@ -7,9 +7,9 @@
 
 
 ## Broker table agency identity November 15
-- [ ] Trace every broker/agent table row and reuse the authorized public-profile agency name/logo relationship.
-- [ ] Render consistent agency name and logo in each relevant broker row without exposing private office data.
-- [ ] Add focused relationship/rendering tests and verify the affected desktop/mobile tables.
+- [x] Trace every broker/agent table row and reuse the authorized public-profile agency name/logo relationship.
+- [x] Render consistent agency name and logo in each relevant broker row without exposing private office data.
+- [x] Add focused relationship/rendering tests and verify the affected desktop/mobile tables.
 
 
 ## Loading and agency settings overhaul November 15

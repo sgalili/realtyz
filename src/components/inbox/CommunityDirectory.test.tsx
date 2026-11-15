@@ -11,8 +11,8 @@ vi.mock('./CommunityPeerActions', () => ({ CommunityPeerActions: () => <button>�
 
 const rpc = vi.hoisted(() => vi.fn(async (fn: string) => {
   if (fn === 'community_profile_genders') return { data: [{ id: 'peer-1', gender: 'female' }], error: null };
-  if (fn === 'community_directory') return { data: [{ id: 'peer-1', full_name: 'דנה כהן', avatar_url: null, category: 'broker' }], error: null };
-  if (fn === 'community_profile_cards') return { data: [{ id: 'peer-1', full_name: 'דנה כהן', category: 'broker', office_name: 'משרד הדס', license_number: '123456789' }], error: null };
+  if (fn === 'community_directory') return { data: [{ id: 'peer-1', full_name: 'דנה כהן', avatar_url: null, category: 'broker', office_name: 'משרד הדס', office_logo_url: 'https://cdn.example.com/agency.png' }], error: null };
+  if (fn === 'community_profile_cards') return { data: [{ id: 'peer-1', full_name: 'דנה כהן', category: 'broker', office_name: 'משרד הדס', license_number: '123456789', logo_url: 'https://cdn.example.com/agency.png' }], error: null };
   if (fn === 'community_profile_listings') return { data: [], error: null };
   return { data: null, error: new Error(`unexpected rpc ${fn}`) };
 }));
@@ -38,9 +38,18 @@ it('starts the chat from the name and never navigates to the profile', async () 
   const onSelect = vi.fn();
   render(<CommunityDirectory enabled onSelect={onSelect} />, { wrapper });
   fireEvent.click(await screen.findByRole('button', { name: 'פתיחת שיחה עם דנה כהן' }));
-  expect(onSelect).toHaveBeenCalledWith({ id: 'peer-1', full_name: 'דנה כהן', avatar_url: null, category: 'broker' });
+  expect(onSelect).toHaveBeenCalledWith({ id: 'peer-1', full_name: 'דנה כהן', avatar_url: null, category: 'broker', office_name: 'משרד הדס', office_logo_url: 'https://cdn.example.com/agency.png' });
   expect(screen.queryByText('profile page peer-1')).toBeNull();
 });
+it('shows the broker agency name and its separate square logo in the row', async () => {
+  render(<CommunityDirectory enabled onSelect={vi.fn()} />, { wrapper });
+  expect(await screen.findByText('משרד הדס')).toBeInTheDocument();
+  const logo = screen.getByAltText('לוגו משרד הדס');
+  expect(logo).toHaveAttribute('src', 'https://cdn.example.com/agency.png');
+  expect(logo).toHaveClass('rounded-sm', 'object-contain');
+  expect(logo).not.toHaveClass('rounded-full');
+});
+
 it('menu trigger and selection do not start a chat', async () => {
   const onSelect = vi.fn();
   render(<CommunityDirectory enabled onSelect={onSelect} />, { wrapper });

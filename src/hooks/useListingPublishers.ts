@@ -11,7 +11,7 @@ export function useListingPublishers(listingIds: string[]) {
   const { activeWorkspaceId } = useWorkspace();
   const ids = [...new Set(listingIds)].sort();
   return useQuery({
-    queryKey: ["listing-publishers-v3", user?.id, activeWorkspaceId, ids],
+    queryKey: ["listing-publishers-v4", user?.id, activeWorkspaceId, ids],
     enabled: ids.length > 0,
     staleTime: 5 * 60_000,
     queryFn: async () => {

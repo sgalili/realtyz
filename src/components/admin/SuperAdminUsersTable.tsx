@@ -23,6 +23,7 @@ import { BrokerEmailConsentButton, useBrokerEmailStates } from './BrokerEmailInv
 import { BROKER_STAGE_LABELS, type BrokerOnboardingStatus } from '@/lib/brokerOnboarding';
 import { UserCreditBalanceEditor } from './UserCreditBalanceEditor';
 import { emptyAdminUserFilters, matchesAdminUser, type AdminUserFilters } from '@/lib/adminUserFilters';
+import { AgencyIdentity } from '@/components/community/AgencyIdentity';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'סופר אדמין', admin: 'מנהל', moderator: 'מנחה', managing_broker: 'מתווך מנהל', agent: 'סוכן',
@@ -72,6 +73,16 @@ export function SuperAdminUsersTable() {
     if (error) throw error;
     return data ?? [];
   }});
+  const profileIds = (profiles.data ?? []).map(profile => profile.id);
+  const agencies = useQuery({ queryKey: ['admin-agency-identities', profileIds], enabled: isSuperAdmin && profileIds.length > 0, queryFn: async () => {
+    const chunks = Array.from({ length: Math.ceil(profileIds.length / 500) }, (_, index) => profileIds.slice(index * 500, index * 500 + 500));
+    const results = await Promise.all(chunks.map(async chunk => {
+      const { data, error } = await supabase.rpc('super_admin_agency_identities', { _user_ids: chunk });
+      if (error) throw error;
+      return data ?? [];
+    }));
+    return Object.fromEntries(results.flat().map(row => [row.user_id, row]));
+  }});
   const roles = useQuery({ queryKey: ['admin-all-roles'], enabled: isSuperAdmin, queryFn: async () => {
     const { data, error } = await supabase.from('user_roles').select('user_id,role');
     if (error) throw error;
@@ -89,6 +100,7 @@ export function SuperAdminUsersTable() {
   }});
   const refresh = () => Promise.all([
     qc.invalidateQueries({ queryKey: ['admin-profiles'] }),
+    qc.invalidateQueries({ queryKey: ['admin-agency-identities'] }),
     qc.invalidateQueries({ queryKey: ['admin-all-roles'] }),
     qc.invalidateQueries({ queryKey: ['workspaces'] }),
     qc.invalidateQueries({ queryKey: ['admin-system-stats'] }),
@@ -164,13 +176,15 @@ export function SuperAdminUsersTable() {
     </div>
     {balances.isError && <p role="alert" className="text-destructive">לא ניתן לטעון יתרות קרדיטים</p>}
     {profiles.isLoading ? <p role="status">טוען משתמשים…</p> : profiles.isError || roles.isError ? <p role="alert">טעינת המשתמשים נכשלה</p> : <Table scrollMode="page">
-      <TableHeader><TableRow>{selecting && <TableHead>בחירה</TableHead>}<TableHead>שם מלא</TableHead><TableHead>אימייל</TableHead><TableHead>טלפון</TableHead><TableHead>סוג משתמש</TableHead><TableHead>הרשאות</TableHead><TableHead>יתרת קרדיטים</TableHead><TableHead>הרשמה</TableHead><TableHead>פעיל</TableHead><TableHead>פעולות</TableHead></TableRow></TableHeader>
+      <TableHeader><TableRow>{selecting && <TableHead>בחירה</TableHead>}<TableHead>שם מלא</TableHead><TableHead>משרד / חברה</TableHead><TableHead>אימייל</TableHead><TableHead>טלפון</TableHead><TableHead>סוג משתמש</TableHead><TableHead>הרשאות</TableHead><TableHead>יתרת קרדיטים</TableHead><TableHead>הרשמה</TableHead><TableHead>פעיל</TableHead><TableHead>פעולות</TableHead></TableRow></TableHeader>
       <TableBody>{rows.map(p => {
         const userRoles = rolesOf(p.id);
         const main = primaryRole(userRoles);
+        const agency = agencies.data?.[p.id];
         return <TableRow key={p.id}>
           {selecting && <TableCell>{!protectedId(p.id) && <SelectBox label={`בחירת ${p.full_name || p.email}`} checked={selected.includes(p.id)} onChange={() => toggle(p.id)} />}</TableCell>}
           <TableCell className="whitespace-nowrap">{p.full_name || '—'}{onboarding.data?.[p.id] && <p className="whitespace-normal text-xs text-primary">{BROKER_STAGE_LABELS[onboarding.data[p.id]?.stage ?? '']}{onboarding.data[p.id]?.pending_properties ? ` · ${onboarding.data[p.id]?.pending_properties} נכסים` : ''}</p>}</TableCell>
+          <TableCell className="min-w-40">{agencies.isLoading ? 'טוען…' : agency?.agency_name || agency?.agency_logo_url ? <AgencyIdentity name={agency.agency_name} logoUrl={agency.agency_logo_url} className="text-xs" /> : '—'}</TableCell>
           <TableCell dir="ltr" className="text-xs">{p.email || '—'}</TableCell>
           <TableCell dir="ltr" className="text-xs whitespace-nowrap">{p.phone || '—'}</TableCell>
           <TableCell><Badge variant="secondary" className="whitespace-nowrap">{main ? ROLE_LABELS[main] : '—'}</Badge></TableCell>
@@ -193,7 +207,7 @@ export function SuperAdminUsersTable() {
             <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" aria-label={`מחיקת ${p.full_name || p.email}`} disabled={protectedId(p.id)} onClick={() => setPendingIds([p.id])}><Trash2 className="h-4 w-4" /></Button>
           </div></TableCell>
         </TableRow>;
-      })}{!rows.length && <TableRow><TableCell colSpan={selecting ? 11 : 10} className="text-center">לא נמצאו משתמשים</TableCell></TableRow>}</TableBody>
+      })}{!rows.length && <TableRow><TableCell colSpan={selecting ? 12 : 11} className="text-center">לא נמצאו משתמשים</TableCell></TableRow>}</TableBody>
     </Table>}
     <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
       <DialogContent dir="rtl" className="max-w-md text-right">

@@ -1492,6 +1492,20 @@
       "when": 1794775873259,
       "tag": "0212_restrict_agency_phone_to_system_managers",
       "breakpoints": true
+    },
+    {
+      "idx": 213,
+      "version": "7",
+      "when": 1794776497746,
+      "tag": "0213_broker_table_agency_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 214,
+      "version": "7",
+      "when": 1794776576658,
+      "tag": "0214_community_chat_agency_logos",
+      "breakpoints": true
     }
   ]
 }

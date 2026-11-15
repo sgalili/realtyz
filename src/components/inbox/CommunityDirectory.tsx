@@ -13,8 +13,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ClearFilterButton } from '@/components/ui/clear-filter-button';
 import { useCommunityGenders } from '@/hooks/useCommunityGenders';
 import { professionalRole } from '../../../supabase/functions/_shared/personalLanguage';
+import { AgencyIdentity } from '@/components/community/AgencyIdentity';
 
-export type DirectoryUser = { id: string; full_name: string | null; avatar_url: string | null; category: string };
+export type DirectoryUser = { id: string; full_name: string | null; avatar_url: string | null; category: string; office_name: string | null; office_logo_url: string | null };
 export const DIRECTORY_CATEGORIES = [
   { value: 'all', label: 'הכול' }, { value: 'broker', label: 'מתווכים' },
   { value: 'developer', label: 'יזמים' }, { value: 'partner', label: 'שותפים' },
@@ -54,10 +55,14 @@ export function CommunityDirectory({ enabled, exclude = [], renderAction, onSele
       {!directory.isLoading && !directory.isError && !rows.length && <p className="py-3 text-sm text-muted-foreground">לא נמצאו משתמשים</p>}
       {rows.map(u => {
         const name = u.full_name ?? 'משתמש';
+        const identity = <span className="block min-w-0 text-start">
+          <span className="block truncate">{name}</span>
+          <AgencyIdentity name={u.office_name} logoUrl={u.office_logo_url} className="mt-1 text-xs font-normal text-muted-foreground" logoClassName="h-6 w-6" />
+        </span>;
         return <div key={u.id} data-directory-card className="relative flex min-h-14 items-center gap-3 border-b border-border px-1 py-2 pl-14">
           {renderAction?.(u)}
           <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full p-0" aria-label={`פתיחת הפרופיל הציבורי של ${name}`} onClick={() => setProfileId(u.id)}><Avatar className="h-10 w-10"><AvatarImage src={u.avatar_url ?? undefined} /><AvatarFallback>{u.full_name?.charAt(0)}</AvatarFallback></Avatar></Button>
-          {onSelect ? <Button type="button" variant="ghost" className="h-auto min-w-0 flex-1 justify-start px-0 text-start" aria-label={`פתיחת שיחה עם ${name}`} onClick={() => onSelect(u)}><span className="truncate">{u.full_name}</span></Button> : <span className="min-w-0 flex-1 truncate text-start">{u.full_name}</span>}
+          {onSelect ? <Button type="button" variant="ghost" className="h-auto min-w-0 flex-1 justify-start px-0 text-start" aria-label={`פתיחת שיחה עם ${name}`} onClick={() => onSelect(u)}>{identity}</Button> : <span className="min-w-0 flex-1">{identity}</span>}
           <Badge variant="secondary" className="shrink-0">{professionalRole(u.category, genders.data?.get(u.id) ?? null)}</Badge>
           <div className="absolute left-1 top-1"><ChatHeaderActions label="פעולות כרטיס"><CommunityPeerActions id={u.id} name={u.full_name} /></ChatHeaderActions></div>
         </div>;

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, type ReactNode, isValidElement, cloneElement } from 'react';
+import { Children, createContext, useContext, useEffect, type ReactNode, isValidElement, cloneElement } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,7 +42,7 @@ export function usePersonalLanguage() {
 /** For authored control labels only; does not walk the DOM or edit input values. */
 export function localizeControlNode(node: ReactNode, gender: PersonalGender): ReactNode {
   if (typeof node === 'string') return localizeCommand(node, gender);
-  if (Array.isArray(node)) return node.map(child => localizeControlNode(child, gender));
+  if (Array.isArray(node)) return Children.map(node, child => localizeControlNode(child, gender));
   if (isValidElement<{ children?: ReactNode }>(node) && typeof node.type === 'string' && node.props.children) {
     return cloneElement(node, undefined, localizeControlNode(node.props.children, gender));
   }

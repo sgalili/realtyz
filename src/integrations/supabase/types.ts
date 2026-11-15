@@ -10421,6 +10421,8 @@ export type Database = {
           category: string
           full_name: string
           id: string
+          office_logo_url: string
+          office_name: string
         }[]
       }
       community_group_roster: {
@@ -10475,6 +10477,7 @@ export type Database = {
           full_name: string
           id: string
           license_number: string
+          logo_url: string
           office_name: string
         }[]
       }
@@ -11761,6 +11764,14 @@ export type Database = {
         }
       }
       subscribe_to_plan: { Args: { _plan_name: string }; Returns: Json }
+      super_admin_agency_identities: {
+        Args: { _user_ids: string[] }
+        Returns: {
+          agency_logo_url: string
+          agency_name: string
+          user_id: string
+        }[]
+      }
       super_admin_credit_balances: {
         Args: never
         Returns: {

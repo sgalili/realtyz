@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CommunityPeerActions } from './CommunityPeerActions';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-type Card = { id: string; full_name: string | null; category: string; office_name: string | null; license_number: string | null };
+type Card = { id: string; full_name: string | null; category: string; office_name: string | null; license_number: string | null; logo_url: string | null };
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Ban, Star, X, SlidersHorizontal, UserPlus, Loader2, MessageCircle, Search, Send, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,6 +40,7 @@ import { useInboxFavorites } from '@/hooks/useInboxFavorites';
 import { ChatFavoriteButton } from './ChatFavoriteButton';
 import { InboxFavoritesDialog } from './InboxFavoritesDialog';
 import { DIRECTORY_CATEGORIES } from './CommunityDirectory';
+import { AgencyIdentity } from '@/components/community/AgencyIdentity';
 
 type Peer = { id: string; full_name: string | null; avatar_url: string | null };
 
@@ -192,7 +193,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
   ].filter(p => !blocks.data?.has(p.id));
   const cardIds = [...new Set([...peers.map(p => p.id), ...(peer ? [peer.id] : [])])].slice(0, 200);
   const cards = useQuery({
-    queryKey: ['community-cards', user?.id, cardIds.join(',')], enabled: !!user && cardIds.length > 0, staleTime: 60000,
+    queryKey: ['community-cards-v2', user?.id, cardIds.join(',')], enabled: !!user && cardIds.length > 0, staleTime: 60000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('community_profile_cards', { _ids: cardIds });
       if (error) throw error;
@@ -202,10 +203,12 @@ export function CommunityInbox({ active }: { active: boolean }) {
   const genders = useCommunityGenders(peers.map(p => p.id));
   const Identity = ({ id, name, fallback, unread, messageId, outgoing }: { id: string; name: string | null; fallback?: string; unread?: boolean; messageId?: string; outgoing?: boolean }) => {
     const card = cards.data?.get(id);
-    const sub = [card?.office_name, card?.license_number ? `רישיון ${card.license_number}` : null].filter(Boolean).join(' · ');
     return <span className="min-w-0 flex-1">
       <span className="flex min-w-0 items-center gap-1.5"><span data-chat-title className="truncate">{card?.full_name ?? name}</span>{card && <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[11px]">{professionalRole(card.category, genders.data?.get(id) ?? null)}</Badge>}</span>
-      {sub && <span data-chat-preview-text className="block truncate text-muted-foreground">{sub}</span>}
+      {(card?.office_name || card?.logo_url || card?.license_number) && <span data-chat-preview-text className="mt-0.5 flex min-w-0 items-center gap-2 text-muted-foreground">
+        <AgencyIdentity name={card.office_name} logoUrl={card.logo_url} className="min-w-0 flex-1" logoClassName="h-6 w-6" />
+        {card.license_number && <span className="shrink-0 text-xs">רישיון {card.license_number}</span>}
+      </span>}
       {fallback !== undefined && <span data-chat-preview-text className={`flex items-center gap-1 ${unread ? 'font-bold text-foreground' : 'font-normal text-muted-foreground'}`}>{outgoing && messageId && <WhatsAppTicks status={previewReceipts.status(messageId)} />}<span className="truncate">{fallback}</span></span>}
     </span>;
   };
@@ -244,7 +247,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
         <header data-chat-header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-border px-3">
           <Button size="icon" variant="ghost" aria-label="חזרה לשיחות הקהילה" className="lg:hidden" onClick={() => setPeer(null)}><ArrowRight className="h-5 w-5" /></Button>
           <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full p-0" aria-label="פתיחת פרופיל ציבורי" onClick={() => navigate(`/broker/${peer.id}`, { state: { returnTo: window.location.pathname + window.location.search } })}><Avatar className="h-10 w-10"><AvatarImage src={peer.avatar_url ?? undefined} /><AvatarFallback><Users className="h-5 w-5" /></AvatarFallback></Avatar></Button>
-          <div className="min-w-0 flex-1 text-start"><span data-chat-title className="block truncate">{cards.data?.get(peer.id)?.full_name ?? peer.full_name}</span><span className="block truncate text-xs text-muted-foreground">{cards.data?.get(peer.id)?.office_name}{cards.data?.get(peer.id)?.license_number && <span className="ms-2">{cards.data.get(peer.id)?.license_number}</span>}</span></div>
+          <div className="min-w-0 flex-1 text-start"><span data-chat-title className="block truncate">{cards.data?.get(peer.id)?.full_name ?? peer.full_name}</span><span className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground"><AgencyIdentity name={cards.data?.get(peer.id)?.office_name} logoUrl={cards.data?.get(peer.id)?.logo_url} className="min-w-0 flex-1" logoClassName="h-6 w-6" />{cards.data?.get(peer.id)?.license_number && <span className="shrink-0">{cards.data.get(peer.id)?.license_number}</span>}</span></div>
           <ChatHeaderActions><CommunityPeerActions id={peer.id} name={cards.data?.get(peer.id)?.full_name ?? peer.full_name} onHide={() => setPeer(null)} /></ChatHeaderActions>
 
     <Dialog open={blockOpen} onOpenChange={setBlockOpen}><DialogContent dir="rtl" aria-describedby={undefined}><DialogHeader><DialogTitle>{blocked ? 'הסרת חסימה' : 'לא מעוניין לקבל יותר הודעות ממשתמש זה'}</DialogTitle></DialogHeader><p className="text-muted-foreground">{blocked ? `${peer.full_name ?? 'המשתמש'} יוכל לשלוח לך הודעות שוב.` : `${peer.full_name ?? 'המשתמש'} לא יוכל לשלוח לך הודעות פרטיות, והודעותיו בקבוצות יוסתרו אצלך.`}</p><div className="flex justify-between gap-3"><Button variant="outline" onClick={() => setBlockOpen(false)}>ביטול</Button><Button variant={blocked ? 'default' : 'destructive'} disabled={toggleBlock.isPending} onClick={() => toggleBlock.mutate()}>{blocked ? 'הסרת חסימה' : 'חסימה'}</Button></div></DialogContent></Dialog>
