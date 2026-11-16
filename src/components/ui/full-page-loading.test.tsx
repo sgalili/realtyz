@@ -5,6 +5,22 @@ vi.mock('./toraff-loader', () => ({ ToraffLoader: () => <span>video animation</s
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 const overlay = () => screen.queryByRole('status', { name: 'טעינת עמוד' });
 describe('persistent page loading overlay', () => {
+  it('isolates homepage result loading from the enclosing shell provider', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    render(<FullPageLoadingProvider>
+      <PageLoadingRegion as="main" aria-label="shell">
+        <FullPageLoadingProvider>
+          <header>homepage controls</header>
+          <PageLoadingRegion as="main" aria-label="results"><FullPageLoading /></PageLoadingRegion>
+        </FullPageLoadingProvider>
+      </PageLoadingRegion>
+    </FullPageLoadingProvider>);
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(screen.getAllByRole('status', { name: 'טעינת עמוד' })).toHaveLength(1);
+    expect(screen.getByRole('main', { name: 'shell' })).not.toHaveAttribute('aria-busy');
+    expect(screen.getByRole('main', { name: 'shell' }).firstElementChild).not.toHaveAttribute('inert');
+    expect(screen.getByRole('main', { name: 'results' })).toHaveAttribute('aria-busy', 'true');
+  });
   it('never shows the video loader for pages that load within one second', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
     const view = render(<FullPageLoadingProvider><FullPageLoading /></FullPageLoadingProvider>);

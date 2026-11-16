@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FullPageLoading } from '@/components/ui/full-page-loading';
+import { FullPageLoading, FullPageLoadingProvider, PageLoadingRegion } from '@/components/ui/full-page-loading';
 import { BadgeCheck, GripVertical, Heart, LayoutGrid, List, Search, Send, X } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, boardLeadPriceBounds, leadFilterActiveCount, propertyFilterActiveCount, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
@@ -327,6 +327,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
   const neighborhoods = useMemo(() => [...new Set(eligibleCards.map((c) => c.neighborhood).filter(Boolean) as string[])].sort(), [eligibleCards]);
 
   return (
+    <FullPageLoadingProvider>
     <div dir="rtl" className={cn('flex min-h-0 flex-col overflow-hidden bg-background', embedded ? 'h-full' : 'public-board-page h-[100dvh]')}>
       {showWelcome && (
         <div className={cn('fixed inset-x-0 bottom-0 z-40 overflow-hidden overscroll-none bg-background', embedded ? 'top-16' : 'top-14 sm:top-16')}>
@@ -389,7 +390,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
         </div>
       </header>
 
-      <main aria-label="רשימת נכסים" className={cn('mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overscroll-contain pb-0 pt-0', embedded ? 'px-0' : 'px-[15px]', grid || loading || filtered.length === 0 ? 'overflow-y-auto' : 'flex flex-col overflow-hidden')}>
+      <PageLoadingRegion as="main" aria-label="רשימת נכסים" className={cn('mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overscroll-contain pb-0 pt-0', embedded ? 'px-0' : 'px-[15px]', grid || loading || filtered.length === 0 ? 'overflow-y-auto' : 'flex flex-col overflow-hidden')}>
         {loading && cards.length === 0 ? <FullPageLoading /> : filtered.length === 0 ? <div className="flex flex-col items-center justify-center gap-4 py-16 text-center"><p className="text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p>{(appliedFilterCount > 0 || query.trim()) && <Button type="button" onClick={resetFilters}>איפוס סינונים</Button>}</div> : (
           grid ? (
           <div className="property-card-grid">
@@ -465,7 +466,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
           )
         )}
         {!loading && grid && filtered.length > visibleCount && <AutoLoadSentinel key={visibleCount} onReach={() => setVisibleCount(count => count + 10)} />}
-      </main>
+      </PageLoadingRegion>
       {publishCard && <BoardPublishButton key={publishCard.id} hideTrigger result={cardResult(publishCard)} open onOpenChange={(v) => { if (!v) setPublishCard(null); }} />}
 
       {dragGhost && (() => {
@@ -503,6 +504,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
         </DialogContent>
       </Dialog>
     </div>
+    </FullPageLoadingProvider>
   );
 }
 
