@@ -177,7 +177,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                 />
               </div>
             )}
-            <div role="region" aria-label="רשימת מרחבי עבודה" tabIndex={0} className="min-h-0 max-h-72 overflow-y-auto overscroll-contain touch-pan-y">
+            <div role="region" aria-label="רשימת מרחבי עבודה" tabIndex={0} className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y">
               {visibleWorkspaces.length === 0 && (
                 <p className="px-2 py-3 text-xs text-muted-foreground">לא נמצאו חשבונות</p>
               )}
@@ -185,6 +185,9 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                 const workspaceCard = resolveWorkspaceCardIdentity(w, undefined, masterBrand);
                 const rowImage = resolveWorkspaceCardImage(w);
                 const label = workspaceCard.title;
+                const hasOfficeAndOwner = workspaceCard.isOffice && !!workspaceCard.subtitle;
+                const primaryLine = hasOfficeAndOwner ? workspaceCard.subtitle : label;
+                const secondaryLine = hasOfficeAndOwner ? label : workspaceCard.subtitle;
                 const active = w.workspace_owner_id === activeWorkspaceId;
                 return (
                   <button
@@ -207,10 +210,10 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                           : <User className="h-3.5 w-3.5 text-primary" />}
                     </span>
                     <span className="min-w-0 flex-1 truncate">
-                      <span className="block truncate">{label}</span>
-                      {isSuperAdmin && workspaceCard.subtitle && (
-                        <span dir="auto" className="block truncate text-[10px] font-normal text-muted-foreground">
-                          {workspaceCard.subtitle}
+                      <span data-workspace-account-line className="block truncate text-xs">{primaryLine}</span>
+                      {isSuperAdmin && secondaryLine && (
+                        <span data-workspace-account-line dir="auto" className="block truncate text-[8px] font-normal text-muted-foreground">
+                          {secondaryLine}
                         </span>
                       )}
                     </span>

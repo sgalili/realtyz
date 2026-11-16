@@ -1,5 +1,11 @@
 # Roadmap
 
+## Account menu and Super Admin shortcut November 16
+- [x] Flip full-name/company positions and reduce both menu label sizes from 17px to 15px.
+- [x] Remove three orphaned duplicate entries while preserving the active Tal and Nuriel accounts and their properties.
+- [x] Let the account list use the available screen height and scroll internally.
+- [x] Make the Super Admin icon gold, borderless and 19px; verified 17 unique accounts, mobile/desktop layout and 17 focused tests.
+
 ## Multiple custom QR codes November 15
 - [x] Add independent named QR destinations while retaining the original /go code.
 - [x] Allow creating, selecting, editing and downloading each branded code with separate scan counts.

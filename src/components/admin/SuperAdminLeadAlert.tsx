@@ -81,12 +81,13 @@ export function SuperAdminLeadAlert({ onNavigate }: { onNavigate?: () => void })
   return (
     <NavLink
       to="/super-admin"
+      data-super-admin-shortcut
       onClick={handleClick}
-      className="relative flex h-full min-h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-primary transition-colors hover:border-primary hover:bg-primary/5"
+      className="relative flex h-full min-h-10 w-10 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-gold shadow-none transition-opacity hover:bg-transparent hover:opacity-80"
       aria-label={newCount > 0 ? `סופר אדמין, ${newCount} התראות חדשות` : 'סופר אדמין'}
       title={newCount > 0 ? `${newCount} התראות סופר אדמין חדשות` : 'סופר אדמין'}
     >
-      <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+      <ShieldCheck className="h-[19px] w-[19px]" aria-hidden="true" />
       {newCount > 0 && (
         <span className="absolute -left-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground">
           {newCount > 99 ? '99+' : newCount}

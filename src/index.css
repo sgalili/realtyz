@@ -1481,12 +1481,12 @@ button.publication-limit-link:focus-visible {
   }
   .realtyz-premium-sidebar [data-sidebar="menu-button"],
   .realtyz-sidebar-menu [data-sidebar="menu-button"],
-  .realtyz-premium-sidebar a,
-  .realtyz-sidebar-menu a {
+  .realtyz-premium-sidebar a:not([data-super-admin-shortcut]),
+  .realtyz-sidebar-menu a:not([data-super-admin-shortcut]) {
     color: hsl(222 47% 11%);
   }
-  .realtyz-premium-sidebar [data-active="true"],
-  .realtyz-sidebar-menu [data-active="true"] {
+  .realtyz-premium-sidebar [data-active="true"]:not([data-super-admin-shortcut]),
+  .realtyz-sidebar-menu [data-active="true"]:not([data-super-admin-shortcut]) {
     background-color: hsl(210 40% 96%) !important;
     color: hsl(222 47% 11%) !important;
     box-shadow: inset 0 0 0 1px hsl(214 32% 91%);
@@ -1494,8 +1494,8 @@ button.publication-limit-link:focus-visible {
   }
   .realtyz-premium-sidebar [data-sidebar="menu-button"]:hover:not([data-active="true"]),
   .realtyz-sidebar-menu [data-sidebar="menu-button"]:hover:not([data-active="true"]),
-  .realtyz-premium-sidebar a:hover:not([data-active="true"]),
-  .realtyz-sidebar-menu a:hover:not([data-active="true"]) {
+  .realtyz-premium-sidebar a:not([data-super-admin-shortcut]):hover:not([data-active="true"]),
+  .realtyz-sidebar-menu a:not([data-super-admin-shortcut]):hover:not([data-active="true"]) {
     background-color: hsl(210 40% 98%) !important;
     color: hsl(222 47% 11%) !important;
   }
@@ -2183,6 +2183,11 @@ html.activity-drawer-open main[aria-label="רשימת נכסים"] {
 :is([data-site-dialog], [data-site-popup]) [class*="text-[38px]"] { font-size: calc(38px + var(--dialog-font-increase)) !important; }
 :is([data-site-dialog], [data-site-popup]) [class*="text-[42px]"] { font-size: calc(42px + var(--dialog-font-increase)) !important; }
 :is([data-site-dialog], [data-site-popup]) [class*="text-[44px]"] { font-size: calc(44px + var(--dialog-font-increase)) !important; }
+
+/* Account switcher names are 2px smaller than the standard dialog label. */
+:is([data-site-dialog], [data-site-popup]) [data-workspace-account-line] {
+  font-size: calc(12px + var(--dialog-font-increase)) !important;
+}
 :is([data-site-dialog], [data-site-popup]) [class*="text-[52px]"] { font-size: calc(52px + var(--dialog-font-increase)) !important; }
 :is([data-site-dialog], [data-site-popup]) [class*="text-[74px]"] { font-size: calc(74px + var(--dialog-font-increase)) !important; }
 
