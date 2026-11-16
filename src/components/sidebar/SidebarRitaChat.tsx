@@ -124,7 +124,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
     setChatHeight(Math.round(Math.min(maxHeight, Math.max(0, currentHeight + delta))));
   };
 
-  const actionButton = 'pointer-events-auto h-8 w-8 rounded-none bg-background text-muted-foreground hover:text-foreground';
+  const actionButton = 'pointer-events-auto h-8 w-8 rounded-none bg-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-foreground';
 
   return (
     <div dir="rtl" className="relative px-2 pb-2 pt-3" style={{ paddingBottom: 8 + keyboardInset }}>
