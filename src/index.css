@@ -2112,7 +2112,7 @@ button.publication-limit-link:focus-visible {
 /* Expansion never locks the table axis: FixedTablePanel alone anchors its body. */
 /* Only listing-table views opt their containing page into a bounded flex chain. */
 .realtyz-main-surface:has(.listing-table-page) { overflow: hidden; }
-.realtyz-main-surface > .app-content-width:has(.listing-table-page) { display: flex; height: 100%; min-height: 0; flex-direction: column; }
+.realtyz-main-surface .app-content-width:has(.listing-table-page) { display: flex; height: 100%; min-height: 0; flex-direction: column; }
 .listing-table-page > :not(.listing-results-scroll) { flex-shrink: 0; }
 .listing-results-scroll { min-height: 0; }
 .board-head-sticky thead {

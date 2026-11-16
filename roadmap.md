@@ -1,5 +1,10 @@
 # Roadmap
 
+## Developer project table scrolling and commission entry
+- [x] Keep the project table height bounded and vertically scrollable without an outer frame.
+- [x] Open the existing project commission setup from all commission-cell content, including unconfigured fees.
+- [x] Verified signed-in mobile scrolling (500px), desktop layout and commission entry with editable input; 18 focused tests passed. No saved commissions were changed during verification.
+
 ## Developer and direct-project imports November 16
 - [x] Parse rendered Yad2 company/project HTML and structured project identities without the narrow company-name failure.
 - [x] Accept direct project links in developer and Super Admin import boxes and queue them correctly.
