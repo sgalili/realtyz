@@ -3,7 +3,7 @@ import { FullPageLoading } from '@/components/ui/full-page-loading';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building2, ChevronDown, ExternalLink, FileDown, Layers, Loader2, Pencil, Trash2, Megaphone, Globe, Settings2 } from 'lucide-react';
+import { Building2, ChevronDown, ExternalLink, FileDown, Layers, Loader2, Pencil, Trash2, Megaphone, Globe, Settings2, LayoutGrid, List } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -164,16 +164,17 @@ function DeveloperDashboardContent() {
   const meta = (p: DeveloperProject) => { const h = savedProjectHierarchy(p); return [h.buildings.length ? `${h.buildings.length} בניינים` : '', h.apartments.length ? `${h.apartments.length} סוגי יחידות` : '', p.available_units ? `${p.available_units} זמינות` : ''].filter(Boolean); };
   return (
     <div dir="rtl" className={grid ? 'mx-auto w-full min-w-0 max-w-6xl space-y-5 p-4' : 'listing-table-page mx-auto flex h-full min-h-0 w-full min-w-0 max-w-6xl flex-col gap-5 overflow-hidden p-4'}>
-      <BoardSearchControls query={query} onQueryChange={setQuery} grid={grid} onViewToggle={toggleGrid} filter={<LeadTypeFilterButton hideLeadFilters state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} propertyTypes={propertyTypes} />} />
+      {params.get('search') === '1' && <BoardSearchControls id="developer-project-search" hideViewToggle query={query} onQueryChange={setQuery} grid={grid} onViewToggle={toggleGrid} filter={<LeadTypeFilterButton hideLeadFilters state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} propertyTypes={propertyTypes} />} />}
       {busy ? <div role="status" className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">טוען פרויקטים</span></div>
       : projectError || companyError ? <div role="alert" className="space-y-3 py-8 text-center"><p className="text-lg text-destructive">לא ניתן לטעון את הפרויקטים</p><Button variant="outline" onClick={refresh}>ניסיון נוסף</Button></div>
       : projects.length === 0 ? <section className="flex flex-col items-center gap-3 py-16 text-center"><Building2 className="h-12 w-12 text-muted-foreground/50" /><h2 className="text-xl font-semibold">עדיין אין פרויקטים</h2><p className="text-base text-muted-foreground">ייבוא מיד2 נשמר אוטומטית ברקע, פרויקט אחר פרויקט.</p><div className="flex gap-2"><Button onClick={() => setMode('import')}><FileDown className="h-4 w-4" />ייבוא מיד2</Button><Button variant="outline" onClick={() => { setEditing(undefined); setMode('manual'); }}><Pencil className="h-4 w-4" />יצירה ידנית</Button></div></section>
       : <>
-        <div className="flex items-center gap-3">
-          {companies[0]?.logo_url && <PublicIdentityLink userId={companies[0].owner_user_id} label={`פתיחת הפרופיל של ${companies[0].company_name}`}><img src={companies[0].logo_url} alt="לוגו החברה" className="h-10 w-10 rounded object-contain" /></PublicIdentityLink>}
+        <div data-developer-toolbar className="flex w-full min-w-0 flex-nowrap items-center gap-1 sm:gap-3">
+          {companies[0]?.logo_url && <PublicIdentityLink className="shrink-0" userId={companies[0].owner_user_id} label={`פתיחת הפרופיל של ${companies[0].company_name}`}><img src={companies[0].logo_url} alt="לוגו החברה" className="h-8 w-8 rounded object-contain sm:h-10 sm:w-10" /></PublicIdentityLink>}
           <PublicIdentityLink userId={companies[0]?.owner_user_id} className="min-w-0 flex-1 truncate font-semibold">{companies[0]?.company_name}</PublicIdentityLink>
-          <span aria-label="סך הפרויקטים" className="shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-sm font-semibold">{projects.length} פרויקטים</span>
-          <Button variant="ghost" size="sm" onClick={() => setMode('import')}><FileDown className="h-4 w-4" />סנכרון מיד2</Button>
+          <span aria-label="סך הפרויקטים" className="shrink-0 whitespace-nowrap rounded-full border border-border bg-muted px-2 py-1 text-sm font-semibold">{projects.length} פרויקטים</span>
+          <Button variant="ghost" size="icon" className="shrink-0" aria-label="סנכרון מיד2" title="סנכרון מיד2" onClick={() => setMode('import')}><FileDown className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={toggleGrid} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'} title={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
         </div>
         <Button variant="outline" onClick={() => openPricing()}><Settings2 className="h-4 w-4" />עמלות החברה לכל הפרויקטים</Button>
         {filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו פרויקטים מתאימים</p> : grid ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

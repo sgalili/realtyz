@@ -1,5 +1,10 @@
 # Roadmap
 
+## Developer search and compact toolbar
+- [x] Hide search until the hero magnifier is clicked; allow closing through its small corner X.
+- [x] Keep developer logo/name, project count, icon-only sync and view toggle together on all devices.
+- [x] Verified signed-in search filtering/close, sync entry and view switching at 320px, 411px and desktop; no toolbar overflow or page errors, 17 regression tests passed.
+
 ## Developer project table scrolling and commission entry
 - [x] Keep the project table height bounded and vertically scrollable without an outer frame.
 - [x] Open the existing project commission setup from all commission-cell content, including unconfigured fees.
