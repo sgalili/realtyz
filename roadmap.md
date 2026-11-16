@@ -1,5 +1,10 @@
 # Roadmap
 
+## Yigal and Ben agency branding November 16
+- [x] Fill Yigal's listing with the saved Anglo Saxon Herzliya square logo.
+- [x] Fill all Ben Lagziel listings with the saved Tabu Nadlan name and Yad2 logo.
+- [x] Verify public listing responses, broker profiles, community/admin table responses and loaded logo images.
+
 ## Account menu and Super Admin shortcut November 16
 - [x] Flip full-name/company positions and reduce both menu label sizes from 17px to 15px.
 - [x] Remove three orphaned duplicate entries while preserving the active Tal and Nuriel accounts and their properties.
