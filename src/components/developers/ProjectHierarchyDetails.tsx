@@ -1,4 +1,4 @@
-import { Building2 } from 'lucide-react';
+import { Building2, Check, Circle } from 'lucide-react';
 import DeveloperCommissionBadges from './DeveloperCommissionBadges';
 import { Button } from '@/components/ui/button';
 import { projectCommissionErrors } from '@/lib/developerCommissions';
@@ -40,17 +40,20 @@ function UnitDetails({ units, project, onPublish, onPost }: { units: ProjectUnit
     </AccordionItem>)}
   </Accordion>;
 }
-export default function ProjectHierarchyDetails({ project, onPublish, onPost }: { project: DeveloperProject; onPublish?: (unit: ProjectUnit) => void; onPost?: (unit: ProjectUnit) => void }) {
+export default function ProjectHierarchyDetails({ project, onPublish, onPost, enlarged = false }: { project: DeveloperProject; onPublish?: (unit: ProjectUnit) => void; onPost?: (unit: ProjectUnit) => void; enlarged?: boolean }) {
   const { buildings, apartments, unassigned } = savedProjectHierarchy(project);
   const details = sourceRecord(project.source_details);
   const manual = sourceRecord(details.manual);
   const specs = labelValue(manual.specifications ?? details.specifications ?? details.specification);
   const sourceProject = project as DeveloperProject & { source_status?: string | null; timeline?: unknown[] };
-  const timeline = (sourceProject.timeline ?? []).map(timelineLabel).filter(Boolean);
-  return <div className="min-w-0 space-y-4">
+  const timeline = (sourceProject.timeline ?? []).map(value => ({ label: timelineLabel(value), completed: sourceRecord(value).completed === true, current: sourceRecord(value).current === true })).filter(item => item.label);
+  return <div className={enlarged ? 'min-w-0 space-y-4 text-lg [&_.text-sm]:text-base [&_.text-xs]:text-sm [&_button]:text-base' : 'min-w-0 space-y-4'}>
+    {(timeline.length > 0 || sourceProject.source_status) && <section aria-label="ציר זמן הפרויקט" className="space-y-3">
+      <h3 className="font-semibold">{sourceProject.source_status || 'ציר זמן הפרויקט'}</h3>
+      {timeline.length > 0 && <ol className="flex flex-wrap gap-x-4 gap-y-3">{timeline.map((item, index) => <li key={`${index}:${item.label}`} aria-current={item.current === true ? 'step' : undefined} className="flex min-w-0 flex-1 basis-28 items-start gap-2 border-t-2 border-border pt-2 text-sm"><span className={item.completed === true || item.current === true ? 'text-success' : 'text-muted-foreground'}>{item.completed === true ? <Check className="h-5 w-5" /> : <Circle className="h-5 w-5" />}</span><span className="min-w-0 break-words">{item.label}</span></li>)}</ol>}
+    </section>}
     {(project.description || labelValue(details.info)) && <p className="whitespace-pre-line text-sm leading-relaxed">{project.description || labelValue(details.info)}</p>}
     <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">{project.address && <span>{project.address}</span>}{sourceProject.source_status && <span>סטטוס במקור: {sourceProject.source_status}</span>}{project.delivery_date && <span>מסירה: {project.delivery_date}</span>}{project.total_units != null && <span>{project.total_units} יח״ד</span>}{project.available_units != null && <span>{project.available_units} זמינות</span>}</div>
-    {timeline.length > 0 && <div className="space-y-1 text-sm"><h3 className="font-semibold">ציר זמן הפרויקט במקור</h3><ol className="list-inside list-decimal space-y-1 text-muted-foreground">{timeline.map(item => <li key={item}>{item}</li>)}</ol></div>}
     {specs && <p className="whitespace-pre-line text-sm">{specs}</p>}
     {labelValue(manual.amenities ?? details.amenities) && <p className="text-sm text-muted-foreground">{labelValue(manual.amenities ?? details.amenities)}</p>}
     <Accordion type="single" collapsible>

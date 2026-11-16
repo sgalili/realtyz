@@ -152,10 +152,10 @@ Deno.serve(async req => {
         c.developerWork=work;
         const pageUrl=work.pendingUrls[0];
         if(!pageUrl) {c.phase=work.accountId?'developer_saving':'developer_creating';await save();return json({ok:true});}
-        const d=await pacedCall('yad2-developer-import',{url:pageUrl,page_only:true,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
+        const d=await pacedCall('yad2-developer-import',{url:pageUrl,parent_project:work.inventoryParents?.[pageUrl],page_only:true,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
         if(!d)return json({ok:true,waiting:true});
         if(!d.ok||!d.developer||!Array.isArray(d.projects)||!Array.isArray(d.links))throw new Error('עמוד היזם לא החזיר מבנה תקין');
-        mergeDeveloperQueuePage(work,{source_url:pageUrl,developer:d.developer,projects:d.projects,links:d.links});
+        mergeDeveloperQueuePage(work,{source_url:pageUrl,developer:d.developer,projects:d.projects,links:d.links,inventoryPages:d.inventoryPages});
         // Some rendered profile pages expose the company only on their project pages.
         // Keep scanning instead of failing before those own pages have been read.
         c.phase=developerQueuePhaseAfterPage(work);

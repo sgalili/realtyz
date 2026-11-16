@@ -1,5 +1,11 @@
 # Roadmap
 
+## Deep project apartments and stable expansion
+- [x] Traverse supported exact-project inventory/unit descendants and pagination with parent-scoped merging in both deployed queues; preserve import pacing.
+- [x] Display saved exact source milestones as a visual timeline and enlarge expanded project details by 2px.
+- [x] Verified signed-in mobile/desktop headings remain below the header; 37 parser, queue, hierarchy and commission tests passed, preview build OK.
+- [ ] Verify live source apartment inventory/timeline end-to-end: current saved projects have neither units nor timelines, and inspected cached Yad2 pages expose no inventory links. Source-specific dynamic inventory remains unverified; no paid re-import or invented units were created.
+
 ## Developer search and compact toolbar
 - [x] Hide search until the hero magnifier is clicked; allow closing through its small corner X.
 - [x] Keep developer logo/name, project count, icon-only sync and view toggle together on all devices.

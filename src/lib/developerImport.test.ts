@@ -1,10 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { developerImportUrl } from './developerImportUrl';
 import { readPage, mergeProject } from '../../supabase/functions/yad2-developer-import/extract';
-import { developerProjectImportRow, developerQueuePhaseAfterPage, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork } from '../../supabase/functions/_shared/yad2DeveloperImport';
+import { developerProjectImportRow, developerQueuePhaseAfterPage, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, projectInventoryUrl } from '../../supabase/functions/_shared/yad2DeveloperImport';
 import { allowsQueuedContactlessAccount, developerImportPlaceholderId, requiresLicenseVerification } from '../../supabase/functions/_shared/importedAccountPolicy';
 
 describe('developer import', () => {
+  it('follows exact project inventory and pagination while rejecting other projects and hosts', () => {
+    const parent = 'https://www.yad2.co.il/yad1/project/9208';
+    expect(projectInventoryUrl('/yad1/project/9208/apartments?page=2&wat=x', parent)).toBe(`${parent}/apartments?page=2`);
+    for (const url of ['/yad1/project/12920/apartments', 'http://www.yad2.co.il/yad1/project/9208/units', 'https://yad2.co.il.evil.test/yad1/project/9208/units']) expect(projectInventoryUrl(url, parent)).toBeNull();
+  });
+  it('attaches standalone apartment detail to its parent and resumes each discovered unit page', () => {
+    const parent = { source_project_id: '9208', name: 'הורדים', source_url: 'https://www.yad2.co.il/yad1/project/9208' };
+    const url = `${parent.source_url}/apartments`;
+    const payload = { apartments: [{ id: 'u1', rooms: 4, floor: 0, price: 2685000, specifications: 'ממ״ד', url: `${url}/u1` }], related: { apartments: [{ id: 'other', rooms: 2, price: 1 }] } };
+    const parsed = readPage(`<script type="application/json">${JSON.stringify(payload)}</script>`, url, parent);
+    expect(parsed.projects).toHaveLength(1);
+    expect(parsed.projects[0]).toMatchObject({ source_project_id: '9208', apartments: [{ source_unit_id: 'u1', rooms: 4, floor: '0', price: 2685000, specifications: 'ממ״ד' }] });
+    expect(parsed.inventoryPages.map(page => page.url)).toEqual([`${url}/u1`]);
+    const work = newDeveloperQueueWork(parent.source_url, 1);
+    mergeDeveloperQueuePage(work, { source_url: parent.source_url, developer: {}, projects: [parent], links: [], inventoryPages: parsed.inventoryPages });
+    expect(work.pendingUrls).toEqual([`${url}/u1`]);
+    expect(work.inventoryParents?.[`${url}/u1`]).toMatchObject({ source_project_id: '9208' });
+  });
   it('keeps company bio separate from project and recommended company descriptions', () => {
     const payload = { developer: { name: 'Company', about: 'Company public biography' }, projects: [{ projectName: 'A', description: 'Project description' }], related: { developer: { about: 'Unrelated bio' } } };
     expect(readPage(`<script type="application/json">${JSON.stringify(payload)}</script>`, 'https://www.yad2.co.il/yad1/developers/company').developer.bio).toBe('Company public biography');

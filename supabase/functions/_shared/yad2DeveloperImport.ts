@@ -8,6 +8,20 @@ const number = (v: unknown) => { const t = text(v); if (!t) return null; const n
 const PROJECT_PATH = /^\/yad1\/(?:project|projects)\/[^/]+\/?$/i;
 const DEVELOPER_PATH = /^\/yad1\/developers\/[^/]+\/?$/i;
 
+/** Only source-linked descendants of the exact project can enrich its inventory. */
+export function projectInventoryUrl(value: unknown, parentUrl: string): string | null {
+  const parent = developerImportUrl(parentUrl);
+  const candidate = sourceUrl(value, parentUrl);
+  if (!parent || developerImportPageKind(parent) !== 'project' || !candidate) return null;
+  const base = new URL(parent), url = new URL(candidate);
+  const prefix = base.pathname.replace(/\/$/, '');
+  if (url.pathname !== prefix && !new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/(?:apartments?|units?|inventory|buildings?)(?:/[^/]+)*?/?$`, 'i').test(url.pathname)) return null;
+  if (url.pathname === prefix && !url.searchParams.has('page')) return null;
+  for (const key of [...url.searchParams.keys()]) if (!['page', 'offset', 'building', 'buildingId', 'unit', 'unitId'].includes(key)) url.searchParams.delete(key);
+  url.hash = '';
+  return url.href;
+}
+
 export function developerImportPageKind(value: string): 'profile' | 'project' | null {
   const raw = value.trim().match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0];
   if (!raw) return null;
@@ -183,7 +197,7 @@ export function mergeProject(old: any, fresh: any) {
   return merged;
 }
 
-export function readPage(html: string, base: string) {
+export function readPage(html: string, base: string, parentProject?: RecordValue) {
   const payloads: unknown[] = [];
   for (const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)) {
     const t = (m[1] ?? '').trim();
@@ -198,6 +212,14 @@ export function readPage(html: string, base: string) {
     if (url && PROJECT_PATH.test(new URL(url).pathname)) links.add(url.split('?')[0]);
   }
   const result = extractDeveloper(payloads, base);
+  if (parentProject) {
+    const hierarchy = extractProjectHierarchy(payloads);
+    const matching = result.projects.filter(project => sameProject(parentProject, project));
+    result.projects = [matching.reduce((old, fresh) => mergeProject(old, fresh), {
+      ...parentProject, apartments: hierarchy.apartments, buildings: hierarchy.buildings,
+      source_details: { hierarchy },
+    })];
+  }
   const rendered = extractRenderedHtml(html, base);
   result.developer.company_name ??= rendered.developer.company_name;
   result.developer.phone ??= rendered.developer.phone;
@@ -215,7 +237,22 @@ export function readPage(html: string, base: string) {
     }
   }
   result.projects.forEach(p => { if (p.source_url) links.add(p.source_url); });
-  return { ...result, links: [...links], timeline: rendered.timeline };
+  const inventoryPages: { url: string; parent: RecordValue }[] = [];
+  const parents = parentProject ? [parentProject] : result.projects;
+  for (const project of parents) {
+    if (!project.source_url) continue;
+    const collect = (value: unknown, depth = 0) => {
+      if (depth > 30) return;
+      if (typeof value === 'string') {
+        const url = projectInventoryUrl(value.replace(/&amp;/g, '&'), project.source_url);
+        if (url && url !== base && !inventoryPages.some(page => page.url === url)) inventoryPages.push({ url, parent: { source_project_id: project.source_project_id, name: project.name, city: project.city, source_url: project.source_url } });
+      } else if (Array.isArray(value)) value.forEach(item => collect(item, depth + 1));
+      else if (record(value)) Object.entries(value).forEach(([key, item]) => { if (!/related|recommendations|similar/i.test(key)) collect(item, depth + 1); });
+    };
+    payloads.forEach(payload => collect(payload));
+    for (const match of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>/gi)) collect(match[1]);
+  }
+  return { ...result, links: [...links], inventoryPages, timeline: rendered.timeline };
 }
 
 export type DeveloperQueueWork = {
@@ -228,6 +265,7 @@ export type DeveloperQueueWork = {
   dirtyProjectKeys: string[];
   accountId?: string;
   developerId?: string;
+  inventoryParents?: Record<string, RecordValue>;
 };
 
 export function newDeveloperQueueWork(url: string, expectedProjects: number): DeveloperQueueWork {
@@ -246,7 +284,7 @@ const sameProject = (old: any, fresh: any) =>
   (old.name === fresh.name && (old.city ?? null) === (fresh.city ?? null));
 
 /** Merge one own developer/project page into the durable checkpoint. */
-export function mergeDeveloperQueuePage(work: DeveloperQueueWork, page: { source_url: string; developer: Partial<DeveloperQueueWork['developer']>; projects: any[]; links: string[] }) {
+export function mergeDeveloperQueuePage(work: DeveloperQueueWork, page: { source_url: string; developer: Partial<DeveloperQueueWork['developer']>; projects: any[]; links: string[]; inventoryPages?: { url: string; parent: RecordValue }[] }) {
   for (const key of ['company_name', 'phone', 'logo_url', 'bio'] as const) {
     const value = page.developer?.[key];
     if (value != null && value !== '') work.developer[key] = value;
@@ -262,6 +300,12 @@ export function mergeDeveloperQueuePage(work: DeveloperQueueWork, page: { source
   work.pendingUrls = work.pendingUrls.filter(url => url !== page.source_url);
   for (const link of page.links ?? []) {
     if (!work.visitedUrls.includes(link) && !work.pendingUrls.includes(link)) work.pendingUrls.push(link);
+  }
+  for (const child of page.inventoryPages ?? []) {
+    if (projectInventoryUrl(child.url, child.parent.source_url) !== child.url) continue;
+    work.inventoryParents ??= {};
+    work.inventoryParents[child.url] = child.parent;
+    if (!work.visitedUrls.includes(child.url) && !work.pendingUrls.includes(child.url)) work.pendingUrls.push(child.url);
   }
   return work;
 }

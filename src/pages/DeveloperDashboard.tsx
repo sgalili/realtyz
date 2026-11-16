@@ -70,6 +70,19 @@ function DeveloperDashboardContent() {
   const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
   const [propFilter, setPropFilter] = useState(EMPTY_PROPERTY_FILTER);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const toggleProject = (projectId: string, target: HTMLElement) => {
+    const opening = expandedId !== projectId;
+    const summary = target.closest<HTMLElement>('article, tr');
+    setExpandedId(opening ? projectId : null);
+    if (!opening || !summary) return;
+    window.setTimeout(() => {
+      const owner = summary.closest<HTMLElement>('[data-table-scroll], .realtyz-main-surface');
+      if (!owner) return;
+      const head = summary.closest('table')?.querySelector('thead');
+      const top = Math.max(owner.getBoundingClientRect().top, head?.getBoundingClientRect().bottom ?? 0) + 8;
+      owner.scrollTop += summary.getBoundingClientRect().top - top;
+    }, 300);
+  };
   const [grid, setGrid] = useState(() => { try { return localStorage.getItem('developer-projects-view') !== 'list'; } catch { return true; } });
   const toggleGrid = () => setGrid(value => { try { localStorage.setItem('developer-projects-view', value ? 'list' : 'grid'); } catch { /* storage unavailable */ } return !value; });
   const toggleDeal = (key: 'sale' | 'rent') => setDeals(current => { const next = { ...current, [key]: !current[key] }; return next.sale || next.rent ? next : current; });
@@ -184,8 +197,8 @@ function DeveloperDashboardContent() {
             <div className="flex flex-1 flex-col gap-3 p-4">
               <DeveloperCommissionBadges project={p} onEdit={() => openPricing(p)} />
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">{meta(p).map(item => <span key={item} className="inline-flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-primary" />{item}</span>)}</div>
-              <Button variant="outline" className="mt-auto justify-between" aria-expanded={open} onClick={() => setExpandedId(open ? null : p.id)}>בניינים ויחידות<ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button>
-              <AnimatedExpansion open={open}><ProjectHierarchyDetails project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => { const target = projectCampaignTargets(p).find(t => t.id.endsWith(`:unit:${encodeURIComponent(`${unit.building_id ?? ''}:${unit.source_unit_id}`)}`)); if (target) navigate(`/campaigns?tab=create&listing=${encodeURIComponent(target.id)}&fresh=1`); }} /></AnimatedExpansion>
+              <Button variant="outline" className="mt-auto justify-between" aria-expanded={open} onClick={event => toggleProject(p.id, event.currentTarget)}>בניינים ויחידות<ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button>
+              <AnimatedExpansion open={open} autoReveal={false}><ProjectHierarchyDetails enlarged project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => { const target = projectCampaignTargets(p).find(t => t.id.endsWith(`:unit:${encodeURIComponent(`${unit.building_id ?? ''}:${unit.source_unit_id}`)}`)); if (target) navigate(`/campaigns?tab=create&listing=${encodeURIComponent(target.id)}&fresh=1`); }} /></AnimatedExpansion>
             </div>
           </article>; })}
         </div> : <BoardColumnDragArea controls={columns}><HorizontalTableScroll className="listing-results-scroll board-head-sticky flex-1"><table className="w-max min-w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{columns.visible.map((id) => <BoardColumnHeader key={id} id={id} controls={columns} />)}<th className="p-2"><BoardColumnMenu controls={columns} /></th></tr></thead><tbody>
@@ -197,7 +210,7 @@ function DeveloperDashboardContent() {
               : id === 'commissions' ? <DeveloperCommissionBadges project={p} onEdit={() => openPricing(p)} /> : id === 'rooms' ? hierarchy.apartments.length || '' : PROJECT_STATUS[p.status] ?? p.status}
             </td>)}
             <td className="p-2"><div className="flex items-center">{actions(p)}<Button variant="ghost" size="icon-sm" aria-label={`בניינים ויחידות ${p.name}`} aria-expanded={open} onClick={event => { event.stopPropagation(); setExpandedId(open ? null : p.id); }}><ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button></div></td>
-          </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1} className="p-0"><FixedTablePanel><AnimatedExpansion open={open}><div className="min-w-0 space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} /></div></AnimatedExpansion></FixedTablePanel></td></tr>]; })}
+          </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1} className="p-0"><FixedTablePanel><AnimatedExpansion open={open} autoReveal={false}><div className="min-w-0 space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails enlarged project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} /></div></AnimatedExpansion></FixedTablePanel></td></tr>]; })}
         </tbody></table></HorizontalTableScroll></BoardColumnDragArea>}
       </>}
       <Dialog open={mode !== null} onOpenChange={open => { if (!open) close(); }}>

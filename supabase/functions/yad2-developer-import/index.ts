@@ -1,11 +1,13 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.45.0';
 import { readPage } from './extract.ts';
+import { developerImportPageKind, projectInventoryUrl } from '../_shared/yad2DeveloperImport.ts';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
 import { DEVELOPER_CACHE_SECONDS } from '../_shared/scrapingPolicy.ts';
 import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
 import { ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
 import { rotatingUnlockerPayload, UNLOCKER_USER_AGENTS } from '../_shared/brightDataRotation.ts';
-const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
+const cors = corsHeaders;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -36,9 +38,8 @@ Deno.serve(async req => {
   try {
     const raw = typeof body.url === 'string' ? body.url.trim() : '';
     pageUrl = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
-    if (pageUrl.protocol !== 'https:' || !/(^|\.)yad2\.co\.il$/i.test(pageUrl.hostname) || !/^\/yad1\/developers\/[^/]+\/?$/i.test(pageUrl.pathname)) {
-      if (!pageOnly || !/^\/yad1\/(?:project|projects)\/[^/]+\/?$/i.test(pageUrl.pathname)) throw new Error('invalid');
-    }
+    if (pageUrl.protocol !== 'https:' || !/(^|\.)yad2\.co\.il$/i.test(pageUrl.hostname)) throw new Error('invalid');
+    if (!developerImportPageKind(pageUrl.href) && !(pageOnly && body.parent_project && projectInventoryUrl(pageUrl.href, body.parent_project.source_url) === pageUrl.href)) throw new Error('invalid');
     pageUrl.hash = '';
   } catch { return json({ error: 'invalid_url', message: 'הדביקו קישור תקין לעמוד יזם או לפרויקט ביד2' }, 400); }
   const token = Deno.env.get('BRIGHTDATA_API_TOKEN');
@@ -58,7 +59,7 @@ Deno.serve(async req => {
       if (/captcha|access denied|verify you are human/i.test(result.html) && !/__NEXT_DATA__|projectName/.test(result.html)) throw new Error('source_blocked');
       return result.html;
     });
-    return readPage(html, url);
+    return readPage(html, url, body.parent_project);
   };
   // Multi-page account imports must use developer-import-jobs. This endpoint
   // deliberately performs only one leased page read for the background workers.

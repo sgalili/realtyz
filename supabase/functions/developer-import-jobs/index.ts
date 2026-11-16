@@ -6,8 +6,8 @@ import { ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrot
 import { rotatingUnlockerPayload } from '../_shared/brightDataRotation.ts';
 import { developerImportPageKind, developerImportUrl, developerProjectImportRow, readPage } from '../_shared/yad2DeveloperImport.ts';
 import { developerRetryDelay, MAX_PAGE_ATTEMPTS, mergeProjectPage, projectPageRows, safeImportError } from './queue.ts';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
-const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -52,7 +52,7 @@ async function startImport(req: Request, body: Record<string, unknown>) {
   return json({ ok: true, job_id: job.id }, 202);
 }
 
-async function fetchDeveloperPage(url: string, attempt: number) {
+async function fetchDeveloperPage(url: string, attempt: number, parentProject?: Record<string, any>) {
   const token = Deno.env.get('BRIGHTDATA_API_TOKEN');
   const zone = Deno.env.get('BRIGHTDATA_UNLOCKER_ZONE') ?? Deno.env.get('BRIGHTDATA_ZONE') ?? 'web_unlocker4';
   if (!token) throw new Error('not_configured');
@@ -72,7 +72,7 @@ async function fetchDeveloperPage(url: string, attempt: number) {
     if (/captcha|access denied|verify you are human/i.test(result.html) && !/__NEXT_DATA__|projectName/.test(result.html)) throw new Error('source_blocked');
     return result.html;
   });
-  return readPage(html, url);
+  return readPage(html, url, parentProject);
 }
 
 async function ensureDeveloper(job: any, page: any) {
@@ -105,7 +105,8 @@ async function ensureDeveloper(job: any, page: any) {
     const { error: bioError } = await admin.from('profiles').update({ imported_public_bio: source.bio }).eq('id', job.workspace_owner_id).is('imported_public_bio', null);
     if (bioError) throw bioError;
   }
-  return developerId!;
+  if (!developerId) throw new Error('developer_save_failed');
+  return developerId;
 }
 
 async function saveProjects(job: any, developerId: string, projects: any[]) {
@@ -159,7 +160,11 @@ async function stepImport(body: Record<string, unknown>) {
     await admin.from('developer_import_jobs').update({ lease_token: null, lease_until: null, next_attempt_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...patch }).eq('id', jobId).eq('lease_token', page.lease_token);
   };
   try {
-    const parsed = page.fetch_required ? await fetchDeveloperPage(page.url, page.attempts) : { developer: {}, projects: page.payload?.projects ?? [], links: [] };
+    const parsed = page.fetch_required ? await fetchDeveloperPage(page.url, page.attempts, page.payload?.parent_project) : { developer: {}, projects: page.payload?.projects ?? [], links: [], inventoryPages: [] };
+    if (parsed.inventoryPages?.length) {
+      const { error: childrenError } = await admin.from('developer_import_pages').upsert(parsed.inventoryPages.map(child => ({ job_id: jobId, url: child.url, kind: 'project', fetch_required: true, payload: { parent_project: child.parent } })), { onConflict: 'job_id,url', ignoreDuplicates: true });
+      if (childrenError) throw childrenError;
+    }
     if (page.kind === 'project' && !job.developer_id) {
       const developerId = await ensureDeveloper(job, parsed);
       if (!parsed.projects.length) throw new Error('project_not_found');
