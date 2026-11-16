@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { validImportParameters } from '../../../supabase/functions/_shared/brokerImportQueue';
 import { agencyUrl } from '../../../supabase/functions/_shared/yad2Agencies';
-import { developerImportUrl } from '@/lib/developerImportUrl';
+import { developerImportPageKind, developerImportUrl } from '@/lib/developerImportUrl';
 import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY } from '../../../supabase/functions/_shared/developerImportRetry';
 import { startContinuousImportRunner } from '@/lib/continuousImportRunner';
 
@@ -24,7 +24,7 @@ const separateLinks = (value: string) => value.replace(/[ \t]+(?=https?:\/\/)/gi
 const stages: Record<string, string> = {
   scanning: 'סריקה ב־Bright Data', enriching: 'איסוף פרטי מתווכים', validating: 'בדיקת מודעות פעילות',
   creating: 'אימות רישיון ויצירת מתווך', importing: 'ייבוא טיוטות', developer_scanning: 'קריאת עמודי יזם ופרויקטים',
-  developer_creating: 'יצירת חשבון יזם פעיל', developer_saving: 'שמירת פרויקטים ויחידות', completed: 'הייבוא הסתיים',
+  developer_creating: 'יצירת חשבון יזם פעיל ללא הודעות', developer_saving: 'שמירת פרויקטים ויחידות', completed: 'הייבוא הסתיים',
 };
 
 export function BrokerBatchImportCard() {
@@ -121,9 +121,9 @@ export function BrokerBatchImportCard() {
   return <section dir="rtl" className="space-y-4 border-b border-border py-5 text-right">
     <div className="space-y-3 rounded-xl border border-border/70 p-4">
       <h3 className="text-lg font-semibold">ייבוא מתווכים ויזמים מהדבקת קישורים</h3>
-      <Textarea dir="ltr" className="min-h-28 text-left text-base" placeholder={'https://www.yad2.co.il/realestate/agency/...\nhttps://www.yad2.co.il/yad1/developers/1000318'} value={links} onChange={event => setLinks(event.target.value)} onPaste={event => { event.preventDefault(); const element = event.currentTarget; const pasted = separateLinks(event.clipboardData.getData('text').trim()); const next = separateLinks(links.slice(0, element.selectionStart) + pasted + '\n' + links.slice(element.selectionEnd)); setLinks(next); }} aria-label="קישורי מתווכים ויזמים, קישור בכל שורה" />
-      {linkLines.length > 0 && <ol dir="ltr" className="max-h-56 space-y-1 overflow-y-auto text-left text-sm" aria-label="קישורים ממוספרים">{linkLines.map((line, index) => { const ok = validLink(line); const developer = Boolean(developerImportUrl(line)); return <li key={index} className={`flex items-start gap-2 rounded-md border px-2 py-1 ${ok ? 'border-border/60' : 'border-destructive bg-destructive/10 text-destructive'}`}><span className="shrink-0 font-semibold tabular-nums">{index + 1}.</span><span className="min-w-0 flex-1 break-all">{line}</span>{ok && <span dir="rtl" className="shrink-0 text-xs font-medium">{developer ? 'יזם' : 'מתווך'}</span>}{!ok && <span dir="rtl" className="shrink-0 font-medium">⚠ קישור לא תקין</span>}</li>; })}</ol>}
-      {invalidCount > 0 && <p role="alert" className="text-base font-medium text-destructive">{invalidCount} קישורים לא תקינים מסומנים באדום. יש להזין קישור משרד/מתווך או קישור יזם מ־/yad1/developers/ באתר יד2.</p>}
+      <Textarea dir="ltr" className="min-h-28 text-left text-base" placeholder={'https://www.yad2.co.il/realestate/agency/...\nhttps://www.yad2.co.il/yad1/developers/1000318\nhttps://www.yad2.co.il/yad1/project/16653'} value={links} onChange={event => setLinks(event.target.value)} onPaste={event => { event.preventDefault(); const element = event.currentTarget; const pasted = separateLinks(event.clipboardData.getData('text').trim()); const next = separateLinks(links.slice(0, element.selectionStart) + pasted + '\n' + links.slice(element.selectionEnd)); setLinks(next); }} aria-label="קישורי מתווכים ויזמים, קישור בכל שורה" />
+      {linkLines.length > 0 && <ol dir="ltr" className="max-h-56 space-y-1 overflow-y-auto text-left text-sm" aria-label="קישורים ממוספרים">{linkLines.map((line, index) => { const ok = validLink(line); const developer = Boolean(developerImportUrl(line)); return <li key={index} className={`flex items-start gap-2 rounded-md border px-2 py-1 ${ok ? 'border-border/60' : 'border-destructive bg-destructive/10 text-destructive'}`}><span className="shrink-0 font-semibold tabular-nums">{index + 1}.</span><span className="min-w-0 flex-1 break-all">{line}</span>{ok && <span dir="rtl" className="shrink-0 text-xs font-medium">{developer ? developerImportPageKind(line) === 'project' ? 'פרויקט' : 'יזם' : 'מתווך'}</span>}{!ok && <span dir="rtl" className="shrink-0 font-medium">⚠ קישור לא תקין</span>}</li>; })}</ol>}
+      {invalidCount > 0 && <p role="alert" className="text-base font-medium text-destructive">{invalidCount} קישורים לא תקינים מסומנים באדום. יש להזין קישור משרד/מתווך, עמוד יזם או קישור ישיר לפרויקט באתר יד2.</p>}
       <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:items-end sm:justify-end">
         <div className="space-y-1 sm:w-40 sm:shrink-0"><Label htmlFor="link-limit" className="text-sm">מקס׳ נכסים למתווך</Label><Input id="link-limit" type="number" inputMode="numeric" min={1} max={10} className="h-11 text-base" value={linkLimit} onChange={event => { const value = Math.round(Number(event.target.value)); if (Number.isFinite(value)) setLinkLimit(Math.min(10, Math.max(1, value))); }} /></div>
         <div className="space-y-1 sm:w-44 sm:shrink-0"><Label htmlFor="expected-projects" className="text-sm">פרויקטים צפויים לכל יזם</Label><Input id="expected-projects" type="number" inputMode="numeric" min={1} max={100} className="h-11 text-base" value={expectedProjects} onChange={event => { const value = Math.round(Number(event.target.value)); if (Number.isFinite(value)) setExpectedProjects(Math.min(100, Math.max(1, value))); }} /></div>

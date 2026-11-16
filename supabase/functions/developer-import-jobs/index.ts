@@ -4,7 +4,7 @@ import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
 import { DEVELOPER_CACHE_SECONDS } from '../_shared/scrapingPolicy.ts';
 import { ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
 import { rotatingUnlockerPayload } from '../_shared/brightDataRotation.ts';
-import { developerImportUrl, developerProjectImportRow, readPage } from '../_shared/yad2DeveloperImport.ts';
+import { developerImportPageKind, developerImportUrl, developerProjectImportRow, readPage } from '../_shared/yad2DeveloperImport.ts';
 import { developerRetryDelay, MAX_PAGE_ATTEMPTS, mergeProjectPage, projectPageRows, safeImportError } from './queue.ts';
 
 const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
@@ -18,8 +18,10 @@ async function startImport(req: Request, body: Record<string, unknown>) {
   const scoped = await enforceRequestScope(req, caller);
   if (scoped) return scoped;
   const workspace = typeof body.workspace_owner_id === 'string' && UUID.test(body.workspace_owner_id) ? body.workspace_owner_id : '';
-  const sourceUrl = developerImportUrl(typeof body.url === 'string' ? body.url : '');
-  if (!workspace || !sourceUrl) return json({ error: 'invalid_url', message: 'הדביקו קישור תקין לעמוד היזם ביד2' }, 400);
+  const rawUrl = typeof body.url === 'string' ? body.url : '';
+  const sourceUrl = developerImportUrl(rawUrl);
+  const sourceKind = developerImportPageKind(rawUrl);
+  if (!workspace || !sourceUrl || !sourceKind) return json({ error: 'invalid_url', message: 'הדביקו קישור תקין לעמוד יזם או לפרויקט ביד2' }, 400);
   const admin = adminClient();
   if (!await canAccessWorkspace(caller.userId, workspace, admin)) return json({ error: 'forbidden', message: 'אין הרשאה לסביבת העבודה' }, 403);
   const { data: roles, error: roleError } = await admin.from('user_roles').select('role').eq('user_id', workspace).eq('role', 'developer').limit(1);
@@ -39,9 +41,9 @@ async function startImport(req: Request, body: Record<string, unknown>) {
     return json({ ok: true, job_id: existing.id, resumed: true }, 202);
   }
   const lease = crypto.randomUUID();
-  const { data: job, error: jobError } = await admin.from('developer_import_jobs').insert({ workspace_owner_id: workspace, requested_by: caller.userId, source_url: sourceUrl, lease_token: lease, lease_until: new Date(Date.now() + 60_000).toISOString() }).select('id').single();
+  const { data: job, error: jobError } = await admin.from('developer_import_jobs').insert({ workspace_owner_id: workspace, requested_by: caller.userId, source_url: sourceUrl, stage: sourceKind === 'project' ? 'projects' : 'profile', lease_token: lease, lease_until: new Date(Date.now() + 60_000).toISOString() }).select('id').single();
   if (jobError || !job) return json({ error: 'queue_unavailable', message: 'לא ניתן לפתוח את תור הייבוא' }, 503);
-  const { error: pageError } = await admin.from('developer_import_pages').insert({ job_id: job.id, url: sourceUrl, kind: 'profile' });
+  const { error: pageError } = await admin.from('developer_import_pages').insert({ job_id: job.id, url: sourceUrl, kind: sourceKind });
   if (pageError) {
     await admin.from('developer_import_jobs').update({ status: 'failed', error: 'profile_queue_failed', lease_token: null, lease_until: null }).eq('id', job.id);
     return json({ error: 'queue_unavailable', message: 'לא ניתן לפתוח את עמוד היזם בתור' }, 503);
@@ -158,6 +160,14 @@ async function stepImport(body: Record<string, unknown>) {
   };
   try {
     const parsed = page.fetch_required ? await fetchDeveloperPage(page.url, page.attempts) : { developer: {}, projects: page.payload?.projects ?? [], links: [] };
+    if (page.kind === 'project' && !job.developer_id) {
+      const developerId = await ensureDeveloper(job, parsed);
+      if (!parsed.projects.length) throw new Error('project_not_found');
+      await saveProjects(job, developerId, parsed.projects);
+      await admin.from('developer_import_pages').update({ status: 'completed', payload: { developer: parsed.developer ?? {}, projects: parsed.projects }, lease_token: null, lease_until: null, updated_at: new Date().toISOString() }).eq('id', page.id).eq('lease_token', page.lease_token);
+      await release({ stage: 'projects', developer_id: developerId, company: parsed.developer ?? {}, error: null });
+      return json({ ok: true, stage: 'project', projects: parsed.projects.length });
+    }
     if (page.kind === 'profile') {
       const developerId = await ensureDeveloper(job, parsed);
       const rows = projectPageRows(job.source_url, parsed.projects ?? [], parsed.links ?? []);

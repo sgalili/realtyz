@@ -3374,8 +3374,10 @@ export type Database = {
           price_from: number | null
           source_details: Json
           source_project_id: string | null
+          source_status: string | null
           source_url: string | null
           status: string
+          timeline: Json
           total_units: number | null
           updated_at: string
           workspace_owner_id: string
@@ -3399,8 +3401,10 @@ export type Database = {
           price_from?: number | null
           source_details?: Json
           source_project_id?: string | null
+          source_status?: string | null
           source_url?: string | null
           status?: string
+          timeline?: Json
           total_units?: number | null
           updated_at?: string
           workspace_owner_id: string
@@ -3424,8 +3428,10 @@ export type Database = {
           price_from?: number | null
           source_details?: Json
           source_project_id?: string | null
+          source_status?: string | null
           source_url?: string | null
           status?: string
+          timeline?: Json
           total_units?: number | null
           updated_at?: string
           workspace_owner_id?: string

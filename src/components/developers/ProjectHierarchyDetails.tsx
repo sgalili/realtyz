@@ -12,8 +12,12 @@ const labelValue = (value: unknown): string => {
   if (value == null) return '';
   if (typeof value === 'boolean') return value ? 'כן' : 'לא';
   if (Array.isArray(value)) return value.map(labelValue).filter(Boolean).join(' · ');
-  if (typeof value === 'object') { const row = sourceRecord(value); return labelValue(row.text ?? row.name ?? row.label ?? row.value); }
+  if (typeof value === 'object') { const row = sourceRecord(value); return labelValue(row.text ?? row.name ?? row.label ?? row.title ?? row.milestone ?? row.value); }
   return String(value);
+};
+const timelineLabel = (value: unknown) => {
+  const row = sourceRecord(value);
+  return [labelValue(row.label ?? row.title ?? row.name ?? row.text), labelValue(row.date), labelValue(row.status)].filter(Boolean).join(' · ');
 };
 function UnitDetails({ units, project, onPublish, onPost }: { units: ProjectUnit[]; project: DeveloperProject; onPublish?: (unit: ProjectUnit) => void; onPost?: (unit: ProjectUnit) => void }) {
   return <Accordion type="single" collapsible className="min-w-0">
@@ -41,9 +45,12 @@ export default function ProjectHierarchyDetails({ project, onPublish, onPost }: 
   const details = sourceRecord(project.source_details);
   const manual = sourceRecord(details.manual);
   const specs = labelValue(manual.specifications ?? details.specifications ?? details.specification);
+  const sourceProject = project as DeveloperProject & { source_status?: string | null; timeline?: unknown[] };
+  const timeline = (sourceProject.timeline ?? []).map(timelineLabel).filter(Boolean);
   return <div className="min-w-0 space-y-4">
     {(project.description || labelValue(details.info)) && <p className="whitespace-pre-line text-sm leading-relaxed">{project.description || labelValue(details.info)}</p>}
-    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">{project.address && <span>{project.address}</span>}{project.delivery_date && <span>מסירה: {project.delivery_date}</span>}{project.total_units != null && <span>{project.total_units} יח״ד</span>}{project.available_units != null && <span>{project.available_units} זמינות</span>}</div>
+    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">{project.address && <span>{project.address}</span>}{sourceProject.source_status && <span>סטטוס במקור: {sourceProject.source_status}</span>}{project.delivery_date && <span>מסירה: {project.delivery_date}</span>}{project.total_units != null && <span>{project.total_units} יח״ד</span>}{project.available_units != null && <span>{project.available_units} זמינות</span>}</div>
+    {timeline.length > 0 && <div className="space-y-1 text-sm"><h3 className="font-semibold">ציר זמן הפרויקט במקור</h3><ol className="list-inside list-decimal space-y-1 text-muted-foreground">{timeline.map(item => <li key={item}>{item}</li>)}</ol></div>}
     {specs && <p className="whitespace-pre-line text-sm">{specs}</p>}
     {labelValue(manual.amenities ?? details.amenities) && <p className="text-sm text-muted-foreground">{labelValue(manual.amenities ?? details.amenities)}</p>}
     <Accordion type="single" collapsible>

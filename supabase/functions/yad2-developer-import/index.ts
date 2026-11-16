@@ -40,7 +40,7 @@ Deno.serve(async req => {
       if (!pageOnly || !/^\/yad1\/(?:project|projects)\/[^/]+\/?$/i.test(pageUrl.pathname)) throw new Error('invalid');
     }
     pageUrl.hash = '';
-  } catch { return json({ error: 'invalid_url', message: 'הדביקו את הקישור לעמוד הראשי של היזם ביד2, ולא למודעה או לפרויקט בודד' }, 400); }
+  } catch { return json({ error: 'invalid_url', message: 'הדביקו קישור תקין לעמוד יזם או לפרויקט ביד2' }, 400); }
   const token = Deno.env.get('BRIGHTDATA_API_TOKEN');
   const zone = Deno.env.get('BRIGHTDATA_UNLOCKER_ZONE') ?? Deno.env.get('BRIGHTDATA_ZONE') ?? 'web_unlocker4';
   if (!token) return json({ error: 'not_configured', message: 'שירות הייבוא מיד2 אינו מוגדר' }, 503);

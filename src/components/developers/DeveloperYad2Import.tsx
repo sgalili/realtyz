@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { developerImportUrl } from '@/lib/developerImportUrl';
+import { developerImportPageKind, developerImportUrl } from '@/lib/developerImportUrl';
 import { startContinuousImportRunner } from '@/lib/continuousImportRunner';
 
 const YAD2_RE = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i;
@@ -95,7 +95,7 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
   const start = async (value: string) => {
     if (starting || !activeWorkspaceId) return;
     const clean = developerImportUrl(value);
-    if (!clean) { setError('הדביקו את הקישור לעמוד הראשי של היזם ביד2, ולא למודעה או לפרויקט בודד'); return; }
+    if (!clean) { setError('הדביקו קישור תקין לעמוד היזם או לפרויקט מסוים ביד2'); return; }
     const originWorkspace = activeWorkspaceId;
     setStarting(true); setError(''); setUrl(clean); reported.current = null;
     const { data, error: invokeError } = await supabase.functions.invoke('developer-import-jobs', { body: { action: 'start', url: clean, workspace_owner_id: originWorkspace } });
@@ -109,16 +109,18 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
     setJobId(data.job_id);
   };
 
+  const directProject = developerImportPageKind(url) === 'project';
+
   return <div className="space-y-4">
     <div className="space-y-2">
-      <Label htmlFor="dev-yad2-url" className="text-base font-bold">הקישור לעמוד הראשי של היזם ביד2</Label>
-      <p id="dev-yad2-help" className="text-base text-muted-foreground">החברה, הפרויקטים והדירות נשמרים אוטומטית ברקע. אפשר לסגור את החלון ולחזור מאוחר יותר.</p>
+      <Label htmlFor="dev-yad2-url" className="text-base font-bold">קישור לעמוד יזם או לפרויקט ביד2</Label>
+      <p id="dev-yad2-help" className="text-base text-muted-foreground">אפשר להדביק עמוד חברה לייבוא כל הפרויקטים, או קישור ישיר לפרויקט אחד. החברה, הפרויקטים, הדירות וציר הזמן נשמרים ברקע.</p>
     </div>
     <div className="flex flex-col gap-2 sm:flex-row">
-      <Input id="dev-yad2-url" aria-describedby="dev-yad2-help" dir="ltr" type="url" placeholder="https://www.yad2.co.il/yad1/developers/..." value={url} disabled={starting || job?.status === 'running'}
+      <Input id="dev-yad2-url" aria-describedby="dev-yad2-help" dir="ltr" type="url" placeholder="https://www.yad2.co.il/yad1/developers/... או /yad1/project/..." value={url} disabled={starting || job?.status === 'running'}
         onChange={event => setUrl(event.target.value)}
         onPaste={event => { const text = event.clipboardData.getData('text').trim(); if (YAD2_RE.test(text)) { event.preventDefault(); setUrl(text.match(YAD2_RE)?.[0] ?? text); setError(''); } }} />
-      <Button type="button" onClick={() => void start(url)} disabled={starting || job?.status === 'running' || !url.trim()}>{starting && <Loader2 className="h-4 w-4 animate-spin" />}ייבוא כל הפרויקטים</Button>
+      <Button type="button" onClick={() => void start(url)} disabled={starting || job?.status === 'running' || !url.trim()}>{starting && <Loader2 className="h-4 w-4 animate-spin" />}{directProject ? 'ייבוא הפרויקט' : 'ייבוא כל הפרויקטים'}</Button>
     </div>
     {error && <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-base text-destructive">{error}</div>}
     {job && <div role="status" aria-live="polite" className="space-y-3 rounded-lg border bg-card p-4">

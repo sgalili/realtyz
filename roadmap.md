@@ -1,5 +1,12 @@
 # Roadmap
 
+## Developer and direct-project imports November 16
+- [x] Parse rendered Yad2 company/project HTML and structured project identities without the narrow company-name failure.
+- [x] Accept direct project links in developer and Super Admin import boxes and queue them correctly.
+- [x] Import exact source status/timeline fields and display them without changing internal publication status.
+- [x] Preserve silent developer-only account provisioning; never invent partner verification, identity or consent.
+- [x] Run focused parser/queue tests, apply schema, deploy workers and verify the preview build; no paid live import or account creation was triggered during verification.
+
 ## Yigal and Ben agency branding November 16
 - [x] Fill Yigal's listing with the saved Anglo Saxon Herzliya square logo.
 - [x] Fill all Ben Lagziel listings with the saved Tabu Nadlan name and Yad2 logo.

@@ -6,7 +6,7 @@ import { collectBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPo
 import { readWorkerResponse, ImportAvailabilityError, ProviderTimeoutError } from '../_shared/brightDataDiagnostics.ts';
 import { agencyPageUrl, agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck } from '../_shared/yad2Agencies.ts';
 import { PROVIDER_GAP_MS, ProviderRateLimitError, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
-import { developerImportUrl, developerProjectImportRow, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, type DeveloperQueueWork } from '../_shared/yad2DeveloperImport.ts';
+import { developerImportUrl, developerProjectImportRow, developerQueuePhaseAfterPage, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, type DeveloperQueueWork } from '../_shared/yad2DeveloperImport.ts';
 import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY, developerRetryDeadline } from '../_shared/developerImportRetry.ts';
 
 const schema = z.discriminatedUnion('action', [
@@ -156,7 +156,9 @@ Deno.serve(async req => {
         if(!d)return json({ok:true,waiting:true});
         if(!d.ok||!d.developer||!Array.isArray(d.projects)||!Array.isArray(d.links))throw new Error('עמוד היזם לא החזיר מבנה תקין');
         mergeDeveloperQueuePage(work,{source_url:pageUrl,developer:d.developer,projects:d.projects,links:d.links});
-        c.phase=work.accountId?'developer_saving':'developer_creating';
+        // Some rendered profile pages expose the company only on their project pages.
+        // Keep scanning instead of failing before those own pages have been read.
+        c.phase=developerQueuePhaseAfterPage(work);
         await save();return json({ok:true});
       }
       if(c.phase==='developer_creating') {
