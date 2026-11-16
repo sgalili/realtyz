@@ -47,7 +47,6 @@ export function VisitorRitaChat() {
     try { localStorage.setItem(KEY, JSON.stringify(messages.slice(-24))); } catch { /* unavailable storage does not block chat */ }
     const el = getTextarea();
     if (el && !el.value) el.style.height = '';
-    if (!busy) el?.focus();
   }, [messages, busy]);
   // Enter adds a new line; Command/Ctrl + Enter sends.
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -104,7 +103,7 @@ export function VisitorRitaChat() {
     </div>
     {error && <p role="alert" className="px-2 text-sm text-destructive">{error.message || 'ריטה אינה זמינה כרגע. נסו שוב מאוחר יותר.'}</p>}
     <div ref={inputWrapRef}><PromptInput onSubmit={({ text }) => { if (!text.trim() || busy) return; void sendMessage({ text: text.trim().slice(0, 3000) }); const el = getTextarea(); if (el) el.style.height = ''; }} className="rounded-lg">
-      <PromptInputTextarea autoFocus placeholder="איך אוכל לעזור?" aria-label="הודעה לריטה" rows={1} className="!min-h-10 max-h-32 resize-none overflow-y-auto py-2 text-xs [field-sizing:fixed]" onKeyDown={handleKeyDown} onInput={e => resizeRitaTextarea(e.currentTarget)} onFocus={e => { const t = e.currentTarget; window.setTimeout(() => t.scrollIntoView({ block: 'nearest' }), 300); }} />
+      <PromptInputTextarea placeholder="איך אוכל לעזור?" aria-label="הודעה לריטה" rows={1} className="!min-h-10 max-h-32 resize-none overflow-y-auto py-2 text-xs [field-sizing:fixed]" onKeyDown={handleKeyDown} onInput={e => resizeRitaTextarea(e.currentTarget)} onFocus={e => { const t = e.currentTarget; window.setTimeout(() => t.scrollIntoView({ block: 'nearest' }), 300); }} />
       <InputGroupAddon align="inline-end" className="self-end px-2 pb-1.5">
         <PromptInputSubmit status={status} onStop={stop} aria-label={busy ? 'עצירת תשובה' : 'שליחה לריטה'}>{busy ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}</PromptInputSubmit>
       </InputGroupAddon>

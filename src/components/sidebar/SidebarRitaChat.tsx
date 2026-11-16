@@ -24,6 +24,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
   const [text, setText] = useState('');
   const [chatHeight, setChatHeight] = useState<number | null>(null);
   const [keyboardInset, setKeyboardInset] = useState(0);
+  const [inputFocused, setInputFocused] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -127,7 +128,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
   const actionButton = 'pointer-events-auto h-8 w-8 rounded-none bg-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-foreground';
 
   return (
-    <div dir="rtl" className="relative px-2 pb-2 pt-3" style={{ paddingBottom: 8 + keyboardInset }}>
+    <div dir="rtl" className="relative px-2 pb-2 pt-3" style={{ paddingBottom: 8 + (inputFocused ? keyboardInset : 0) }}>
       <div
         role="separator"
         aria-orientation="horizontal"
@@ -181,7 +182,8 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
           onChange={(event) => setText(event.target.value)}
           onInput={(event) => resizeRitaTextarea(event.currentTarget)}
           onKeyDown={handleKeyDown}
-          onFocus={(event) => { const textarea = event.currentTarget; window.setTimeout(() => textarea.scrollIntoView({ block: 'nearest' }), 300); }}
+          onBlur={() => setInputFocused(false)}
+          onFocus={(event) => { setInputFocused(true); const textarea = event.currentTarget; window.setTimeout(() => textarea.scrollIntoView({ block: 'nearest' }), 300); }}
           aria-label="הודעה לריטה"
           rows={1}
           className="!min-h-10 max-h-32 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-2 text-xs text-foreground outline-none [field-sizing:fixed]"

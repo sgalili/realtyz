@@ -354,7 +354,6 @@ function ScopedAiAgentDrawer({ identity }: { identity: ReturnType<typeof useRita
     setInput('');
     setPendingAttachments([]);
     toast.success('הצ׳אט אופס');
-    window.requestAnimationFrame(() => document.getElementById('rita-chat-input')?.focus());
   }, [user?.id, ownerId]);
 
   const focusComposer = useCallback(() => {
@@ -1022,7 +1021,6 @@ ${shareUrl}
               </InputGroupAddon>
               <PromptInputTextarea
                 id="rita-chat-input"
-                autoFocus
                 rows={1}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
