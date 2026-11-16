@@ -87,7 +87,7 @@ export function SuperAdminLeadAlert({ onNavigate }: { onNavigate?: () => void })
       aria-label={newCount > 0 ? `סופר אדמין, ${newCount} התראות חדשות` : 'סופר אדמין'}
       title={newCount > 0 ? `${newCount} התראות סופר אדמין חדשות` : 'סופר אדמין'}
     >
-      <ShieldCheck className="h-[19px] w-[19px]" aria-hidden="true" />
+      <ShieldCheck className="h-[19px] w-[19px] text-destructive" aria-hidden="true" />
       {newCount > 0 && (
         <span className="absolute -left-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground">
           {newCount > 99 ? '99+' : newCount}
