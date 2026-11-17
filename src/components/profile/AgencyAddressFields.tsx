@@ -96,7 +96,7 @@ export function AgencyAddressFields({ city, address, disabled, onSave }: {
     queryKey: ['national-city-resolve', city],
     queryFn: async ({ signal }) => {
       const matches = await searchNationalCities(city, signal);
-      return matches.find(match => match.name === city.trim())?.code ?? null;
+      return matches.find(match => match.name === city.trim().replace(/\s+/g, ' '))?.code ?? null;
     },
     enabled: !!city.trim() && !selectedCityCode,
     staleTime: 24 * 60 * 60 * 1000,

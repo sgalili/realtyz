@@ -14,13 +14,34 @@ async function nationalRecords(resourceId: string, params: URLSearchParams, sign
   return payload.result.records;
 }
 
-export async function searchNationalCities(query: string, signal?: AbortSignal): Promise<NationalLocality[]> {
-  const params = new URLSearchParams();
-  const q = query.trim();
-  if (q) params.set('q', q);
-  const records = await nationalRecords(ISRAEL_SETTLEMENTS_RESOURCE, params, signal, 10000);
-  return records.map(record => ({ code: String(record['סמל_ישוב'] ?? '').trim(), name: String(record['שם_ישוב'] ?? '').trim() }))
-    .filter(locality => locality.code && locality.name);
+let allCitiesPromise: Promise<NationalLocality[]> | null = null;
+
+function loadAllNationalCities(): Promise<NationalLocality[]> {
+  if (!allCitiesPromise) {
+    allCitiesPromise = nationalRecords(ISRAEL_SETTLEMENTS_RESOURCE, new URLSearchParams(), undefined, 5000)
+      .then(records => {
+        const unique = new Map<string, NationalLocality>();
+        for (const record of records) {
+          const code = String(record['סמל_ישוב'] ?? '').trim();
+          const name = String(record['שם_ישוב'] ?? '').replace(/\s+/g, ' ').trim();
+          if (code && code !== '0' && name && !unique.has(code)) unique.set(code, { code, name });
+        }
+        return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name, 'he'));
+      })
+      .catch(error => { allCitiesPromise = null; throw error; });
+  }
+  return allCitiesPromise;
+}
+
+const normalizeCity = (value: string) => value.replace(/[\s\-־'"״׳()]/g, '');
+
+export async function searchNationalCities(query: string, _signal?: AbortSignal): Promise<NationalLocality[]> {
+  const all = await loadAllNationalCities();
+  const q = normalizeCity(query.trim());
+  if (!q) return all;
+  const starts = all.filter(c => normalizeCity(c.name).startsWith(q));
+  const contains = all.filter(c => !normalizeCity(c.name).startsWith(q) && normalizeCity(c.name).includes(q));
+  return [...starts, ...contains];
 }
 
 export async function searchNationalStreets(cityCode: string, query: string, signal?: AbortSignal): Promise<NationalLocality[]> {
