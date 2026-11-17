@@ -5,6 +5,15 @@ export const BROKER_TEMPLATE_BODY = `שלום {brokerName},
 אם תרצה לקבל קישור כניסה אישי, השב להודעה זו במילה "כן". אם אינך מעוניין, השב "הסר" ולא נפנה אליך שוב.
 בברכה, צוות TORAFF`;
 
+export const BROKER_TEMPLATE_BODY_FEMALE = `שלום {brokerName},
+כאן צוות TORAFF. ריכזנו עבורך את פרטי הנכסים הפעילים שלך במרחב עבודה אישי, כדי לחסוך לך את ההזנה הידנית.
+הנכסים אינם מתפרסמים ללא אישורך, ותוכלי לבדוק ולתקן כל פרט בעצמך.
+אם תרצי לקבל קישור כניסה אישי, השיבי להודעה זו במילה "כן". אם אינך מעוניינת, השיבי "הסר" ולא נפנה אלייך שוב.
+בברכה, צוות TORAFF`;
+
+/** Fixed, non-editable invitation wording for the recipient's saved gender (unknown uses the default). */
+export const brokerTemplateFor = (gender: unknown) => gender === 'female' ? BROKER_TEMPLATE_BODY_FEMALE : BROKER_TEMPLATE_BODY;
+
 /** Converts editable text to Meta body. {brokerName} once; {authLink} optional (link-less wording is the default). */
 export function templateBody(text: string): string {
   const clean = text.trim();

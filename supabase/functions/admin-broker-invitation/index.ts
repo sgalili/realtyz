@@ -1,12 +1,12 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
-import { BROKER_TEMPLATE_BODY, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName, officialBrokerPhone } from '../_shared/brokerInvitationTemplate.ts';
+import { brokerTemplateFor, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName, officialBrokerPhone } from '../_shared/brokerInvitationTemplate.ts';
 
 const schema = z.object({
   action: z.enum(['status', 'register', 'send']),
   broker_id: z.string().uuid().optional(),
-  text: z.string().max(1024).default(BROKER_TEMPLATE_BODY),
+  gender: z.enum(['male', 'female']).nullable().optional(),
   request_id: z.string().uuid().optional(),
   consent: z.literal(true).optional(),
 }).strict();
@@ -22,10 +22,17 @@ Deno.serve(async req => {
   try { parsed = schema.safeParse(await req.json()); } catch { return json({ error: 'Invalid JSON' }, 400); }
   if (!parsed.success) return json({ error: parsed.error.flatten() }, 400);
   const input = parsed.data;
-  let body: string;
-  try { body = templateBody(input.text); } catch (e) { return json({ error: e instanceof Error ? e.message : 'Invalid template' }, 400); }
-  const name = await invitationTemplateName(body);
   const admin = adminClient();
+  // Wording is fixed server-side; on send the recipient's saved gender decides the variant.
+  let gender: unknown = input.gender;
+  if (input.broker_id) {
+    const { data: g } = await admin.from('profiles').select('gender').eq('id', input.broker_id).maybeSingle();
+    gender = g?.gender;
+  }
+  const text = brokerTemplateFor(gender);
+  let body: string;
+  try { body = templateBody(text); } catch (e) { return json({ error: e instanceof Error ? e.message : 'Invalid template' }, 400); }
+  const name = await invitationTemplateName(body);
   try {
     // Use only the platform's already configured official number, never the target broker's WABA.
     const { data: rows, error: configError } = await admin.from('wa_providers').select('config').eq('provider_name', 'WBA').eq('is_official', true).eq('is_active', true).order('updated_at', { ascending: false });
@@ -49,7 +56,7 @@ Deno.serve(async req => {
     if (input.action === 'register' && !template) {
       template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/auth?broker=00000000-0000-4000-8000-000000000001'] : ['ישראל ישראלי']] } }] });
     }
-    if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text: input.text, sender: '972537983832' });
+    if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text, sender: '972537983832' });
     if (!input.broker_id || !input.request_id || !input.consent) return json({ error: 'נדרשים מתווך, מזהה שליחה ואישור הסכמת הנמען' }, 400);
     if (template?.status !== 'APPROVED') return json({ error: 'התבנית טרם אושרה ב-Meta', status: template?.status ?? 'NOT_REGISTERED' }, 409);
     const { data: broker, error: brokerError } = await admin.from('profiles').select('id,full_name,phone').eq('id', input.broker_id).single();

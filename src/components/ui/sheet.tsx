@@ -67,7 +67,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
         <SheetPrimitive.Close
           aria-label={closeAriaLabel}
           style={closeStyle}
-          className={cn("absolute right-[calc(1rem+5px)] top-[calc(1rem-5px)] rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none", closeClassName)}
+          className={cn("absolute right-[calc(1rem+5px)] top-[calc(1rem-5px)] bg-transparent border-none shadow-none opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none", closeClassName)}
         >
           <X className="h-4 w-4" />
           <span className="sr-only">{closeAriaLabel}</span>
