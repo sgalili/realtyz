@@ -1555,6 +1555,13 @@
       "when": 1794921952710,
       "tag": "0221_optional_developer_project_link_and_activate_roi",
       "breakpoints": true
+    },
+    {
+      "idx": 222,
+      "version": "7",
+      "when": 1794930035908,
+      "tag": "0222_revoke_execute_readonly_query",
+      "breakpoints": true
     }
   ]
 }
