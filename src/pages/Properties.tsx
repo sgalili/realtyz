@@ -1,3 +1,4 @@
+import { missingListingDetails, listingPublicationState, PUBLICATION_STATE_LABELS } from '@/lib/listingCompleteness';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { Table } from '@/components/ui/table';
@@ -1650,6 +1651,8 @@ export function ResultTable({
     ?? ((r: UnifiedResult) => (r.localId ? <AffiliateTierPrices config={affiliateConfigs?.get(r.localId)} /> : null));
   const showAffiliateColumn = !!affiliateCell || (!hideDefaultActions && localIds.length > 0);
   const showCommissionColumn = !!commissionCell || (!hideDefaultActions && localIds.length > 0);
+  // Owner-only readiness: partner/read-only tables never show internal status.
+  const showStatusColumn = !hideDefaultActions && localIds.length > 0;
   const selectAllIds = allSelectableIds && allSelectableIds.length > 0 ? allSelectableIds : localIds;
   const allSelected = selectAllIds.length > 0 && selectAllIds.every((id) => selectedIds?.has(id));
 
@@ -1661,14 +1664,14 @@ export function ResultTable({
   // Plain element factory (NOT a component): the shared Table primitive clones
   // header cells with ref/sort/drag props, which function components swallow.
   const headerCell = (label: string, extraClass?: string) => (
-    <th className={`px-2 py-2 font-semibold whitespace-nowrap select-none ${extraClass ?? ''}`}>
+    <th className={`px-1.5 py-2 align-bottom font-semibold whitespace-normal break-words leading-tight select-none ${extraClass ?? ''}`}>
       {label}
     </th>
   );
 
   return (
     <Card className="max-w-full w-full min-w-0">
-      <Table className="w-full min-w-max text-[15px]" dir="rtl">
+      <Table className="w-full text-[14px] sm:text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
             {selectionMode && results.length > 0 ? (
@@ -1681,6 +1684,7 @@ export function ResultTable({
               </th>
             ) : null}
             {headerCell("תמונה", "w-14")}
+            {showStatusColumn ? headerCell("סטטוס", "min-w-[6.5rem]") : null}
             {showCommissionColumn ? headerCell("תגמולים") : null}
 
             {headerCell("רחוב")}
@@ -1738,10 +1742,24 @@ export function ResultTable({
                     })()}
                   </div>
                 </td>
+                {showStatusColumn ? (
+                  <td className="px-1.5 py-1.5 align-top">{(() => {
+                    if (!r.localId) return <span className="text-muted-foreground">—</span>;
+                    const state = listingPublicationState(r);
+                    const missing = missingListingDetails(r);
+                    const tone = state === 'published' ? 'bg-success/15 text-success' : state === 'draft' ? 'bg-muted text-muted-foreground' : 'bg-warning/15 text-warning-foreground';
+                    return (
+                      <span className="flex flex-col items-start gap-1 leading-tight">
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${tone}`}>{PUBLICATION_STATE_LABELS[state]}</span>
+                        {missing.length ? <span className="text-[11px] text-destructive" title={`חסר: ${missing.join(', ')}`}>חסר: {missing.join(', ')}</span> : state !== 'published' ? <span className="text-[11px] text-success">מוכן לפרסום</span> : null}
+                      </span>
+                    );
+                  })()}</td>
+                ) : null}
                 {showCommissionColumn ? (
                   <td className="px-2 py-1.5 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>{renderCommission(r)}</td>
                 ) : null}
-                <td className="px-2 py-1.5 w-64 max-w-[320px] whitespace-normal">
+                <td className="px-2 py-1.5 min-w-[8rem] max-w-[320px] whitespace-normal">
                   {(() => {
                     // Internal table "רחוב" column: street name + property type only.
                     const label = propertyTitle?.(r) ?? formatStreetTypeTitle({
@@ -1813,7 +1831,7 @@ export function ResultTable({
               </tr>
               {rowNotes && rowNotes.length > 0 && (
                 <tr className="border-t-0 bg-muted/20">
-                  <td className="p-0" colSpan={11 + Number(selectionMode && results.length > 0) + Number(showCommissionColumn) + Number(showPublisherColumn) + Number(!hideDefaultActions || !!endActions || showAffiliateColumn)}>
+                  <td className="p-0" colSpan={11 + Number(showStatusColumn) + Number(selectionMode && results.length > 0) + Number(showCommissionColumn) + Number(showPublisherColumn) + Number(!hideDefaultActions || !!endActions || showAffiliateColumn)}>
                     <FixedTablePanel className="px-2 pb-2"><PropertyNotesBlock notes={rowNotes} /></FixedTablePanel>
                   </td>
                 </tr>
