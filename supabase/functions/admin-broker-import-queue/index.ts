@@ -165,7 +165,15 @@ Deno.serve(async req => {
         const work=c.developerWork as DeveloperQueueWork;
         const companyName=work.developer.company_name?.trim();
         if(!companyName)throw new Error('לא נמצא שם חברה בעמוד היזם; לא נוצר חשבון ללא זהות');
-        const {data:matches,error:matchError}=await admin.from('developers').select('*').eq('source_url',work.url).limit(2);if(matchError)throw matchError;
+        let {data:matches,error:matchError}=await admin.from('developers').select('*').eq('source_url',work.url).limit(2);if(matchError)throw matchError;
+        if(!matches?.length) {
+          // A direct project link reuses the developer that already owns that exact project page (query string ignored).
+          const projectPath=work.url.split('?')[0].replace(/\/$/,'');
+          const {data:owned,error:ownedError}=await admin.from('developer_projects').select('developer_id').or(`source_url.eq.${projectPath},source_url.like.${projectPath}?*`).limit(20);if(ownedError)throw ownedError;
+          const ids=[...new Set((owned??[]).map(r=>r.developer_id))];
+          if(ids.length>1)throw new Error('הפרויקט משויך ליותר מיזם אחד; נדרשת בדיקת מנהל');
+          if(ids.length){const r=await admin.from('developers').select('*').eq('id',ids[0]).limit(1);if(r.error)throw r.error;matches=r.data;}
+        }
         if((matches?.length??0)>1)throw new Error('קיים יותר מחשבון אחד המקושר לעמוד היזם; נדרשת בדיקת מנהל');
         const existing=matches?.[0];
         let accountId=existing?.workspace_owner_id as string|undefined;
@@ -175,7 +183,7 @@ Deno.serve(async req => {
           accountId=d.user_id;
         }
         let developerId=existing?.id as string|undefined;
-        const companyRow={workspace_owner_id:accountId,owner_user_id:existing?.owner_user_id??accountId,company_name:companyName,phone:work.developer.phone??existing?.phone??null,logo_url:work.developer.logo_url??existing?.logo_url??null,source_url:work.url,last_synced_at:new Date().toISOString()};
+        const companyRow={workspace_owner_id:accountId,owner_user_id:existing?.owner_user_id??accountId,company_name:companyName,phone:work.developer.phone??existing?.phone??null,logo_url:work.developer.logo_url??existing?.logo_url??null,source_url:existing?.source_url??work.url,last_synced_at:new Date().toISOString()};
         if(developerId){const {error}=await admin.from('developers').update(companyRow).eq('id',developerId);if(error)throw error;}
         else {const {data,error}=await admin.from('developers').insert(companyRow).select('id').single();if(error)throw error;developerId=data.id;}
         if(work.developer.bio){const {error}=await admin.from('profiles').update({imported_public_bio:work.developer.bio}).eq('id',accountId).is('imported_public_bio',null);if(error)throw error;}

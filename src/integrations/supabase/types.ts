@@ -10658,6 +10658,7 @@ export type Database = {
           image_url: string
           name: string
           price_from: number
+          timeline: Json
         }[]
       }
       complete_admin_broker_first_login: { Args: never; Returns: string }

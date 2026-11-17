@@ -16,6 +16,7 @@ import { PROJECT_STATUS, type DeveloperProject } from '@/lib/developerProjectFor
 import BoardSearchControls from '@/components/public/BoardSearchControls';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import PropertyGallerySlider from '@/components/public/PropertyGallerySlider';
+import ProjectTimelineBar from '@/components/developers/ProjectTimelineBar';
 import ProjectHierarchyDetails from '@/components/developers/ProjectHierarchyDetails';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER } from '@/lib/leadTypeFilter';
@@ -206,6 +207,7 @@ function DeveloperDashboardContent() {
             <div className="px-3 pb-2"><ProjectStatusCell project={p} hasImages={projectImages(p).length > 0} stage={PROJECT_STATUS[p.status] ?? p.status} /></div>
             <PropertyGallerySlider photos={projectImages(p)} alt={p.name} overlay={<span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">{PROJECT_STATUS[p.status] ?? p.status}</span>} />
             <div className="flex flex-1 flex-col gap-3 p-4">
+              <ProjectTimelineBar compact timeline={(p as { timeline?: unknown }).timeline} />
               <DeveloperCommissionBadges project={p} onEdit={() => openPricing(p)} />
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">{meta(p).map(item => <span key={item} className="inline-flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-primary" />{item}</span>)}</div>
               <Button variant="outline" className="mt-auto justify-between" aria-expanded={open} onClick={event => toggleProject(p.id, event.currentTarget)}>בניינים ויחידות<ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button>
