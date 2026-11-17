@@ -49,7 +49,7 @@ function EmailSendDialog({ b }: { b: ContactBroker }) {
   });
   const emailDirty = email.trim().toLowerCase() !== (b.email ?? '');
   return <>
-    <Button variant="outline" className="h-11 text-base" onClick={() => setOpen(true)}><Mail className="h-4 w-4" />שלח מייל</Button>
+    <Button size="icon" variant="ghost" className="h-10 w-10" aria-label={`שליחת מייל ל${b.full_name || 'מתווך'}`} title="שליחת מייל" onClick={() => setOpen(true)}><Mail className="h-4 w-4" /></Button>
     <Dialog open={open} onOpenChange={v => { if (!send.isPending) setOpen(v); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
         <DialogHeader><DialogTitle>שליחת מייל ל{b.full_name || 'מתווך'}</DialogTitle></DialogHeader>
@@ -107,15 +107,13 @@ function BrokerRow({ b }: { b: ContactBroker }) {
         </> : <>
           <span dir="ltr" className={`text-base ${b.phone ? '' : 'text-muted-foreground'}`}>{b.phone ? formatPhoneDisplay(b.phone) : 'אין נייד'}</span>
           <Button size="icon" variant="ghost" aria-label={`עריכת הנייד של ${b.full_name}`} disabled={!!b.first_login_at} onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /></Button>
+          {complete && <OfficialBrokerInvitationDialog broker={{ id: b.user_id, full_name: b.full_name }} triggerClassName="h-10 w-10" />}
+          <EmailSendDialog b={b} />
         </>}
       </div>
     </div>
     {!complete && <Badge variant="secondary" className="text-sm">ממתין להשלמת פרטי התקשרות</Badge>}
-    <div className="flex flex-wrap items-center gap-2">
-      {complete && <OfficialBrokerInvitationDialog broker={{ id: b.user_id, full_name: b.full_name }} triggerLabel="שלח וואטסאפ" />}
-      <EmailSendDialog b={b} />
-      {!b.is_developer && !b.license_verified && regLicense && <BrokerRegistryNameButton userId={b.user_id} license={regLicense} onUpdated={() => void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] })} />}
-    </div>
+    {!b.is_developer && !b.license_verified && regLicense && <div className="flex flex-wrap items-center gap-2"><BrokerRegistryNameButton userId={b.user_id} license={regLicense} onUpdated={() => void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] })} /></div>}
   </li>;
 }
 
