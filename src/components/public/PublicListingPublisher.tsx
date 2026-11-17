@@ -1064,7 +1064,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                     <PricingCardHeader
                       icon={(() => { const iconClass = cn("!h-[29.3px] !w-[29.3px] shrink-0", active ? 'closing-tone' : 'pricing-icon-disabled'); return key === 'Form' ? <LeadFormIcon className={iconClass} strokeWidth={1} aria-hidden /> : key === 'Whatsapp' ? <PublisherWhatsAppIcon className={iconClass} strokeWidth={1} /> : <LeadPhoneIcon className={iconClass} strokeWidth={1} aria-hidden />; })()}
                       price={expanded ? null : <CollapsedOffer active={active} amount={leadPriceLabel(price + extraCost)} label={`עריכת עמלה עבור ${label}`} onClick={toggle} />}
-                      title={<Button type="button" variant="ghost" className="h-auto min-w-0 justify-start whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={expanded} onClick={toggle}>{label}</Button>}
+                      title={<Button type="button" variant="ghost" className="h-auto min-w-0 justify-start whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent reward-card-title" aria-expanded={expanded} onClick={toggle}>{label}</Button>}
                       help={<>
                       <LeadTypeHelp label={label}>
                         <p>

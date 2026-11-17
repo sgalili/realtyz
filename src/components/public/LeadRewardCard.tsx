@@ -38,7 +38,7 @@ export function LeadRewardCard({ tier, label, value, onChange, limit, onLimitCha
   return <Card className="closing-fee space-y-2 rounded-2xl p-4" data-level={leadPriceLevel(tier, price)}>
     <PricingCardHeader icon={icon}
       price={open ? null : <CollapsedOffer active={active} amount={leadPriceLabel(price)} label={`עריכת עמלה עבור ${label}`} onClick={toggle} />}
-      title={<Button type="button" variant="ghost" className="h-auto min-w-0 justify-start whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={open} onClick={toggle}>{label}</Button>}
+      title={<Button type="button" variant="ghost" className="h-auto min-w-0 justify-start whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent reward-card-title" aria-expanded={open} onClick={toggle}>{label}</Button>}
       help={null}
       controls={<Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 p-0 text-muted-foreground" aria-label={`${open ? 'כווץ' : 'הרחב'} ${label}`} aria-expanded={open} onClick={toggle}><ChevronDown className={cn('h-6 w-6 transition-transform motion-reduce:transition-none', open && 'rotate-180')} /></Button>} />
     {open && <fieldset disabled={disabled} className="space-y-2">
@@ -55,7 +55,7 @@ export function ClosingRewardCard({ amount, active, children, level, defaultOpen
   return <Card className="closing-fee space-y-2 rounded-2xl p-4" data-level={level}>
     <PricingCardHeader icon={<Trophy className={cn('!h-[29.3px] !w-[29.3px] shrink-0', active ? 'closing-tone' : 'pricing-icon-disabled')} strokeWidth={1} aria-hidden />}
       price={open ? null : <CollapsedOffer active={active} amount={amount} label={`עריכת ${CLOSING_REWARD_LABEL}`} onClick={() => setOpen(true)} />}
-      title={<Button type="button" variant="ghost" className="h-auto min-w-0 justify-start whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={open} onClick={() => setOpen(v => !v)}>{CLOSING_REWARD_LABEL}</Button>}
+      title={<Button type="button" variant="ghost" className="h-auto min-w-0 justify-start whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent reward-card-title" aria-expanded={open} onClick={() => setOpen(v => !v)}>{CLOSING_REWARD_LABEL}</Button>}
       help={null}
       controls={<Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 p-0 text-muted-foreground" aria-label={`${open ? 'כווץ' : 'הרחב'} ${CLOSING_REWARD_LABEL}`} aria-expanded={open} onClick={() => setOpen(v => !v)}><ChevronDown className={cn('h-6 w-6 transition-transform', open && 'rotate-180')} /></Button>} />
     {open && children}

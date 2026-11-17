@@ -2293,3 +2293,9 @@ svg.lucide-megaphone {
 :root { --payment-logo-surface: 0 0% 100%; --payment-option-font-size: 18px; }
 .payment-logo { background: hsl(var(--payment-logo-surface)); }
 .payment-option-label { font-size: var(--payment-option-font-size); line-height: 1.4; }
+
+/* Reward/lead-price card titles: 2px smaller than surrounding base text so they fit one mobile line. */
+.reward-card-title, .pricing-editor .reward-card-title { font-size: 14px !important; }
+.realtyz-dashboard-scale .reward-card-title { font-size: 16px !important; }
+:is([data-site-dialog], [data-site-popup]) .reward-card-title { font-size: calc(14px + var(--dialog-font-increase)) !important; }
+.pricing-editor :is([data-site-dialog], [data-site-popup]) .reward-card-title, :is([data-site-dialog], [data-site-popup]) .pricing-editor .reward-card-title { font-size: 17px !important; }
