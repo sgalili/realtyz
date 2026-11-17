@@ -7,6 +7,7 @@ import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list') }),
+  z.object({ action: z.literal('history') }),
   z.object({ action: z.literal('save'), user_id: z.string().uuid(), phone: z.string().trim().max(20).optional(), email: z.string().trim().max(254).optional() }),
 ]);
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -21,17 +22,38 @@ Deno.serve(async req => {
   const parsed = schema.safeParse(await req.json().catch(() => null)); if (!parsed.success) return json({ error: 'invalid_input' }, 400);
   const input = parsed.data;
 
+  if (input.action === 'history') {
+    // Every invitation sent from the hub: official WhatsApp sends plus recorded email invitations.
+    const [{ data: wa }, { data: em }] = await Promise.all([
+      admin.from('broker_invitation_sends').select('broker_id,status,created_at').order('created_at', { ascending: false }).limit(300),
+      admin.from('admin_broker_onboarding').select('user_id,email_invited_at,email_message_id').not('email_invited_at', 'is', null).order('email_invited_at', { ascending: false }).limit(300),
+    ]);
+    const items = [
+      ...(wa ?? []).map(r => ({ user_id: r.broker_id, channel: 'whatsapp', status: r.status, sent_at: r.created_at })),
+      ...(em ?? []).map(r => ({ user_id: r.user_id, channel: 'email', status: r.email_message_id ? 'sent' : 'pending', sent_at: r.email_invited_at })),
+    ].sort((a, b) => String(b.sent_at).localeCompare(String(a.sent_at))).slice(0, 300);
+    const ids = [...new Set(items.map(i => i.user_id))];
+    if (!ids.length) return json({ items: [] });
+    const [{ data: profiles }, { data: offices }] = await Promise.all([
+      admin.from('profiles').select('id,full_name,avatar_url').in('id', ids),
+      admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', ids),
+    ]);
+    return json({ items: items.map(i => { const p = profiles?.find(x => x.id === i.user_id); const o = offices?.find(x => x.user_id === i.user_id);
+      return { ...i, full_name: p?.full_name ?? '', avatar_url: (p as any)?.avatar_url ?? null, office_name: o?.agency_name ?? null, office_logo_url: o?.logo_url ?? null }; }) });
+  }
+
   if (input.action === 'list') {
     const { data: rows, error } = await admin.from('admin_broker_onboarding').select('user_id,contact_status,first_login_at,email_consent_at,email_invited_at,invited_at,created_at').eq('import_source', 'bright_data').order('created_at', { ascending: false }).limit(300);
     if (error) return json({ error: 'קריאת הרשימה נכשלה' }, 500);
     const ids = (rows ?? []).map(r => r.user_id);
     if (!ids.length) return json({ brokers: [] });
-    const [{ data: profiles }, { data: offices }, { data: licenses }, { data: drafts }, { data: verified }] = await Promise.all([
+    const [{ data: profiles }, { data: offices }, { data: licenses }, { data: drafts }, { data: verified }, { data: devRoles }] = await Promise.all([
       admin.from('profiles').select('id,full_name,phone,email,avatar_url').in('id', ids),
       admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', ids),
       admin.from('admin_approved_broker_licenses').select('user_id,license_number').in('user_id', ids),
       admin.from('listings').select('workspace_owner_id').in('workspace_owner_id', ids).eq('is_published', false),
       admin.from('broker_license_verifications').select('user_id,license_number').in('user_id', ids),
+      admin.from('user_roles').select('user_id').in('user_id', ids).eq('role', 'developer'),
     ]);
     const brokers = (rows ?? []).map(r => {
       const p = profiles?.find(x => x.id === r.user_id);
@@ -39,6 +61,7 @@ Deno.serve(async req => {
         license_number: verified?.find(l => l.user_id === r.user_id)?.license_number ?? licenses?.find(l => l.user_id === r.user_id)?.license_number ?? null,
         office_name: offices?.find(o => o.user_id === r.user_id)?.agency_name ?? null,
         office_logo_url: offices?.find(o => o.user_id === r.user_id)?.logo_url ?? null, avatar_url: (p as any)?.avatar_url ?? null,
+        is_developer: (devRoles ?? []).some(d => d.user_id === r.user_id),
         drafts: (drafts ?? []).filter(d => d.workspace_owner_id === r.user_id).length,
         contact_status: r.contact_status, first_login_at: r.first_login_at, email_consent_at: r.email_consent_at, email_invited_at: r.email_invited_at };
     }).filter(b => b.contact_status === 'pending_contact' || !b.phone || !b.email);

@@ -25,7 +25,7 @@ async function invoke(body: Record<string, unknown>) {
   return data;
 }
 
-export function OfficialBrokerInvitationDialog({ broker }: { broker: { id: string; full_name?: string | null } }) {
+export function OfficialBrokerInvitationDialog({ broker, triggerLabel }: { broker: { id: string; full_name?: string | null }; triggerLabel?: string }) {
   const [open, setOpen] = useState(false);
   const [consent, setConsent] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -49,7 +49,7 @@ export function OfficialBrokerInvitationDialog({ broker }: { broker: { id: strin
   const status = state.data?.status;
   const labels: Record<string, string> = { NOT_REGISTERED: 'הנוסח טרם הוגש ל-Meta', PENDING: 'ממתין לאישור Meta', APPROVED: 'תבנית מאושרת', REJECTED: 'Meta דחתה את התבנית', PAUSED: 'התבנית מושהית', DISABLED: 'התבנית אינה פעילה' };
   return <>
-    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="שליחת הזמנה רשמית ב־WhatsApp" title="שליחת הזמנה רשמית ב־WhatsApp" onClick={() => { setOpen(true); setConsent(false); setFeedback(''); requestId.current = crypto.randomUUID(); }}><Send className="h-4 w-4 shrink-0" /></Button>
+    <Button variant={triggerLabel ? 'default' : 'ghost'} size={triggerLabel ? 'default' : 'icon'} className={triggerLabel ? 'h-11 text-base' : 'h-8 w-8'} aria-label="שליחת הזמנה רשמית ב־WhatsApp" title="שליחת הזמנה רשמית ב־WhatsApp" onClick={() => { setOpen(true); setConsent(false); setFeedback(''); requestId.current = crypto.randomUUID(); }}><Send className="h-4 w-4 shrink-0" />{triggerLabel}</Button>
     <Dialog open={open} onOpenChange={value => { if (!mutation.isPending) setOpen(value); }}><DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
       <DialogHeader><DialogTitle>הזמנה ב־WhatsApp ל־{broker.full_name || 'מתווך'}</DialogTitle><DialogDescription>נשלח בתבנית Meta מאושרת מהמספר הרשמי {sender.data ? `+${sender.data}` : ''}.</DialogDescription></DialogHeader>
       {onboarding.data && <p role="status" className="text-sm text-primary">{BROKER_STAGE_LABELS[onboarding.data.stage]}{onboarding.data.pending_properties > 0 ? ` · ${onboarding.data.pending_properties} נכסים לבדיקה` : ''}</p>}
