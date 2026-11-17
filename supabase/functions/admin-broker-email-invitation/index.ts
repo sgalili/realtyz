@@ -2,6 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { brokerFirstName, brokerInvitationEmailHtml, propertyExample, BROKER_EMAIL_BATCH_MAX } from '../_shared/brokerInvitationEmail.ts';
+import { invitationLink } from '../_shared/importInvitationPolicy.ts';
 
 // Email only to brokers whose consent a Super Admin recorded; never to scraped contacts without consent.
 const schema = z.discriminatedUnion('action', [
@@ -10,7 +11,7 @@ const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('send_batch'), broker_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX), message: z.string().trim().min(10).max(4000).optional() }),
 ]);
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-const escHtml = (v: string) => v.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+const escHtml = (v: string) => v.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
 // Super Admin-edited body: escaped plain text only, always followed by the fixed sign-in link and unsubscribe.
 const customEmailHtml = (msg: string, link: string, unsubscribeUrl: string) => `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"></head><body style="margin:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#1f2937"><div style="max-width:560px;margin:0 auto;padding:28px 22px;text-align:right;line-height:1.7;font-size:16px"><div style="font-weight:700;font-size:20px;color:#0f2a4a;margin-bottom:18px">TORAFF</div>${msg.split(/\n{2,}/).map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('')}<p style="margin:8px 0 26px"><a href="${escHtml(link)}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-weight:700">כניסה לנכסים שלי</a></p><p style="margin:0;color:#6b7280;font-size:13px"><a href="${escHtml(unsubscribeUrl)}" style="color:#6b7280">הסרה מרשימת התפוצה</a></p></div></body></html>`;
 const page = (msg: string) => new Response(`<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><body style="font-family:Arial;text-align:center;padding:60px">${msg}</body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
@@ -40,7 +41,7 @@ Deno.serve(async req => {
     return json({ success: true });
   }
 
-  const { data: rows, error } = await admin.from('admin_broker_onboarding').select('user_id,email_unsubscribe_token').not('email_consent_at', 'is', null).is('email_unsubscribed_at', null).is('email_invited_at', null).is('first_login_at', null).limit(500);
+  const { data: rows, error } = await admin.from('admin_broker_onboarding').select('user_id,email_unsubscribe_token,invitation_link_token').not('email_consent_at', 'is', null).is('email_unsubscribed_at', null).is('email_invited_at', null).is('first_invitation_at', null).is('first_login_at', null).limit(500);
   if (error) return json({ error: 'קריאת רשימת המתווכים נכשלה' }, 500);
   const ids = (rows ?? []).map(r => r.user_id);
   const { data: profiles } = ids.length ? await admin.from('profiles').select('id,full_name,email').in('id', ids) : { data: [] };
@@ -55,18 +56,21 @@ Deno.serve(async req => {
   const targets = input.broker_id ? eligible.filter(r => r.user_id === input.broker_id) : eligible;
   if (input.broker_id && !targets.length) return json({ error: 'המתווך אינו זמין לשליחה: נדרשת הסכמה מתועדת וכתובת אימייל תקינה' }, 400);
   for (const r of targets.slice(0, input.limit)) {
+    const { data: account, error: accountError } = await admin.auth.admin.getUserById(r.user_id);
+    if (accountError || !account.user || account.user.last_sign_in_at) { results.push({ broker_id: r.user_id, status: 'skipped' }); continue; }
     // Claim first so a retry or parallel click never sends twice.
     const now = new Date().toISOString();
-    const { data: claimed } = await admin.from('admin_broker_onboarding').update({ email_invited_at: now }).eq('user_id', r.user_id).is('email_invited_at', null).select('user_id').maybeSingle();
+    const { data: claimed } = await admin.from('admin_broker_onboarding').update({ email_invited_at: now }).eq('user_id', r.user_id).is('email_invited_at', null).is('first_invitation_at', null).is('first_login_at', null).select('user_id').maybeSingle();
     if (!claimed) { results.push({ broker_id: r.user_id, status: 'skipped' }); continue; }
     const { data: listings } = await admin.from('listings').select('property_title,address,city,deal_type').eq('workspace_owner_id', r.user_id).not('status', 'in', '(removed,sold,discarded)').order('created_at', { ascending: false }).limit(10);
     const examples = (listings ?? []).map(propertyExample).filter((v): v is string => !!v).slice(0, 2);
     const unsubscribeUrl = `${fnBase}?unsubscribe=${r.email_unsubscribe_token}`;
-    const link = `${site.origin}/auth?broker=${encodeURIComponent(r.user_id)}`;
-    const firstName = brokerFirstName(r.p!.full_name);
+    const link = invitationLink(site.origin, r.user_id, r.invitation_link_token);
+    if (!r.p) continue;
+    const firstName = brokerFirstName(r.p.full_name);
     try {
       const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({
-        from: 'TORAFF <invite@realtyz.co.il>', to: [r.p!.email], subject: firstName ? `${firstName}, הנכסים שלך כבר מחכים לך ב-TORAFF` : 'הנכסים שלך כבר מחכים לך ב-TORAFF',
+        from: 'TORAFF <invite@realtyz.co.il>', to: [r.p.email], subject: firstName ? `${firstName}, הנכסים שלך כבר מחכים לך ב-TORAFF` : 'הנכסים שלך כבר מחכים לך ב-TORAFF',
         html: input.message ? customEmailHtml(input.message, link, unsubscribeUrl) : brokerInvitationEmailHtml({ firstName, examples, link, unsubscribeUrl }),
         headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
         tags: [{ name: 'type', value: 'broker_invitation' }],

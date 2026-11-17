@@ -1,5 +1,10 @@
 # Roadmap
 
+## Pending first invitation and 48-hour follow-up
+- [x] Replace contact completion with uninvited imported broker/developer accounts and retain manual channel actions.
+- [x] Track successful initial invitations and tokenized link clicks; queue one follow-up after 48 hours without a click/login using self-removing per-invitation schedules (up to one minute timing tolerance), not recurring polling.
+- [x] Sixteen invitation tests passed; deployed schema/functions and real signed-in queue (10 accounts) verified; no real invitations sent. The follow-up queue is empty, so actual timed/provider delivery was not exercised. WhatsApp retains its approved link-less opt-in template; tracked links are attached only when the approved template supports a link.
+
 ## Import history actions November 17
 - [x] Add Super Admin log-only deletion without removing imported inventory or queue jobs.
 - [x] Use the official compact Yad2 symbol for source links.

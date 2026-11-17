@@ -1,13 +1,15 @@
 // admin-broker-contact
-// Super Admin-only queue of Bright Data imported brokers missing contact details.
+// Super Admin-only queue of silently imported accounts awaiting a first invitation.
 // Saving a valid mobile completes the account so the existing invitation flows can be used. Never sends anything.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
+import { invitationLink, pendingFirstInvitation } from '../_shared/importInvitationPolicy.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list') }),
   z.object({ action: z.literal('history') }),
+  z.object({ action: z.literal('followups') }),
   z.object({ action: z.literal('imports') }),
   z.object({ action: z.literal('delete_import'), record_id: z.string().min(1).max(120).regex(/^(?:(?:batch|dev|onb):)?[0-9a-f-]{36}(?::[dbp]\d+)?$/i) }),
   z.object({ action: z.literal('save'), user_id: z.string().uuid(), phone: z.string().trim().max(20).optional(), email: z.string().trim().max(254).optional() }),
@@ -23,6 +25,23 @@ Deno.serve(async req => {
   if (caller.kind !== 'user' || !await isSuperAdmin(caller.userId, admin)) return json({ error: 'forbidden' }, 403);
   const parsed = schema.safeParse(await req.json().catch(() => null)); if (!parsed.success) return json({ error: 'invalid_input' }, 400);
   const input = parsed.data;
+
+  if (input.action === 'followups') {
+    const { data: rows, error } = await admin.from('import_invitation_followups').select('user_id,channel,due_at,status,message').eq('status', 'pending').order('due_at');
+    if (error) return json({ error: 'קריאת התזכורות נכשלה' }, 500);
+    const items = [];
+    for (const row of rows ?? []) {
+      const [{ data: onboarding }, { data: auth }, { data: profile }] = await Promise.all([
+        admin.from('admin_broker_onboarding').select('first_login_at,invitation_clicked_at,email_consent_at,email_unsubscribed_at,invitation_link_token').eq('user_id', row.user_id).maybeSingle(),
+        admin.auth.admin.getUserById(row.user_id),
+        admin.from('profiles').select('full_name').eq('id', row.user_id).maybeSingle(),
+      ]);
+      if (!onboarding || onboarding.first_login_at || onboarding.invitation_clicked_at || auth?.user?.last_sign_in_at || (row.channel === 'email' && (!onboarding.email_consent_at || onboarding.email_unsubscribed_at))) {
+        await admin.from('import_invitation_followups').update({ status: 'cancelled' }).eq('user_id', row.user_id);
+      } else items.push({ ...row, message: `${row.message}\n${invitationLink(Deno.env.get('PUBLIC_SITE_URL') || 'https://toraff.co.il', row.user_id, onboarding.invitation_link_token)}`, full_name: profile?.full_name ?? '' });
+    }
+    return json({ items });
+  }
 
   if (input.action === 'delete_import') {
     // The history aggregates operational records; never delete the queue, inventory or account behind a log row.
@@ -108,9 +127,20 @@ Deno.serve(async req => {
   }
 
   if (input.action === 'list') {
-    const { data: rows, error } = await admin.from('admin_broker_onboarding').select('user_id,contact_status,first_login_at,email_consent_at,email_invited_at,invited_at,created_at').eq('import_source', 'bright_data').order('created_at', { ascending: false }).limit(300);
-    if (error) return json({ error: 'קריאת הרשימה נכשלה' }, 500);
-    const ids = (rows ?? []).map(r => r.user_id);
+    const rows = [];
+    for (let start = 0; ; start += 500) {
+      const { data, error } = await admin.from('admin_broker_onboarding').select('user_id,contact_status,import_source,first_invitation_at,first_login_at,email_consent_at,email_invited_at,invited_at,created_at').not('import_source', 'is', null).is('first_invitation_at', null).is('first_login_at', null).order('user_id').range(start, start + 499);
+      if (error) return json({ error: 'קריאת הרשימה נכשלה' }, 500);
+      rows.push(...(data ?? []));
+      if ((data?.length ?? 0) < 500) break;
+    }
+    const eligible = [];
+    for (const row of rows) {
+      const { data, error } = await admin.auth.admin.getUserById(row.user_id);
+      if (error) return json({ error: 'בדיקת החשבונות נכשלה' }, 500);
+      if (data.user && pendingFirstInvitation(row, data.user.last_sign_in_at ?? null)) eligible.push(row);
+    }
+    const ids = eligible.map(r => r.user_id);
     if (!ids.length) return json({ brokers: [] });
     const [{ data: profiles }, { data: offices }, { data: licenses }, { data: drafts }, { data: verified }, { data: devRoles }] = await Promise.all([
       admin.from('profiles').select('id,full_name,phone,email,avatar_url,city,broker_license_number,locked_broker_name').in('id', ids),
@@ -120,7 +150,7 @@ Deno.serve(async req => {
       admin.from('broker_license_verifications').select('user_id,license_number,verified_at').in('user_id', ids),
       admin.from('user_roles').select('user_id').in('user_id', ids).eq('role', 'developer'),
     ]);
-    const brokers = (rows ?? []).map(r => {
+    const brokers = eligible.map(r => {
       const p = profiles?.find(x => x.id === r.user_id);
       return { user_id: r.user_id, full_name: p?.full_name ?? '', phone: p?.phone ?? null, email: realEmail(p?.email) ? p?.email : null,
         license_number: verified?.find(l => l.user_id === r.user_id)?.license_number ?? licenses?.find(l => l.user_id === r.user_id)?.license_number ?? null,
@@ -131,12 +161,12 @@ Deno.serve(async req => {
         is_developer: (devRoles ?? []).some(d => d.user_id === r.user_id),
         drafts: (drafts ?? []).filter(d => d.workspace_owner_id === r.user_id).length,
         contact_status: r.contact_status, first_login_at: r.first_login_at, email_consent_at: r.email_consent_at, email_invited_at: r.email_invited_at };
-    }).filter(b => b.contact_status === 'pending_contact' || !b.phone || !b.email);
+    });
     return json({ brokers });
   }
 
-  const { data: row } = await admin.from('admin_broker_onboarding').select('user_id,first_login_at').eq('user_id', input.user_id).eq('import_source', 'bright_data').maybeSingle();
-  if (!row) return json({ error: 'המתווך לא יובא דרך Bright Data' }, 404);
+  const { data: row } = await admin.from('admin_broker_onboarding').select('user_id,first_login_at').eq('user_id', input.user_id).not('import_source', 'is', null).maybeSingle();
+  if (!row) return json({ error: 'החשבון לא הוקם ביבוא' }, 404);
   if (row.first_login_at) return json({ error: 'המתווך כבר התחבר; פרטי ההתקשרות שלו מנוהלים על ידו' }, 400);
   const phone = input.phone ? normalizePhone(input.phone) : null;
   if (input.phone && !phone) return json({ error: 'מספר נייד לא תקין (05X-XXXXXXX)' }, 400);

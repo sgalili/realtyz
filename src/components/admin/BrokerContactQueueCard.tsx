@@ -90,7 +90,7 @@ function BrokerRow({ b }: { b: ContactBroker }) {
     onSuccess: d => { toast.success(d.complete ? 'הנייד נשמר · אפשר לשלוח הזמנה' : 'נשמר · עדיין נדרש נייד'); setEditing(false); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
-  const complete = b.contact_status === 'complete' && !!b.phone;
+  const complete = !!b.phone;
   const dirty = !!phone.trim() && phone.replace(/\D/g, '') !== (b.phone ? formatPhoneDisplay(b.phone).replace(/\D/g, '') : '');
   const dest = b.is_developer ? 'הפרויקטים' : 'הנכסים';
   const regLicense = b.profile_license ?? b.license_number;
@@ -114,7 +114,7 @@ function BrokerRow({ b }: { b: ContactBroker }) {
         </>}
       </div>
     </div>
-    {!complete && <Badge variant="secondary" className="text-sm">ממתין להשלמת פרטי התקשרות</Badge>}
+    {!complete && <Badge variant="secondary" className="text-sm">נדרש נייד לשליחת WhatsApp</Badge>}
     {!b.is_developer && !b.license_verified && regLicense && <div className="flex flex-wrap items-center gap-2"><BrokerRegistryNameButton userId={b.user_id} license={regLicense} onUpdated={() => void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] })} /></div>}
   </li>;
 }
@@ -181,16 +181,24 @@ export function ImportHistory() {
   </div>;
 }
 
-/** Bright Data imported brokers that still need a mobile or email entered by a Super Admin. */
+function FollowupQueue() {
+  const q = useQuery({ queryKey: ['import-invitation-followups'], queryFn: () => invoke<{ items: { user_id: string; full_name: string; channel: string; message: string; due_at: string }[] }>('admin-broker-contact', { action: 'followups' }) });
+  if (q.isError) return <p role="alert" className="text-destructive">{(q.error as Error).message}</p>;
+  if (!q.data?.items.length) return null;
+  return <section className="space-y-3"><h4 className="text-lg font-bold">תזכורות לאחר 48 שעות</h4><ul className="divide-y divide-border">{q.data.items.map(item => <li key={item.user_id} className="space-y-2 py-3"><p className="font-semibold">{item.full_name} · {item.channel === 'email' ? 'מייל' : 'WhatsApp'} · ממתין לשליחה</p><p className="text-base leading-relaxed">{item.message}</p></li>)}</ul></section>;
+}
+
+/** Silently imported accounts awaiting their first successful invitation. */
 export function BrokerContactQueueCard() {
   const [params, setParams] = useSearchParams();
   const q = useQuery({ queryKey: ['broker-contact-queue'], queryFn: () => invoke<{ brokers: ContactBroker[] }>('admin-broker-contact', { action: 'list' }) });
   const brokers = q.data?.brokers ?? [];
-  const pending = brokers.filter(b => b.contact_status === 'pending_contact').length;
+  const pending = brokers.length;
   return <section dir="rtl" className="space-y-4 py-5 text-right">
-    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-xl font-bold"><UserRoundSearch className="h-5 w-5 text-primary" />השלמת פרטי התקשרות</h3>{pending > 0 && <Badge variant="secondary" className="text-sm">{pending} ממתינים</Badge>}</div>
-    {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין מתווכים שממתינים להשלמת פרטים.</p> :
+    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-xl font-bold"><UserRoundSearch className="h-5 w-5 text-primary" />ממתינים להזמנה ראשונה</h3>{pending > 0 && <Badge variant="secondary" className="text-sm">{pending} ממתינים</Badge>}</div>
+    {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} />)}</ul>}
+    <FollowupQueue />
     <Tabs value={params.get('history') === 'imports' ? 'imports' : 'sends'} onValueChange={value => setParams(current => { const next = new URLSearchParams(current); next.set('history', value); return next; }, { replace: true })} dir="rtl" className="pt-2">
       <TabsList><TabsTrigger value="sends">היסטוריית שליחות</TabsTrigger><TabsTrigger value="imports">היסטוריית יבוא</TabsTrigger></TabsList>
       <TabsContent value="sends"><SendHistory /></TabsContent>

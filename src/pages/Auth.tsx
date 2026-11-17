@@ -33,6 +33,12 @@ const Auth = () => {
   const profile = smsSignupSchema.safeParse({ firstName, lastName, gender, phone });
   const ready = mobile.success && (!signup || profile.success);
   useEffect(() => { clearPendingSignupRole(); }, []);
+  useEffect(() => {
+    const token = new URLSearchParams(location.search).get('invitation');
+    if (token && /^[0-9a-f-]{36}$/i.test(token)) {
+      void supabase.functions.invoke('import-invitation-click', { body: { token } });
+    }
+  }, [location.search]);
   // Restore a recently sent code so a refresh or return still lets the user type it.
   useEffect(() => {
     try {

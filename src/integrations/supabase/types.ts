@@ -135,8 +135,12 @@ export type Database = {
           email_message_id: string | null
           email_unsubscribe_token: string
           email_unsubscribed_at: string | null
+          first_invitation_at: string | null
+          first_invitation_channel: string | null
           first_login_at: string | null
           import_source: string | null
+          invitation_clicked_at: string | null
+          invitation_link_token: string
           invitation_message_id: string | null
           invited_at: string | null
           user_id: string
@@ -154,8 +158,12 @@ export type Database = {
           email_message_id?: string | null
           email_unsubscribe_token?: string
           email_unsubscribed_at?: string | null
+          first_invitation_at?: string | null
+          first_invitation_channel?: string | null
           first_login_at?: string | null
           import_source?: string | null
+          invitation_clicked_at?: string | null
+          invitation_link_token?: string
           invitation_message_id?: string | null
           invited_at?: string | null
           user_id: string
@@ -173,8 +181,12 @@ export type Database = {
           email_message_id?: string | null
           email_unsubscribe_token?: string
           email_unsubscribed_at?: string | null
+          first_invitation_at?: string | null
+          first_invitation_channel?: string | null
           first_login_at?: string | null
           import_source?: string | null
+          invitation_clicked_at?: string | null
+          invitation_link_token?: string
           invitation_message_id?: string | null
           invited_at?: string | null
           user_id?: string
@@ -5091,6 +5103,44 @@ export type Database = {
           record_key?: string
         }
         Relationships: []
+      }
+      import_invitation_followups: {
+        Row: {
+          channel: string
+          created_at: string
+          due_at: string
+          message: string
+          queued_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          due_at: string
+          message: string
+          queued_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          due_at?: string
+          message?: string
+          queued_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_invitation_followups_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inbound_emails_log: {
         Row: {
@@ -11707,6 +11757,10 @@ export type Database = {
           last_scheduled_at: string
           queued_count: number
         }[]
+      }
+      queue_import_invitation_followup: {
+        Args: { p_user: string }
+        Returns: undefined
       }
       queue_listing_capped: { Args: { _payload: Json }; Returns: boolean }
       read_email_batch: {

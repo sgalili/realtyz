@@ -2,6 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { brokerTemplateFor, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName, officialBrokerPhone } from '../_shared/brokerInvitationTemplate.ts';
+import { invitationLink } from '../_shared/importInvitationPolicy.ts';
 
 const schema = z.object({
   action: z.enum(['status', 'register', 'send']),
@@ -60,12 +61,15 @@ Deno.serve(async req => {
     if (!input.broker_id || !input.request_id || !input.consent) return json({ error: 'נדרשים מתווך, מזהה שליחה ואישור הסכמת הנמען' }, 400);
     if (template?.status !== 'APPROVED') return json({ error: 'התבנית טרם אושרה ב-Meta', status: template?.status ?? 'NOT_REGISTERED' }, 409);
     const { data: broker, error: brokerError } = await admin.from('profiles').select('id,full_name,phone').eq('id', input.broker_id).single();
-    const { data: brokerRoles, error: roleError } = await admin.from('user_roles').select('role').eq('user_id', input.broker_id).in('role', ['agent', 'lead_agent', 'managing_broker', 'junior_agent']);
+    const { data: brokerRoles, error: roleError } = await admin.from('user_roles').select('role').eq('user_id', input.broker_id).in('role', ['agent', 'lead_agent', 'managing_broker', 'junior_agent', 'developer']);
     if (brokerError || roleError || !broker || !brokerRoles?.length) return json({ error: 'הנמען אינו מתווך פעיל' }, 400);
     const phone = officialBrokerPhone(broker.phone ?? '');
     if (!phone) return json({ error: 'חסר מספר נייד תקין למתווך' }, 400);
-    const { data: onboarding, error: onboardingError } = await admin.from('admin_broker_onboarding').select('user_id').eq('user_id', broker.id).maybeSingle();
+    const { data: onboarding, error: onboardingError } = await admin.from('admin_broker_onboarding').select('user_id,invitation_link_token,first_invitation_at,first_login_at').eq('user_id', broker.id).maybeSingle();
     if (onboardingError || !onboarding) return json({ error: 'המתווך אינו בתהליך הצטרפות בניהול מנהל' }, 409);
+    const { data: account, error: accountError } = await admin.auth.admin.getUserById(broker.id);
+    if (accountError || !account.user || account.user.last_sign_in_at) return json({ error: 'החשבון אינו ממתין להזמנה ראשונה' }, 409);
+    if (onboarding.first_login_at || onboarding.first_invitation_at) return json({ error: 'הזמנה ראשונה כבר נשלחה או שהחשבון כבר התחבר' }, 409);
     const { error: claimError } = await admin.from('broker_invitation_sends').insert({ request_id: input.request_id, broker_id: broker.id, created_by: caller.userId, template_name: name });
     if (claimError) {
       const { data: prior } = await admin.from('broker_invitation_sends').select('status,message_id,broker_id,template_name,created_by').eq('request_id', input.request_id).maybeSingle();
@@ -76,7 +80,7 @@ Deno.serve(async req => {
     try {
       const site = new URL(Deno.env.get('PUBLIC_SITE_URL') || 'https://toraff.co.il');
       if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');
-      const link = `${site.origin}/auth?broker=${encodeURIComponent(broker.id)}`;
+      const link = invitationLink(site.origin, broker.id, onboarding.invitation_link_token);
       sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: broker.full_name?.trim() || 'מתווך' }, ...(templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });
     } catch (e) {
       await admin.from('broker_invitation_sends').update({ status: 'unknown' }).eq('request_id', input.request_id);

@@ -152,6 +152,10 @@ Deno.serve(async (req) => {
     } else {
       const {error: roleError} = await admin.from('user_roles').insert({user_id:newUid,role:user_type});
       if (roleError) { await admin.auth.admin.deleteUser(newUid); throw roleError; }
+      if (user_type === 'developer' && import_job_id) {
+        const { error } = await admin.from('admin_broker_onboarding').insert({ user_id: newUid, created_by: actorId, import_source: 'developer_import', contact_status: normalizedPhone ? 'complete' : 'pending_contact' });
+        if (error) { await admin.auth.admin.deleteUser(newUid); throw error; }
+      }
     }
 
     // Audit
