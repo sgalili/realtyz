@@ -7,7 +7,6 @@ export function pricingCardMissing(fields: PublicListingDraftFields): string[] {
   const out: string[] = [];
   if (!(toNum(fields.price) > 0)) out.push('מחיר הנכס');
   if (!(toNum(fields.commissionDeal) > 0)) out.push('עמלת סגירה');
-  else if (fields.closingConfirmed === false && !fields.importedListing) out.push('אישור עמלת הסגירה (הזיזו את המחוון)');
   const labels: Record<string, string> = { commissionForm: 'תגמול טופס', commissionWhatsapp: 'תגמול ווטסאפ', commissionPhone: 'תגמול שיחה' };
   for (const key of Object.keys(labels) as (keyof typeof labels)[]) {
     const value = (fields as any)[key];

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EMPTY_PUBLIC_LISTING_DRAFT } from './publicListingDraft';
-import { pricingCardComplete } from './pricingCardSummary';
+import { pricingCardMissing, pricingCardComplete } from './pricingCardSummary';
 
 describe('Card 8 pricing completion', () => {
   it('completes with prices before legal consent', () => {
@@ -9,8 +9,8 @@ describe('Card 8 pricing completion', () => {
   it('accepts disabled optional lead fees', () => {
     expect(pricingCardComplete({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '7000', commissionForm: '0', commissionDeal: '10', closingConfirmed: true })).toBe(true);
   });
-  it('stays incomplete until the publisher sets the closing fee', () => {
-    expect(pricingCardComplete({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '7000', commissionDeal: '10' })).toBe(false);
+  it('no longer asks to confirm the closing slider', () => {
+    expect(pricingCardMissing({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '7000', commissionDeal: '10' })).toEqual([]);
   });
   it('treats filled imported prices as complete without re-confirmation', () => {
     expect(pricingCardComplete({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '7000', commissionDeal: '10', closingConfirmed: false, importedListing: { id: 'x' } as any })).toBe(true);
