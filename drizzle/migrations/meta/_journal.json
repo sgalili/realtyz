@@ -1562,6 +1562,20 @@
       "when": 1794930035908,
       "tag": "0222_revoke_execute_readonly_query",
       "breakpoints": true
+    },
+    {
+      "idx": 223,
+      "version": "7",
+      "when": 1794932018131,
+      "tag": "0223_rita_live_chats",
+      "breakpoints": true
+    },
+    {
+      "idx": 224,
+      "version": "7",
+      "when": 1794932079631,
+      "tag": "0224_rita_live_sessions_multi_visitor",
+      "breakpoints": true
     }
   ]
 }

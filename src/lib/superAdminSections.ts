@@ -1,9 +1,10 @@
-import { Activity, MessageSquareText, PlugZap, QrCode, ScanSearch, ServerCog, Trash2, UserPlus, Users, Wallet } from 'lucide-react';
+import { Activity, Bot, MessageSquareText, PlugZap, QrCode, ScanSearch, ServerCog, Trash2, UserPlus, Users, Wallet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type AdminSection =
   | 'users'
   | 'messages'
+  | 'rita-chats'
   | 'qr'
   | 'import'
   | 'deletion'
@@ -25,6 +26,7 @@ export interface AdminSectionOption {
 export const ADMIN_SECTIONS: readonly AdminSectionOption[] = [
   { value: 'users', label: 'ניהול משתמשים', icon: Users },
   { value: 'messages', label: 'ניהול מסרים מתחלפים', icon: MessageSquareText },
+  { value: 'rita-chats', label: "צ'אטים עם ריטה", icon: Bot },
   { value: 'qr', label: 'ניהול QR דינמי', icon: QrCode },
   { value: 'import', label: 'ייבוא מתווכים ויזמים', icon: UserPlus },
   { value: 'deletion', label: 'מחיקה וארכיון', icon: Trash2 },

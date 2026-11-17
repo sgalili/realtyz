@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { ritaChatKeyAction } from '@/lib/ritaChatKeys';
 import { RITA_CHAT_GREETING, resizeRitaTextarea } from '@/lib/ritaChatPresentation';
 import { RitaUserAvatar } from '@/components/rita/RitaUserAvatar';
+import { ADMIN_REPLY_PREFIX, ritaLiveLog, ritaLivePoll, type LiveMode } from '@/lib/ritaLive';
 
 const KEY = 'toraff-visitor-rita-history';
 // Keeps the newest bubble visible: scrolls the transcript to its bottom whenever a message is added or grows.
@@ -41,7 +42,35 @@ export function VisitorRitaChat() {
     prepareSendMessagesRequest: ({ messages }) => ({ body: { messages: messages.slice(-24).map(m => ({ id: m.id, role: m.role, parts: m.parts.filter(p => p.type === 'text').map(p => ({ type: 'text', text: p.text })) })) } }),
   }), []);
   const [initial] = useState(readHistory);
-  const { messages, sendMessage, status, error, stop, setMessages } = useChat({ id: 'toraff-visitor', messages: initial, transport });
+  const { messages, sendMessage, status, error, stop, setMessages } = useChat({ id: 'toraff-visitor', messages: initial, transport,
+    onFinish: ({ message }) => { const t = message.parts.map(p => p.type === 'text' ? p.text : '').join(''); if (t) void ritaLiveLog('assistant', t, true); } });
+  // A Super Admin may take over the chat: poll for their replies and stop calling Rita while they handle it.
+  const modeRef = useRef<LiveMode>('ai');
+  const lastAdminAt = useRef<string | undefined>(undefined);
+  const [liveStarted, setLiveStarted] = useState(initial.length > 0);
+  useEffect(() => {
+    if (!liveStarted) return;
+    let stopped = false;
+    const tick = async () => {
+      const r = await ritaLivePoll(lastAdminAt.current, true);
+      if (stopped || !r) return;
+      modeRef.current = r.mode;
+      if (r.messages.length) {
+        lastAdminAt.current = r.messages[r.messages.length - 1].created_at;
+        setMessages(prev => [...prev, ...r.messages.filter(m => !prev.some(p => p.id === `admin-${m.id}`)).map(m => ({ id: `admin-${m.id}`, role: 'assistant' as const, parts: [{ type: 'text' as const, text: `**${ADMIN_REPLY_PREFIX}:** ${m.content}` }] }))]);
+      }
+    };
+    void tick();
+    const t = window.setInterval(tick, 5000);
+    return () => { stopped = true; window.clearInterval(t); };
+  }, [liveStarted, setMessages]);
+  const submitText = async (text: string) => {
+    setLiveStarted(true);
+    const mode = await ritaLiveLog('user', text, true);
+    modeRef.current = mode;
+    if (mode === 'human') { setMessages(prev => [...prev, { id: `u-${Date.now()}`, role: 'user', parts: [{ type: 'text', text }] }]); return; }
+    void sendMessage({ text });
+  };
   const busy = status === 'submitted' || status === 'streaming';
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(messages.slice(-24))); } catch { /* unavailable storage does not block chat */ }
@@ -102,7 +131,7 @@ export function VisitorRitaChat() {
     </Conversation>
     </div>
     {error && <p role="alert" className="px-2 text-sm text-destructive">{error.message || 'ריטה אינה זמינה כרגע. נסו שוב מאוחר יותר.'}</p>}
-    <div ref={inputWrapRef}><PromptInput onSubmit={({ text }) => { if (!text.trim() || busy) return; void sendMessage({ text: text.trim().slice(0, 3000) }); const el = getTextarea(); if (el) el.style.height = ''; }} className="rounded-lg">
+    <div ref={inputWrapRef}><PromptInput onSubmit={({ text }) => { if (!text.trim() || busy) return; void submitText(text.trim().slice(0, 3000)); const el = getTextarea(); if (el) el.style.height = ''; }} className="rounded-lg">
       <PromptInputTextarea placeholder="איך אוכל לעזור?" aria-label="הודעה לריטה" rows={1} className="!min-h-10 max-h-32 resize-none overflow-y-auto py-2 text-xs [field-sizing:fixed]" onKeyDown={handleKeyDown} onInput={e => resizeRitaTextarea(e.currentTarget)} onFocus={e => { const t = e.currentTarget; window.setTimeout(() => t.scrollIntoView({ block: 'nearest' }), 300); }} />
       <InputGroupAddon align="inline-end" className="self-end px-2 pb-1.5">
         <PromptInputSubmit status={status} onStop={stop} aria-label={busy ? 'עצירת תשובה' : 'שליחה לריטה'}>{busy ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}</PromptInputSubmit>

@@ -1,3 +1,4 @@
+import { RitaChatsManager } from '@/components/admin/RitaChatsManager';
 import { useState } from 'react';
 import { GoLoginTokenCard } from '@/components/admin/GoLoginTokenCard';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -156,6 +157,7 @@ const SuperAdmin = () => {
       )}
 
       {section === 'messages' && <RotatingMessagesManager />}
+      {section === 'rita-chats' && <RitaChatsManager />}
       {section === 'qr' && <DynamicQrManager />}
 
       {section === 'import' && (

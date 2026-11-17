@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { openOfficialWhatsApp, sendViaOfficialWaba } from '@/lib/officialWa';
 import { publicUrl } from '@/lib/publicUrl';
+import { ADMIN_REPLY_PREFIX, ritaLiveLog, ritaLivePoll } from '@/lib/ritaLive';
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip,
   PieChart, Pie, Cell, CartesianGrid,
@@ -235,6 +236,23 @@ function ScopedAiAgentDrawer({ identity }: { identity: ReturnType<typeof useRita
   const { user } = useAuth();
   const { scope, ownerId, gender, roles, ready, error: rolesError } = identity;
   const mounted = useRef(true);
+  const [liveStarted, setLiveStarted] = useState(false);
+  const lastAdminAt = useRef<string | undefined>(new Date().toISOString());
+  const persistRef = useRef<(m: Message) => void>(() => {});
+  useEffect(() => {
+    if (!liveStarted || !user?.id) return;
+    let stopped = false;
+    const tick = async () => {
+      const r = await ritaLivePoll(lastAdminAt.current, false);
+      if (stopped || !r?.messages.length || !mounted.current) return;
+      lastAdminAt.current = r.messages[r.messages.length - 1].created_at;
+      const added = r.messages.map(m => ({ role: 'assistant', content: `**${ADMIN_REPLY_PREFIX}:** ${m.content}`, type: 'text' }) as Message);
+      setMessages(prev => [...prev, ...added]);
+      added.forEach(m => persistRef.current(m));
+    };
+    const t = window.setInterval(tick, 5000);
+    return () => { stopped = true; window.clearInterval(t); };
+  }, [liveStarted, user?.id]);
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; };
@@ -326,6 +344,7 @@ function ScopedAiAgentDrawer({ identity }: { identity: ReturnType<typeof useRita
       payload: rest as any,
     }]);
   }, [user?.id, ownerId]);
+  persistRef.current = persistMessage;
 
   const handleVoiceResult = useCallback((text: string) => {
     setInput(prev => (prev ? prev + ' ' + text : text));
@@ -480,6 +499,9 @@ ${shareUrl}
     persistMessage(userMsg);
     setInput('');
     setPendingAttachments([]);
+    setLiveStarted(true);
+    // While a Super Admin handles this chat, Rita stays silent and the admin replies arrive by polling.
+    if (await ritaLiveLog('user', userMsg.content, false) === 'human') return;
     setIsLoading(true);
 
     try {
@@ -576,6 +598,7 @@ ${shareUrl}
       }
       setMessages(prev => [...prev, assistantMsg]);
       persistMessage(assistantMsg);
+      void ritaLiveLog('assistant', assistantMsg.content, false);
     } catch (e) {
       if (!mounted.current) return;
       console.error('AI Agent error:', e);

@@ -8416,6 +8416,74 @@ export type Database = {
           },
         ]
       }
+      rita_live_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rita_live_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "rita_live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rita_live_sessions: {
+        Row: {
+          created_at: string
+          handled_by: string | null
+          id: string
+          last_message: string | null
+          last_message_at: string
+          last_role: string | null
+          mode: string
+          user_id: string | null
+          visitor_token_hash: string | null
+        }
+        Insert: {
+          created_at?: string
+          handled_by?: string | null
+          id?: string
+          last_message?: string | null
+          last_message_at?: string
+          last_role?: string | null
+          mode?: string
+          user_id?: string | null
+          visitor_token_hash?: string | null
+        }
+        Update: {
+          created_at?: string
+          handled_by?: string | null
+          id?: string
+          last_message?: string | null
+          last_message_at?: string
+          last_role?: string | null
+          mode?: string
+          user_id?: string | null
+          visitor_token_hash?: string | null
+        }
+        Relationships: []
+      }
       rotating_messages: {
         Row: {
           action_path: string | null

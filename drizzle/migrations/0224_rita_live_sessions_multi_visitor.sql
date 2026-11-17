@@ -1,0 +1,2 @@
+ALTER TABLE public.rita_live_sessions DROP CONSTRAINT IF EXISTS rita_live_sessions_visitor_token_hash_key;
+CREATE INDEX IF NOT EXISTS rita_live_sessions_visitor_idx ON public.rita_live_sessions (visitor_token_hash);
