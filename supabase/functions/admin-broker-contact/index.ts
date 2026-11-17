@@ -53,11 +53,12 @@ Deno.serve(async req => {
     const chunked = async (ids: string[], make: (part: string[]) => PromiseLike<{ data: any[] | null; error: unknown }>) => {
       const out: any[] = []; for (let i = 0; i < ids.length; i += 200) { const { data, error } = await make(ids.slice(i, i + 200)); if (error) throw error; out.push(...(data ?? [])); } return out;
     };
-    const [queueJobs, devJobs, onboard, allDevs] = await Promise.all([
+    const [queueJobs, devJobs, onboard, allDevs, batchLogs] = await Promise.all([
       all((f, t) => admin.from('broker_import_jobs').select('id,status,error,checkpoint,created_at,updated_at').order('created_at', { ascending: false }).range(f, t)),
       all((f, t) => admin.from('developer_import_jobs').select('id,status,error,source_url,developer_id,company,completed_at,updated_at,created_at').order('created_at', { ascending: false }).range(f, t)),
-      all((f, t) => admin.from('admin_broker_onboarding').select('user_id,created_at,import_source').order('created_at', { ascending: false }).range(f, t)),
+      all((f, t) => admin.from('admin_broker_onboarding').select('user_id,created_at,import_source').eq('import_source', 'bright_data').order('created_at', { ascending: false }).range(f, t)),
       all((f, t) => admin.from('developers').select('id,company_name,logo_url,source_url,workspace_owner_id,created_at').not('source_url', 'is', null).range(f, t)),
+      all((f, t) => admin.from('audit_logs').select('id,target_id,details,created_at').eq('action', 'super_admin.broker_batch_import').order('created_at', { ascending: false }).range(f, t)),
     ]);
     type Raw = { id: string; kind: 'developer' | 'broker'; ref: string | null; name: string | null; source_url: string | null; at: string; status: string; error: string | null };
     const raw: Raw[] = [];
@@ -70,6 +71,7 @@ Deno.serve(async req => {
       urls.slice(devs.length).forEach((u, i) => raw.push({ id: `${j.id}:p${i}`, kind: 'developer', ref: c.developerWork?.url === u ? c.developerWork?.developerId ?? null : null, name: c.developerWork?.url === u ? c.developerWork?.developer?.company_name ?? null : null, source_url: u, at: j.updated_at, status: j.status === 'completed' ? 'completed' : j.status, error: j.error ?? null }));
     }
     for (const j of devJobs) { const c = (j.company ?? {}) as Record<string, unknown>; raw.push({ id: j.id, kind: 'developer', ref: j.developer_id, name: String(c.name ?? c.company_name ?? '') || null, source_url: j.source_url, at: j.completed_at ?? j.updated_at ?? j.created_at, status: j.status, error: j.error ?? null }); }
+    for (const a of batchLogs) if (a.target_id) { const d = (a.details ?? {}) as Record<string, any>; raw.push({ id: `batch:${a.id}`, kind: 'broker', ref: a.target_id, name: null, source_url: d.first_url ?? null, at: a.created_at, status: Number(d.imported ?? 0) > 0 || !d.total ? 'completed' : 'failed', error: Number(d.imported ?? 0) < Number(d.total ?? 0) ? `${d.total - d.imported} מודעות לא יובאו` : null }); }
     const seen = new Set(raw.filter(r => r.ref).map(r => r.ref));
     const seenUrls = new Set(raw.filter(r => r.kind === 'developer' && r.source_url).map(r => r.source_url));
     for (const d of allDevs) if (!seen.has(d.id) && !seenUrls.has(d.source_url)) raw.push({ id: `dev:${d.id}`, kind: 'developer', ref: d.id, name: d.company_name, source_url: d.source_url, at: d.created_at, status: 'completed', error: null });

@@ -52,12 +52,12 @@ Deno.serve(async req => {
   const listings: { url: string; ok: boolean; error?: string }[] = [];
   for (const url of b.urls) {
     try {
-      const r = await fetch(`${SUPABASE_URL}/functions/v1/yad2-unlocker`, { method: 'POST', headers: { Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ owner_id: brokerId, url, import_item: true, limit: 1, pages: 1 }), signal: AbortSignal.timeout(45000) });
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/yad2-unlocker`, { method: 'POST', headers: { Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ owner_id: brokerId, url, import_item: true, residential_only: true, limit: 1, pages: 1 }), signal: AbortSignal.timeout(45000) });
       const d = await r.json().catch(() => ({}));
       const ok = r.ok && d?.success !== false && (d?.listing_id || d?.records_saved > 0);
       listings.push({ url, ok: !!ok, ...(ok ? {} : { error: String(d?.detail ?? d?.error ?? r.status) }) });
     } catch (e) { listings.push({ url, ok: false, error: e instanceof Error ? e.message : 'timeout' }); }
   }
-  await admin.from('audit_logs').insert({ actor_id: caller.userId, action: 'super_admin.broker_batch_import', target_table: 'profiles', target_id: brokerId, details: { created, imported: listings.filter(l => l.ok).length, total: listings.length } });
+  await admin.from('audit_logs').insert({ actor_id: caller.userId, action: 'super_admin.broker_batch_import', target_table: 'profiles', target_id: brokerId, details: { created, imported: listings.filter(l => l.ok).length, total: listings.length, first_url: b.urls[0] ?? null, failed: listings.filter(l => !l.ok).map(l => ({ url: l.url, error: l.error })) } });
   return json({ status: 'ok', broker_id: brokerId, created, imported: listings.filter(l => l.ok).length, listings });
 });
