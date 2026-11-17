@@ -25,10 +25,10 @@ export const signupTypeFields: Record<SmsSignupType, readonly [string, string][]
   partner: [['marketing_channel', 'ערוץ שיווק עיקרי']],
 };
 export function signupDetailsValid(type: SmsSignupType, details: Record<string, string>) {
-  return signupTypeFields[type].every(([key]) => z.string().trim().min(1).max(200).safeParse(details[key]).success)
+  return signupTypeFields[type].filter(([key]) => !(type === 'developer' && key === 'main_project')).every(([key]) => z.string().trim().min(1).max(200).safeParse(details[key]).success)
     && (type !== 'property_seeker' || (/^[0-9]+(\.[0-9]+)?$/.test(details.budget) && z.coerce.number().positive().max(1e12).safeParse(details.budget).success))
     && (type !== 'property_owner' || ['sale', 'rent'].includes(details.deal_type))
-    && (type !== 'developer' || /^https:\/\/(www\.)?yad2\.co\.il\/yad1\/developers\/\d+\/?(?:\?.*)?$/.test(details.main_project));
+    && (type !== 'developer' || !details.main_project?.trim() || /^https:\/\/(www\.)?yad2\.co\.il\/yad1\/developers\/\d+\/?(?:\?.*)?$/.test(details.main_project));
 }
 export async function signupRpc(name: 'complete_sms_signup' | 'complete_sms_signup_details', args: Record<string, unknown>) {
   const rpc = supabase.rpc.bind(supabase) as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: { ok?: boolean } | null; error: { message: string } | null }>;

@@ -53,6 +53,9 @@ describe('SMS signup rules', () => {
     expect(signupDetailsValid('property_owner', { ...fields, deal_type: 'rent' })).toBe(true);
     expect(signupDetailsValid('property_owner', { ...fields, deal_type: 'other' })).toBe(false);
   });
+  it('lets developers finish signup without a project link', () => {
+    expect(signupDetailsValid('developer', { company_name: 'חברה', main_project: '' })).toBe(true);
+  });
   it('requires a Yad2 developer page rather than a project name', () => {
     expect(signupDetailsValid('developer', { company_name: 'חברה', main_project: 'פרויקט' })).toBe(false);
     expect(signupDetailsValid('developer', { company_name: 'חברה', main_project: 'https://example.com/yad1/developers/1000000' })).toBe(false);

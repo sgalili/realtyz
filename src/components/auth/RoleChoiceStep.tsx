@@ -100,7 +100,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
         queryClient.invalidateQueries({ queryKey: ['app-header-user-profile', user.id] }),
       ]);
-      onDone?.(); navigate('/', { replace: true });
+      onDone?.(); navigate(selected === 'developer' ? '/profile' : '/', { replace: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
       const friendly: Record<string, string> = { invalid_details: 'יש להשלים את כל הפרטים לפני ההמשך.', invalid_budget: 'יש להזין תקציב חיובי במספרים בלבד.', primary_type_already_selected: 'סוג המשתמש כבר נשמר. יש לרענן את העמוד.', invalid_deal_type: 'יש לבחור למכירה או להשכרה.' };
@@ -128,7 +128,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
           const options = propertyTypes.map(type => [type, type]);
           return <Select key={key} value={value} onValueChange={change}><SelectTrigger aria-label={label} className={`${fieldClass} data-[placeholder]:font-normal data-[placeholder]:text-muted-foreground focus:ring-0 focus:ring-offset-0`}><SelectValue placeholder={label} /></SelectTrigger><SelectContent>{options.map(([option, text]) => <SelectItem key={option} value={option} className="text-xl">{text}</SelectItem>)}</SelectContent></Select>;
         }
-        if (key === 'main_project') return <div key={key} className="space-y-2"><label htmlFor="signup-developer-url" className="block font-normal">ייבוא פרוייקטים</label><p className="text-sm font-normal">{wording('הדבק כאן קישור לעמוד החברה שלך ב יד2:', 'הדביקי כאן קישור לעמוד החברה שלך ב יד2:')}</p><Input id="signup-developer-url" type="url" aria-label="קישור לעמוד החברה ביד2" placeholder="https://www.yad2.co.il/yad1/developers/1000000" className={`${fieldClass} text-base`} dir="ltr" maxLength={200} value={value} onChange={e => change(e.target.value)} /></div>;
+        if (key === 'main_project') return <div key={key} className="space-y-2"><label htmlFor="signup-developer-url" className="block font-normal">ייבוא פרוייקטים (לא חובה)</label><p className="text-sm font-normal">{wording('הדבק כאן קישור לעמוד החברה שלך ב יד2:', 'הדביקי כאן קישור לעמוד החברה שלך ב יד2:')}</p><Input id="signup-developer-url" type="url" aria-label="קישור לעמוד החברה ביד2" placeholder="https://www.yad2.co.il/yad1/developers/1000000" className={`${fieldClass} text-base`} dir="ltr" maxLength={200} value={value} onChange={e => change(e.target.value)} /></div>;
         return <Input key={key} aria-label={label} placeholder={label} maxLength={200} type={key === 'budget' ? 'number' : 'text'} min={key === 'budget' ? 1 : undefined} className={fieldClass} value={value} onChange={e => change(e.target.value)} />;
       })}
       {selected === 'broker' && brokerStep === 'details' && <BrokerLicenseField signup onChecking={setLicenseChecking} value={license} onChange={setLicense} onVerified={onLicenseVerified} />}
