@@ -226,7 +226,6 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                     {inventory && (
                       <span data-workspace-inventory-count className="flex shrink-0 flex-col items-center text-xs font-normal leading-tight text-muted-foreground">
                         <span className="text-sm font-semibold tabular-nums text-foreground">{inventory.inventory_count.toLocaleString('he-IL')}</span>
-                        <span>{inventory.inventory_kind === 'projects' ? 'פרויקטים' : 'נכסים'}</span>
                       </span>
                     )}
                   </Button>
