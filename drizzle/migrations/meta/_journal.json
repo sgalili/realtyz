@@ -1597,6 +1597,13 @@
       "when": 1794948319559,
       "tag": "0227_workspace_inventory_counts",
       "breakpoints": true
+    },
+    {
+      "idx": 228,
+      "version": "7",
+      "when": 1794948876241,
+      "tag": "0228_import_history_deleted_records",
+      "breakpoints": true
     }
   ]
 }

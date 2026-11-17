@@ -534,6 +534,7 @@ const App = () => (
               <Route path="/lead-crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/lead-crm/:leadId" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/broker/:userId" element={<PublicProfileShell><Suspense fallback={<PageLoader />}><CommunityProfilePage /></Suspense></PublicProfileShell>} />
+              <Route path="/developer/:userId" element={<PublicProfileShell><Suspense fallback={<PageLoader />}><CommunityProfilePage /></Suspense></PublicProfileShell>} />
               <Route path="/community/profile/:userId" element={<LegacyProfileRedirect to="broker" />} />
               <Route path="/lead-profile/:leadId" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><LeadPublicProfilePage /></Suspense></ProtectedRoute>} />
               <Route path="/agency/:userId" element={<PublicProfileShell><Suspense fallback={<PageLoader />}><CommunityOfficePage /></Suspense></PublicProfileShell>} />

@@ -1,5 +1,11 @@
 # Roadmap
 
+## Import history actions November 17
+- [x] Add Super Admin log-only deletion without removing imported inventory or queue jobs.
+- [x] Use the official compact Yad2 symbol for source links.
+- [x] Link identities to scoped inventory and companies to public pages, with return navigation and retained import tab.
+- [x] Fifteen focused tests passed; signed-in developer inventory/public-page/return and deletion confirmation verified. Existing logs were not deleted during browser verification.
+
 ## Deep project apartments and stable expansion
 - [x] Traverse supported exact-project inventory/unit descendants and pagination with parent-scoped merging in both deployed queues; preserve import pacing.
 - [x] Display saved exact source milestones as a visual timeline and enlarge expanded project details by 2px.

@@ -1,4 +1,5 @@
 import { missingListingDetails, listingPublicationState, PUBLICATION_STATE_LABELS } from '@/lib/listingCompleteness';
+import { ImportHistoryBack } from '@/components/admin/ImportHistoryBack';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { Table } from '@/components/ui/table';
@@ -947,6 +948,7 @@ export default function Properties() {
 
         {/* Row 1 — [magnify][search field, collapsed by default] ⇢ [sort][select][count][view] */}
         <div data-testid="property-filter-row" className="flex flex-nowrap items-center gap-1">
+            <ImportHistoryBack />
             <div className="order-first shrink-0">
               <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
             </div>

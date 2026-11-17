@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FullPageLoading } from '@/components/ui/full-page-loading';
+import { ImportHistoryBack } from '@/components/admin/ImportHistoryBack';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -187,6 +188,7 @@ function DeveloperDashboardContent() {
   const meta = (p: DeveloperProject) => { const h = savedProjectHierarchy(p); return [h.buildings.length ? `${h.buildings.length} בניינים` : '', h.apartments.length ? `${h.apartments.length} סוגי יחידות` : '', p.available_units ? `${p.available_units} זמינות` : ''].filter(Boolean); };
   return (
     <div dir="rtl" className={grid ? 'mx-auto w-full min-w-0 max-w-6xl space-y-5 p-4' : 'listing-table-page mx-auto flex h-full min-h-0 w-full min-w-0 max-w-6xl flex-col gap-5 overflow-hidden p-4'}>
+      <ImportHistoryBack />
       {params.get('search') === '1' && <BoardSearchControls id="developer-project-search" hideViewToggle query={query} onQueryChange={setQuery} grid={grid} onViewToggle={toggleGrid} filter={<LeadTypeFilterButton hideLeadFilters state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} propertyTypes={propertyTypes} />} />}
       {busy ? <div role="status" className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">טוען פרויקטים</span></div>
       : projectError || companyError ? <div role="alert" className="space-y-3 py-8 text-center"><p className="text-lg text-destructive">לא ניתן לטעון את הפרויקטים</p><Button variant="outline" onClick={refresh}>ניסיון נוסף</Button></div>

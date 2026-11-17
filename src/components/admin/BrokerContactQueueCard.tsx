@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { Save, Loader2, Mail, UserRoundSearch, Pencil, Check, X, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Save, Loader2, Mail, UserRoundSearch, Pencil, Check, X, Trash2, ShieldCheck } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,10 +12,12 @@ import { OfficialBrokerInvitationDialog } from './OfficialBrokerInvitationDialog
 import { BrokerEmailConsentButton } from './BrokerEmailInvitations';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { returnState } from '@/lib/returnNav';
+import yad2Symbol from '@/assets/yad2-source-symbol.png.asset.json';
 
 export type ContactBroker = { user_id: string; full_name: string; phone: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; drafts: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
@@ -134,9 +136,27 @@ function SendHistory() {
   </div>;
 }
 
-type ImportItem = { id: string; kind: 'developer' | 'broker'; name: string; logo_url: string | null; agency_imported: boolean; agency_name?: string | null; projects: number; source_url: string | null; imported_at: string; status?: string; error?: string | null };
+type ImportItem = { id: string; kind: 'developer' | 'broker'; name: string; logo_url: string | null; avatar_url?: string | null; workspace_owner_id?: string | null; public_user_id?: string | null; agency_imported: boolean; agency_name?: string | null; projects: number; source_url: string | null; imported_at: string; status?: string; error?: string | null };
 
-function ImportHistory() {
+export function ImportHistory() {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
+  const [deleting, setDeleting] = useState<ImportItem | null>(null);
+  const [opening, setOpening] = useState<string | null>(null);
+  const remove = useMutation({
+    mutationFn: (item: ImportItem) => invoke('admin-broker-contact', { action: 'delete_import', record_id: item.id }),
+    onSuccess: () => { setDeleting(null); toast.success('הרשומה נמחקה מהיסטוריית היבוא'); void qc.invalidateQueries({ queryKey: ['broker-import-history'] }); },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const openInventory = async (item: ImportItem) => {
+    if (!item.workspace_owner_id) return;
+    const origin = { ...returnState(), importHistoryReturn: true, previousWorkspaceId: activeWorkspaceId };
+    setOpening(item.id);
+    try { await setActiveWorkspace(item.workspace_owner_id); navigate(item.kind === 'developer' ? '/developer-dashboard' : '/properties', { state: origin }); }
+    catch { /* workspace provider shows authorization errors */ }
+    finally { setOpening(null); }
+  };
   const q = useQuery({ queryKey: ['broker-import-history'], queryFn: () => invoke<{ items: ImportItem[] }>('admin-broker-contact', { action: 'imports' }) });
   const items = q.data?.items ?? [];
   if (q.isLoading) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
@@ -144,23 +164,26 @@ function ImportHistory() {
   if (!items.length) return <p className="text-base text-muted-foreground">עדיין לא בוצעו יבואים.</p>;
   return <div className="overflow-x-auto rounded-xl border border-border/70">
     <table className="w-full min-w-[600px] text-right text-sm">
-      <thead className="bg-muted/50 text-muted-foreground"><tr><th className="p-2 font-semibold">שם</th><th className="p-2 font-semibold">סוג</th><th className="p-2 font-semibold">לוגו</th><th className="p-2 font-semibold">פרטי משרד</th><th className="p-2 font-semibold">{'פרויקטים/נכסים'}</th><th className="p-2 font-semibold">סטטוס</th><th className="p-2 font-semibold">תאריך</th><th className="p-2 font-semibold">מקור</th></tr></thead>
+      <thead className="bg-muted/50 text-muted-foreground"><tr><th className="p-2 font-semibold">שם</th><th className="p-2 font-semibold">סוג</th><th className="p-2 font-semibold">לוגו</th><th className="p-2 font-semibold">משרד / חברה</th><th className="p-2 font-semibold">{'פרויקטים/נכסים'}</th><th className="p-2 font-semibold">סטטוס</th><th className="p-2 font-semibold">תאריך</th><th className="p-2 font-semibold">מקור</th><th className="p-2"><span className="sr-only">מחיקת רשומה</span></th></tr></thead>
       <tbody className="divide-y divide-border/70">{items.map(i => <tr key={`${i.kind}-${i.id}`}>
-        <td className="p-2"><div className="flex items-center gap-2">{i.logo_url ? <img src={i.logo_url} alt="" className="h-8 w-8 shrink-0 rounded-md border border-border/60 object-contain" /> : <span className="h-8 w-8 shrink-0" />}<span className="font-bold">{i.name || 'ללא שם'}</span></div></td>
+        <td className="p-2"><Button variant="ghost" className="h-auto justify-start gap-2 p-0 text-right font-bold whitespace-normal" disabled={!i.workspace_owner_id || opening !== null} aria-label={`פתיחת ${i.kind === 'developer' ? 'הפרויקטים' : 'הנכסים'} של ${i.name}`} onClick={() => void openInventory(i)}>{i.avatar_url && <img src={i.avatar_url} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />}<span>{i.name || 'ללא שם'}</span>{opening === i.id && <Loader2 className="h-4 w-4 animate-spin" />}</Button></td>
         <td className="p-2">{i.kind === 'developer' ? 'יזם' : 'מתווך'}</td>
-        <td className="p-2">{i.logo_url ? <Check className="h-4 w-4 text-primary" aria-label="יובא" /> : <X className="h-4 w-4 text-muted-foreground" aria-label="חסר" />}</td>
-        <td className="p-2">{i.agency_imported ? <Check className="h-4 w-4 text-primary" aria-label="יובא" /> : <X className="h-4 w-4 text-muted-foreground" aria-label="חסר" />}</td>
+        <td className="p-2">{i.logo_url ? <img src={i.logo_url} alt="לוגו שיובא" className="h-8 w-8 rounded-md object-contain" /> : <X className="h-4 w-4 text-muted-foreground" aria-label="חסר" />}</td>
+        <td className="p-2">{i.agency_name && i.public_user_id ? <Button asChild variant="link" className="h-auto p-0 text-right whitespace-normal"><a href={`/${i.kind === 'developer' ? 'developer' : 'agency'}/${encodeURIComponent(i.public_user_id)}`} onClick={event => { if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return; event.preventDefault(); navigate(`/${i.kind === 'developer' ? 'developer' : 'agency'}/${encodeURIComponent(i.public_user_id ?? '')}`, { state: { ...returnState(), importHistoryReturn: true } }); }}>{i.agency_name}</a></Button> : i.agency_name || <X className="h-4 w-4 text-muted-foreground" aria-label="חסר" />}</td>
         <td className="p-2">{i.projects}</td>
         <td className="p-2 whitespace-nowrap" title={i.error ?? undefined}>{i.status === 'failed' ? <span className="text-destructive">נכשל</span> : i.status === 'completed' || !i.status ? 'הושלם' : 'בתהליך'}</td>
         <td className="p-2 whitespace-nowrap">{new Date(i.imported_at).toLocaleDateString('he-IL')}</td>
-        <td className="p-2">{i.source_url ? <a href={i.source_url} target="_blank" rel="noopener noreferrer" aria-label="פתיחת עמוד המקור ביד 2" className="inline-flex text-primary"><ExternalLink className="h-4 w-4" /></a> : <span className="text-muted-foreground">-</span>}</td>
+        <td className="p-2">{i.source_url ? <Button asChild variant="ghost" size="icon" title="פתיחת עמוד המקור ביד 2"><a href={i.source_url} target="_blank" rel="noopener noreferrer" aria-label="פתיחת עמוד המקור ביד 2"><img src={yad2Symbol.url} alt="" className="h-6 w-6 object-contain" /></a></Button> : <span className="text-muted-foreground">-</span>}</td>
+        <td className="p-2"><Button variant="ghost" size="icon" className="text-destructive" title="מחיקת רשומה מההיסטוריה" aria-label={`מחיקת רשומת היבוא של ${i.name}`} onClick={() => setDeleting(i)}><Trash2 className="h-4 w-4" /></Button></td>
       </tr>)}</tbody>
     </table>
+    <Dialog open={!!deleting} onOpenChange={open => { if (!open && !remove.isPending) setDeleting(null); }}><DialogContent dir="rtl"><DialogHeader><DialogTitle>מחיקת רשומה מההיסטוריה</DialogTitle></DialogHeader><p>למחוק את רשומת היבוא של {deleting?.name}? החשבון, הפרויקטים והנכסים יישארו ללא שינוי.</p><DialogFooter className="flex-row justify-between sm:justify-between"><Button variant="outline" disabled={remove.isPending} onClick={() => setDeleting(null)}>ביטול</Button><Button variant="destructive" disabled={remove.isPending} onClick={() => { if (deleting) remove.mutate(deleting); }}>{remove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}מחיקה</Button></DialogFooter></DialogContent></Dialog>
   </div>;
 }
 
 /** Bright Data imported brokers that still need a mobile or email entered by a Super Admin. */
 export function BrokerContactQueueCard() {
+  const [params, setParams] = useSearchParams();
   const q = useQuery({ queryKey: ['broker-contact-queue'], queryFn: () => invoke<{ brokers: ContactBroker[] }>('admin-broker-contact', { action: 'list' }) });
   const brokers = q.data?.brokers ?? [];
   const pending = brokers.filter(b => b.contact_status === 'pending_contact').length;
@@ -168,7 +191,7 @@ export function BrokerContactQueueCard() {
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-xl font-bold"><UserRoundSearch className="h-5 w-5 text-primary" />השלמת פרטי התקשרות</h3>{pending > 0 && <Badge variant="secondary" className="text-sm">{pending} ממתינים</Badge>}</div>
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין מתווכים שממתינים להשלמת פרטים.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} />)}</ul>}
-    <Tabs defaultValue="sends" dir="rtl" className="pt-2">
+    <Tabs value={params.get('history') === 'imports' ? 'imports' : 'sends'} onValueChange={value => setParams(current => { const next = new URLSearchParams(current); next.set('history', value); return next; }, { replace: true })} dir="rtl" className="pt-2">
       <TabsList><TabsTrigger value="sends">היסטוריית שליחות</TabsTrigger><TabsTrigger value="imports">היסטוריית יבוא</TabsTrigger></TabsList>
       <TabsContent value="sends"><SendHistory /></TabsContent>
       <TabsContent value="imports"><ImportHistory /></TabsContent>

@@ -5074,6 +5074,24 @@ export type Database = {
           },
         ]
       }
+      import_history_deleted_records: {
+        Row: {
+          deleted_at: string
+          deleted_by: string
+          record_key: string
+        }
+        Insert: {
+          deleted_at?: string
+          deleted_by: string
+          record_key: string
+        }
+        Update: {
+          deleted_at?: string
+          deleted_by?: string
+          record_key?: string
+        }
+        Relationships: []
+      }
       inbound_emails_log: {
         Row: {
           body_text: string | null

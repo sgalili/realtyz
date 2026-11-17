@@ -9,6 +9,7 @@ const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list') }),
   z.object({ action: z.literal('history') }),
   z.object({ action: z.literal('imports') }),
+  z.object({ action: z.literal('delete_import'), record_id: z.string().min(1).max(120).regex(/^(?:(?:batch|dev|onb):)?[0-9a-f-]{36}(?::[dbp]\d+)?$/i) }),
   z.object({ action: z.literal('save'), user_id: z.string().uuid(), phone: z.string().trim().max(20).optional(), email: z.string().trim().max(254).optional() }),
 ]);
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -22,6 +23,13 @@ Deno.serve(async req => {
   if (caller.kind !== 'user' || !await isSuperAdmin(caller.userId, admin)) return json({ error: 'forbidden' }, 403);
   const parsed = schema.safeParse(await req.json().catch(() => null)); if (!parsed.success) return json({ error: 'invalid_input' }, 400);
   const input = parsed.data;
+
+  if (input.action === 'delete_import') {
+    // The history aggregates operational records; never delete the queue, inventory or account behind a log row.
+    const { error } = await admin.from('import_history_deleted_records').upsert({ record_key: input.record_id, deleted_by: caller.userId }, { onConflict: 'record_key', ignoreDuplicates: true });
+    if (error) return json({ error: 'מחיקת הרשומה נכשלה' }, 500);
+    return json({ ok: true });
+  }
 
   if (input.action === 'history') {
     // Every invitation sent from the hub: official WhatsApp sends plus recorded email invitations.
@@ -53,12 +61,13 @@ Deno.serve(async req => {
     const chunked = async (ids: string[], make: (part: string[]) => PromiseLike<{ data: any[] | null; error: unknown }>) => {
       const out: any[] = []; for (let i = 0; i < ids.length; i += 200) { const { data, error } = await make(ids.slice(i, i + 200)); if (error) throw error; out.push(...(data ?? [])); } return out;
     };
-    const [queueJobs, devJobs, onboard, allDevs, batchLogs] = await Promise.all([
+    const [queueJobs, devJobs, onboard, allDevs, batchLogs, deletedRecords] = await Promise.all([
       all((f, t) => admin.from('broker_import_jobs').select('id,status,error,checkpoint,created_at,updated_at').order('created_at', { ascending: false }).range(f, t)),
       all((f, t) => admin.from('developer_import_jobs').select('id,status,error,source_url,developer_id,company,completed_at,updated_at,created_at').order('created_at', { ascending: false }).range(f, t)),
       all((f, t) => admin.from('admin_broker_onboarding').select('user_id,created_at,import_source').eq('import_source', 'bright_data').order('created_at', { ascending: false }).range(f, t)),
       all((f, t) => admin.from('developers').select('id,company_name,logo_url,source_url,workspace_owner_id,created_at').not('source_url', 'is', null).range(f, t)),
       all((f, t) => admin.from('audit_logs').select('id,target_id,details,created_at').eq('action', 'super_admin.broker_batch_import').order('created_at', { ascending: false }).range(f, t)),
+      all((f, t) => admin.from('import_history_deleted_records').select('record_key').order('record_key').range(f, t)),
     ]);
     type Raw = { id: string; kind: 'developer' | 'broker'; ref: string | null; name: string | null; source_url: string | null; at: string; status: string; error: string | null };
     const raw: Raw[] = [];
@@ -76,20 +85,24 @@ Deno.serve(async req => {
     const seenUrls = new Set(raw.filter(r => r.kind === 'developer' && r.source_url).map(r => r.source_url));
     for (const d of allDevs) if (!seen.has(d.id) && !seenUrls.has(d.source_url)) raw.push({ id: `dev:${d.id}`, kind: 'developer', ref: d.id, name: d.company_name, source_url: d.source_url, at: d.created_at, status: 'completed', error: null });
     for (const o of onboard) if (!seen.has(o.user_id)) raw.push({ id: `onb:${o.user_id}`, kind: 'broker', ref: o.user_id, name: null, source_url: null, at: o.created_at, status: 'completed', error: null });
-    const devIds = [...new Set(raw.filter(r => r.kind === 'developer' && r.ref).map(r => r.ref!))];
-    const bIds = [...new Set(raw.filter(r => r.kind === 'broker' && r.ref).map(r => r.ref!))];
+    const devIds = [...new Set(raw.flatMap(r => r.kind === 'developer' && r.ref ? [r.ref] : []))];
+    const bIds = [...new Set(raw.flatMap(r => r.kind === 'broker' && r.ref ? [r.ref] : []))];
     const [devs, projects, profiles, offices, listings] = await Promise.all([
-      chunked(devIds, p => admin.from('developers').select('id,company_name,logo_url').in('id', p)),
+      chunked(devIds, p => admin.from('developers').select('id,company_name,logo_url,workspace_owner_id,owner_user_id').in('id', p)),
       chunked(devIds, p => admin.from('developer_projects').select('developer_id').in('developer_id', p).limit(10000)),
       chunked(bIds, p => admin.from('profiles').select('id,full_name,avatar_url').in('id', p)),
       chunked(bIds, p => admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', p)),
       chunked(bIds, p => admin.from('listings').select('workspace_owner_id,source_url').in('workspace_owner_id', p).limit(10000)),
     ]);
-    const items = raw.map(r => {
+    const developerOwners = [...new Set(devs.flatMap(d => d.workspace_owner_id ? [d.workspace_owner_id] : []))];
+    const devProfiles = await chunked(developerOwners, p => admin.from('profiles').select('id,full_name,avatar_url').in('id', p));
+    const deleted = new Set(deletedRecords.map(r => r.record_key));
+    const items = raw.filter(r => !deleted.has(r.id)).map(r => {
       if (r.kind === 'developer') { const d = devs.find(x => x.id === r.ref);
-        return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: d?.company_name ?? r.name ?? '', logo_url: d?.logo_url ?? null, agency_imported: !!d?.company_name, projects: r.ref ? projects.filter(p => p.developer_id === r.ref).length : 0, source_url: r.source_url, imported_at: r.at }; }
+        const p = devProfiles.find(p => p.id === d?.workspace_owner_id);
+        return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name || d?.company_name || r.name || '', workspace_owner_id: d?.workspace_owner_id ?? null, public_user_id: d?.owner_user_id ?? d?.workspace_owner_id ?? null, avatar_url: p?.avatar_url ?? null, agency_name: d?.company_name ?? r.name ?? null, logo_url: d?.logo_url ?? null, agency_imported: !!d?.company_name, projects: r.ref ? projects.filter(p => p.developer_id === r.ref).length : 0, source_url: r.source_url, imported_at: r.at }; }
       const p = profiles.find(x => x.id === r.ref); const o = offices.find(x => x.user_id === r.ref); const l = listings.filter(x => x.workspace_owner_id === r.ref);
-      return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name ?? r.name ?? '', logo_url: o?.logo_url ?? p?.avatar_url ?? null, agency_imported: !!o?.agency_name, agency_name: o?.agency_name ?? null, projects: l.length, source_url: r.source_url ?? l.find(x => /yad2\.co\.il/.test(String(x.source_url)))?.source_url ?? null, imported_at: r.at };
+      return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name ?? r.name ?? '', workspace_owner_id: p?.id ?? null, public_user_id: p?.id ?? null, avatar_url: p?.avatar_url ?? null, logo_url: o?.logo_url ?? null, agency_imported: !!o?.agency_name, agency_name: o?.agency_name ?? null, projects: l.length, source_url: r.source_url ?? l.find(x => /yad2\.co\.il/.test(String(x.source_url)))?.source_url ?? null, imported_at: r.at };
     }).sort((a, b) => String(b.imported_at).localeCompare(String(a.imported_at)));
     return json({ items });
   }
@@ -109,7 +122,7 @@ Deno.serve(async req => {
     ]);
     const brokers = (rows ?? []).map(r => {
       const p = profiles?.find(x => x.id === r.user_id);
-      return { user_id: r.user_id, full_name: p?.full_name ?? '', phone: p?.phone ?? null, email: realEmail(p?.email) ? p!.email : null,
+      return { user_id: r.user_id, full_name: p?.full_name ?? '', phone: p?.phone ?? null, email: realEmail(p?.email) ? p?.email : null,
         license_number: verified?.find(l => l.user_id === r.user_id)?.license_number ?? licenses?.find(l => l.user_id === r.user_id)?.license_number ?? null,
         office_name: offices?.find(o => o.user_id === r.user_id)?.agency_name ?? null,
         office_logo_url: offices?.find(o => o.user_id === r.user_id)?.logo_url ?? null, avatar_url: (p as any)?.avatar_url ?? null,
