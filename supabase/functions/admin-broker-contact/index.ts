@@ -44,26 +44,51 @@ Deno.serve(async req => {
   }
 
   if (input.action === 'imports') {
-    // Completed Yad2 developer imports plus Bright Data broker imports, newest first.
-    const [{ data: jobs }, { data: brokers }] = await Promise.all([
-      admin.from('developer_import_jobs').select('id,source_url,developer_id,company,completed_at,updated_at').eq('status', 'completed').order('updated_at', { ascending: false }).limit(200),
-      admin.from('admin_broker_onboarding').select('user_id,created_at').eq('import_source', 'bright_data').order('created_at', { ascending: false }).limit(200),
+    // Full import history across all time: every queued job item, legacy developer jobs and any imported entity not covered by a job.
+    const all = async (make: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: unknown }>) => {
+      const out: any[] = [];
+      for (let from = 0; ; from += 1000) { const { data, error } = await make(from, from + 999); if (error) throw error; out.push(...(data ?? [])); if ((data?.length ?? 0) < 1000) break; }
+      return out;
+    };
+    const chunked = async (ids: string[], make: (part: string[]) => PromiseLike<{ data: any[] | null; error: unknown }>) => {
+      const out: any[] = []; for (let i = 0; i < ids.length; i += 200) { const { data, error } = await make(ids.slice(i, i + 200)); if (error) throw error; out.push(...(data ?? [])); } return out;
+    };
+    const [queueJobs, devJobs, onboard, allDevs] = await Promise.all([
+      all((f, t) => admin.from('broker_import_jobs').select('id,status,error,checkpoint,created_at,updated_at').order('created_at', { ascending: false }).range(f, t)),
+      all((f, t) => admin.from('developer_import_jobs').select('id,status,error,source_url,developer_id,company,completed_at,updated_at,created_at').order('created_at', { ascending: false }).range(f, t)),
+      all((f, t) => admin.from('admin_broker_onboarding').select('user_id,created_at,import_source').order('created_at', { ascending: false }).range(f, t)),
+      all((f, t) => admin.from('developers').select('id,company_name,logo_url,source_url,workspace_owner_id,created_at').not('source_url', 'is', null).range(f, t)),
     ]);
-    const devIds = [...new Set((jobs ?? []).map(j => j.developer_id).filter(Boolean))] as string[];
-    const bIds = (brokers ?? []).map(b => b.user_id);
-    const [{ data: devs }, { data: projects }, { data: profiles }, { data: offices }, { data: listings }] = await Promise.all([
-      devIds.length ? admin.from('developers').select('id,company_name,logo_url,phone').in('id', devIds) : Promise.resolve({ data: [] as any[] }),
-      devIds.length ? admin.from('developer_projects').select('developer_id').in('developer_id', devIds) : Promise.resolve({ data: [] as any[] }),
-      bIds.length ? admin.from('profiles').select('id,full_name,avatar_url').in('id', bIds) : Promise.resolve({ data: [] as any[] }),
-      bIds.length ? admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', bIds) : Promise.resolve({ data: [] as any[] }),
-      bIds.length ? admin.from('listings').select('workspace_owner_id,source_url').in('workspace_owner_id', bIds).not('source_url', 'is', null).limit(2000) : Promise.resolve({ data: [] as any[] }),
+    type Raw = { id: string; kind: 'developer' | 'broker'; ref: string | null; name: string | null; source_url: string | null; at: string; status: string; error: string | null };
+    const raw: Raw[] = [];
+    for (const j of queueJobs) {
+      const c = (j.checkpoint ?? {}) as Record<string, any>;
+      const devs = Array.isArray(c.developerResults) ? c.developerResults : [];
+      devs.forEach((r: any, i: number) => raw.push({ id: `${j.id}:d${i}`, kind: 'developer', ref: r.developer_id ?? null, name: r.company_name ?? null, source_url: r.source_url ?? null, at: j.updated_at, status: r.status === 'failed' ? 'failed' : 'completed', error: r.error ?? null }));
+      (Array.isArray(c.brokerResults) ? c.brokerResults : []).forEach((r: any, i: number) => raw.push({ id: `${j.id}:b${i}`, kind: 'broker', ref: r.broker_id ?? null, name: r.full_name ?? null, source_url: r.source_url ?? null, at: j.updated_at, status: 'completed', error: null }));
+      const urls: string[] = Array.isArray(c.developerUrls) ? c.developerUrls : [];
+      urls.slice(devs.length).forEach((u, i) => raw.push({ id: `${j.id}:p${i}`, kind: 'developer', ref: c.developerWork?.url === u ? c.developerWork?.developerId ?? null : null, name: c.developerWork?.url === u ? c.developerWork?.developer?.company_name ?? null : null, source_url: u, at: j.updated_at, status: j.status === 'completed' ? 'completed' : j.status, error: j.error ?? null }));
+    }
+    for (const j of devJobs) { const c = (j.company ?? {}) as Record<string, unknown>; raw.push({ id: j.id, kind: 'developer', ref: j.developer_id, name: String(c.name ?? c.company_name ?? '') || null, source_url: j.source_url, at: j.completed_at ?? j.updated_at ?? j.created_at, status: j.status, error: j.error ?? null }); }
+    const seen = new Set(raw.filter(r => r.ref).map(r => r.ref));
+    const seenUrls = new Set(raw.filter(r => r.kind === 'developer' && r.source_url).map(r => r.source_url));
+    for (const d of allDevs) if (!seen.has(d.id) && !seenUrls.has(d.source_url)) raw.push({ id: `dev:${d.id}`, kind: 'developer', ref: d.id, name: d.company_name, source_url: d.source_url, at: d.created_at, status: 'completed', error: null });
+    for (const o of onboard) if (!seen.has(o.user_id)) raw.push({ id: `onb:${o.user_id}`, kind: 'broker', ref: o.user_id, name: null, source_url: null, at: o.created_at, status: 'completed', error: null });
+    const devIds = [...new Set(raw.filter(r => r.kind === 'developer' && r.ref).map(r => r.ref!))];
+    const bIds = [...new Set(raw.filter(r => r.kind === 'broker' && r.ref).map(r => r.ref!))];
+    const [devs, projects, profiles, offices, listings] = await Promise.all([
+      chunked(devIds, p => admin.from('developers').select('id,company_name,logo_url').in('id', p)),
+      chunked(devIds, p => admin.from('developer_projects').select('developer_id').in('developer_id', p).limit(10000)),
+      chunked(bIds, p => admin.from('profiles').select('id,full_name,avatar_url').in('id', p)),
+      chunked(bIds, p => admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', p)),
+      chunked(bIds, p => admin.from('listings').select('workspace_owner_id,source_url').in('workspace_owner_id', p).limit(10000)),
     ]);
-    const items = [
-      ...(jobs ?? []).map(j => { const d = devs?.find(x => x.id === j.developer_id); const c = (j.company ?? {}) as Record<string, unknown>;
-        return { id: j.id, kind: 'developer', name: d?.company_name ?? String(c.name ?? c.company_name ?? 'יזם'), logo_url: d?.logo_url ?? null, agency_imported: !!(d?.company_name), projects: (projects ?? []).filter(p => p.developer_id === j.developer_id).length, source_url: j.source_url, imported_at: j.completed_at ?? j.updated_at }; }),
-      ...(brokers ?? []).map(b => { const p = profiles?.find(x => x.id === b.user_id); const o = offices?.find(x => x.user_id === b.user_id); const l = (listings ?? []).filter(x => x.workspace_owner_id === b.user_id);
-        return { id: b.user_id, kind: 'broker', name: p?.full_name ?? '', logo_url: o?.logo_url ?? (p as any)?.avatar_url ?? null, agency_imported: !!o?.agency_name, agency_name: o?.agency_name ?? null, projects: l.length, source_url: l.find(x => /yad2\.co\.il/.test(String(x.source_url)))?.source_url ?? null, imported_at: b.created_at }; }),
-    ].sort((a, b) => String(b.imported_at).localeCompare(String(a.imported_at)));
+    const items = raw.map(r => {
+      if (r.kind === 'developer') { const d = devs.find(x => x.id === r.ref);
+        return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: d?.company_name ?? r.name ?? '', logo_url: d?.logo_url ?? null, agency_imported: !!d?.company_name, projects: r.ref ? projects.filter(p => p.developer_id === r.ref).length : 0, source_url: r.source_url, imported_at: r.at }; }
+      const p = profiles.find(x => x.id === r.ref); const o = offices.find(x => x.user_id === r.ref); const l = listings.filter(x => x.workspace_owner_id === r.ref);
+      return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name ?? r.name ?? '', logo_url: o?.logo_url ?? p?.avatar_url ?? null, agency_imported: !!o?.agency_name, agency_name: o?.agency_name ?? null, projects: l.length, source_url: r.source_url ?? l.find(x => /yad2\.co\.il/.test(String(x.source_url)))?.source_url ?? null, imported_at: r.at };
+    }).sort((a, b) => String(b.imported_at).localeCompare(String(a.imported_at)));
     return json({ items });
   }
 

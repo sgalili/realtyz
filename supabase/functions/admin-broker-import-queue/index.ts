@@ -310,6 +310,7 @@ Deno.serve(async req => {
           if(b.imported_bio) {
             const {error}=await admin.from('profiles').update({imported_public_bio:b.imported_bio}).eq('id',brokerId).is('imported_public_bio',null);if(error)throw error;
           }
+          c.brokerResults=[...(c.brokerResults??[]).filter((r:Record<string,any>)=>r.broker_id!==brokerId),{broker_id:brokerId,full_name:b.full_name??null,office_name:b.office_name??null,license_number:b.license_number??null,source_url:b.source_url??b.listing_urls?.[0]??null,listings:b.listing_urls?.length??0}];
           c.brokerId=brokerId;c.brokerListingsDone=0;c.phase='importing';await save();
         } else if(c.phase==='importing') {
           const d=await pacedCall('yad2-unlocker',{owner_id:c.brokerId,url:b.listing_urls[c.listingIndex],import_item:true,residential_only:true,limit:1,pages:1});
@@ -362,6 +363,17 @@ Deno.serve(async req => {
         return json({ok:true,waiting:true});
       }
       const message=e instanceof Error?e.message:'הייבוא נעצר';
+      // Batch links: a permanent failure on one developer link is logged per item and the loop continues with the next link.
+      if(String(c.phase??'').startsWith('developer_') && Array.isArray(c.developerUrls)) {
+        const url=c.developerUrls[c.developerIndex??0];
+        c.developerResults=[...(c.developerResults??[]),{source_url:url,status:'failed',error:message,company_name:c.developerWork?.developer?.company_name??null,developer_id:c.developerWork?.developerId??null,account_id:c.developerWork?.accountId??null,projects:0,units:0}];
+        c.developerIndex=(c.developerIndex??0)+1;delete c.developerWork;
+        c.phase=c.developerUrls[c.developerIndex]?'developer_scanning':c.enrichUrls?.length?'enriching':c.brokers?.length?'validating':'completed';
+        const ok=(c.developerResults as Record<string,any>[]).filter(r=>r.status!=='failed');
+        if(c.phase!=='completed'){await save({error:null});return json({ok:true,item_failed:true});}
+        await save(ok.length||c.brokers?.length?{status:'completed',error:null}:{status:'failed',error:message});
+        return json({ok:true,item_failed:true});
+      }
       await save({status:autonomousDeveloper()?'failed':'paused',error:message});
       return json({ok:false,...(autonomousDeveloper()?{failed:true}:{paused:true})});
     }

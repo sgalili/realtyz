@@ -134,7 +134,7 @@ function SendHistory() {
   </div>;
 }
 
-type ImportItem = { id: string; kind: 'developer' | 'broker'; name: string; logo_url: string | null; agency_imported: boolean; agency_name?: string | null; projects: number; source_url: string | null; imported_at: string };
+type ImportItem = { id: string; kind: 'developer' | 'broker'; name: string; logo_url: string | null; agency_imported: boolean; agency_name?: string | null; projects: number; source_url: string | null; imported_at: string; status?: string; error?: string | null };
 
 function ImportHistory() {
   const q = useQuery({ queryKey: ['broker-import-history'], queryFn: () => invoke<{ items: ImportItem[] }>('admin-broker-contact', { action: 'imports' }) });
@@ -143,14 +143,15 @@ function ImportHistory() {
   if (q.isError) return <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p>;
   if (!items.length) return <p className="text-base text-muted-foreground">עדיין לא בוצעו יבואים.</p>;
   return <div className="overflow-x-auto rounded-xl border border-border/70">
-    <table className="w-full min-w-[520px] text-right text-sm">
-      <thead className="bg-muted/50 text-muted-foreground"><tr><th className="p-2 font-semibold">שם</th><th className="p-2 font-semibold">סוג</th><th className="p-2 font-semibold">לוגו</th><th className="p-2 font-semibold">פרטי משרד</th><th className="p-2 font-semibold">{'פרויקטים/נכסים'}</th><th className="p-2 font-semibold">תאריך</th><th className="p-2 font-semibold">מקור</th></tr></thead>
+    <table className="w-full min-w-[600px] text-right text-sm">
+      <thead className="bg-muted/50 text-muted-foreground"><tr><th className="p-2 font-semibold">שם</th><th className="p-2 font-semibold">סוג</th><th className="p-2 font-semibold">לוגו</th><th className="p-2 font-semibold">פרטי משרד</th><th className="p-2 font-semibold">{'פרויקטים/נכסים'}</th><th className="p-2 font-semibold">סטטוס</th><th className="p-2 font-semibold">תאריך</th><th className="p-2 font-semibold">מקור</th></tr></thead>
       <tbody className="divide-y divide-border/70">{items.map(i => <tr key={`${i.kind}-${i.id}`}>
         <td className="p-2"><div className="flex items-center gap-2">{i.logo_url ? <img src={i.logo_url} alt="" className="h-8 w-8 shrink-0 rounded-md border border-border/60 object-contain" /> : <span className="h-8 w-8 shrink-0" />}<span className="font-bold">{i.name || 'ללא שם'}</span></div></td>
         <td className="p-2">{i.kind === 'developer' ? 'יזם' : 'מתווך'}</td>
         <td className="p-2">{i.logo_url ? <Check className="h-4 w-4 text-primary" aria-label="יובא" /> : <X className="h-4 w-4 text-muted-foreground" aria-label="חסר" />}</td>
         <td className="p-2">{i.agency_imported ? <Check className="h-4 w-4 text-primary" aria-label="יובא" /> : <X className="h-4 w-4 text-muted-foreground" aria-label="חסר" />}</td>
         <td className="p-2">{i.projects}</td>
+        <td className="p-2 whitespace-nowrap" title={i.error ?? undefined}>{i.status === 'failed' ? <span className="text-destructive">נכשל</span> : i.status === 'completed' || !i.status ? 'הושלם' : 'בתהליך'}</td>
         <td className="p-2 whitespace-nowrap">{new Date(i.imported_at).toLocaleDateString('he-IL')}</td>
         <td className="p-2">{i.source_url ? <a href={i.source_url} target="_blank" rel="noopener noreferrer" aria-label="פתיחת עמוד המקור ביד 2" className="inline-flex text-primary"><ExternalLink className="h-4 w-4" /></a> : <span className="text-muted-foreground">-</span>}</td>
       </tr>)}</tbody>
