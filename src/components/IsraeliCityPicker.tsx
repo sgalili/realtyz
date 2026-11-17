@@ -41,9 +41,11 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
   const showsOther = !!value && !isPresetCity;
 
   const filtered = useMemo(() => {
-    const q = search.trim();
+    const norm = (v: string) => v.replace(/[\s\-־'"״׳()]/g, '');
+    const q = norm(search.trim());
     if (!q) return ISRAELI_CITIES;
-    return ISRAELI_CITIES.filter((c) => c.includes(q));
+    const starts = ISRAELI_CITIES.filter((c) => norm(c).startsWith(q));
+    return [...starts, ...ISRAELI_CITIES.filter((c) => !norm(c).startsWith(q) && norm(c).includes(q))];
   }, [search]);
 
   const selectCity = (city: string) => {
