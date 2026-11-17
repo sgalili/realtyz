@@ -27,8 +27,8 @@ Deno.serve(async req => {
     const ids = (rows ?? []).map(r => r.user_id);
     if (!ids.length) return json({ brokers: [] });
     const [{ data: profiles }, { data: offices }, { data: licenses }, { data: drafts }, { data: verified }] = await Promise.all([
-      admin.from('profiles').select('id,full_name,phone,email').in('id', ids),
-      admin.from('white_label_settings').select('user_id,agency_name').in('user_id', ids),
+      admin.from('profiles').select('id,full_name,phone,email,avatar_url').in('id', ids),
+      admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', ids),
       admin.from('admin_approved_broker_licenses').select('user_id,license_number').in('user_id', ids),
       admin.from('listings').select('workspace_owner_id').in('workspace_owner_id', ids).eq('is_published', false),
       admin.from('broker_license_verifications').select('user_id,license_number').in('user_id', ids),
@@ -38,6 +38,7 @@ Deno.serve(async req => {
       return { user_id: r.user_id, full_name: p?.full_name ?? '', phone: p?.phone ?? null, email: realEmail(p?.email) ? p!.email : null,
         license_number: verified?.find(l => l.user_id === r.user_id)?.license_number ?? licenses?.find(l => l.user_id === r.user_id)?.license_number ?? null,
         office_name: offices?.find(o => o.user_id === r.user_id)?.agency_name ?? null,
+        office_logo_url: offices?.find(o => o.user_id === r.user_id)?.logo_url ?? null, avatar_url: (p as any)?.avatar_url ?? null,
         drafts: (drafts ?? []).filter(d => d.workspace_owner_id === r.user_id).length,
         contact_status: r.contact_status, first_login_at: r.first_login_at, email_consent_at: r.email_consent_at, email_invited_at: r.email_invited_at };
     }).filter(b => b.contact_status === 'pending_contact' || !b.phone || !b.email);

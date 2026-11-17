@@ -10,8 +10,9 @@ import { OfficialBrokerInvitationDialog } from './OfficialBrokerInvitationDialog
 import { BrokerEmailConsentButton } from './BrokerEmailInvitations';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
-export type ContactBroker = { user_id: string; full_name: string; phone: string | null; email: string | null; license_number: string | null; office_name: string | null; drafts: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
+export type ContactBroker = { user_id: string; full_name: string; phone: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; drafts: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
 async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(fn, { body });
@@ -38,8 +39,12 @@ function BrokerRow({ b }: { b: ContactBroker }) {
   const dirty = (phone.trim() && phone.replace(/\D/g, '') !== (b.phone ? formatPhoneDisplay(b.phone).replace(/\D/g, '') : '')) || (email.trim() && email.trim().toLowerCase() !== (b.email ?? ''));
   return <li className="space-y-3 rounded-xl border border-border/70 p-4">
     <div className="flex flex-wrap items-start justify-between gap-2">
-      <div className="space-y-1"><p className="text-lg font-bold">{b.full_name || 'ללא שם'}</p><p className="text-base text-muted-foreground">{[b.license_number && `רישיון ${b.license_number}`, b.office_name, `${b.drafts} טיוטות`].filter(Boolean).join(' · ')}</p></div>
-      <Badge variant={complete ? 'default' : 'secondary'} className="text-sm">{complete ? 'פרטי התקשרות הושלמו' : 'ממתין להשלמת פרטי התקשרות'}</Badge>
+      <Link to={`/broker/${b.user_id}`} className="flex items-center gap-3 rounded-lg hover:opacity-90" aria-label={`צפייה בנכסים ובטיוטות של ${b.full_name}`}>
+        {b.avatar_url && <img src={b.avatar_url} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />}
+        {b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-12 w-12 shrink-0 rounded-md border border-border/60 object-contain" />}
+        <div className="space-y-1"><p className="text-lg font-bold">{b.full_name || 'ללא שם'}</p><p className="text-base text-muted-foreground">{[b.license_number && `רישיון ${b.license_number}`, b.office_name, `${b.drafts} טיוטות`].filter(Boolean).join(' · ')}</p></div>
+      </Link>
+      {!complete && <Badge variant="secondary" className="text-sm">ממתין להשלמת פרטי התקשרות</Badge>}
     </div>
     <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
       <Input aria-label={`נייד (WhatsApp) של ${b.full_name}`} className="h-11 text-base" dir="ltr" inputMode="tel" placeholder="05X-XXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} />

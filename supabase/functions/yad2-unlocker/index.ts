@@ -1574,6 +1574,38 @@ function parseItem(html: string, srcUrl: string): Scraped | null {
 }
 
 
+
+// Clicks Yad2's "contact by phone" button on a broker/office profile and reads the revealed tel: link.
+async function revealAgencyPhone(pageUrl: string): Promise<string | null> {
+  if (!BD_WS) return null;
+  let browser: any = null;
+  try {
+    browser = await puppeteer.connect({ browserWSEndpoint: BD_WS, protocolTimeout: 60_000 });
+    const page = await browser.newPage();
+    await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    const clicked = await page.evaluate(() => {
+      const els = Array.from(document.querySelectorAll('button,a,[role="button"]')) as HTMLElement[];
+      const el = els.find(e => /הצג(ת)?\s*(מספר|טלפון)|חייגו|התקשר|טלפון/.test(e.innerText || e.getAttribute('aria-label') || ''));
+      if (!el) return false; el.click(); return true;
+    });
+    if (!clicked) return null;
+    for (let i = 0; i < 16; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      const raw = await page.evaluate(() => {
+        const tel = (document.querySelector('a[href^="tel:"]') as HTMLAnchorElement | null)?.getAttribute('href');
+        if (tel) return tel;
+        const m = document.body.innerText.match(/0\d{1,2}[-\s]?\d{3}[-\s]?\d{4}/);
+        return m ? m[0] : null;
+      });
+      const d = String(raw ?? '').replace(/\D/g, '');
+      if (/^0\d{8,9}$/.test(d)) return `972${d.slice(1)}`;
+      if (/^972\d{8,9}$/.test(d)) return d;
+    }
+    return null;
+  } catch (e) { console.warn('[yad2-unlocker] phone reveal failed', e instanceof Error ? e.message : e); return null; }
+  finally { try { await browser?.disconnect?.(); } catch { /* noop */ } }
+}
+
 // -------- Transport B: Bright Data Scraping Browser (WS / puppeteer) --------
 //
 // Used when the REST Web Unlocker zone is unavailable or misconfigured
@@ -2202,6 +2234,8 @@ Deno.serve(async (req) => {
       const html = await unlock(inputUrl, {maxAttempts:1});
       const $page = cheerio.load(html);
       const parsed = body?.agency_profile===true && isAgencyProfileUrl(inputUrl) ? parseAgencyProfile($page,inputUrl,Math.min(10,Math.max(1,Number(body?.max_listings)||10))) : parseAgencies($page,inputUrl);
+      // Profile pages hide the phone behind a "show phone" button: click it in the managed browser.
+      if (body?.agency_profile===true) for (const r of (parsed as any).results ?? []) if (!r.owner_phone) r.owner_phone = await revealAgencyPhone(inputUrl);
       return json({success:true,...parsed,served_from:'agencies_html',records_saved:0});
     }
     if (rawUrl && !/\/realestate\/(?:item|forsale|rent|forrent)/i.test(parsedUrl.pathname)) {
