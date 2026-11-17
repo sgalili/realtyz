@@ -29,7 +29,7 @@ describe('AgencyAddressFields', () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(<QueryClientProvider client={client}><Harness /></QueryClientProvider>);
     const city = screen.getByLabelText('עיר / יישוב');
-    fireEvent.focus(city);
+    fireEvent.click(city);
     fireEvent.change(city, { target: { value: 'תל אביב' } });
     fireEvent.click(await screen.findByRole('button', { name: 'תל אביב - יפו' }));
     expect(onSave).toHaveBeenLastCalledWith('תל אביב - יפו', '');

@@ -4,9 +4,9 @@ export const ISRAEL_STREETS_RESOURCE = '9ad3862c-8391-4b2f-84a4-2d4c68625f4b';
 
 export type NationalLocality = { code: string; name: string };
 
-async function nationalRecords(resourceId: string, params: URLSearchParams, signal?: AbortSignal): Promise<Record<string, unknown>[]> {
+async function nationalRecords(resourceId: string, params: URLSearchParams, signal?: AbortSignal, limit = 15): Promise<Record<string, unknown>[]> {
   params.set('resource_id', resourceId);
-  params.set('limit', '15');
+  params.set('limit', String(limit));
   const response = await fetch(`${DATASTORE_URL}?${params.toString()}`, { signal });
   if (!response.ok) throw new Error(`national_address_${response.status}`);
   const payload = await response.json() as { success?: boolean; result?: { records?: Record<string, unknown>[] } };
@@ -18,7 +18,7 @@ export async function searchNationalCities(query: string, signal?: AbortSignal):
   const params = new URLSearchParams();
   const q = query.trim();
   if (q) params.set('q', q);
-  const records = await nationalRecords(ISRAEL_SETTLEMENTS_RESOURCE, params, signal);
+  const records = await nationalRecords(ISRAEL_SETTLEMENTS_RESOURCE, params, signal, 10000);
   return records.map(record => ({ code: String(record['סמל_ישוב'] ?? '').trim(), name: String(record['שם_ישוב'] ?? '').trim() }))
     .filter(locality => locality.code && locality.name);
 }
