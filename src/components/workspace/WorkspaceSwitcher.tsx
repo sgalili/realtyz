@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { useWorkspaceInventoryCounts } from '@/hooks/useWorkspaceInventoryCounts';
 
 /**
  * Sidebar workspace switcher. The left circle shows the signed-in user's
@@ -25,6 +26,8 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const { data: inventoryCounts } = useWorkspaceInventoryCounts(open);
+  const countsByOwner = useMemo(() => new Map((inventoryCounts ?? []).map(row => [row.workspace_owner_id, row])), [inventoryCounts]);
   const [busy, setBusy] = useState(false);
   const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
@@ -189,13 +192,15 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                 const primaryLine = hasOfficeAndOwner ? workspaceCard.subtitle : label;
                 const secondaryLine = hasOfficeAndOwner ? label : workspaceCard.subtitle;
                 const active = w.workspace_owner_id === activeWorkspaceId;
+                const inventory = countsByOwner.get(w.workspace_owner_id);
                 return (
-                  <button
+                  <Button
+                    variant="ghost"
                     key={w.workspace_owner_id}
                     type="button"
                     onClick={() => pick(w.workspace_owner_id, label)}
                     className={cn(
-                      'flex w-full shrink-0 items-center gap-2.5 rounded-md px-2 py-2 text-right text-sm transition-colors hover:bg-primary/10',
+                      'flex h-auto w-full shrink-0 items-center justify-start gap-2.5 rounded-md px-2 py-2 text-right text-sm transition-colors hover:bg-primary/10',
                       active && 'bg-primary/5 font-semibold text-primary',
                     )}
                   >
@@ -218,7 +223,13 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                       )}
                     </span>
                     {active && <Check className="h-4 w-4 shrink-0 text-primary" />}
-                  </button>
+                    {inventory && (
+                      <span data-workspace-inventory-count className="flex shrink-0 flex-col items-center text-xs font-normal leading-tight text-muted-foreground">
+                        <span className="text-sm font-semibold tabular-nums text-foreground">{inventory.inventory_count.toLocaleString('he-IL')}</span>
+                        <span>{inventory.inventory_kind === 'projects' ? 'פרויקטים' : 'נכסים'}</span>
+                      </span>
+                    )}
+                  </Button>
                 );
               })}
             </div>

@@ -1590,6 +1590,13 @@
       "when": 1794943449965,
       "tag": "0226_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 227,
+      "version": "7",
+      "when": 1794948319559,
+      "tag": "0227_workspace_inventory_counts",
+      "breakpoints": true
     }
   ]
 }

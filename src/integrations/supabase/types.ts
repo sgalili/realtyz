@@ -11440,6 +11440,14 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"][]
       }
+      get_workspace_inventory_counts: {
+        Args: never
+        Returns: {
+          inventory_count: number
+          inventory_kind: string
+          workspace_owner_id: string
+        }[]
+      }
       get_workspace_mailbox: { Args: never; Returns: Json }
       get_workspace_member_ids: {
         Args: { _owner: string }
