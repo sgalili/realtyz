@@ -28,9 +28,9 @@ async function startImport(req: Request, body: Record<string, unknown>) {
   if (roleError || !roles?.length) return json({ error: 'forbidden', message: 'הייבוא זמין בחשבון יזם' }, 403);
   const client = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
   const { data: subscription, error: subscriptionError } = await client.rpc('get_developer_subscription_status');
-  if (subscriptionError) return json({ error: 'subscription_status_unavailable', message: 'לא ניתן לאמת את מנוי היזם כרגע' }, 503);
+  if (subscriptionError) return json({ error: 'subscription_status_unavailable', message: 'לא ניתן לאמת את חשבון היזם כרגע' }, 503);
   if (!(subscription as { active?: boolean; workspace_owner_id?: string } | null)?.active || subscription.workspace_owner_id !== workspace) {
-    return json({ error: 'developer_subscription_required', message: 'ייבוא פרויקטים זמין לאחר אישור תשלום מנוי היזמים' }, 402);
+    return json({ error: 'developer_subscription_required', message: 'ייבוא פרויקטים זמין בחשבון יזם' }, 402);
   }
   const { data: existing, error: existingError } = await admin.from('developer_import_jobs').select('id,status,lease_until').eq('workspace_owner_id', workspace).eq('source_url', sourceUrl).eq('status', 'running').maybeSingle();
   if (existingError) return json({ error: 'queue_unavailable', message: 'לא ניתן לפתוח את תור הייבוא' }, 503);

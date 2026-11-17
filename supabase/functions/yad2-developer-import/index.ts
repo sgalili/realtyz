@@ -31,8 +31,8 @@ Deno.serve(async req => {
     const { data: roles, error: roleError } = await client.from('user_roles').select('role').eq('user_id', user.id);
     if (roleError || !roles?.some(r => r.role === 'developer' || r.role === 'super_admin')) return json({ error: 'forbidden', message: 'הייבוא זמין בחשבון יזם' }, 403);
     const { data: subscription, error: subscriptionError } = await client.rpc('get_developer_subscription_status');
-    if (subscriptionError) return json({ error: 'subscription_status_unavailable', message: 'לא ניתן לאמת את מנוי היזם כרגע' }, 503);
-    if (!(subscription as { active?: boolean } | null)?.active) return json({ error: 'developer_subscription_required', message: 'ייבוא פרויקטים זמין לאחר אישור תשלום מנוי היזמים' }, 402);
+    if (subscriptionError) return json({ error: 'subscription_status_unavailable', message: 'לא ניתן לאמת את חשבון היזם כרגע' }, 503);
+    if (!(subscription as { active?: boolean } | null)?.active) return json({ error: 'developer_subscription_required', message: 'ייבוא פרויקטים זמין בחשבון יזם' }, 402);
   }
   let pageUrl: URL;
   try {

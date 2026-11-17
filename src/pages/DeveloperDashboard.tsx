@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FullPageLoading } from '@/components/ui/full-page-loading';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, ChevronDown, ExternalLink, FileDown, Layers, Loader2, Pencil, Trash2, Megaphone, Globe, Settings2, LayoutGrid, List } from 'lucide-react';
 import { toast } from 'sonner';
@@ -38,7 +38,6 @@ import DeveloperCommissionEditor from '@/components/developers/DeveloperCommissi
 import { projectCampaignTargets } from '../../supabase/functions/_shared/projectCampaignTargets';
 import type { Json } from '@/integrations/supabase/types';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu, type BoardColumnId } from '@/components/public/PublicBoardTableControls';
-import { DeveloperSubscriptionDialog } from '@/components/billing/DeveloperSubscriptionDialog';
 import { useDeveloperSubscription } from '@/hooks/useDeveloperSubscription';
 
 const projectImages = developerProjectImages;
@@ -51,7 +50,7 @@ export default function DeveloperDashboard() {
   const navigate = useNavigate();
   const subscription = useDeveloperSubscription();
   if (loading || (activeWorkspaceId && subscription.isLoading)) return <FullPageLoading />;
-  if (!subscription.data?.active) return <DeveloperSubscriptionDialog open onOpenChange={open => { if (!open) navigate('/'); }} />;
+  if (!subscription.data?.active) return <Navigate to="/" replace />;
   return <DeveloperDashboardContent />;
 }
 
