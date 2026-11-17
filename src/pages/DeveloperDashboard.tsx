@@ -21,6 +21,16 @@ import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER } from '@/lib/leadTypeFilter';
 import { developerProjectImages, projectDeal, projectMatches, savedProjectHierarchy } from '@/lib/developerProjectBoard';
 import { cn } from '@/lib/utils';
+import { missingProjectDetails, projectPublicationLabel } from '@/lib/developerProjectCompleteness';
+
+function ProjectStatusCell({ project, hasImages, stage }: { project: DeveloperProject; hasImages: boolean; stage: string }) {
+  const label = projectPublicationLabel(project);
+  const missing = missingProjectDetails(project as never, hasImages);
+  return <span className="flex min-w-[7rem] flex-col items-start gap-1 whitespace-normal leading-tight">
+    <span className="flex flex-wrap items-center gap-1"><span className={cn('rounded-full px-2 py-0.5 text-[11px] font-bold', label === 'מפורסם' ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground')}>{label}</span><span className="text-[11px] text-muted-foreground">{stage}</span></span>
+    {missing.length ? <span className="text-[11px] text-destructive">חסר: {missing.join(', ')}</span> : label !== 'מפורסם' ? <span className="text-[11px] text-success">מוכן לפרסום</span> : null}
+  </span>;
+}
 import DeveloperCommissionBadges from '@/components/developers/DeveloperCommissionBadges';
 import { commissionConfig, developerFeesErrors, projectCommissionErrors, unitCommissionKey, type DeveloperCommissionConfig } from '@/lib/developerCommissions';
 import DeveloperCommissionEditor from '@/components/developers/DeveloperCommissionEditor';
@@ -193,6 +203,7 @@ function DeveloperDashboardContent() {
         {filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו פרויקטים מתאימים</p> : grid ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(p => { const open = expandedId === p.id; const deal = projectDeal(p); return <article key={p.id} className={cn('flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md', open && 'sm:col-span-2 lg:col-span-3')}>
             <div className="flex flex-wrap items-start gap-2 p-3"><div className="min-w-0 w-full"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3"><h2 className="min-w-0 whitespace-normal [overflow-wrap:anywhere] text-[19px] font-bold leading-snug">{p.name}</h2>{priceLabel(p.price_from) && <p className={cn('shrink-0 whitespace-nowrap text-[17px] font-bold', deal === 'rent' ? 'text-sale' : 'text-success')}>{priceLabel(p.price_from)}</p>}</div><p className="mt-1 truncate text-sm text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</p></div>{actions(p)}</div>
+            <div className="px-3 pb-2"><ProjectStatusCell project={p} hasImages={projectImages(p).length > 0} stage={PROJECT_STATUS[p.status] ?? p.status} /></div>
             <PropertyGallerySlider photos={projectImages(p)} alt={p.name} overlay={<span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">{PROJECT_STATUS[p.status] ?? p.status}</span>} />
             <div className="flex flex-1 flex-col gap-3 p-4">
               <DeveloperCommissionBadges project={p} onEdit={() => openPricing(p)} />
@@ -201,13 +212,13 @@ function DeveloperDashboardContent() {
               <AnimatedExpansion open={open} autoReveal={false}><ProjectHierarchyDetails enlarged project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => { const target = projectCampaignTargets(p).find(t => t.id.endsWith(`:unit:${encodeURIComponent(`${unit.building_id ?? ''}:${unit.source_unit_id}`)}`)); if (target) navigate(`/campaigns?tab=create&listing=${encodeURIComponent(target.id)}&fresh=1`); }} /></AnimatedExpansion>
             </div>
           </article>; })}
-        </div> : <BoardColumnDragArea controls={columns}><HorizontalTableScroll className="listing-results-scroll board-head-sticky flex-1"><table className="w-max min-w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{columns.visible.map((id) => <BoardColumnHeader key={id} id={id} controls={columns} />)}<th className="p-2"><BoardColumnMenu controls={columns} /></th></tr></thead><tbody>
+        </div> : <BoardColumnDragArea controls={columns}><HorizontalTableScroll className="listing-results-scroll board-head-sticky flex-1"><table className="w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{columns.visible.map((id) => <BoardColumnHeader key={id} id={id} controls={columns} />)}<th className="p-2"><BoardColumnMenu controls={columns} /></th></tr></thead><tbody>
           {columns.sorted.flatMap(p => { const open = expandedId === p.id; const deal = projectDeal(p); const hierarchy = savedProjectHierarchy(p); return [<tr key={p.id} tabIndex={0} aria-expanded={open} onClick={() => setExpandedId(open ? null : p.id)} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? null : p.id); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             {columns.visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'price' && 'text-right whitespace-nowrap font-bold max-sm:sticky max-sm:left-0 max-sm:z-[3] max-sm:bg-card', id === 'price' && (deal === 'rent' ? 'text-sale' : 'text-success'))}>
               {id === 'photo' ? projectImages(p)[0] ? <img src={projectImages(p)[0]} alt="" className="h-12 w-12 rounded object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded bg-muted"><Building2 className="h-5 w-5 text-muted-foreground" /></div>
-              : id === 'address' ? <div className="w-64"><strong className="block whitespace-normal [overflow-wrap:anywhere]">{p.name}</strong><span className="block break-words text-xs text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</span></div>
+              : id === 'address' ? <div className="min-w-[8rem] max-w-64"><strong className="block whitespace-normal [overflow-wrap:anywhere]">{p.name}</strong><span className="block break-words text-xs text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</span></div>
               : id === 'price' ? priceLabel(p.price_from)
-              : id === 'commissions' ? <DeveloperCommissionBadges project={p} onEdit={() => openPricing(p)} /> : id === 'rooms' ? hierarchy.apartments.length || '' : PROJECT_STATUS[p.status] ?? p.status}
+              : id === 'commissions' ? <DeveloperCommissionBadges project={p} onEdit={() => openPricing(p)} /> : id === 'rooms' ? hierarchy.apartments.length || '' : <ProjectStatusCell project={p} hasImages={projectImages(p).length > 0} stage={PROJECT_STATUS[p.status] ?? p.status} />}
             </td>)}
             <td className="p-2"><div className="flex items-center">{actions(p)}<Button variant="ghost" size="icon-sm" aria-label={`בניינים ויחידות ${p.name}`} aria-expanded={open} onClick={event => { event.stopPropagation(); setExpandedId(open ? null : p.id); }}><ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button></div></td>
           </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1} className="p-0"><FixedTablePanel><AnimatedExpansion open={open} autoReveal={false}><div className="min-w-0 space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails enlarged project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} /></div></AnimatedExpansion></FixedTablePanel></td></tr>]; })}
