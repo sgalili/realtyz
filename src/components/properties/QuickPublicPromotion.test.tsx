@@ -25,6 +25,7 @@ describe('broker approval publication access', () => {
     mocks.publish.mockResolvedValue(['property-1']);
     render(<QueryClientProvider client={new QueryClient()}><TooltipProvider><QuickPublicPromotion ids={['property-1']} onPublished={vi.fn()} /></TooltipProvider></QueryClientProvider>);
     fireEvent.click(screen.getByRole('button', { name: 'פרסום בלוח הציבורי' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'הרחב פנייה מסוננת בוואטסאפ עם ריטה AI' }));
     fireEvent.click(await screen.findByRole('button', { name: 'שאלות סינון בוואטסאפ (3)' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'שאלה 1' }), { target: { value: 'יש נכס למכור?' } });
     fireEvent.click(screen.getByRole('checkbox', { name: 'אישור התקנון והעמלות' }));
@@ -99,7 +100,11 @@ describe('broker approval publication access', () => {
     query.select.mockReturnValue(query); query.eq.mockReturnValue(query); query.update.mockReturnValue(query); mocks.from.mockReturnValue(query); mocks.publish.mockResolvedValue(properties.map(row => row.id));
     render(<QueryClientProvider client={new QueryClient()}><TooltipProvider><QuickPublicPromotion ids={properties.map(row => row.id)} onPublished={vi.fn()} /></TooltipProvider></QueryClientProvider>);
     fireEvent.click(screen.getByRole('button', { name: 'פרסום נכסים נבחרים' }));
-    fireEvent.change(await screen.findByRole('spinbutton', { name: 'מחיר משותף: פנייה דרך טופס' }), { target: { value: '60' } });
+    const formLabel = 'השארת פרטים בעמוד נחיתה';
+    fireEvent.click(await screen.findByRole('button', { name: `הרחב ${formLabel}` }));
+    fireEvent.click(screen.getByRole('button', { name: `עריכת עמלה עבור ${formLabel}` }));
+    fireEvent.change(screen.getByRole('spinbutton', { name: `עמלה עבור ${formLabel}` }), { target: { value: '60' } });
+    fireEvent.click(screen.getByRole('button', { name: `שמירת עמלה עבור ${formLabel}` }));
     fireEvent.change(screen.getByRole('spinbutton', { name: 'עמלת סגירה משותפת למכירה' }), { target: { value: '1.5' } });
     fireEvent.click(screen.getByRole('checkbox', { name: 'אישור התקנון והעמלות' }));
     fireEvent.click(screen.getByRole('button', { name: 'שמירת תמחור ופרסום' }));

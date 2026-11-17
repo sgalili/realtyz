@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { commissionOfferFromPrice } from '@/lib/commissionDisplay';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ClosingFeeSlider } from '@/components/affiliate/ClosingFeeSlider';
+import { LeadRewardCard, LEAD_REWARD_TYPES, RewardCardsTitle } from '@/components/public/LeadRewardCard';
 import { LeadPriceSlider } from '@/components/public/LeadPriceSlider';
 import { WhatsAppIcon } from './WhatsAppIcon';
 import { PublicationLeadHelp } from './PublicationLeadHelp';
@@ -200,7 +201,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
               const common = percentages.length && percentages.every(value => Math.abs(value - percentages[0]) < 0.000001) ? String(Number(percentages[0].toFixed(4))) : '';
               return <label key={deal} className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold">{deal === 'rent' ? 'עמלת סגירה להשכרה (% מהשכירות)' : 'עמלת סגירה למכירה (%)'}<Input className="w-28 text-center" aria-label={deal === 'rent' ? 'עמלת סגירה משותפת להשכרה' : 'עמלת סגירה משותפת למכירה'} inputMode="decimal" type="number" min={deal === 'rent' ? 10 : 0.2} max={deal === 'rent' ? 100 : 2} step={deal === 'rent' ? 1 : 0.1} placeholder="מחירים שונים" value={sharedClosing[deal] ?? common} onChange={event => updateShared({ t4: event.target.value, unit: 'percent' }, deal)} /></label>;
             })}
-            {([{ key: 't1', tier: 'form', label: 'פנייה דרך טופס' }, { key: 't2', tier: 'whatsapp', label: 'פנייה מסוננת בוואטסאפ' }, { key: 't3', tier: 'phone', label: 'פנייה מסוננת טלפונית' }] as const).map(({ key, tier, label }) => <div key={key} className="space-y-1"><h3 className="text-sm font-semibold">{label}</h3><LeadPriceSlider tier={tier} label={label} value={sharedPrices[key] ?? (eligible.every(row => drafts[row.id]?.[key] === drafts[eligible[0]?.id]?.[key]) ? drafts[eligible[0]?.id]?.[key] ?? '' : '')} onChange={value => updateShared({ [key]: value })} /><Input type="number" className="h-9 w-28 text-center" aria-label={`מחיר משותף: ${label}`} placeholder="ללא שינוי" min={0} value={sharedPrices[key] ?? ''} onChange={event => updateShared({ [key]: event.target.value })} /></div>)}
+            {([{ key: 't1', tier: 'form' }, { key: 't2', tier: 'whatsapp' }, { key: 't3', tier: 'phone' }] as const).map(({ key, tier }) => { const label = LEAD_REWARD_TYPES.find(t => t.tier === tier)!.label; return <LeadRewardCard key={key} tier={tier} label={label} value={sharedPrices[key] ?? (eligible.every(row => drafts[row.id]?.[key] === drafts[eligible[0]?.id]?.[key]) ? drafts[eligible[0]?.id]?.[key] ?? '' : '')} onChange={value => updateShared({ [key]: value })} disabled={busy} />; })}
           </fieldset>}
           {individualId && <Button variant="link" disabled={busy} onClick={() => { const row = eligible.find(row => row.id === individualId); if (!row) return; const closing = sharedClosing[row.deal_type === 'rent' ? 'rent' : 'sale']; setOverrides(previous => { const next = new Set(previous); next.delete(individualId); return next; }); setDrafts(previous => ({ ...previous, [individualId]: { ...feeDraft(row), ...sharedPrices, ...(closing === undefined ? {} : { t4: closing, unit: 'percent' as const }) } })); setIndividualId(null); }}>הסרת ההתאמה האישית</Button>}
         </div>}
@@ -208,25 +209,17 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
           {rows.map(row => <div key={row.id} className="flex items-center gap-2 py-2 text-sm"><BadgeCheck className={`h-4 w-4 shrink-0 ${eligible.some(item => item.id === row.id) ? 'text-success' : 'text-muted-foreground'}`} /><span className="min-w-0 flex-1 break-words">{row.property_title || row.address}</span><span className="max-w-[45%] text-xs text-muted-foreground">{isTerminalListing(row.status) || row.canonical_duplicate_of ? 'הוסר או אינו פעיל' : row.is_published || row.affiliate_enabled ? brokerOnlyPricing([row.affiliate_tier1_amount, row.affiliate_tier2_amount, row.affiliate_tier3_amount]) ? 'מפורסם למתווכים מורשים בלבד; לא בלוח הציבורי' : 'מפורסם בלוח הציבורי' : 'טרם פורסם'}</span></div>)}
         </div>
         {eligible.length > 0 && <div className="space-y-2 text-sm">
-          <div className="flex justify-end"><Button type="button" variant="ghost" size="icon" aria-label="עריכת עמלות ותמחור לידים" title="עריכת עמלות ותמחור לידים" aria-expanded={expanded} disabled={busy} onClick={() => setExpanded(value => !value)}><Pencil className="h-4 w-4" /></Button></div>
-          {eligible.map(row => { const d = drafts[row.id] ?? feeDraft(row); return (
-            <div key={row.id} className="space-y-1">
-              {eligible.length > 1 && <div className="text-xs text-muted-foreground">{row.property_title || row.address}</div>}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{FEE_FIELDS.map(({ key, label, Icon, tone, tier }) => <div key={key} className="flex min-w-0 flex-col items-start gap-1 text-xs"><Tooltip><TooltipTrigger asChild><span className="flex items-center gap-1.5" aria-label={label}><Icon className={cn('h-5 w-5 shrink-0', tone)} /><b>{feeText({ ...row, affiliate_tier4_type: d.unit }, key, d[key])}</b></span></TooltipTrigger><TooltipContent>{label}</TooltipContent></Tooltip>{tier && limitControl(row, tier, label)}</div>)}</div>
-            </div>); })}
-          {expanded && <div>
+          <RewardCardsTitle />
+          {<div>
             <div className="space-y-3 py-2">
               {editorRows.map(row => { const d = drafts[row.id] ?? feeDraft(row); return (
                 <div key={row.id} className="space-y-1">
                   {eligible.length > 1 && <div className="text-xs font-medium">{row.property_title || row.address}</div>}
                   <fieldset disabled={busy} className="space-y-3">
-                    <ClosingFeeSlider publisherCard dealType={row.deal_type} price={Number(row.asking_price)} value={Number(d.t4)} valueType={d.unit} dualMode onChange={value => updateDraft(row.id, { t4: String(value) })} onValueChange={(value, unit) => updateDraft(row.id, { t4: String(value), unit })} />
-                    {([{ key: 't1', tier: 'form', label: 'פנייה דרך טופס', Icon: ClipboardList, tone: 'text-lead-form' }, { key: 't2', tier: 'whatsapp', label: 'פנייה מסוננת בוואטסאפ עם ריטה AI', Icon: WhatsAppIcon, tone: 'text-lead-whatsapp' }, { key: 't3', tier: 'phone', label: 'פנייה מסוננת טלפונית עם ריטה AI', Icon: Phone, tone: 'text-lead-phone' }] as const).map(({ key, tier, label, Icon, tone }) => <section key={key} className="space-y-2 rounded-md border border-border bg-background p-3">
-                      <Tooltip><TooltipTrigger asChild><h3 aria-label={label} className="flex items-center gap-2 font-semibold"><Icon className={cn('h-7 w-7 shrink-0', Number(d[key]) > 0 ? tone : 'text-muted-foreground')} /></h3></TooltipTrigger><TooltipContent>{label}</TooltipContent></Tooltip>
-                      <LeadPriceSlider tier={tier} label={label} value={d[key]} dynamicFeedback onChange={value => updateDraft(row.id, { [key]: value })} />
-                      {limitControl(row, tier, label)}
+                    <ClosingFeeSlider publisherCard className="pricing-closing-card rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm" dealType={row.deal_type} price={Number(row.asking_price)} value={Number(d.t4)} valueType={d.unit} dualMode onChange={value => updateDraft(row.id, { t4: String(value) })} onValueChange={(value, unit) => updateDraft(row.id, { t4: String(value), unit })} />
+                    {([{ key: 't1', tier: 'form' }, { key: 't2', tier: 'whatsapp' }, { key: 't3', tier: 'phone' }] as const).map(({ key, tier }) => { const label = LEAD_REWARD_TYPES.find(t => t.tier === tier)!.label; return <LeadRewardCard key={key} tier={tier} label={label} value={d[key]} onChange={value => updateDraft(row.id, { [key]: value })} limit={d[tier]} onLimitChange={value => updateDraft(row.id, { [tier]: value })} disabled={busy}>
                       <LeadQuestionConfigurator tier={tier} dealType={row.deal_type} fields={d.formFields} questions={tier === 'phone' ? d.questionsPhone : d.questions} onFieldsChange={next => updateDraft(row.id, { formFields: next })} onQuestionsChange={next => updateDraft(row.id, tier === 'phone' ? { questionsPhone: next } : { questions: next })} disabled={busy} />
-                    </section>)}
+                    </LeadRewardCard>; })}
                   </fieldset>
                 </div>); })}
             </div>
