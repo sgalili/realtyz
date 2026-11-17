@@ -13,7 +13,7 @@
 
 import puppeteer from "npm:puppeteer-core@22.15.0";
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { corsHeaders } from '../_shared/cors.ts';
 import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
 
 

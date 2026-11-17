@@ -6,7 +6,7 @@ import { ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrot
 import { rotatingUnlockerPayload } from '../_shared/brightDataRotation.ts';
 import { developerImportPageKind, developerImportUrl, developerProjectImportRow, readPage } from '../_shared/yad2DeveloperImport.ts';
 import { developerRetryDelay, MAX_PAGE_ATTEMPTS, mergeProjectPage, projectPageRows, safeImportError } from './queue.ts';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { corsHeaders } from '../_shared/cors.ts';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

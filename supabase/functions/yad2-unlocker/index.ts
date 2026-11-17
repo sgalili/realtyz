@@ -11,7 +11,7 @@
 // Web Unlocker zone is web_unlocker4; Browser API credentials remain separate.
 
 import { residentialImportRejection } from "../_shared/residentialImport.ts";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from '../_shared/cors.ts';
 import { cleanSqm } from "../_shared/measures.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
