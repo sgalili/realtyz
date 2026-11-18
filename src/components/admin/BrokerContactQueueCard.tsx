@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck, ChevronDown } from 'lucide-react';
+import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck, ChevronDown, Phone } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
 import { MarketingContactLine, type MarketingContact } from './MarketingContactLine';
@@ -180,13 +180,31 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
 type HistoryItem = { user_id: string; channel: 'whatsapp' | 'email'; status: string; sent_at: string; full_name: string; avatar_url: string | null; office_name: string | null; office_logo_url: string | null; content?: { to?: string; subject?: string; body?: string; links?: { label: string; url: string }[]; demo?: boolean; error?: string | null; template?: string } };
 const STATUS: Record<string, string> = { accepted: 'נשלח', sent: 'נשלח', pending: 'בשליחה', failed: 'נכשל', delivered: 'נמסר', read: 'נקרא' };
 
+/** Marketing company · contact · contact phone with a quick-dial button, shown only for fields that exist. */
+function SendHistoryContactLine({ contact }: { contact?: MarketingContact | null }) {
+  const parts: ReactNode[] = [];
+  if (contact?.company_name?.trim()) parts.push(<span key="company" className="truncate" title={contact.company_name}>{contact.company_name}</span>);
+  if (contact?.contact_name?.trim()) parts.push(<span key="name" className="truncate" title={contact.contact_name}>{contact.contact_name}</span>);
+  if (contact?.contact_phone?.trim()) parts.push(<span key="phone" dir="ltr" className="whitespace-nowrap">{formatPhoneDisplay(contact.contact_phone)}</span>);
+  if (!parts.length) return null;
+  return <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap px-3 -mt-1 pb-3 text-sm text-muted-foreground sm:text-base">
+    {parts.map((p, n) => <span key={n} className="flex min-w-0 items-center gap-2">{n > 0 && <span aria-hidden>·</span>}{p}</span>)}
+    {contact?.contact_phone?.trim() && <a href={`tel:+${contact.contact_phone}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-primary hover:bg-accent" aria-label={`חיוג לאיש הקשר ${formatPhoneDisplay(contact.contact_phone)}`} title={formatPhoneDisplay(contact.contact_phone)}><Phone className="h-4 w-4" /></a>}
+  </div>;
+}
+
 function SendHistory() {
   const q = useQuery({ queryKey: ['broker-contact-history'], queryFn: () => invoke<{ items: HistoryItem[] }>('admin-broker-contact', { action: 'history' }) });
   const items = q.data?.items ?? [];
+  const ownerIds = Array.from(new Set(items.map(i => i.user_id))).sort();
+  const contacts = useQuery({ queryKey: ['marketing-contacts', ownerIds.join(',')], enabled: ownerIds.length > 0, queryFn: async () => {
+    const { data, error } = await supabase.rpc('admin_marketing_contacts', { _owners: ownerIds });
+    if (error) throw error; return new Map((data ?? []).map(r => [r.owner_id, r as MarketingContact]));
+  } });
   const [openKey, setOpenKey] = useState<string | null>(null);
   return <div className="space-y-3">
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : items.length === 0 ? <p className="text-base text-muted-foreground">עדיין לא נשלחו הודעות.</p> :
-      <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{items.map((i, n) => { const key = `${i.user_id}-${i.channel}-${n}`; const isOpen = openKey === key; return <li key={key}>
+      <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{items.map((i, n) => { const key = `${i.user_id}-${i.channel}-${n}`; const isOpen = openKey === key; const contact = contacts.data?.get(i.user_id); return <li key={key}>
         <button type="button" aria-expanded={isOpen} onClick={() => setOpenKey(isOpen ? null : key)} className="flex w-full items-center gap-3 p-3 text-right hover:bg-muted/40">
         {i.avatar_url ? <img src={i.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" /> : <span className="h-10 w-10 shrink-0" />}
         <div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{i.full_name || 'ללא שם'}</p>{i.office_name && <p className="truncate text-sm text-muted-foreground">{i.office_name}</p>}
@@ -194,6 +212,7 @@ function SendHistory() {
         {i.office_logo_url && <img src={i.office_logo_url} alt="" className="h-10 w-10 shrink-0 rounded-md border border-border/60 object-contain" />}
         <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
         </button>
+        <SendHistoryContactLine contact={contact} />
         <div className={`grid transition-all duration-300 ease-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}><div className="overflow-hidden"><div className="space-y-2 border-t border-border/60 bg-muted/20 p-3 text-sm">
           {i.content?.body ? <>
             {i.content.to && <p><span className="font-semibold">אל: </span><span dir="ltr">{i.content.to}</span></p>}

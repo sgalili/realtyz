@@ -4,8 +4,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import { BrokerContactQueueCard } from './BrokerContactQueueCard';
 
-const state = vi.hoisted(() => ({ invoke: vi.fn(), switchWorkspace: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: state.invoke } } }));
+const state = vi.hoisted(() => ({ invoke: vi.fn(), rpc: vi.fn().mockResolvedValue({ data: [], error: null }), switchWorkspace: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: state.invoke }, rpc: state.rpc } }));
 vi.mock('@/hooks/useWorkspace', () => ({ useWorkspace: () => ({ activeWorkspaceId: 'admin', setActiveWorkspace: state.switchWorkspace }) }));
 vi.mock('./OfficialBrokerInvitationDialog', () => ({ OfficialBrokerInvitationDialog: () => null, OfficialBrokerInvitationPanel: () => null }));
 vi.mock('./BrokerInvitationTemplateEditor', () => ({ BrokerInvitationTemplateEditor: () => null }));
@@ -18,7 +18,7 @@ const account = {
   first_login_at: null, email_consent_at: null, email_invited_at: null, license_verified: true, is_developer: false,
 };
 
-afterEach(() => { cleanup(); state.invoke.mockReset(); state.switchWorkspace.mockClear(); });
+afterEach(() => { cleanup(); state.invoke.mockReset(); state.rpc.mockReset(); state.rpc.mockResolvedValue({ data: [], error: null }); state.switchWorkspace.mockClear(); });
 
 function setup(deleteStatus = 'deleted') {
   state.invoke.mockImplementation((name, { body }) => {
@@ -43,4 +43,35 @@ it('does not report deletion when the protected endpoint refuses it', async () =
   fireEvent.click(screen.getByRole('button', { name: 'מחיקה לצמיתות' }));
   await waitFor(() => expect(state.invoke).toHaveBeenCalledWith('super-admin-delete-users', { body: { user_ids: [account.user_id] } }));
   expect(screen.getByRole('dialog')).toBeTruthy();
+});
+
+const devId = '00000000-0000-0000-0000-000000000456';
+const historyItem = { user_id: devId, channel: 'email', status: 'sent', sent_at: '2026-11-18T10:00:00Z', full_name: 'אלמוגים', avatar_url: null, office_name: null, office_logo_url: null, content: { to: 'office@example.com', subject: 'כותרת', body: 'גוף' } };
+
+function setupHistory(contactRow: Record<string, unknown> | null) {
+  state.invoke.mockImplementation((name, { body }) => {
+    if (body.action === 'list') return Promise.resolve({ data: { brokers: [] }, error: null });
+    if (body.action === 'history') return Promise.resolve({ data: { items: [historyItem] }, error: null });
+    return Promise.resolve({ data: { items: [] }, error: null });
+  });
+  state.rpc.mockResolvedValue({ data: contactRow ? [contactRow] : [], error: null });
+  render(<MemoryRouter initialEntries={['/?history=sends']}><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><BrokerContactQueueCard /></QueryClientProvider></MemoryRouter>);
+}
+
+it('shows marketing company, contact, contact phone and a quick-dial button when they are set', async () => {
+  setupHistory({ owner_id: devId, company_id: 'c1', company_name: 'שיווקא', contact_name: 'מורן', contact_phone: '972509999999', contact_gender: 'male' });
+  expect(await screen.findByText('שיווקא')).toBeTruthy();
+  expect(screen.getByText('מורן')).toBeTruthy();
+  expect(screen.getByText('050-9999999')).toBeTruthy();
+  const dial = screen.getByRole('link', { name: 'חיוג לאיש הקשר 050-9999999' });
+  expect(dial.getAttribute('href')).toBe('tel:+972509999999');
+});
+
+it('hides every marketing detail when the contact person was never defined', async () => {
+  setupHistory({ owner_id: devId, company_id: null, company_name: null, contact_name: null, contact_phone: null, contact_gender: null });
+  expect(await screen.findByText('אלמוגים')).toBeTruthy();
+  expect(screen.queryByText('שיווקא')).toBeNull();
+  expect(screen.queryByText('מורן')).toBeNull();
+  expect(screen.queryByText('050-9999999')).toBeNull();
+  expect(screen.queryByRole('link', { name: /^חיוג לאיש הקשר/ })).toBeNull();
 });
