@@ -53,13 +53,16 @@ Deno.serve(async req => {
 
   if (input.action === 'history') {
     // Every invitation sent from the hub: official WhatsApp sends plus recorded email invitations.
-    const [{ data: wa }, { data: em }] = await Promise.all([
-      admin.from('broker_invitation_sends').select('broker_id,status,created_at').order('created_at', { ascending: false }).limit(300),
+    const [{ data: wa }, { data: em }, { data: logs }] = await Promise.all([
+      admin.from('broker_invitation_sends').select('broker_id,status,created_at,template_name').order('created_at', { ascending: false }).limit(300),
       admin.from('admin_broker_onboarding').select('user_id,email_invited_at,email_message_id').not('email_invited_at', 'is', null).order('email_invited_at', { ascending: false }).limit(300),
+      admin.from('broker_invitation_emails').select('broker_id,to_email,subject,body_text,links,is_demo,status,error,created_at,message_id').order('created_at', { ascending: false }).limit(300),
     ]);
+    const logged = new Set((logs ?? []).map(l => l.message_id).filter(Boolean));
     const items = [
-      ...(wa ?? []).map(r => ({ user_id: r.broker_id, channel: 'whatsapp', status: r.status, sent_at: r.created_at })),
-      ...(em ?? []).map(r => ({ user_id: r.user_id, channel: 'email', status: r.email_message_id ? 'sent' : 'pending', sent_at: r.email_invited_at })),
+      ...(wa ?? []).map(r => ({ user_id: r.broker_id, channel: 'whatsapp', status: r.status, sent_at: r.created_at, content: { template: r.template_name } })),
+      ...(logs ?? []).map(l => ({ user_id: l.broker_id, channel: 'email', status: l.status, sent_at: l.created_at, content: { to: l.to_email, subject: l.subject, body: l.body_text, links: l.links, demo: l.is_demo, error: l.error } })),
+      ...(em ?? []).filter(r => !r.email_message_id || !logged.has(r.email_message_id)).map(r => ({ user_id: r.user_id, channel: 'email', status: r.email_message_id ? 'sent' : 'pending', sent_at: r.email_invited_at })),
     ].sort((a, b) => String(b.sent_at).localeCompare(String(a.sent_at))).slice(0, 300);
     const ids = [...new Set(items.map(i => i.user_id))];
     if (!ids.length) return json({ items: [] });

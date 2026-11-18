@@ -8,7 +8,7 @@ import { invitationLink, publicSiteOrigin } from '../_shared/importInvitationPol
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('summary') }),
   z.object({ action: z.literal('consent'), broker_id: z.string().uuid(), note: z.string().trim().min(3).max(300), revoke: z.boolean().optional() }),
-  z.object({ action: z.literal('send_batch'), broker_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX), message: z.string().trim().min(10).max(4000).optional(), demo: z.boolean().optional() }),
+  z.object({ action: z.literal('send_batch'), broker_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX), message: z.string().trim().min(10).max(4000).optional(), demo: z.boolean().optional(), subject: z.string().trim().min(1).max(200).optional() }),
 ]);
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const escHtml = (v: string) => v.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
@@ -62,11 +62,14 @@ Deno.serve(async req => {
     const unsubscribeUrl = `${fnBase}?unsubscribe=${row.email_unsubscribe_token}`;
     const msg = `${input.message ?? ''}\n\nפרטי כניסה לחשבון הדמו (צפייה בלבד):\nמספר טלפון: 0501234567\nקוד אימות: 1234`.trim();
     const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({
-      from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [prof.email], subject: 'חשבון דמו לצפייה ב-TORAFF',
+      from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [prof.email], subject: input.subject || 'חשבון דמו לצפייה ב-TORAFF',
       html: customEmailHtml(msg, `${site.origin}/auth`, unsubscribeUrl).replace('כניסה לנכסים שלי', 'כניסה לחשבון הדמו'),
       headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }, tags: [{ name: 'type', value: 'demo_invitation' }],
     }) });
-    if (!res.ok) { const t = await res.text(); console.error('demo invitation email failed', res.status, t); return json({ error: `שליחת המייל נכשלה (${res.status})`, details: t }, 502); }
+    const demoLog = { broker_id: input.broker_id, created_by: caller.userId, to_email: prof.email, subject: input.subject || 'חשבון דמו לצפייה ב-TORAFF', body_text: msg, links: [{ label: 'כניסה לחשבון הדמו', url: `${site.origin}/auth` }, { label: 'הסרה מרשימת התפוצה', url: unsubscribeUrl }], is_demo: true };
+    if (!res.ok) { const t = await res.text(); await admin.from('broker_invitation_emails').insert({ ...demoLog, status: 'failed', error: t.slice(0, 500) }); console.error('demo invitation email failed', res.status, t); return json({ error: `שליחת המייל נכשלה (${res.status})`, details: t }, 502); }
+    let demoId: string | null = null; try { demoId = (await res.clone().json()).id ?? null; } catch { /* ignore */ }
+    await admin.from('broker_invitation_emails').insert({ ...demoLog, message_id: demoId });
     return json({ sent: 1, failed: 0 });
   }
   const targets = input.broker_id ? eligible.filter(r => r.user_id === input.broker_id) : eligible;
@@ -87,9 +90,10 @@ Deno.serve(async req => {
     const { data: dev } = await admin.from('developers').select('marketing_company_id').eq('workspace_owner_id', r.user_id).not('marketing_company_id', 'is', null).limit(1).maybeSingle();
     const { data: mc } = dev?.marketing_company_id ? await admin.from('marketing_companies').select('contact_name').eq('id', dev.marketing_company_id).maybeSingle() : { data: null };
     const firstName = brokerFirstName(mc?.contact_name?.trim() || r.p.full_name);
+    const sentSubject = input.subject || (firstName ? `${firstName}, הנכסים שלך כבר מחכים לך ב-TORAFF` : 'הנכסים שלך כבר מחכים לך ב-TORAFF');
     try {
       const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({
-        from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [r.p.email], subject: firstName ? `${firstName}, הנכסים שלך כבר מחכים לך ב-TORAFF` : 'הנכסים שלך כבר מחכים לך ב-TORAFF',
+        from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [r.p.email], subject: sentSubject,
         html: input.message ? customEmailHtml(input.message, link, unsubscribeUrl) : brokerInvitationEmailHtml({ firstName, examples, link, unsubscribeUrl }),
         headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
         tags: [{ name: 'type', value: 'broker_invitation' }],
@@ -97,6 +101,7 @@ Deno.serve(async req => {
       const raw = await res.text();
       if (!res.ok) throw new Error(`[${res.status}]: ${raw}`);
       await admin.from('admin_broker_onboarding').update({ email_message_id: JSON.parse(raw).id ?? null }).eq('user_id', r.user_id);
+      await admin.from('broker_invitation_emails').insert({ broker_id: r.user_id, created_by: caller.userId, to_email: r.p.email, subject: sentSubject, body_text: input.message ?? `ברירת מחדל${examples.length ? `\n${examples.join('\n')}` : ''}`, links: [{ label: 'כניסה לנכסים שלי', url: link }, { label: 'הסרה מרשימת התפוצה', url: unsubscribeUrl }], message_id: JSON.parse(raw).id ?? null });
       results.push({ broker_id: r.user_id, status: 'sent' });
     } catch (e) {
       console.error('broker invitation email failed', e);

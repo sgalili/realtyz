@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck } from 'lucide-react';
+import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck, ChevronDown } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
 import { MarketingContactLine, type MarketingContact } from './MarketingContactLine';
@@ -30,6 +30,7 @@ async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> 
   return data as T;
 }
 
+const DEFAULT_SUBJECT = 'הזמנה לפרסום חינם בלוח נדל"ן מבוסס שותפים ובינה מלאכותית';
 const DEFAULT_EMAIL = (name: string) => `שלום${name ? ` ${name.split(/\s+/)[0]}` : ''},
 
 חסכנו לך את העבודה והזנו עבורך את פרטי הנכסים. הם שמורים במרחב האישי שלך ב-TORAFF וממתינים לבדיקה שלך.
@@ -48,6 +49,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
   const [body, setBody] = useState(() => DEFAULT_EMAIL(recipientFirst));
   const bodyTouched = useRef(false);
   const [demo, setDemo] = useState(false);
+  const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   // Same gender-matched default wording as the WhatsApp template, filled with the recipient's first name.
   const sharedText = useQuery({ queryKey: ['broker-template-texts', 'recipient', b.user_id], enabled: open, queryFn: () => invoke<{ recipient?: string }>('admin-broker-invitation', { action: 'texts', broker_id: b.user_id }) });
   useEffect(() => {
@@ -61,7 +63,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
     onError: (e: Error) => toast.error(e.message),
   });
   const send = useMutation({
-    mutationFn: () => invoke<{ sent: number; results?: { status: string; error?: string }[] }>('admin-broker-email-invitation', { action: 'send_batch', broker_id: b.user_id, limit: 1, message: body.trim(), demo }),
+    mutationFn: () => invoke<{ sent: number; results?: { status: string; error?: string }[] }>('admin-broker-email-invitation', { action: 'send_batch', broker_id: b.user_id, limit: 1, message: body.trim(), demo, subject: subject.trim() || DEFAULT_SUBJECT }),
     onSuccess: d => { if (d.sent) { toast.success('המייל נשלח'); setOpen(false); } else { const r = d.results?.[0]; toast.error(r?.status === 'skipped' ? 'המייל לא נשלח: כבר נשלחה הזמנה או שהחשבון כבר נכנס' : `המייל לא נשלח${r?.error ? `: ${r.error}` : ''}`); } void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-contact-history'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -88,6 +90,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
           <Button variant="outline" className="h-11" disabled={!email.trim() || !emailDirty || saveEmail.isPending} onClick={() => saveEmail.mutate()}>{saveEmail.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}שמירה</Button>
         </div>
         {b.email && !b.email_consent_at && <div className="flex items-center gap-2 text-sm text-muted-foreground">נדרשת הסכמה מתועדת לפני שליחה:<BrokerEmailConsentButton broker={{ id: b.user_id, full_name: b.full_name, email: b.email }} state={{ email_consent_at: b.email_consent_at, email_unsubscribed_at: null, email_invited_at: b.email_invited_at }} /></div>}
+        <label className="block space-y-1"><span className="text-sm font-medium">כותרת המייל</span><Input aria-label="כותרת המייל" className="h-11 text-base" maxLength={200} value={subject} onChange={e => setSubject(e.target.value)} /></label>
         <Textarea aria-label="נוסח המייל" className="min-h-[200px] text-base" value={body} onChange={e => { bodyTouched.current = true; setBody(e.target.value); }} />
         <p className="text-sm text-muted-foreground">קישור הכניסה לנכסים וקישור ההסרה מתווספים אוטומטית בסוף המייל.</p>
         <label className="flex items-center gap-2 text-base"><input type="checkbox" className="h-4 w-4" checked={demo} onChange={e => setDemo(e.target.checked)} />שלח כחשבון דמו לצפייה בלבד</label>
@@ -174,20 +177,34 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
   </li>;
 }
 
-type HistoryItem = { user_id: string; channel: 'whatsapp' | 'email'; status: string; sent_at: string; full_name: string; avatar_url: string | null; office_name: string | null; office_logo_url: string | null };
+type HistoryItem = { user_id: string; channel: 'whatsapp' | 'email'; status: string; sent_at: string; full_name: string; avatar_url: string | null; office_name: string | null; office_logo_url: string | null; content?: { to?: string; subject?: string; body?: string; links?: { label: string; url: string }[]; demo?: boolean; error?: string | null; template?: string } };
 const STATUS: Record<string, string> = { accepted: 'נשלח', sent: 'נשלח', pending: 'בשליחה', failed: 'נכשל', delivered: 'נמסר', read: 'נקרא' };
 
 function SendHistory() {
   const q = useQuery({ queryKey: ['broker-contact-history'], queryFn: () => invoke<{ items: HistoryItem[] }>('admin-broker-contact', { action: 'history' }) });
   const items = q.data?.items ?? [];
+  const [openKey, setOpenKey] = useState<string | null>(null);
   return <div className="space-y-3">
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : items.length === 0 ? <p className="text-base text-muted-foreground">עדיין לא נשלחו הודעות.</p> :
-      <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{items.map((i, n) => <li key={`${i.user_id}-${i.channel}-${n}`} className="flex items-center gap-3 p-3">
+      <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{items.map((i, n) => { const key = `${i.user_id}-${i.channel}-${n}`; const isOpen = openKey === key; return <li key={key}>
+        <button type="button" aria-expanded={isOpen} onClick={() => setOpenKey(isOpen ? null : key)} className="flex w-full items-center gap-3 p-3 text-right hover:bg-muted/40">
         {i.avatar_url ? <img src={i.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" /> : <span className="h-10 w-10 shrink-0" />}
         <div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{i.full_name || 'ללא שם'}</p>{i.office_name && <p className="truncate text-sm text-muted-foreground">{i.office_name}</p>}
           <p className="text-sm text-muted-foreground">{i.channel === 'whatsapp' ? 'וואטסאפ' : 'מייל'} · {STATUS[i.status] ?? i.status} · {new Date(i.sent_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</p></div>
         {i.office_logo_url && <img src={i.office_logo_url} alt="" className="h-10 w-10 shrink-0 rounded-md border border-border/60 object-contain" />}
-      </li>)}</ul>}
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        <div className={`grid transition-all duration-300 ease-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}><div className="overflow-hidden"><div className="space-y-2 border-t border-border/60 bg-muted/20 p-3 text-sm">
+          {i.content?.body ? <>
+            {i.content.to && <p><span className="font-semibold">אל: </span><span dir="ltr">{i.content.to}</span></p>}
+            <p><span className="font-semibold">כותרת: </span>{i.content.subject}</p>
+            {i.content.demo && <p className="text-muted-foreground">נשלח כחשבון דמו לצפייה בלבד</p>}
+            <p className="whitespace-pre-wrap break-words rounded-md border border-border/60 bg-background p-3 text-base leading-relaxed">{i.content.body}</p>
+            {!!i.content.links?.length && <ul className="space-y-1">{i.content.links.map(l => <li key={l.url} className="break-all"><span className="font-semibold">{l.label}: </span><a href={l.url} target="_blank" rel="noreferrer" className="text-primary underline" dir="ltr">{l.url}</a></li>)}</ul>}
+            {i.content.error && <p className="text-destructive break-words">{i.content.error}</p>}
+          </> : i.content?.template ? <p>נשלחה תבנית WhatsApp מאושרת: <span dir="ltr">{i.content.template}</span></p> : <p className="text-muted-foreground">התוכן המלא לא נשמר עבור שליחה זו (נשלחה לפני הוספת התיעוד).</p>}
+        </div></div></div>
+      </li>; })}</ul>}
   </div>;
 }
 

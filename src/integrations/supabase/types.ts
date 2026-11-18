@@ -1437,6 +1437,59 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_invitation_emails: {
+        Row: {
+          body_text: string
+          broker_id: string
+          created_at: string
+          created_by: string | null
+          error: string | null
+          id: string
+          is_demo: boolean
+          links: Json
+          message_id: string | null
+          status: string
+          subject: string
+          to_email: string
+        }
+        Insert: {
+          body_text: string
+          broker_id: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          is_demo?: boolean
+          links?: Json
+          message_id?: string | null
+          status?: string
+          subject: string
+          to_email: string
+        }
+        Update: {
+          body_text?: string
+          broker_id?: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          is_demo?: boolean
+          links?: Json
+          message_id?: string | null
+          status?: string
+          subject?: string
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_invitation_emails_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_invitation_sends: {
         Row: {
           broker_id: string
