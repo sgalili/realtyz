@@ -155,7 +155,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
   const details = b.is_developer ? `${b.projects ?? 0} פרויקטים • ${b.apartments ?? 0} דירות במאגר` : [`${b.drafts} טיוטות`, b.license_number && `רישיון ${b.license_number}`, b.city].filter(Boolean).join(' · ');
   return <li className="relative space-y-2 rounded-xl border border-border/70 p-3 pl-20 sm:p-4 sm:pl-24">
     <div className="flex items-center gap-1">
-      <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
+      <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
         {b.office_logo_url ? <img src={b.office_logo_url} alt="" className="h-9 w-9 shrink-0 rounded-md border border-border/60 object-contain" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
         <span className="flex min-w-0 items-center gap-1 text-base font-bold sm:text-lg"><span className="truncate">{b.full_name || 'ללא שם'}</span>{b.license_verified && <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-label="אומת מול המאגר הממשלתי" />}</span>
       </button>

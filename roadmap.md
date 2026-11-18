@@ -1,5 +1,10 @@
 # Roadmap
 
+## Pending invitation identity and contact gender November 18
+- [x] Keep the company/developer phone immediately beside its name in the first card row.
+- [x] Hide contact gender choices until contact editing; show only a saved, color-coded selection in the closed card.
+- [x] Eight focused tests, TypeScript and signed-in mobile/desktop checks passed with a measured 4px name-phone gap; browser-only contact fixtures were used for editing, with no database writes.
+
 ## Developer identity and automatic discovery November 18
 - [x] Conservative normalized names plus service-only identity lease prevent parallel admin provisioning; account imports match within their workspace. Merged the two verified silent Karso company rows into the oldest workspace: three projects/five apartments preserved; redundant Auth account retained, not purged.
 - [x] Added explicit automatic discovery toggle and target/project bounds for both tabs; developer directory feeds existing leased deep-import workflow. Source blocks fail visibly.
