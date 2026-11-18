@@ -2,7 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { brokerTemplateFor, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName, officialBrokerPhone } from '../_shared/brokerInvitationTemplate.ts';
-import { invitationLink } from '../_shared/importInvitationPolicy.ts';
+import { publicSiteOrigin, invitationLink } from '../_shared/importInvitationPolicy.ts';
 
 const schema = z.object({
   action: z.enum(['status', 'register', 'send', 'texts', 'save_text']),
@@ -103,7 +103,7 @@ Deno.serve(async req => {
     }
     let sent;
     try {
-      const site = new URL(Deno.env.get('PUBLIC_SITE_URL') || 'https://toraff.co.il');
+      const site = new URL(publicSiteOrigin());
       if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');
       const link = invitationLink(site.origin, broker.id, onboarding.invitation_link_token);
       sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: (contact?.name || broker.full_name)?.trim().split(/\s+/)[0] || 'מתווך' }, ...(templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });

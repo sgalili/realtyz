@@ -26,7 +26,7 @@ async function invoke(body: Record<string, unknown>) {
 }
 
 /** WhatsApp invitation content, usable inside any dialog or tab. */
-export function OfficialBrokerInvitationPanel({ broker, onClose, onSent }: { broker: { id: string; full_name?: string | null }; onClose: () => void; onSent?: () => void }) {
+export function OfficialBrokerInvitationPanel({ broker, onClose, onSent }: { broker: { id: string; full_name?: string | null; recipient_name?: string | null }; onClose: () => void; onSent?: () => void }) {
   const open = true;
   const [consent, setConsent] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -55,7 +55,7 @@ export function OfficialBrokerInvitationPanel({ broker, onClose, onSent }: { bro
       {onboarding.data && <p role="status" className="text-sm text-primary">{BROKER_STAGE_LABELS[onboarding.data.stage]}{onboarding.data.pending_properties > 0 ? ` · ${onboarding.data.pending_properties} נכסים לבדיקה` : ''}</p>}
       {onboarding.isError && <p role="alert" className="text-destructive">לא ניתן לקרוא את שלב ההצטרפות</p>}
       <Label>תצוגת ההודעה לנמען</Label>
-      <p className="whitespace-pre-wrap break-words border-s-2 border-border ps-3 text-sm leading-6">{renderBrokerInvitation(text, { brokerName: broker.full_name || 'מתווך', authLink: brokerInvitation(broker).link })}</p>
+      <p className="whitespace-pre-wrap break-words border-s-2 border-border ps-3 text-sm leading-6">{renderBrokerInvitation(text, { brokerName: (broker.recipient_name || broker.full_name || '').trim().split(/\s+/)[0] || 'מתווך', authLink: brokerInvitation(broker).link })}</p>
       <div className="flex justify-between items-center gap-2"><span role="status" className="text-sm text-muted-foreground">{state.isFetching ? 'בודק אישור Meta…' : state.isError ? 'בדיקת Meta נכשלה' : labels[status] || status}</span><Button size="icon" variant="ghost" aria-label="רענון אישור Meta" disabled={state.isFetching || !!validation || mutation.isPending} onClick={() => void state.refetch()}><RefreshCw className="h-4 w-4" /></Button></div>
       <p role="note" className="text-sm font-medium">עלות שליחה לנמען חדש ללא היסטוריה: {waPrice ? `${agorotToCredits(waPrice.price_agorot).toLocaleString('he-IL')} קרדיטים להודעה` : pricing.isLoading ? 'טוען…' : 'לא הוגדרה'}</p>
       {state.error && <p role="alert" className="break-words text-sm text-destructive">{state.error.message}</p>}

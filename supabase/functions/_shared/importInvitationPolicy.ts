@@ -8,6 +8,12 @@ export function followupDue(sentAt: string, now: number, clickedAt: string | nul
   return !clickedAt && !firstLoginAt && now >= Date.parse(sentAt) + FOLLOWUP_DELAY_MS;
 }
 
+// PUBLIC_SITE_URL may be saved without a scheme (e.g. "realtyz.kalpiz.co.il"); never let that crash a send.
+export function publicSiteOrigin(raw = Deno.env.get('PUBLIC_SITE_URL') ?? '') {
+  const v = raw.trim();
+  try { const u = new URL(/^https?:\/\//i.test(v) ? v : `https://${v || 'toraff.co.il'}`); return u.protocol === 'https:' && !/lovable\./.test(u.hostname) ? u.origin : 'https://toraff.co.il'; } catch { return 'https://toraff.co.il'; }
+}
+
 export function invitationLink(origin: string, userId: string, token: string) {
   const site = new URL(origin);
   if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');

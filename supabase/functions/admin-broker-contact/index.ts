@@ -4,7 +4,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
-import { invitationLink, pendingFirstInvitation } from '../_shared/importInvitationPolicy.ts';
+import { invitationLink, pendingFirstInvitation, publicSiteOrigin } from '../_shared/importInvitationPolicy.ts';
 import { readAllRows } from '../_shared/readAllRows.ts';
 
 const schema = z.discriminatedUnion('action', [
@@ -39,7 +39,7 @@ Deno.serve(async req => {
       ]);
       if (!onboarding || onboarding.first_login_at || onboarding.invitation_clicked_at || auth?.user?.last_sign_in_at || (row.channel === 'email' && (!onboarding.email_consent_at || onboarding.email_unsubscribed_at))) {
         await admin.from('import_invitation_followups').update({ status: 'cancelled' }).eq('user_id', row.user_id);
-      } else items.push({ ...row, message: `${row.message}\n${invitationLink(Deno.env.get('PUBLIC_SITE_URL') || 'https://toraff.co.il', row.user_id, onboarding.invitation_link_token)}`, full_name: profile?.full_name ?? '' });
+      } else items.push({ ...row, message: `${row.message}\n${invitationLink(publicSiteOrigin(), row.user_id, onboarding.invitation_link_token)}`, full_name: profile?.full_name ?? '' });
     }
     return json({ items });
   }

@@ -2,7 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { brokerFirstName, brokerInvitationEmailHtml, propertyExample, BROKER_EMAIL_BATCH_MAX } from '../_shared/brokerInvitationEmail.ts';
-import { invitationLink } from '../_shared/importInvitationPolicy.ts';
+import { invitationLink, publicSiteOrigin } from '../_shared/importInvitationPolicy.ts';
 
 // Email only to brokers whose consent a Super Admin recorded; never to scraped contacts without consent.
 const schema = z.discriminatedUnion('action', [
@@ -50,9 +50,7 @@ Deno.serve(async req => {
 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY'); const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
   if (!LOVABLE_API_KEY || !RESEND_API_KEY) return json({ error: 'חיבור Resend אינו מוגדר' }, 503);
-  const rawSite = (Deno.env.get('PUBLIC_SITE_URL') || '').trim();
-  let site: URL;
-  try { site = new URL(/^https?:\/\//i.test(rawSite) ? rawSite : `https://${rawSite || 'toraff.co.il'}`); } catch { site = new URL('https://toraff.co.il'); }
+  const site = new URL(publicSiteOrigin());
   const fnBase = `${Deno.env.get('SUPABASE_URL')}/functions/v1/admin-broker-email-invitation`;
   const results: { broker_id: string; status: string; error?: string }[] = [];
   // Demo access email: shared view-only account credentials instead of the recipient's personal sign-in. Consent still required.
@@ -85,7 +83,10 @@ Deno.serve(async req => {
     const unsubscribeUrl = `${fnBase}?unsubscribe=${r.email_unsubscribe_token}`;
     const link = invitationLink(site.origin, r.user_id, r.invitation_link_token);
     if (!r.p) continue;
-    const firstName = brokerFirstName(r.p.full_name);
+    // Same recipient name as the dialog greeting: the marketing-company contact when saved, else the account holder.
+    const { data: dev } = await admin.from('developers').select('marketing_company_id').eq('workspace_owner_id', r.user_id).not('marketing_company_id', 'is', null).limit(1).maybeSingle();
+    const { data: mc } = dev?.marketing_company_id ? await admin.from('marketing_companies').select('contact_name').eq('id', dev.marketing_company_id).maybeSingle() : { data: null };
+    const firstName = brokerFirstName(mc?.contact_name?.trim() || r.p.full_name);
     try {
       const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({
         from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [r.p.email], subject: firstName ? `${firstName}, הנכסים שלך כבר מחכים לך ב-TORAFF` : 'הנכסים שלך כבר מחכים לך ב-TORAFF',
