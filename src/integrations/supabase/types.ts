@@ -11074,6 +11074,17 @@ export type Database = {
         Returns: boolean
       }
       delete_leads_cascade: { Args: { _ids: string[] }; Returns: number }
+      demo_top_developers: {
+        Args: never
+        Returns: {
+          developer_id: string
+          developer_name: string
+          logo_url: string
+          project_count: number
+          projects: Json
+          unit_count: number
+        }[]
+      }
       developer_fees_valid: {
         Args: { _deal: string; _fees: Json; _price: number }
         Returns: boolean

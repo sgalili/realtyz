@@ -1,1 +1,2 @@
 - Marketing-company accounts read assigned developers/projects only through marketing_* RPCs keyed by marketing_companies.owner_user_id, without commission or contact fields; the fixed demo phone/code lives only in whatsapp-auth and owns an isolated workspace. Why: read-only client access without tenant leaks.
+- Public demo pages (/demo/:type) render only static mock data plus demo_top_developers, which exposes public projects only; no demo-mode toggle in the app. Why: view-only showcase without tenant leaks.
