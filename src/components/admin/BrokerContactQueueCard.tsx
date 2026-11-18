@@ -22,7 +22,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { returnState } from '@/lib/returnNav';
 import yad2Symbol from '@/assets/yad2-source-symbol.png.asset.json';
 
-export type ContactBroker = { user_id: string; full_name: string; phone: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
+export type ContactBroker = { user_id: string; full_name: string; phone: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
 async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(fn, { body });
@@ -147,7 +147,12 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
   const dirty = !!phone.trim() && phone.replace(/\D/g, '') !== (b.phone ? formatPhoneDisplay(b.phone).replace(/\D/g, '') : '');
   const dest = b.is_developer ? 'הפרויקטים' : 'הנכסים';
   const regLicense = b.profile_license ?? b.license_number;
-  const details = b.is_developer ? `${b.projects ?? 0} פרויקטים • ${b.apartments ?? 0} דירות במאגר` : [`${b.drafts} טיוטות`, b.license_number && `רישיון ${b.license_number}`, b.office_name, b.city].filter(Boolean).join(' · ');
+  const setGender = useMutation({
+    mutationFn: (gender: 'male' | 'female') => invoke('admin-broker-contact', { action: 'save', user_id: b.user_id, gender }),
+    onSuccess: () => { toast.success('המגדר נשמר'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const details = b.is_developer ? `${b.projects ?? 0} פרויקטים • ${b.apartments ?? 0} דירות במאגר` : [`${b.drafts} טיוטות`, b.license_number && `רישיון ${b.license_number}`, b.city].filter(Boolean).join(' · ');
   return <li className="relative space-y-2 rounded-xl border border-border/70 p-3 pl-20 sm:p-4 sm:pl-24">
     <div className="flex items-center gap-1">
       <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
@@ -160,7 +165,8 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
           <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="שמירת נייד" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>
           <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="ביטול" onClick={() => { setPhone(b.phone ? formatPhoneDisplay(b.phone) : ''); setEditing(false); }}><X className="h-4 w-4" /></Button>
         </> : <>
-          <button type="button" dir={b.phone ? 'ltr' : 'rtl'} disabled={!!b.first_login_at} title="נייד היזם" aria-label={b.phone ? `עריכת הנייד של ${b.full_name}` : `הוספת נייד ל${b.full_name}`} onClick={() => setEditing(true)} className={`whitespace-nowrap px-1 text-xs underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.phone ? '' : 'text-primary'}`}>{b.phone ? formatPhoneDisplay(b.phone) : b.is_developer ? 'הוסף טלפון' : 'הוסף נייד'}</button>
+          <button type="button" dir={b.phone ? 'ltr' : 'rtl'} disabled={!!b.first_login_at} title="נייד היזם" aria-label={b.phone ? `עריכת הנייד של ${b.full_name}` : `הוספת נייד ל${b.full_name}`} onClick={() => setEditing(true)} className={`whitespace-nowrap px-1 text-xs underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.phone ? '' : 'text-primary'}`}>{b.phone ? formatPhoneDisplay(b.phone) : 'הוסף טלפון'}</button>
+          {b.phone && <a href={`tel:+${b.phone}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-primary hover:bg-accent" aria-label={`חיוג אל ${b.full_name} ${formatPhoneDisplay(b.phone)}`} title={formatPhoneDisplay(b.phone)}><Phone className="h-4 w-4" /></a>}
         </>}
         <div className="absolute left-[10px] top-[10px] flex items-center gap-0" dir="ltr"><Button size="icon" variant="ghost" className="h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><X className="h-4 w-4" /></Button><EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} /></div>
       </div>
@@ -169,7 +175,10 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
       <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground sm:text-base" title={details}>{details}</p>
       {!b.is_developer && !b.license_verified && regLicense && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense} onUpdated={() => void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] })} />}
     </div>
-    {b.is_developer && <MarketingContactLine ownerId={b.user_id} devName={b.full_name} contact={marketing} />}
+    {b.is_developer ? <MarketingContactLine ownerId={b.user_id} devName={b.full_name} contact={marketing} /> : <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground sm:text-base">
+      {b.office_name && <><span className="min-w-0 truncate" title={b.office_name}>{b.office_name}</span><span aria-hidden>·</span></>}
+      <div role="radiogroup" aria-label="מגדר המתווך" className="flex">{([['male', 'זכר', '♂'], ['female', 'נקבה', '♀']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant={b.gender === g ? 'secondary' : 'ghost'} role="radio" aria-checked={b.gender === g} aria-label={label} title={label} className="h-7 w-7 text-base" disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>
+    </div>}
     <Dialog open={deleting} onOpenChange={open => { if (!remove.isPending) setDeleting(open); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-md text-right">
         <DialogHeader><DialogTitle>מחיקת החשבון של {b.full_name || 'ללא שם'}</DialogTitle></DialogHeader>

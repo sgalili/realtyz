@@ -13,7 +13,7 @@ const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('followups') }),
   z.object({ action: z.literal('imports') }),
   z.object({ action: z.literal('delete_import'), record_id: z.string().min(1).max(120).regex(/^(?:(?:batch|dev|onb):)?[0-9a-f-]{36}(?::[dbp]\d+)?$/i) }),
-  z.object({ action: z.literal('save'), user_id: z.string().uuid(), phone: z.string().trim().max(20).optional(), email: z.string().trim().max(254).optional() }),
+  z.object({ action: z.literal('save'), user_id: z.string().uuid(), phone: z.string().trim().max(20).optional(), email: z.string().trim().max(254).optional(), gender: z.enum(['male','female']).optional() }),
 ]);
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const normalizePhone = (v: string) => { const d = v.replace(/\D/g, ''); return /^05\d{8}$/.test(d) ? `972${d.slice(1)}` : /^9725\d{8}$/.test(d) ? d : null; };
@@ -161,7 +161,7 @@ Deno.serve(async req => {
     const ids = eligible.map(r => r.user_id);
     if (!ids.length) return json({ brokers: [] });
     const [{ data: profiles }, { data: offices }, { data: licenses }, { data: inventory, error: inventoryError }, { data: verified }, { data: devRoles }] = await Promise.all([
-      admin.from('profiles').select('id,full_name,phone,email,avatar_url,city,broker_license_number,locked_broker_name').in('id', ids),
+      admin.from('profiles').select('id,full_name,phone,email,avatar_url,city,broker_license_number,locked_broker_name,gender').in('id', ids),
       admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', ids),
       admin.from('admin_approved_broker_licenses').select('user_id,license_number').in('user_id', ids),
       admin.rpc('imported_account_inventory_counts', { owner_ids: ids }),
@@ -177,7 +177,7 @@ Deno.serve(async req => {
         license_number: verified?.find(l => l.user_id === r.user_id)?.license_number ?? licenses?.find(l => l.user_id === r.user_id)?.license_number ?? null,
         office_name: offices?.find(o => o.user_id === r.user_id)?.agency_name ?? devCompanies?.find(d => d.workspace_owner_id === r.user_id)?.company_name ?? null,
         office_logo_url: offices?.find(o => o.user_id === r.user_id)?.logo_url ?? devCompanies?.find(d => d.workspace_owner_id === r.user_id)?.logo_url ?? null, avatar_url: (p as any)?.avatar_url ?? null,
-        profile_license: (p as any)?.broker_license_number ?? null, city: (p as any)?.city ?? null,
+        profile_license: (p as any)?.broker_license_number ?? null, gender: (p as any)?.gender ?? null, city: (p as any)?.city ?? null,
         license_verified: !!verified?.find(l => l.user_id === r.user_id && l.verified_at) || !!(p as any)?.locked_broker_name,
         is_developer: (devRoles ?? []).some(d => d.user_id === r.user_id),
         drafts: Number(counts?.drafts ?? 0),
@@ -191,6 +191,12 @@ Deno.serve(async req => {
   const { data: row } = await admin.from('admin_broker_onboarding').select('user_id,first_login_at').eq('user_id', input.user_id).not('import_source', 'is', null).maybeSingle();
   if (!row) return json({ error: 'החשבון לא הוקם ביבוא' }, 404);
   if (row.first_login_at) return json({ error: 'המתווך כבר התחבר; פרטי ההתקשרות שלו מנוהלים על ידו' }, 400);
+  if (input.gender && !input.phone && !input.email) {
+    const { error: ge } = await admin.from('profiles').update({ gender: input.gender }).eq('id', input.user_id);
+    if (ge) return json({ error: 'שמירת המגדר נכשלה' }, 500);
+    await admin.from('audit_logs').insert({ actor_id: caller.userId, action: 'super_admin.broker_gender_set', target_table: 'profiles', target_id: input.user_id, details: { gender: input.gender } });
+    return json({ ok: true, complete: false, gender: input.gender });
+  }
   const phone = input.phone ? normalizePhone(input.phone) : null;
   if (input.phone && !phone) return json({ error: 'מספר נייד לא תקין (05X-XXXXXXX)' }, 400);
   const email = input.email ? input.email.toLowerCase() : null;

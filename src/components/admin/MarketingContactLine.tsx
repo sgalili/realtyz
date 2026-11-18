@@ -59,13 +59,11 @@ export function MarketingContactLine({ ownerId, devName, contact }: { ownerId: s
   return <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground sm:text-base">
     <MarketingCompanyLine ownerId={ownerId} name={devName} label={contact?.company_name ?? null} plain />
     <span aria-hidden>·</span>
-    <button type="button" className={`${dotted} min-w-0 truncate ${contact?.contact_name ? '' : 'text-primary'}`} onClick={() => start('name')} aria-label="עריכת איש הקשר">{contact?.contact_name || 'איש קשר'}</button>
+    <button type="button" className={`${dotted} min-w-0 truncate ${contact?.contact_name ? '' : 'text-primary'}`} onClick={() => start('name')} aria-label="עריכת איש הקשר">{contact?.contact_name || 'הוסף איש קשר'}</button>
     <div role="radiogroup" aria-label="מגדר איש הקשר" className="flex">
       {([['male', 'זכר', '♂'], ['female', 'נקבה', '♀']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant={contact?.contact_gender === g ? 'secondary' : 'ghost'} role="radio" aria-checked={contact?.contact_gender === g} aria-label={label} title={label} className="h-7 w-7 text-base" disabled={save.isPending} onClick={() => setGender(g)}>{icon}</Button>)}
     </div>
-    <button type="button" dir="ltr" className={`${dotted} ${phone ? '' : 'text-primary'}`} onClick={() => start('phone')} aria-label="עריכת נייד איש הקשר">{phone ? formatPhoneDisplay(phone) : 'נייד איש קשר'}</button>
-    {phone
-      ? <a href={`tel:+${phone}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-primary hover:bg-accent" aria-label={`חיוג לאיש הקשר ${formatPhoneDisplay(phone)}`} title={formatPhoneDisplay(phone)}><Phone className="h-4 w-4" /></a>
-      : <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-muted-foreground" aria-label="הוספת נייד איש הקשר" title="הוספת נייד איש הקשר" onClick={() => start('phone')}><Phone className="h-4 w-4" /></Button>}
+    <span className="inline-flex shrink-0 items-center gap-1"><button type="button" dir="ltr" className={`${dotted} ${phone ? '' : 'text-primary'}`} onClick={() => start('phone')} aria-label="עריכת נייד איש הקשר">{phone ? formatPhoneDisplay(phone) : 'הוסף טלפון'}</button>
+    {phone && <a href={`tel:+${phone}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-primary hover:bg-accent" aria-label={`חיוג לאיש הקשר ${formatPhoneDisplay(phone)}`} title={formatPhoneDisplay(phone)}><Phone className="h-4 w-4" /></a>}</span>
   </div>;
 }
