@@ -13,7 +13,7 @@ type Overview = { companies: { id: string; name: string }[]; developers: Row[]; 
 const NONE = '__none__';
 
 /** Super Admin-only marketing-company assignment for one developer workspace. */
-export function MarketingCompanyLine({ ownerId, name, label, iconOnly }: { ownerId: string; name: string; label?: string | null; iconOnly?: boolean }) {
+export function MarketingCompanyLine({ ownerId, name, label, iconOnly, plain }: { ownerId: string; name: string; label?: string | null; iconOnly?: boolean; plain?: boolean }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -49,7 +49,7 @@ export function MarketingCompanyLine({ ownerId, name, label, iconOnly }: { owner
   );
   return <>
     {iconOnly ? <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" aria-label="שיוך או העברה לחברת שיווק" title="שיוך לחברת שיווק" onClick={() => setOpen(true)}><Building2 className="h-4 w-4" /></Button> : <button type="button" onClick={() => setOpen(true)} className={`flex min-w-0 items-center gap-1 truncate text-sm underline decoration-dotted underline-offset-4 sm:text-base ${label ? 'text-muted-foreground' : 'text-primary'}`}>
-      <Building2 className="h-3.5 w-3.5 shrink-0" />{label ? <span className="truncate">חברת שיווק: {label}</span> : 'הוסף חברת שיווק'}
+      {!plain && <Building2 className="h-3.5 w-3.5 shrink-0" />}{label ? <span className="truncate">{plain ? label : `חברת שיווק: ${label}`}</span> : 'חברת שיווק'}
     </button>}
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
