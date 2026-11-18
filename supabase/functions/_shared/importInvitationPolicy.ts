@@ -9,7 +9,7 @@ export function followupDue(sentAt: string, now: number, clickedAt: string | nul
 }
 
 // PUBLIC_SITE_URL may be saved without a scheme (e.g. "realtyz.kalpiz.co.il"); never let that crash a send.
-export function publicSiteOrigin(raw = Deno.env.get('PUBLIC_SITE_URL') ?? '') {
+export function publicSiteOrigin(raw = (globalThis as { Deno?: { env: { get(k: string): string | undefined } } }).Deno?.env.get('PUBLIC_SITE_URL') ?? '') {
   const v = raw.trim();
   try { const u = new URL(/^https?:\/\//i.test(v) ? v : `https://${v || 'toraff.co.il'}`); return u.protocol === 'https:' && !/lovable\./.test(u.hostname) ? u.origin : 'https://toraff.co.il'; } catch { return 'https://toraff.co.il'; }
 }
