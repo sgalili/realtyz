@@ -1,7 +1,7 @@
 export type DemoType = 'broker' | 'marketing' | 'developer' | 'owner' | 'buyer' | 'affiliate';
 
 export const DEMO_TYPES: { id: DemoType; label: string }[] = [
-  { id: 'broker', label: 'מתווך / שותף' },
+  { id: 'broker', label: 'מתווך' },
   { id: 'marketing', label: 'חברת שיווק נדל"ן' },
   { id: 'developer', label: 'יזם / חברת בנייה' },
   { id: 'owner', label: 'מוכר / משכיר פרטי' },
