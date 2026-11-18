@@ -8,6 +8,7 @@ import { DirectionProvider } from "@radix-ui/react-direction";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { DemoViewBar } from "@/components/demo/DemoViewBar";
 import { PersonalLanguageProvider } from '@/i18n/personalLanguage';
 import { useUserRole } from "@/hooks/useUserRole";
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
@@ -197,7 +198,7 @@ const AFFILIATE_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS, '/sharing-pool', '/affi
 export const OWNER_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS, '/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita'];
 const WALLET_LOCK_ALLOWED = ['/', '/wallet', '/profile', '/public-listings', '/billing', '/referral'];
 const SEEKER_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS];
-const DEVELOPER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/profile', '/developer-dashboard', '/command-center', '/campaigns', '/lead-crm', '/inbox', '/affiliate-network', '/affiliate', '/referral', '/partner/contacts', '/partner/chats', '/posts'];
+const DEVELOPER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/profile', '/developer-dashboard', '/command-center', '/campaigns', '/lead-crm', '/inbox', '/affiliate-network', '/affiliate', '/referral', '/partner/contacts', '/partner/chats', '/posts', '/our-clients'];
 
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const { user, loading } = useAuth();
@@ -495,6 +496,7 @@ const App = () => (
             <ElectionTypeProvider>
             <MandateProvider>
             <Suspense fallback={<PageLoader />}>
+            <DemoViewBar />
             <ReferralCapture />
             <WorkspaceSelectorModal />
             <PostSignupWelcome />

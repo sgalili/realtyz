@@ -1695,6 +1695,13 @@
       "when": 1795021136363,
       "tag": "0241_demo_top_developers",
       "breakpoints": true
+    },
+    {
+      "idx": 242,
+      "version": "7",
+      "when": 1795026942244,
+      "tag": "0242_demo_view_accounts_readonly",
+      "breakpoints": true
     }
   ]
 }

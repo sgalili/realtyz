@@ -63,6 +63,9 @@ export async function userFromRequest(req: Request): Promise<{ userId: string; t
   const { data, error } = await client.auth.getClaims(token);
   const sub = data?.claims?.sub;
   if (error || !sub || data?.claims?.role !== "authenticated") return null;
+  // View-only demo accounts may never trigger server actions (sends, charges, AI, imports).
+  const { data: demo } = await adminClient().from("demo_view_accounts").select("user_id").eq("user_id", String(sub)).maybeSingle();
+  if (demo) return null;
   return { userId: String(sub), token };
 }
 

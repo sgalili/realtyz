@@ -3319,6 +3319,24 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_view_accounts: {
+        Row: {
+          created_at: string
+          demo_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          demo_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          demo_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       developer_import_identities: {
         Row: {
           developer_id: string | null
@@ -11814,6 +11832,7 @@ export type Database = {
         Args: { _group: string; _user: string }
         Returns: boolean
       }
+      is_demo_viewer: { Args: { _uid: string }; Returns: boolean }
       is_junior_agent: { Args: { _user_id: string }; Returns: boolean }
       is_on_trial_plan: { Args: { _user_id: string }; Returns: boolean }
       is_team_member: { Args: { _user_id: string }; Returns: boolean }
@@ -11957,6 +11976,7 @@ export type Database = {
         }
         Returns: number
       }
+      my_demo_view_type: { Args: never; Returns: string }
       my_marketing_company_id: { Args: never; Returns: string }
       notify_broker_upgrade: {
         Args: { _id: string; _status: string; _uid: string }
