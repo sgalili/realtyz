@@ -1730,6 +1730,13 @@
       "when": 1795039876148,
       "tag": "0246_fix_group_rita_autopilot_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1795040205778,
+      "tag": "0247_fix_demo_publication_guard_fields",
+      "breakpoints": true
     }
   ]
 }
