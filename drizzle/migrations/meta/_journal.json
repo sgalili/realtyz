@@ -1618,6 +1618,13 @@
       "when": 1794964208173,
       "tag": "0230_broker_invitation_template_texts",
       "breakpoints": true
+    },
+    {
+      "idx": 231,
+      "version": "7",
+      "when": 1794997675531,
+      "tag": "0231_imported_inventory_exact_counts",
+      "breakpoints": true
     }
   ]
 }

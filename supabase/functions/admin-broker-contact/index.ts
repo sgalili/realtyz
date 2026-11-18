@@ -152,18 +152,19 @@ Deno.serve(async req => {
     }
     const ids = eligible.map(r => r.user_id);
     if (!ids.length) return json({ brokers: [] });
-    const [{ data: profiles }, { data: offices }, { data: licenses }, { data: drafts }, { data: verified }, { data: devRoles }] = await Promise.all([
+    const [{ data: profiles }, { data: offices }, { data: licenses }, { data: inventory, error: inventoryError }, { data: verified }, { data: devRoles }] = await Promise.all([
       admin.from('profiles').select('id,full_name,phone,email,avatar_url,city,broker_license_number,locked_broker_name').in('id', ids),
       admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', ids),
       admin.from('admin_approved_broker_licenses').select('user_id,license_number').in('user_id', ids),
-      admin.from('listings').select('workspace_owner_id').in('workspace_owner_id', ids).eq('is_published', false),
+      admin.rpc('imported_account_inventory_counts', { owner_ids: ids }),
       admin.from('broker_license_verifications').select('user_id,license_number,verified_at').in('user_id', ids),
       admin.from('user_roles').select('user_id').in('user_id', ids).eq('role', 'developer'),
     ]);
-    const { data: devProjects } = await admin.from('developer_projects').select('workspace_owner_id,apartments').in('workspace_owner_id', ids);
+    if (inventoryError || !inventory || inventory.length !== ids.length) return json({ error: 'קריאת ספירת הפרויקטים והדירות נכשלה; יש לרענן ולנסות שוב' }, 500);
     const { data: devCompanies } = await admin.from('developers').select('workspace_owner_id,company_name,logo_url').in('workspace_owner_id', ids);
     const brokers = eligible.map(r => {
       const p = profiles?.find(x => x.id === r.user_id);
+      const counts = inventory.find((x: { user_id: string }) => x.user_id === r.user_id);
       return { user_id: r.user_id, full_name: p?.full_name ?? '', phone: p?.phone ?? null, email: realEmail(p?.email) ? p?.email : null,
         license_number: verified?.find(l => l.user_id === r.user_id)?.license_number ?? licenses?.find(l => l.user_id === r.user_id)?.license_number ?? null,
         office_name: offices?.find(o => o.user_id === r.user_id)?.agency_name ?? devCompanies?.find(d => d.workspace_owner_id === r.user_id)?.company_name ?? null,
@@ -171,9 +172,9 @@ Deno.serve(async req => {
         profile_license: (p as any)?.broker_license_number ?? null, city: (p as any)?.city ?? null,
         license_verified: !!verified?.find(l => l.user_id === r.user_id && l.verified_at) || !!(p as any)?.locked_broker_name,
         is_developer: (devRoles ?? []).some(d => d.user_id === r.user_id),
-        drafts: (drafts ?? []).filter(d => d.workspace_owner_id === r.user_id).length,
-        projects: (devProjects ?? []).filter(d => d.workspace_owner_id === r.user_id).length,
-        apartments: (devProjects ?? []).filter(d => d.workspace_owner_id === r.user_id).reduce((n, d: any) => n + (Array.isArray(d.apartments) ? d.apartments.length : 0), 0),
+        drafts: Number(counts?.drafts ?? 0),
+        projects: Number(counts?.projects ?? 0),
+        apartments: Number(counts?.apartments ?? 0),
         contact_status: r.contact_status, first_login_at: r.first_login_at, email_consent_at: r.email_consent_at, email_invited_at: r.email_invited_at };
     });
     return json({ brokers });

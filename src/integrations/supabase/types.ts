@@ -11571,6 +11571,15 @@ export type Database = {
           id: string
         }[]
       }
+      imported_account_inventory_counts: {
+        Args: { owner_ids: string[] }
+        Returns: {
+          apartments: number
+          drafts: number
+          projects: number
+          user_id: string
+        }[]
+      }
       in_current_workspace: { Args: { _row_owner: string }; Returns: boolean }
       inbox_favorite_target_access: {
         Args: { _kind: string; _target: string; _workspace: string }

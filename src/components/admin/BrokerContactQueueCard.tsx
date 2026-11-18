@@ -118,7 +118,7 @@ function BrokerRow({ b }: { b: ContactBroker }) {
   const dirty = !!phone.trim() && phone.replace(/\D/g, '') !== (b.phone ? formatPhoneDisplay(b.phone).replace(/\D/g, '') : '');
   const dest = b.is_developer ? 'הפרויקטים' : 'הנכסים';
   const regLicense = b.profile_license ?? b.license_number;
-  const details = [b.license_number && `רישיון ${b.license_number}`, b.office_name, b.city, ...((b.projects ?? 0) > 0 ? [`${b.projects} פרויקטים`, `${b.apartments ?? 0} דירות`] : []), ...(b.drafts > 0 || !(b.projects ?? 0) ? [`${b.drafts} טיוטות`] : [])].filter(Boolean).join(' · ');
+  const details = [...(b.is_developer ? [`${b.projects ?? 0} פרויקטים`, `${b.apartments ?? 0} דירות`] : []), ...(!b.is_developer || b.drafts > 0 ? [`${b.drafts} טיוטות`] : []), b.license_number && `רישיון ${b.license_number}`, b.office_name, b.city].filter(Boolean).join(' · ');
   return <li className="relative space-y-2 rounded-xl border border-border/70 p-3 pl-12 sm:p-4 sm:pl-12">
     <div className="flex items-center gap-1">
       <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>

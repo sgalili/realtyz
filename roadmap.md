@@ -1,5 +1,9 @@
 # Roadmap
 
+## Dynamic invitation inventory counts November 18
+- [x] Count saved developer projects and apartment entries by developer_id using a service-only database COUNT RPC, without row-limit truncation or silent zero on errors; deployed protected invitation endpoint.
+- [x] Refresh invitation/history/developer inventory queries when import progress is saved; eight focused tests pass. Real signed-in cards show Shviro 26 projects/1 apartment and Azorim 3 projects/2 apartments, checked desktop/mobile without runtime errors. No import, messaging or inventory writes triggered.
+
 ## Pending invitation card layout and deletion November 18
 - [x] Keep identity, mobile and actions on one compact primary row; remove the mobile-required label.
 - [x] Add confirmed exact-account permanent deletion using the existing protected deletion endpoint.

@@ -14,6 +14,7 @@ import { agencyUrl } from '../../../supabase/functions/_shared/yad2Agencies';
 import { developerImportPageKind, developerImportUrl } from '@/lib/developerImportUrl';
 import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY } from '../../../supabase/functions/_shared/developerImportRetry';
 import { startContinuousImportRunner } from '@/lib/continuousImportRunner';
+import { refreshImportedInventory } from '@/lib/refreshImportedInventory';
 
 const LINKS_KEY = 'toraff-broker-import-links';
 const LIMIT_KEY = 'toraff-broker-import-link-limit';
@@ -55,6 +56,10 @@ export function BrokerBatchImportCard() {
     refetchInterval: query => query.state.data?.some(job => job.status === 'running' || (job.lease_until && Date.parse(job.lease_until) > Date.now())) ? 4000 : false,
   });
   const current = jobs?.[0];
+  // Each saved checkpoint (including final completion) may add inventory for an account.
+  useEffect(() => {
+    if (current?.id && current.updated_at) void refreshImportedInventory(qc);
+  }, [current?.id, current?.updated_at, qc]);
   const [now, setNow] = useState(Date.now());
   useEffect(() => { if (!current || current.status === 'completed') return; const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, [current?.status]);
 
