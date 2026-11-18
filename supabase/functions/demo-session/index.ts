@@ -1,4 +1,4 @@
-// Public view-only demo sign-in: mints a session for the fixed demo account of the requested type.
+// Super Admin-only view-only demo sign-in (also lets a demo session switch type): mints a session for the fixed demo account of the requested type.
 // Demo accounts are write-blocked in the database (block_demo_viewer_writes) and in _shared/authz.ts.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -27,6 +27,18 @@ Deno.serve(async (req) => {
   const recent = (hits.get(ip) ?? []).filter((t) => now - t < 60_000);
   if (recent.length >= 20) return json({ error: 'יותר מדי ניסיונות, נסו שוב בעוד דקה' }, 429);
   hits.set(ip, [...recent, now]);
+
+  const url0 = Deno.env.get('SUPABASE_URL')!;
+  const svc = createClient(url0, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
+  const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+  const { data: caller } = jwt ? await svc.auth.getUser(jwt) : { data: { user: null } };
+  const uid = caller?.user?.id;
+  if (!uid) return json({ error: 'הכניסה לדמו זמינה לסופר-אדמין בלבד' }, 401);
+  const [{ data: sa }, { data: dv }] = await Promise.all([
+    svc.from('user_roles').select('role').eq('user_id', uid).eq('role', 'super_admin').maybeSingle(),
+    svc.from('demo_view_accounts').select('user_id').eq('user_id', uid).maybeSingle(),
+  ]);
+  if (!sa && !dv) return json({ error: 'הכניסה לדמו זמינה לסופר-אדמין בלבד' }, 403);
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return json({ error: 'סוג דמו לא תקין' }, 400);

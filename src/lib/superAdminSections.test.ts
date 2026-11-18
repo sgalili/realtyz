@@ -35,10 +35,8 @@ describe('super admin hero dropdown', () => {
     expect(adminSectionLabel('finance', 3)).toBe('פיננסי');
   });
 
-  it('exposes the demo role switcher as a selectable section', () => {
-    expect(ADMIN_SECTIONS.map((section) => section.value)).toContain('demo');
-    expect(resolveAdminSection('demo')).toBe('demo');
-    expect(adminSectionLabel('demo')).toBe('תצוגות דמו');
+  it('no longer offers a separate demo section (demo lives in the sidebar workspace list)', () => {
+    expect(ADMIN_SECTIONS.map((section) => section.value)).not.toContain('demo');
   });
 
   it('falls back to user management for unknown section values', () => {

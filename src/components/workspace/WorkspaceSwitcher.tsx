@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { DemoRoleSwitcher } from '@/components/admin/DemoRoleSwitcher';
 import { useWorkspaceInventoryCounts } from '@/hooks/useWorkspaceInventoryCounts';
 
 /**
@@ -180,6 +181,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                 />
               </div>
             )}
+            {isSuperAdmin && <DemoRoleSwitcher onEntered={() => setOpen(false)} />}
             <div role="region" aria-label="רשימת מרחבי עבודה" tabIndex={0} className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y">
               {visibleWorkspaces.length === 0 && (
                 <p className="px-2 py-3 text-xs text-muted-foreground">לא נמצאו חשבונות</p>

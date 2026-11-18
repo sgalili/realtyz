@@ -51,7 +51,6 @@ import { AccessibilityEffects } from '@/components/accessibility/AccessibilityEf
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
-const DemoPage = lazy(() => import("./pages/demo/DemoPage"));
 const RoleTransactions = lazy(() => import('./pages/RoleTransactions'));
 const SharingPool = lazy(() => import('./pages/SharingPool'));
 const MyAds = lazy(() => import("./pages/MyAds"));
@@ -523,8 +522,6 @@ const App = () => (
               <Route path="/faq" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><FaqPage /></Suspense></PublicProfileShell>} />
               <Route path="/about-toraff" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><AboutToraff /></Suspense></PublicProfileShell>} />
               <Route path="/go" element={<Suspense fallback={<PageLoader />}><DynamicQrRedirect /></Suspense>} />
-              <Route path="/demo" element={<Suspense fallback={<PageLoader />}><DemoPage /></Suspense>} />
-              <Route path="/demo/:type" element={<Suspense fallback={<PageLoader />}><DemoPage /></Suspense>} />
               <Route path="/go/:codeId" element={<Suspense fallback={<PageLoader />}><DynamicQrRedirect key={window.location.pathname} /></Suspense>} />
               <Route path="/what-is-toraff" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><AboutToraff /></Suspense></PublicProfileShell>} />
               <Route path="/terms" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><Terms /></Suspense></PublicProfileShell>} />

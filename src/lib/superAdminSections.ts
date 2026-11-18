@@ -1,4 +1,4 @@
-import { Activity, Bot, Clapperboard, MessageSquareText, PlugZap, QrCode, ScanSearch, ServerCog, Trash2, UserPlus, Users, Wallet } from 'lucide-react';
+import { Activity, Bot, MessageSquareText, PlugZap, QrCode, ScanSearch, ServerCog, Trash2, UserPlus, Users, Wallet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type AdminSection =
@@ -13,7 +13,6 @@ export type AdminSection =
   | 'activity'
   | 'scraping'
   | 'connections'
-  | 'demo'
   | 'system';
 
 export interface AdminSectionOption {
@@ -36,7 +35,6 @@ export const ADMIN_SECTIONS: readonly AdminSectionOption[] = [
   { value: 'activity', label: 'פעילות וניטור', icon: Activity },
   { value: 'scraping', label: 'שימוש Bright Data', icon: ScanSearch },
   { value: 'connections', label: 'חיבורים', icon: PlugZap },
-  { value: 'demo', label: 'תצוגות דמו', icon: Clapperboard },
   { value: 'system', label: 'שגיאות ומערכת', icon: ServerCog },
 ];
 
