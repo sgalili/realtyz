@@ -11092,6 +11092,7 @@ export type Database = {
         Returns: boolean
       }
       delete_leads_cascade: { Args: { _ids: string[] }; Returns: number }
+      demo_developer_projects: { Args: never; Returns: Json }
       demo_top_developers: {
         Args: never
         Returns: {

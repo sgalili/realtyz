@@ -1709,6 +1709,13 @@
       "when": 1795038772708,
       "tag": "0243_marketing_client_projects_full_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 244,
+      "version": "7",
+      "when": 1795039048746,
+      "tag": "0244_demo_broker_closing_and_developer_projects",
+      "breakpoints": true
     }
   ]
 }

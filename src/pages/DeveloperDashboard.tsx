@@ -115,7 +115,12 @@ function DeveloperDashboardContent() {
         const { data, error } = await supabase.from('developer_projects').select('*').eq('workspace_owner_id', ws).order('created_at', { ascending: false }).order('id').range(from, from + 499);
         if (error) throw error;
         projects.push(...(data ?? []));
-        if (!data || data.length < 500) return projects;
+        if (!data || data.length < 500) {
+          if (projects.length) return projects;
+          // View-only demo developer: read the real inventory (no commissions/contacts) via a demo-only RPC.
+          const demo = await supabase.rpc('demo_developer_projects');
+          return Array.isArray(demo.data) ? demo.data as unknown as DeveloperProject[] : projects;
+        }
       }
     },
   });
