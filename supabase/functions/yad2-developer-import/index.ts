@@ -7,6 +7,7 @@ import { DEVELOPER_CACHE_SECONDS } from '../_shared/scrapingPolicy.ts';
 import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
 import { ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
 import { rotatingUnlockerPayload, UNLOCKER_USER_AGENTS } from '../_shared/brightDataRotation.ts';
+import { IMPORT_DISCOVERY_BUDGET_MS } from '../_shared/importScanPolicy.ts';
 const cors = corsHeaders;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 Deno.serve(async req => {
@@ -45,13 +46,13 @@ Deno.serve(async req => {
   const token = Deno.env.get('BRIGHTDATA_API_TOKEN');
   const zone = Deno.env.get('BRIGHTDATA_UNLOCKER_ZONE') ?? Deno.env.get('BRIGHTDATA_ZONE') ?? 'web_unlocker4';
   if (!token) return json({ error: 'not_configured', message: 'שירות הייבוא מיד2 אינו מוגדר' }, 503);
-  const deadline = Date.now() + 125000;
+  const deadline = Date.now() + IMPORT_DISCOVERY_BUDGET_MS;
   const fetchPage = async (url: string) => {
     const remaining = deadline - Date.now();
     if (remaining < 1500) throw new Error('import_deadline');
     const html = await cachedScrapingText('developer_import', url, DEVELOPER_CACHE_SECONDS, async () => {
       const result = await trackScraping('developer_import', 'rest', url, async () => {
-        const res = await fetch('https://api.brightdata.com/request', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(rotatingUnlockerPayload(zone, url, Math.floor(Math.random() * UNLOCKER_USER_AGENTS.length))), signal: AbortSignal.timeout(Math.min(120000, remaining)) });
+        const res = await fetch('https://api.brightdata.com/request', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(rotatingUnlockerPayload(zone, url, Math.floor(Math.random() * UNLOCKER_USER_AGENTS.length))), signal: AbortSignal.timeout(Math.min(IMPORT_DISCOVERY_BUDGET_MS, remaining)) });
         return { status: res.status, html: await res.text(), retryAfterMs: retryAfterMs(res.headers.get('retry-after')) };
       }, value => ({ status: value.status, bytes: new TextEncoder().encode(value.html).length }));
       if (result.status === 429) throw new ProviderRateLimitError(result.retryAfterMs);

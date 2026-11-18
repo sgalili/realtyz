@@ -5,7 +5,8 @@ import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { collectBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
 import { readWorkerResponse, ImportAvailabilityError, ProviderTimeoutError } from '../_shared/brightDataDiagnostics.ts';
 import { agencyPageUrl, agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck } from '../_shared/yad2Agencies.ts';
-import { PROVIDER_GAP_MS, ProviderRateLimitError, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
+import { ProviderRateLimitError, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
+import { IMPORT_QUEUE_GAP_MS, canRetryDeveloperPage } from '../_shared/importScanPolicy.ts';
 import { developerImportUrl, developerProjectImportRow, developerQueuePhaseAfterPage, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, type DeveloperQueueWork } from '../_shared/yad2DeveloperImport.ts';
 import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY, developerRetryDeadline } from '../_shared/developerImportRetry.ts';
 import { readAllRows } from '../_shared/readAllRows.ts';
@@ -81,7 +82,7 @@ Deno.serve(async req => {
       return json({ok:true});
     }
     const {data:claimed,error:claimError}=await admin.rpc('claim_broker_import_step',{_id:input.job_id}); if(claimError) throw claimError;
-    const job=claimed?.[0]; if(!job) return json({ok:true,idle:true});
+    const job=claimed?.[0]; if(!job) return json({ok:true,idle:true,done:existing.status!=='running',retry_in_ms:Math.max(1000,(Date.parse(existing.lease_until??'')||0)-Date.now())});
     const c=job.checkpoint as Record<string,any>; const started=Date.now();
     const autonomousDeveloper=()=>autonomousDeveloperCheckpoint(c);
     const criteriaKey=`volume:${job.min_listings}:${job.max_listings}`;
@@ -114,8 +115,8 @@ Deno.serve(async req => {
       if(wait>0) {
         c.waitUntil=Date.now()+wait;c.waitReason='throttle';
         await admin.from('broker_import_jobs').update({checkpoint:c,updated_at:new Date().toISOString()}).eq('id',job.id).eq('lease_token',job.lease_token);
-        // Delay-only step preserves the 120s fetch budget and makes stop immediate.
-        await new Promise(resolve=>setTimeout(resolve,Math.min(wait,PROVIDER_GAP_MS)));
+        // Only the small queue gap is held here; the transport already serializes provider calls.
+        await new Promise(resolve=>setTimeout(resolve,Math.min(wait,IMPORT_QUEUE_GAP_MS)));
         await save();return null;
       }
       const {data:state}=await admin.from('broker_import_jobs').select('status,lease_token').eq('id',job.id).single();
@@ -124,8 +125,9 @@ Deno.serve(async req => {
       try {
         const result=await call(name,body);
         if(autonomousDeveloper()){c.rateRetries=0;c.transientRetries=0;}
+        c.discoveryRetries=0;
         return result;
-      } finally {if(instant){delete c.nextRequestAt;}else c.nextRequestAt=Date.now()+PROVIDER_GAP_MS;}
+      } finally {if(instant){delete c.nextRequestAt;}else c.nextRequestAt=Date.now()+IMPORT_QUEUE_GAP_MS;}
     };
     try {
       if(c.waitReason==='rate_limit' || c.waitReason===DEVELOPER_TRANSIENT_RETRY) {
@@ -202,13 +204,15 @@ Deno.serve(async req => {
       if(c.phase==='developer_saving') {
         const work=c.developerWork as DeveloperQueueWork;
         if(!work.accountId||!work.developerId)throw new Error('חשבון היזם לא נשמר; אפשר להמשיך מאותה נקודה');
+        const developerId=work.developerId;
+        const accountId=work.accountId;
         const dirty=work.projects.filter(project=>work.dirtyProjectKeys.includes(String(project.source_project_id??project.source_url??project.name)));
         if(dirty.length) {
           const existingProjects=await readAllRows(fromToProjects);
           function fromToProjects(from:number,to:number) { return admin.from('developer_projects').select('*').eq('developer_id',String(work.developerId)).order('id').range(from,to); }
           const rows=dirty.map(project=>{
             const old=(existingProjects??[]).find(row=>row.source_project_id===(project.source_project_id??project.source_url??project.name)||!!project.source_url&&row.source_url===project.source_url);
-            return developerProjectImportRow(old,project,work.developerId!,work.accountId!);
+            return developerProjectImportRow(old,project,developerId,accountId);
           });
           const {error}=await admin.from('developer_projects').upsert(rows,{onConflict:'developer_id,source_project_id'});if(error)throw error;
           work.dirtyProjectKeys=[];
@@ -354,7 +358,7 @@ Deno.serve(async req => {
           return json({ok:true,skipped:true});
         }
       }
-      if(e instanceof ProviderTimeoutError && autonomousDeveloper()) {
+      if(e instanceof ProviderTimeoutError && autonomousDeveloper() && canRetryDeveloperPage((c.transientRetries??0)+1)) {
         c.transientRetries=(c.transientRetries??0)+1;
         c.waitScope='developer';c.waitReason=DEVELOPER_TRANSIENT_RETRY;
         c.waitUntil=developerRetryDeadline(DEVELOPER_TRANSIENT_RETRY,c.transientRetries);
@@ -363,9 +367,18 @@ Deno.serve(async req => {
         return json({ok:true,waiting:true,retry_at:c.waitUntil});
       }
       if(e instanceof ProviderTimeoutError && ['scanning','enriching'].includes(c.phase)) {
-        // Broker discovery only: a slow page is skipped softly.
+        c.discoveryRetries=(c.discoveryRetries??0)+1;
+        if(canRetryDeveloperPage(c.discoveryRetries)) {
+          await save({error:null});return json({ok:true,retrying:true,retry_in_ms:IMPORT_QUEUE_GAP_MS});
+        }
+        // Never declare an unreadable directory page empty/completed.
+        if(c.phase==='scanning') {
+          c.discoveryRetries=0;
+          await save({status:'paused',error:'עמוד האיתור ביד2 לא הגיב לאחר שלושה ניסיונות. ההתקדמות נשמרה; ניתן להמשיך מאותה נקודה.'});
+          return json({ok:true,paused:true});
+        }
         console.warn('[broker-import-timeout-skip]',JSON.stringify({job_id:job.id,phase:c.phase,page:c.page,status:e.status??null,url:c.phase==='enriching'?c.enrichUrls?.[0]:null}));
-        c.timeoutSkips=(c.timeoutSkips??0)+1;skipRestrictedImport(c);
+        c.discoveryRetries=0;c.timeoutSkips=(c.timeoutSkips??0)+1;skipRestrictedImport(c);
         await save({error:null,...(c.phase==='completed'?{status:'completed'}:{})});
         return json({ok:true,skipped:true});
       }

@@ -24,6 +24,7 @@ import { trackScraping, recordCacheHit } from '../_shared/scrapingAudit.ts';
 import { BRIGHT_DATA_TIMEOUT_MS, BRIGHT_DATA_WORKER_BUDGET_MS, logProviderFailure, logUnlockerRequest, logUnlockerResponse, redactDiagnostic } from '../_shared/brightDataDiagnostics.ts';
 import { createProviderPacer, ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
 import { WEB_UNLOCKER_ZONE, unlockerRequestOptions, rotationDiagnostics } from '../_shared/brightDataRotation.ts';
+import { IMPORT_DISCOVERY_BUDGET_MS } from '../_shared/importScanPolicy.ts';
 const paceProvider = createProviderPacer();
 let providerRateLimit: ProviderRateLimitError | null = null;
 
@@ -2231,6 +2232,8 @@ Deno.serve(async (req) => {
       const {data:job} = await admin.from('broker_import_jobs').select('created_by,status,lease_until,lease_token').eq('id',body.admin_import_job_id).maybeSingle();
       const {data:role} = job ? await admin.from('user_roles').select('user_id').eq('user_id',job.created_by).eq('role','super_admin').maybeSingle() : {data:null};
       if (!role || job?.status !== 'running' || job.lease_token !== body.admin_import_lease_token || Date.parse(job.lease_until ?? '') <= Date.now()) return json({error:'admin_discovery_not_authorized'},403);
+      // Restrict only authorized admin discovery; full listing imports keep their save budget.
+      requestDeadline = startedAt + IMPORT_DISCOVERY_BUDGET_MS;
       const html = await unlock(inputUrl, {maxAttempts:1});
       const $page = cheerio.load(html);
       const parsed = body?.agency_profile===true && isAgencyProfileUrl(inputUrl) ? parseAgencyProfile($page,inputUrl,Math.min(10,Math.max(1,Number(body?.max_listings)||10))) : parseAgencies($page,inputUrl);

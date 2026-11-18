@@ -1,5 +1,10 @@
 # Roadmap
 
+## Import performance and controls November 18
+- [x] Bound authorized discovery to 50 seconds/three attempts, reduce redundant queue gap to one second, and continue running broker/developer jobs via the existing leased worker. Provider cooldowns, publication and identity rules remain unchanged.
+- [x] Move icon-only new import to the heading; separate broker/developer selection with actual project caps and arrow quantity controls.
+- [x] 43 focused tests passed; signed-in desktop/mobile tabs and quantity controls verified; three changed functions deployed. No new paid source scan or account creation was started, so full live import/provider reliability remains unverified.
+
 ## Inventory count flow sweep November 18
 - [x] Read invitation cards/history, developer dashboard/import completion, Developers directory, workspace/sidebar count RPCs, public profile projection and both background workers. Directory first-project units are source facts, not imported-inventory totals; public projects remain publication-filtered.
 - [x] Removed capped saved-row/history/page reads and zero-unit completion placeholders, refreshed both import flows and polled visible inventory counts. Twenty-one tests passed and real Shviro/Azorim cards verified again. No past jobs/inventory/publication/permissions changed; no new paid source import was run, so live worker completion remains unverified.
