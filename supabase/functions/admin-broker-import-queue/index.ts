@@ -11,7 +11,7 @@ import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY, developerRetr
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
-  z.object({action:z.literal('start_urls'),urls:z.array(z.string().max(500)).min(1).max(100),max_listings:z.number().int().min(1).max(10).optional(),expected_projects:z.number().int().min(1).max(100).optional()}).strict(),
+  z.object({action:z.literal('start_urls'),urls:z.array(z.string().max(500)).min(1).max(100),max_listings:z.number().int().min(1).max(10).optional(),expected_projects:z.number().int().min(1).max(100).optional(),max_projects:z.number().int().min(1).max(100).optional()}).strict(),
   z.object({action:z.enum(['pause','resume','reset_cooldown','step']),job_id:z.string().uuid()}).strict(),
 ]);
 const json = (data: unknown, status=200) => new Response(JSON.stringify(data),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
@@ -58,7 +58,7 @@ Deno.serve(async req => {
       const brokerUrls=[...new Set(input.urls.filter(u=>!developerImportUrl(u.trim())).map(u=>agencyUrl(u.trim())).filter((u):u is string=>Boolean(u)))];
       const accepted=developerUrls.length+brokerUrls.length;
       if(!accepted) return json({error:'לא נמצאו קישורי משרד/מתווך או יזם תקינים של יד2'},400);
-      const checkpoint={...freshImportCheckpoint(),source:'urls',phase:developerUrls.length?'developer_scanning':'enriching',enrichUrls:brokerUrls,developerUrls,developerIndex:0,developerResults:[],expectedProjects:input.expected_projects??1,totalBrokerUrls:brokerUrls.length,totalDeveloperUrls:developerUrls.length,enriched:0,invalidUrls:input.urls.length-accepted};
+      const checkpoint={...freshImportCheckpoint(),source:'urls',phase:developerUrls.length?'developer_scanning':'enriching',enrichUrls:brokerUrls,developerUrls,developerIndex:0,developerResults:[],expectedProjects:input.expected_projects??1,maxProjects:input.max_projects??null,totalBrokerUrls:brokerUrls.length,totalDeveloperUrls:developerUrls.length,enriched:0,invalidUrls:input.urls.length-accepted};
       const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:accepted,_min:1,_max:input.max_listings??10,_checkpoint:checkpoint});
       if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
       return json({job_id:data,accepted,developers:developerUrls.length,brokers:brokerUrls.length,rejected:input.urls.length-accepted});
@@ -148,7 +148,7 @@ Deno.serve(async req => {
           c.phase=c.enrichUrls?.length?'enriching':c.brokers?.length?'validating':'completed';
           await save(c.phase==='completed'?{status:'completed'}:{});return json({ok:true});
         }
-        const work=(c.developerWork??newDeveloperQueueWork(url,Number(c.expectedProjects??1))) as DeveloperQueueWork;
+        const work=(c.developerWork??newDeveloperQueueWork(url,Number(c.expectedProjects??1),c.maxProjects?Number(c.maxProjects):undefined)) as DeveloperQueueWork;
         c.developerWork=work;
         const pageUrl=work.pendingUrls[0];
         if(!pageUrl) {c.phase=work.accountId?'developer_saving':'developer_creating';await save();return json({ok:true});}

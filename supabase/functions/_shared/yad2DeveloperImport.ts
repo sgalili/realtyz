@@ -258,6 +258,8 @@ export function readPage(html: string, base: string, parentProject?: RecordValue
 export type DeveloperQueueWork = {
   url: string;
   expectedProjects: number;
+  /** Explicit Super Admin cap: keep only the first N projects in source page order. */
+  maxProjects?: number;
   developer: { company_name: string | null; phone: string | null; logo_url: string | null; bio: string | null };
   projects: any[];
   pendingUrls: string[];
@@ -268,8 +270,8 @@ export type DeveloperQueueWork = {
   inventoryParents?: Record<string, RecordValue>;
 };
 
-export function newDeveloperQueueWork(url: string, expectedProjects: number): DeveloperQueueWork {
-  return { url, expectedProjects, developer: { company_name: null, phone: null, logo_url: null, bio: null }, projects: [], pendingUrls: [url], visitedUrls: [], dirtyProjectKeys: [] };
+export function newDeveloperQueueWork(url: string, expectedProjects: number, maxProjects?: number): DeveloperQueueWork {
+  return { url, expectedProjects, ...(maxProjects ? { maxProjects } : {}), developer: { company_name: null, phone: null, logo_url: null, bio: null }, projects: [], pendingUrls: [url], visitedUrls: [], dirtyProjectKeys: [] };
 }
 
 export function developerQueuePhaseAfterPage(work: DeveloperQueueWork) {
@@ -292,17 +294,22 @@ export function mergeDeveloperQueuePage(work: DeveloperQueueWork, page: { source
   for (const project of page.projects ?? []) {
     const index = work.projects.findIndex(old => sameProject(old, project));
     if (index >= 0) work.projects[index] = mergeProject(work.projects[index], project);
+    else if (work.maxProjects && work.projects.length >= work.maxProjects) continue;
     else work.projects.push(project);
     const key = projectKey(project);
     if (!work.dirtyProjectKeys.includes(key)) work.dirtyProjectKeys.push(key);
   }
   if (!work.visitedUrls.includes(page.source_url)) work.visitedUrls.push(page.source_url);
   work.pendingUrls = work.pendingUrls.filter(url => url !== page.source_url);
+  const norm = (u: unknown) => { try { const x = new URL(String(u)); return x.origin + x.pathname.replace(/\/$/, ''); } catch { return null; } };
+  const kept = new Set(work.projects.map(p => norm(p.source_url)).filter(Boolean));
   for (const link of page.links ?? []) {
+    if (work.maxProjects && work.projects.length >= work.maxProjects && !kept.has(norm(link))) continue;
     if (!work.visitedUrls.includes(link) && !work.pendingUrls.includes(link)) work.pendingUrls.push(link);
   }
   for (const child of page.inventoryPages ?? []) {
     if (projectInventoryUrl(child.url, child.parent.source_url) !== child.url) continue;
+    if (work.maxProjects && !kept.has(norm(child.parent.source_url))) continue;
     work.inventoryParents ??= {};
     work.inventoryParents[child.url] = child.parent;
     if (!work.visitedUrls.includes(child.url) && !work.pendingUrls.includes(child.url)) work.pendingUrls.push(child.url);
