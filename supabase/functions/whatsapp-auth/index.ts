@@ -42,7 +42,10 @@ const normalizeIsraeliPhone = (value: string) => {
 // code verifies them. The series deliberately stops below 050-1000000, which
 // falls inside a real 050-1 allocation block where actual subscribers exist.
 const TEST_OTP_CODE = "9321";
-const isTestSeriesPhone = (phone: string) => /^972500\d{6}$/.test(phone);
+const isTestSeriesPhone = (phone: string) => /^972500\d{6}$/.test(phone) || phone === MARKETING_DEMO_PHONE;
+// Owner-approved marketing-company demo account: fixed number and code, isolated demo workspace only.
+const MARKETING_DEMO_PHONE = "972501234567";
+const MARKETING_DEMO_CODE = "1234";
 
 const hashCode = async (phone: string, code: string) => {
   const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "realtyz-auth";
@@ -591,7 +594,7 @@ Deno.serve(async (req) => {
 
       // Fictional QA test series: fixed code, no OTP row needed. Real phone
       // numbers always go through the stored-code check below.
-      if (action !== 'broker_verify' && isTestSeriesPhone(phone) && code === TEST_OTP_CODE) {
+      if (action !== 'broker_verify' && isTestSeriesPhone(phone) && code === (phone === MARKETING_DEMO_PHONE ? MARKETING_DEMO_CODE : TEST_OTP_CODE)) {
         const testPublishableKey = Deno.env.get('SUPABASE_ANON_KEY');
         if (!testPublishableKey) throw new Error('Phone authentication is not configured');
         const testClient = createClient(supabaseUrl, testPublishableKey, { auth: { persistSession: false, autoRefreshToken: false } });

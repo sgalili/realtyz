@@ -56,7 +56,7 @@ import { SidebarRitaChat } from '@/components/sidebar/SidebarRitaChat';
 import { AccessibilityMenu } from '@/components/accessibility/AccessibilityMenu';
 import { Accessibility } from 'lucide-react';
 import { usePersonalLanguage } from '@/i18n/personalLanguage';
-import { Megaphone as MyAdsIcon } from 'lucide-react';
+import { Megaphone as MyAdsIcon, Building2 as ClientsIcon } from 'lucide-react';
 
 
 type NavItem = {
@@ -67,6 +67,14 @@ type NavItem = {
   badgeClass: string;
   aliases?: string[];
   badge?: string;
+};
+
+const OUR_CLIENTS_ITEM: NavItem = {
+  title: 'הלקוחות שלנו',
+  url: '/our-clients',
+  icon: ClientsIcon,
+  iconColor: 'text-primary',
+  badgeClass: 'bg-primary/10 text-primary ring-primary/20',
 };
 
 const MY_ADS_ITEM: NavItem = {
@@ -210,6 +218,11 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const brokerMenu = audience === 'professional' && !access.projects;
   const navItems = useMemo(() => {
     if (roleLoading || roleError) return [];
+    // Marketing companies manage marketing for several developers at once.
+    if (roles.includes('marketing_company') && !isPartnerMode) {
+      const pick = ['/campaigns', '/posts', '/inbox', '/referral'];
+      return [OUR_CLIENTS_ITEM, MY_ADS_ITEM, ...pick.map(u => NAV_ITEMS.find(i => i.url === u)).filter((i): i is NavItem => !!i)];
+    }
     if (audience !== 'professional') {
       const personal = NAV_ITEMS.filter(item => ['/command-center', '/deal-room', '/referral'].includes(item.url));
       const communications = audience === 'partner' ? PARTNER_NAV_ITEMS.filter(item => ['/posts', '/partner/chats'].includes(item.url)) : NAV_ITEMS.filter(item => ['/campaigns', '/inbox'].includes(item.url));
@@ -237,7 +250,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         if (item.url === '/properties') return features.listingsEnabled && access.properties;
         return true;
       });
-  }, [audience, features, access.projects, access.properties, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError, identity.label]);
+  }, [audience, features, access.projects, access.properties, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError, identity.label, isPartnerMode]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts || audience !== 'professional') return undefined;

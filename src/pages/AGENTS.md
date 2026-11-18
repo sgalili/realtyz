@@ -1,0 +1,1 @@
+- Marketing-company accounts read assigned developers/projects only through marketing_* RPCs keyed by marketing_companies.owner_user_id, without commission or contact fields; the fixed demo phone/code lives only in whatsapp-auth and owns an isolated workspace. Why: read-only client access without tenant leaks.

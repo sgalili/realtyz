@@ -6916,18 +6916,21 @@ export type Database = {
           created_by: string | null
           id: string
           name: string
+          owner_user_id: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           id?: string
           name: string
+          owner_user_id?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
           id?: string
           name?: string
+          owner_user_id?: string | null
         }
         Relationships: []
       }
@@ -11770,6 +11773,8 @@ export type Database = {
           newest_published_at: string
         }[]
       }
+      marketing_client_projects: { Args: { _developer: string }; Returns: Json }
+      marketing_my_clients: { Args: never; Returns: Json }
       match_knowledge_chunks: {
         Args: {
           match_count?: number
@@ -11832,6 +11837,7 @@ export type Database = {
         }
         Returns: number
       }
+      my_marketing_company_id: { Args: never; Returns: string }
       notify_broker_upgrade: {
         Args: { _id: string; _status: string; _uid: string }
         Returns: undefined
@@ -12195,6 +12201,7 @@ export type Database = {
         | "property_owner"
         | "property_seeker"
         | "developer"
+        | "marketing_company"
       listing_source: "yad2" | "madlan" | "manual"
     }
     CompositeTypes: {
@@ -12337,6 +12344,7 @@ export const Constants = {
         "property_owner",
         "property_seeker",
         "developer",
+        "marketing_company",
       ],
       listing_source: ["yad2", "madlan", "manual"],
     },

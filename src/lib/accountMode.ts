@@ -4,6 +4,7 @@ import type { AppRole } from '@/hooks/useUserRole';
 export function accountIdentity(roles: AppRole[], primaryType?: string | null) {
   const team = roles.some((role) => ['admin', 'super_admin', 'moderator', 'managing_broker', 'lead_agent', 'agent', 'assistant', 'junior_agent'].includes(role));
   if (roles.includes('developer') && !roles.includes('super_admin')) return { label: primaryType === 'contractor' ? 'קבלן' : 'יזם', home: '/developer-dashboard', canSwitch: true };
+  if (roles.includes('marketing_company') && !roles.includes('super_admin')) return { label: 'חברת שיווק', home: '/our-clients', canSwitch: true };
   if (team) return { label: 'מתווך', home: '/', canSwitch: true };
   if (roles.includes('property_owner')) return { label: 'מפרסם', home: '/my-ads', canSwitch: true };
   if (roles.includes('property_seeker')) return { label: 'פרטי', home: '/public-listings', canSwitch: true };

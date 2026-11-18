@@ -1639,6 +1639,20 @@
       "when": 1795004453759,
       "tag": "0233_marketing_companies",
       "breakpoints": true
+    },
+    {
+      "idx": 234,
+      "version": "7",
+      "when": 1795005444042,
+      "tag": "0234_marketing_company_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 235,
+      "version": "7",
+      "when": 1795005477138,
+      "tag": "0235_marketing_company_clients",
+      "breakpoints": true
     }
   ]
 }

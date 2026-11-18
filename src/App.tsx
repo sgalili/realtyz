@@ -126,6 +126,7 @@ const FaqPage = lazy(() => import('./pages/FaqPage'));
 const Developers = lazy(() => import("./pages/Developers"));
 const Wallet = lazy(() => import("./pages/Wallet"));
 const DeveloperDashboard = lazy(() => import("./pages/DeveloperDashboard"));
+const OurClients = lazy(() => import("./pages/OurClients"));
 const OwnerLeads = lazy(() => import("./pages/owner/OwnerLeads"));
 const OwnerRewards = lazy(() => import("./pages/owner/OwnerRewards"));
 const OwnerRita = lazy(() => import("./pages/owner/OwnerRita"));
@@ -556,6 +557,7 @@ const App = () => (
               <Route path="/owner/properties" element={<Navigate to="/my-ads" replace />} />
               <Route path="/my-ads/:id/edit" element={<ProtectedRoute><MyAdEditRoute /></ProtectedRoute>} />
               <Route path="/wallet" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Wallet /></Suspense></ProtectedRoute>} />
+              <Route path="/our-clients" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><OurClients /></Suspense></ProtectedRoute>} />
               <Route path="/developer-dashboard" element={<ProjectsRoute><ProtectedRoute><Suspense fallback={<PageLoader />}><DeveloperDashboard /></Suspense></ProtectedRoute></ProjectsRoute>} />
               <Route path="/developers" element={<ProtectedRoute allowGuestDemo><Suspense fallback={<PageLoader />}><Developers /></Suspense></ProtectedRoute>} />
               <Route path="/owner/leads" element={<ProtectedRoute><OwnerLeads /></ProtectedRoute>} />
