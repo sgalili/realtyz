@@ -1475,6 +1475,27 @@ export type Database = {
           },
         ]
       }
+      broker_invitation_template_texts: {
+        Row: {
+          body: string
+          gender: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body: string
+          gender: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          gender?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       broker_license_verifications: {
         Row: {
           account_name_before_verification: string | null

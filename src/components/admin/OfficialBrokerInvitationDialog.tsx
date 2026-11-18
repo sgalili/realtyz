@@ -4,7 +4,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Send, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { brokerInvitation, renderBrokerInvitation } from '@/lib/brokerInvitation';
@@ -25,8 +25,9 @@ async function invoke(body: Record<string, unknown>) {
   return data;
 }
 
-export function OfficialBrokerInvitationDialog({ broker, triggerLabel, triggerClassName }: { broker: { id: string; full_name?: string | null }; triggerLabel?: string; triggerClassName?: string }) {
-  const [open, setOpen] = useState(false);
+/** WhatsApp invitation content, usable inside any dialog or tab. */
+export function OfficialBrokerInvitationPanel({ broker, onClose, onSent }: { broker: { id: string; full_name?: string | null }; onClose: () => void; onSent?: () => void }) {
+  const open = true;
   const [consent, setConsent] = useState(false);
   const [feedback, setFeedback] = useState('');
   const requestId = useRef(crypto.randomUUID());
@@ -44,16 +45,13 @@ export function OfficialBrokerInvitationDialog({ broker, triggerLabel, triggerCl
   } });
   const sender = useQuery({ queryKey: ['official-wa-number'], enabled: open, queryFn: getOfficialWaNumber });
   const mutation = useMutation({ mutationFn: (action: 'send') => invoke({ action, broker_id: broker.id, ...(action === 'send' ? { request_id: requestId.current, consent } : {}) }), onSuccess: async () => {
-    setFeedback('Meta קיבלה את ההזמנה. מסירה לנמען טרם אומתה.'); await qc.invalidateQueries({ queryKey: ['broker-onboarding'] });
+    setFeedback('Meta קיבלה את ההזמנה. מסירה לנמען טרם אומתה.'); onSent?.(); await qc.invalidateQueries({ queryKey: ['broker-onboarding'] });
     await qc.invalidateQueries({ queryKey: ['broker-contact-history'] });
-    // Keep the open result visible; remove the waiting card after the dialog closes.
   }, onError: e => setFeedback(e.message) });
   const status = state.data?.status;
   const labels: Record<string, string> = { NOT_REGISTERED: 'הנוסח טרם הוגש ל-Meta', PENDING: 'ממתין לאישור Meta', APPROVED: 'תבנית מאושרת', REJECTED: 'Meta דחתה את התבנית', PAUSED: 'התבנית מושהית', DISABLED: 'התבנית אינה פעילה' };
-  return <>
-    <Button variant={triggerLabel ? 'default' : 'ghost'} size={triggerLabel ? 'default' : 'icon'} className={triggerLabel ? 'h-11 text-base' : triggerClassName ?? 'h-8 w-8'} aria-label="שליחת הזמנה רשמית ב־WhatsApp" title="שליחת הזמנה רשמית ב־WhatsApp" onClick={() => { setOpen(true); setConsent(false); setFeedback(''); requestId.current = crypto.randomUUID(); }}><Send className="h-4 w-4 shrink-0" />{triggerLabel}</Button>
-    <Dialog open={open} onOpenChange={value => { if (!mutation.isPending) { setOpen(value); if (!value && mutation.isSuccess) void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); } }}><DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
-      <DialogHeader><DialogTitle>הזמנה ב־WhatsApp ל־{broker.full_name || 'מתווך'}</DialogTitle><DialogDescription>נשלח בתבנית Meta מאושרת מהמספר הרשמי {sender.data ? `+${sender.data}` : ''}.</DialogDescription></DialogHeader>
+  return <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">נשלח בתבנית Meta מאושרת מהמספר הרשמי {sender.data ? `+${sender.data}` : ''}.</p>
       {onboarding.data && <p role="status" className="text-sm text-primary">{BROKER_STAGE_LABELS[onboarding.data.stage]}{onboarding.data.pending_properties > 0 ? ` · ${onboarding.data.pending_properties} נכסים לבדיקה` : ''}</p>}
       {onboarding.isError && <p role="alert" className="text-destructive">לא ניתן לקרוא את שלב ההצטרפות</p>}
       <Label>תצוגת ההודעה לנמען</Label>
@@ -63,7 +61,19 @@ export function OfficialBrokerInvitationDialog({ broker, triggerLabel, triggerCl
       {state.error && <p role="alert" className="break-words text-sm text-destructive">{state.error.message}</p>}
       <Label className="flex items-start gap-2 leading-6"><Checkbox checked={consent} disabled={mutation.isPending} onCheckedChange={v => setConsent(v === true)} />הנמען הסכים לקבל הזמנה ב־WhatsApp</Label>
       {feedback && <p role="status" className="break-words text-sm">{feedback}</p>}
-      <DialogFooter className="flex-row justify-between gap-2 sm:justify-between"><Button variant="outline" disabled={mutation.isPending} onClick={() => setOpen(false)}>ביטול</Button>{status === 'APPROVED' ? <Button disabled={!consent || !!validation || state.isFetching || mutation.isPending || !onboarding.data || !!feedback} onClick={() => mutation.mutate('send')}><Send className="h-4 w-4" />{mutation.isPending ? 'שולח…' : 'שליחת הזמנה'}</Button> : <span className="text-sm text-muted-foreground">השליחה תתאפשר לאחר אישור התבנית</span>}</DialogFooter>
+      <div className="flex flex-row justify-between gap-2"><Button variant="outline" disabled={mutation.isPending} onClick={onClose}>ביטול</Button>{status === 'APPROVED' ? <Button disabled={!consent || !!validation || state.isFetching || mutation.isPending || !onboarding.data || !!feedback} onClick={() => mutation.mutate('send')}><Send className="h-4 w-4" />{mutation.isPending ? 'שולח…' : 'שליחת הזמנה'}</Button> : <span className="text-sm text-muted-foreground">השליחה תתאפשר לאחר אישור התבנית</span>}</div>
+    </div>;
+}
+
+export function OfficialBrokerInvitationDialog({ broker, triggerLabel, triggerClassName }: { broker: { id: string; full_name?: string | null }; triggerLabel?: string; triggerClassName?: string }) {
+  const [open, setOpen] = useState(false);
+  const [sent, setSent] = useState(false);
+  const qc = useQueryClient();
+  return <>
+    <Button variant={triggerLabel ? 'default' : 'ghost'} size={triggerLabel ? 'default' : 'icon'} className={triggerLabel ? 'h-11 text-base' : triggerClassName ?? 'h-8 w-8'} aria-label="שליחת הזמנה רשמית ב־WhatsApp" title="שליחת הזמנה רשמית ב־WhatsApp" onClick={() => { setOpen(true); setSent(false); }}><Send className="h-4 w-4 shrink-0" />{triggerLabel}</Button>
+    <Dialog open={open} onOpenChange={value => { setOpen(value); if (!value && sent) void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); }}><DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
+      <DialogHeader><DialogTitle>הזמנה ב־WhatsApp ל־{broker.full_name || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">שליחה בתבנית Meta מאושרת</DialogDescription></DialogHeader>
+      {open && <OfficialBrokerInvitationPanel broker={broker} onClose={() => setOpen(false)} onSent={() => setSent(true)} />}
     </DialogContent></Dialog>
   </>;
 }

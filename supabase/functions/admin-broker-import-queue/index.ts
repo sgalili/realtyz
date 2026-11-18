@@ -174,6 +174,15 @@ Deno.serve(async req => {
           if(ids.length>1)throw new Error('הפרויקט משויך ליותר מיזם אחד; נדרשת בדיקת מנהל');
           if(ids.length){const r=await admin.from('developers').select('*').eq('id',ids[0]).limit(1);if(r.error)throw r.error;matches=r.data;}
         }
+        if(!matches?.length) {
+          // A profile link reuses the single developer that already owns any of the scanned Yad2 projects, then an exact unique company name. Why: no duplicate developer accounts.
+          const sourceIds=[...new Set(work.projects.map((p:any)=>p.source_project_id).filter(Boolean).map(String))];
+          if(sourceIds.length){const {data:owned,error}=await admin.from('developer_projects').select('developer_id').in('source_project_id',sourceIds).limit(50);if(error)throw error;
+            const ids=[...new Set((owned??[]).map(r=>r.developer_id))];
+            if(ids.length>1)throw new Error('פרויקטי היזם משויכים ליותר מחשבון אחד; נדרשת בדיקת מנהל');
+            if(ids.length){const r=await admin.from('developers').select('*').eq('id',ids[0]).limit(1);if(r.error)throw r.error;matches=r.data;}}
+          if(!matches?.length){const r=await admin.from('developers').select('*').eq('company_name',companyName).limit(2);if(r.error)throw r.error;if((r.data?.length??0)===1)matches=r.data;}
+        }
         if((matches?.length??0)>1)throw new Error('קיים יותר מחשבון אחד המקושר לעמוד היזם; נדרשת בדיקת מנהל');
         const existing=matches?.[0];
         let accountId=existing?.workspace_owner_id as string|undefined;

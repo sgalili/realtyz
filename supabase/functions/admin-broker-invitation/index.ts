@@ -5,7 +5,8 @@ import { brokerTemplateFor, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasL
 import { invitationLink } from '../_shared/importInvitationPolicy.ts';
 
 const schema = z.object({
-  action: z.enum(['status', 'register', 'send']),
+  action: z.enum(['status', 'register', 'send', 'texts', 'save_text']),
+  text: z.string().max(1024).optional(),
   broker_id: z.string().uuid().optional(),
   gender: z.enum(['male', 'female']).nullable().optional(),
   request_id: z.string().uuid().optional(),
@@ -30,7 +31,17 @@ Deno.serve(async req => {
     const { data: g } = await admin.from('profiles').select('gender').eq('id', input.broker_id).maybeSingle();
     gender = g?.gender;
   }
-  const text = brokerTemplateFor(gender);
+  const { data: saved } = await admin.from('broker_invitation_template_texts').select('gender,body');
+  const savedFor = (g: unknown) => saved?.find(r => r.gender === (g === 'female' ? 'female' : 'male'))?.body ?? brokerTemplateFor(g);
+  if (input.action === 'texts') return json({ male: savedFor('male'), female: savedFor('female') });
+  if (input.action === 'save_text') {
+    if (input.gender !== 'male' && input.gender !== 'female') return json({ error: 'יש לבחור נוסח לגברים או לנשים' }, 400);
+    try { templateBody(input.text ?? ''); } catch (e) { return json({ error: e instanceof Error ? e.message : 'נוסח לא תקין' }, 400); }
+    const { error } = await admin.from('broker_invitation_template_texts').upsert({ gender: input.gender, body: (input.text ?? '').trim(), updated_by: caller.userId, updated_at: new Date().toISOString() });
+    if (error) return json({ error: 'שמירת הנוסח נכשלה' }, 500);
+    gender = input.gender;
+  }
+  const text = savedFor(gender);
   let body: string;
   try { body = templateBody(text); } catch (e) { return json({ error: e instanceof Error ? e.message : 'Invalid template' }, 400); }
   const name = await invitationTemplateName(body);
@@ -54,7 +65,7 @@ Deno.serve(async req => {
     const live = await call(`${cfg.waba_id}/message_templates?name=${name}&fields=name,status,language,components&limit=100`);
     let template = live.data?.find((t: { name: string; language: string }) => t.name === name && t.language === BROKER_TEMPLATE_LANGUAGE);
     if (template && template.components?.find((c: { type: string }) => c.type === 'BODY')?.text !== body) return json({ error: 'נוסח Meta אינו תואם לתצוגה. יש לרענן לפני שליחה.' }, 409);
-    if (input.action === 'register' && !template) {
+    if ((input.action === 'register' || input.action === 'save_text') && !template) {
       template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/auth?broker=00000000-0000-4000-8000-000000000001'] : ['ישראל ישראלי']] } }] });
     }
     if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text, sender: '972537983832' });

@@ -1611,6 +1611,13 @@
       "when": 1794949607357,
       "tag": "0229_import_invitation_followups",
       "breakpoints": true
+    },
+    {
+      "idx": 230,
+      "version": "7",
+      "when": 1794964208173,
+      "tag": "0230_broker_invitation_template_texts",
+      "breakpoints": true
     }
   ]
 }

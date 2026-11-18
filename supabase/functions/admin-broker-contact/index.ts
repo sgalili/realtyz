@@ -123,7 +123,17 @@ Deno.serve(async req => {
       const p = profiles.find(x => x.id === r.ref); const o = offices.find(x => x.user_id === r.ref); const l = listings.filter(x => x.workspace_owner_id === r.ref);
       return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name ?? r.name ?? '', workspace_owner_id: p?.id ?? null, public_user_id: p?.id ?? null, avatar_url: p?.avatar_url ?? null, logo_url: o?.logo_url ?? null, agency_imported: !!o?.agency_name, agency_name: o?.agency_name ?? null, projects: l.length, source_url: r.source_url ?? l.find(x => /yad2\.co\.il/.test(String(x.source_url)))?.source_url ?? null, imported_at: r.at };
     }).sort((a, b) => String(b.imported_at).localeCompare(String(a.imported_at)));
-    return json({ items });
+    // Hide nameless rows (deleted/never-created entities) and keep one latest row per imported account.
+    const shown = new Set<string>();
+    const withAccount = new Set(items.filter(i => i.workspace_owner_id).map(i => `${i.kind}:${String(i.name).trim()}`));
+    const unique = items.filter(i => {
+      if (!String(i.name ?? '').trim()) return false;
+      if (!i.workspace_owner_id && withAccount.has(`${i.kind}:${String(i.name).trim()}`)) return false;
+      const key = i.workspace_owner_id ? `${i.kind}:${i.workspace_owner_id}` : `id:${i.id}`;
+      if (shown.has(key)) return false;
+      shown.add(key); return true;
+    });
+    return json({ items: unique });
   }
 
   if (input.action === 'list') {
@@ -150,12 +160,13 @@ Deno.serve(async req => {
       admin.from('broker_license_verifications').select('user_id,license_number,verified_at').in('user_id', ids),
       admin.from('user_roles').select('user_id').in('user_id', ids).eq('role', 'developer'),
     ]);
+    const { data: devCompanies } = await admin.from('developers').select('workspace_owner_id,company_name,logo_url').in('workspace_owner_id', ids);
     const brokers = eligible.map(r => {
       const p = profiles?.find(x => x.id === r.user_id);
       return { user_id: r.user_id, full_name: p?.full_name ?? '', phone: p?.phone ?? null, email: realEmail(p?.email) ? p?.email : null,
         license_number: verified?.find(l => l.user_id === r.user_id)?.license_number ?? licenses?.find(l => l.user_id === r.user_id)?.license_number ?? null,
-        office_name: offices?.find(o => o.user_id === r.user_id)?.agency_name ?? null,
-        office_logo_url: offices?.find(o => o.user_id === r.user_id)?.logo_url ?? null, avatar_url: (p as any)?.avatar_url ?? null,
+        office_name: offices?.find(o => o.user_id === r.user_id)?.agency_name ?? devCompanies?.find(d => d.workspace_owner_id === r.user_id)?.company_name ?? null,
+        office_logo_url: offices?.find(o => o.user_id === r.user_id)?.logo_url ?? devCompanies?.find(d => d.workspace_owner_id === r.user_id)?.logo_url ?? null, avatar_url: (p as any)?.avatar_url ?? null,
         profile_license: (p as any)?.broker_license_number ?? null, city: (p as any)?.city ?? null,
         license_verified: !!verified?.find(l => l.user_id === r.user_id && l.verified_at) || !!(p as any)?.locked_broker_name,
         is_developer: (devRoles ?? []).some(d => d.user_id === r.user_id),
