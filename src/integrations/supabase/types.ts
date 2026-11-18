@@ -3266,6 +3266,33 @@ export type Database = {
         }
         Relationships: []
       }
+      developer_import_identities: {
+        Row: {
+          developer_id: string | null
+          identity_key: string
+          lease_token: string | null
+          lease_until: string | null
+          updated_at: string
+          workspace_owner_id: string | null
+        }
+        Insert: {
+          developer_id?: string | null
+          identity_key: string
+          lease_token?: string | null
+          lease_until?: string | null
+          updated_at?: string
+          workspace_owner_id?: string | null
+        }
+        Update: {
+          developer_id?: string | null
+          identity_key?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          updated_at?: string
+          workspace_owner_id?: string | null
+        }
+        Relationships: []
+      }
       developer_import_jobs: {
         Row: {
           company: Json
@@ -10558,6 +10585,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_developer_import_identity: {
+        Args: { _key: string; _token: string }
+        Returns: Json
+      }
       claim_developer_import_page: {
         Args: { _job: string }
         Returns: {
@@ -11004,6 +11035,15 @@ export type Database = {
           _job: string
           _license: string
           _user_id: string
+        }
+        Returns: undefined
+      }
+      finish_developer_import_identity: {
+        Args: {
+          _developer: string
+          _key: string
+          _token: string
+          _workspace: string
         }
         Returns: undefined
       }

@@ -8,6 +8,7 @@ import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
 import { ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
 import { rotatingUnlockerPayload, UNLOCKER_USER_AGENTS } from '../_shared/brightDataRotation.ts';
 import { IMPORT_DISCOVERY_BUDGET_MS } from '../_shared/importScanPolicy.ts';
+import { developerDirectoryUrl, parseDeveloperDirectory } from '../_shared/yad2DeveloperDirectory.ts';
 const cors = corsHeaders;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 Deno.serve(async req => {
@@ -40,7 +41,9 @@ Deno.serve(async req => {
     const raw = typeof body.url === 'string' ? body.url.trim() : '';
     pageUrl = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
     if (pageUrl.protocol !== 'https:' || !/(^|\.)yad2\.co\.il$/i.test(pageUrl.hostname)) throw new Error('invalid');
-    if (!developerImportPageKind(pageUrl.href) && !(pageOnly && body.parent_project && projectInventoryUrl(pageUrl.href, body.parent_project.source_url) === pageUrl.href)) throw new Error('invalid');
+    const directory = pageOnly && body.directory_only === true;
+    if (directory) { const safe = developerDirectoryUrl(pageUrl.href); if (!safe) throw new Error('invalid'); pageUrl = new URL(safe); }
+    else if (!developerImportPageKind(pageUrl.href) && !(pageOnly && body.parent_project && projectInventoryUrl(pageUrl.href, body.parent_project.source_url) === pageUrl.href)) throw new Error('invalid');
     pageUrl.hash = '';
   } catch { return json({ error: 'invalid_url', message: 'הדביקו קישור תקין לעמוד יזם או לפרויקט ביד2' }, 400); }
   const token = Deno.env.get('BRIGHTDATA_API_TOKEN');
@@ -60,7 +63,7 @@ Deno.serve(async req => {
       if (/captcha|access denied|verify you are human/i.test(result.html) && !/__NEXT_DATA__|projectName/.test(result.html)) throw new Error('source_blocked');
       return result.html;
     });
-    return readPage(html, url, body.parent_project);
+    return body.directory_only === true ? parseDeveloperDirectory(html, url) : readPage(html, url, body.parent_project);
   };
   // Multi-page account imports must use developer-import-jobs. This endpoint
   // deliberately performs only one leased page read for the background workers.

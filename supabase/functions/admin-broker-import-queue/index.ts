@@ -10,10 +10,13 @@ import { IMPORT_QUEUE_GAP_MS, canRetryDeveloperPage } from '../_shared/importSca
 import { developerImportUrl, developerProjectImportRow, developerQueuePhaseAfterPage, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, type DeveloperQueueWork } from '../_shared/yad2DeveloperImport.ts';
 import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY, developerRetryDeadline } from '../_shared/developerImportRetry.ts';
 import { readAllRows } from '../_shared/readAllRows.ts';
+import { matchingDevelopers, normalizeDeveloperName } from '../_shared/developerIdentity.ts';
+import { DEVELOPER_DIRECTORY_URL } from '../_shared/yad2DeveloperDirectory.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
   z.object({action:z.literal('start_urls'),urls:z.array(z.string().max(500)).min(1).max(100),max_listings:z.number().int().min(1).max(10).optional(),expected_projects:z.number().int().min(1).max(100).optional(),max_projects:z.number().int().min(1).max(100).optional()}).strict(),
+  z.object({action:z.literal('start_auto_developers'),target_developers:z.number().int().min(1).max(100),max_projects:z.number().int().min(1).max(100)}).strict(),
   z.object({action:z.enum(['pause','resume','reset_cooldown','step']),job_id:z.string().uuid()}).strict(),
 ]);
 const json = (data: unknown, status=200) => new Response(JSON.stringify(data),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
@@ -53,6 +56,13 @@ Deno.serve(async req => {
       const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:input.target_brokers,_min:input.min_listings,_max:input.max_listings,_checkpoint:freshImportCheckpoint()});
       if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
       return json({job_id:data});
+    }
+    if(input.action==='start_auto_developers') {
+      if(caller.kind!=='user') return json({error:'forbidden'},403);
+      const checkpoint={...freshImportCheckpoint(),source:'urls',autoDevelopers:true,phase:'developer_discovering',directoryUrl:DEVELOPER_DIRECTORY_URL,directoryVisited:[],developerUrls:[],developerIndex:0,developerResults:[],expectedProjects:input.max_projects,maxProjects:input.max_projects,totalBrokerUrls:0,totalDeveloperUrls:input.target_developers,targetDevelopers:input.target_developers,enriched:0};
+      const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:input.target_developers,_min:1,_max:10,_checkpoint:checkpoint});
+      if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
+      return json({job_id:data,accepted:input.target_developers,developers:input.target_developers,automatic:true});
     }
     if(input.action==='start_urls') {
       if(caller.kind!=='user') return json({error:'forbidden'},403);
@@ -145,6 +155,21 @@ Deno.serve(async req => {
           return json({ok:true,paused:true});
         }
       }
+      if(c.phase==='developer_discovering') {
+        const url=c.directoryUrl;
+        if(!url||(c.directoryVisited??[]).includes(url)||c.developerUrls.length>=c.targetDevelopers){
+          if(!c.developerUrls.length){await save({status:'completed',error:'לא נמצאו יזמים חדשים בעמודי יד2 שנסרקו'});return json({ok:true,done:true});}
+          c.totalDeveloperUrls=c.developerUrls.length;c.phase='developer_scanning';await save({target_brokers:c.developerUrls.length});return json({ok:true});
+        }
+        const d=await pacedCall('yad2-developer-import',{url,directory_only:true,page_only:true,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
+        if(!d)return json({ok:true,waiting:true});
+        if(!d.ok||!Array.isArray(d.urls))throw new Error('עמוד רשימת היזמים לא החזיר מבנה תקין');
+        c.directoryVisited=[...(c.directoryVisited??[]),url];
+        const known=new Set(c.developerUrls);
+        for(const candidate of d.urls){if(c.developerUrls.length>=c.targetDevelopers)break;if(!known.has(candidate)){c.developerUrls.push(candidate);known.add(candidate);}}
+        c.directoryUrl=d.next_url??null;c.totalDeveloperUrls=c.developerUrls.length;
+        await save();return json({ok:true});
+      }
       if(c.phase==='developer_scanning') {
         const url=c.developerUrls?.[c.developerIndex??0];
         if(!url) {
@@ -168,6 +193,11 @@ Deno.serve(async req => {
         const work=c.developerWork as DeveloperQueueWork;
         const companyName=work.developer.company_name?.trim();
         if(!companyName)throw new Error('לא נמצא שם חברה בעמוד היזם; לא נוצר חשבון ללא זהות');
+        const identityKey=normalizeDeveloperName(companyName);
+        const identityToken=crypto.randomUUID();
+        const {data:identity,error:identityError}=await admin.rpc('claim_developer_import_identity',{_key:identityKey,_token:identityToken});
+        if(identityError)throw identityError;
+        if(identity?.busy){await save();return json({ok:true,retry_in_ms:2000});}
         let {data:matches,error:matchError}=await admin.from('developers').select('*').eq('source_url',work.url).limit(2);if(matchError)throw matchError;
         if(!matches?.length) {
           // A direct project link reuses the developer that already owns that exact project page (query string ignored).
@@ -184,9 +214,15 @@ Deno.serve(async req => {
             const ids=[...new Set((owned??[]).map(r=>r.developer_id))];
             if(ids.length>1)throw new Error('פרויקטי היזם משויכים ליותר מחשבון אחד; נדרשת בדיקת מנהל');
             if(ids.length){const r=await admin.from('developers').select('*').eq('id',ids[0]).limit(1);if(r.error)throw r.error;matches=r.data;}}
-          if(!matches?.length){const r=await admin.from('developers').select('*').eq('company_name',companyName).limit(2);if(r.error)throw r.error;if((r.data?.length??0)===1)matches=r.data;}
+          if(!matches?.length){const r=await readAllRows((from,to)=>admin.from('developers').select('*').order('created_at').range(from,to));const same=matchingDevelopers(r??[],companyName);const sourced=same.filter(row=>row.source_url===work.url);matches=sourced.length?sourced:same.length?[same[0]]:[];if(same.length>1)console.warn('[developer-import-existing-name-duplicates]',JSON.stringify({job_id:job.id,company:companyName,kept:same[0].id,count:same.length}));}
         }
         if((matches?.length??0)>1)throw new Error('קיים יותר מחשבון אחד המקושר לעמוד היזם; נדרשת בדיקת מנהל');
+        const allDevelopers=await readAllRows((from,to)=>admin.from('developers').select('*').order('created_at').range(from,to));
+        const normalized=matchingDevelopers(allDevelopers??[],companyName);
+        const claimedIdentity=identity?.developer_id ? allDevelopers.find(row=>row.id===identity.developer_id) : null;
+        if(claimedIdentity)matches=[claimedIdentity];
+        else if(normalized.length===1)matches=normalized;
+        else if(normalized.length>1)throw new Error('נמצאו חשבונות יזם כפולים קיימים; יש לאחד אותם לפני המשך הייבוא');
         const existing=matches?.[0];
         let accountId=existing?.workspace_owner_id as string|undefined;
         if(!accountId) {
@@ -199,6 +235,9 @@ Deno.serve(async req => {
         if(developerId){const {error}=await admin.from('developers').update(companyRow).eq('id',developerId);if(error)throw error;}
         else {const {data,error}=await admin.from('developers').insert(companyRow).select('id').single();if(error)throw error;developerId=data.id;}
         if(work.developer.bio){const {error}=await admin.from('profiles').update({imported_public_bio:work.developer.bio}).eq('id',accountId).is('imported_public_bio',null);if(error)throw error;}
+        if(!developerId)throw new Error('זהות היזם לא נשמרה');
+        const {error:finishIdentityError}=await admin.rpc('finish_developer_import_identity',{_key:identityKey,_token:identityToken,_developer:developerId,_workspace:accountId});
+        if(finishIdentityError)throw finishIdentityError;
         work.accountId=accountId;work.developerId=developerId;c.phase='developer_saving';await save();return json({ok:true});
       }
       if(c.phase==='developer_saving') {

@@ -1625,6 +1625,13 @@
       "when": 1794997675531,
       "tag": "0231_imported_inventory_exact_counts",
       "breakpoints": true
+    },
+    {
+      "idx": 232,
+      "version": "7",
+      "when": 1795001029375,
+      "tag": "0232_developer_import_identity_claims",
+      "breakpoints": true
     }
   ]
 }

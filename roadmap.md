@@ -1,5 +1,10 @@
 # Roadmap
 
+## Developer identity and automatic discovery November 18
+- [ ] Normalize company identity and prevent duplicate account/project creation across imports without cross-workspace reassignment.
+- [ ] Add explicit automatic Yad2 discovery for broker/developer tabs with optional seed links and selected limits.
+- [ ] Test matching, discovery and signed-in controls; deploy and verify what can be read without new paid scans.
+
 ## Import performance and controls November 18
 - [x] Bound authorized discovery to 50 seconds/three attempts, reduce redundant queue gap to one second, and continue running broker/developer jobs via the existing leased worker. Provider cooldowns, publication and identity rules remain unchanged.
 - [x] Move icon-only new import to the heading; separate broker/developer selection with actual project caps and arrow quantity controls.

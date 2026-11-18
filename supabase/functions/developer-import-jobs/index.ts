@@ -8,6 +8,7 @@ import { developerImportPageKind, developerImportUrl, developerProjectImportRow,
 import { developerRetryDelay, MAX_PAGE_ATTEMPTS, mergeProjectPage, projectPageRows, safeImportError } from './queue.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { readAllRows } from '../_shared/readAllRows.ts';
+import { matchingDevelopers } from '../_shared/developerIdentity.ts';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -84,19 +85,24 @@ async function ensureDeveloper(job: any, page: any) {
     : await admin.from('developers').select('*').eq('workspace_owner_id', job.workspace_owner_id).eq('source_url', job.source_url).maybeSingle();
   if (error) throw error;
   const source = page.developer ?? {};
+  let current = existing;
+  if (!current && source.company_name) {
+    const rows = await readAllRows((from, to) => admin.from('developers').select('*').eq('workspace_owner_id', job.workspace_owner_id).order('created_at').range(from, to));
+    current = matchingDevelopers(rows ?? [], source.company_name)[0] ?? null;
+  }
   const row = {
     workspace_owner_id: job.workspace_owner_id,
-    owner_user_id: existing?.owner_user_id ?? job.requested_by,
-    company_name: source.company_name || existing?.company_name || 'החברה שלי',
-    phone: source.phone ?? existing?.phone ?? null,
-    logo_url: source.logo_url ?? existing?.logo_url ?? null,
-    source_url: job.source_url,
+    owner_user_id: current?.owner_user_id ?? job.requested_by,
+    company_name: source.company_name || current?.company_name || 'החברה שלי',
+    phone: source.phone ?? current?.phone ?? null,
+    logo_url: source.logo_url ?? current?.logo_url ?? null,
+    source_url: current?.source_url ?? job.source_url,
     last_synced_at: new Date().toISOString(),
   };
-  if (existing?.id) {
-    const { error: updateError } = await admin.from('developers').update(row).eq('id', existing.id);
+  if (current?.id) {
+    const { error: updateError } = await admin.from('developers').update(row).eq('id', current.id);
     if (updateError) throw updateError;
-    developerId = existing.id;
+    developerId = current.id;
   } else {
     const { data: inserted, error: insertError } = await admin.from('developers').insert(row).select('id').single();
     if (insertError || !inserted) throw insertError ?? new Error('developer_save_failed');

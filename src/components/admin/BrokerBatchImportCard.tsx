@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ImportQuantityInput } from './ImportQuantityInput';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -25,13 +26,15 @@ const separateLinks = (value: string) => value.replace(/[ \t]+(?=https?:\/\/)/gi
 
 const stages: Record<string, string> = {
   scanning: 'סריקה ב־Bright Data', enriching: 'איסוף פרטי מתווכים', validating: 'בדיקת מודעות פעילות',
-  creating: 'אימות רישיון ויצירת מתווך', importing: 'ייבוא טיוטות', developer_scanning: 'קריאת עמודי יזם ופרויקטים',
+  creating: 'אימות רישיון ויצירת מתווך', importing: 'ייבוא טיוטות', developer_discovering: 'איתור יזמים ביד2', developer_scanning: 'קריאת עמודי יזם ופרויקטים',
   developer_creating: 'יצירת חשבון יזם פעיל ללא הודעות', developer_saving: 'שמירת פרויקטים ויחידות', completed: 'הייבוא הסתיים',
 };
 
 export function BrokerBatchImportCard() {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'brokers' | 'developers'>('brokers');
+  const [autoDiscovery, setAutoDiscovery] = useState(true);
+  const [targetDevelopers, setTargetDevelopers] = useState(5);
   const [target, setTarget] = useState(10);
   const [min, setMin] = useState(3);
   const [max, setMax] = useState(10);
@@ -65,12 +68,12 @@ export function BrokerBatchImportCard() {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { if (!current || current.status === 'completed') return; const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, [current?.status]);
 
-  const action = async (kind: 'start' | 'start_urls' | 'pause' | 'resume' | 'reset_cooldown') => {
+  const action = async (kind: 'start' | 'start_urls' | 'start_auto_developers' | 'pause' | 'resume' | 'reset_cooldown') => {
     setBusy(true); setError(''); setNotice('');
     try {
       const urls = links.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
       const { data, error } = await supabase.functions.invoke('admin-broker-import-queue', {
-        body: kind === 'start'
+        body: kind === 'start_auto_developers' ? { action: kind, target_developers: targetDevelopers, max_projects: expectedProjects } : kind === 'start'
           ? { action: kind, target_brokers: target, min_listings: min, max_listings: max }
           : kind === 'start_urls'
             ? { action: kind, urls, ...(mode === 'developers' ? { max_projects: expectedProjects } : { max_listings: linkLimit }) }
@@ -79,7 +82,8 @@ export function BrokerBatchImportCard() {
       if (error) { const details = error instanceof FunctionsHttpError ? await error.context.json().catch(() => null) : null; throw new Error(details?.error ?? 'הבקשה נכשלה'); }
       if (data?.error) throw new Error(data.error);
       await qc.invalidateQueries({ queryKey: ['admin-broker-import-jobs'] });
-      if (kind === 'start' || kind === 'start_urls') setOpen(false);
+      if (kind !== 'pause' && kind !== 'resume' && kind !== 'reset_cooldown') setOpen(false);
+      if (kind === 'start_auto_developers') setNotice(`איתור אוטומטי של עד ${targetDevelopers} יזמים התחיל`);
       if (kind === 'start_urls') {
         setLinks('');
         setNotice(`${data.accepted} קישורים נכנסו לתור${data.developers ? ` · ${data.developers} יזמים` : ''}${data.brokers ? ` · ${data.brokers} מתווכים` : ''}${data.rejected ? ` · ${data.rejected} קישורים לא תקינים דולגו` : ''}`);
@@ -146,15 +150,16 @@ export function BrokerBatchImportCard() {
         <TabsList className="grid h-12 w-full grid-cols-2"><TabsTrigger value="brokers" className="gap-2 text-base"><UserRound className="h-4 w-4" />מתווכים</TabsTrigger><TabsTrigger value="developers" className="gap-2 text-base"><Building2 className="h-4 w-4" />יזמים</TabsTrigger></TabsList>
       </Tabs>
       <div className="grid gap-4">
-        <Label htmlFor="import-links" className="text-base">{mode === 'developers' ? 'קישורי יזמים או פרויקטים ביד2' : 'קישורי מתווכים ביד2 (לא חובה)'}</Label>
+        <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3"><Label htmlFor="auto-discovery" className="text-base">איתור אוטומטי מיד 2</Label><Switch id="auto-discovery" checked={autoDiscovery} onCheckedChange={setAutoDiscovery} /></div>
+        <Label htmlFor="import-links" className="text-base">{mode === 'developers' ? 'קישורי יזמים או פרויקטים ביד2' : 'קישורי מתווכים ביד2'}{autoDiscovery ? ' (לא חובה)' : ''}</Label>
         <Textarea id="import-links" dir="ltr" className="min-h-28 text-left text-base" placeholder={mode === 'developers' ? 'https://www.yad2.co.il/yad1/developers/1000318' : 'https://www.yad2.co.il/realestate/agency/...'} value={links} onChange={event => setLinks(event.target.value)} onPaste={event => { event.preventDefault(); const element = event.currentTarget; const pasted = separateLinks(event.clipboardData.getData('text').trim()); setLinks(separateLinks(links.slice(0, element.selectionStart) + pasted + '\n' + links.slice(element.selectionEnd))); }} />
         {(invalidCount > 0 || mismatchedCount > 0) && <p role="alert" className="text-base text-destructive">יש להזין קישורים תקינים התואמים ללשונית שנבחרה.</p>}
-        {mode === 'developers' ? <div className="grid gap-2"><Label htmlFor="project-limit" className="text-base">מספר פרויקטים ליזם</Label><ImportQuantityInput id="project-limit" value={expectedProjects} min={1} max={100} onChange={setExpectedProjects} /></div> : <>
-          {!links.trim() && <><div className="grid gap-2"><Label className="text-base" htmlFor="broker-target">מספר מתווכים רצוי</Label><ImportQuantityInput id="broker-target" min={1} max={100} value={target} onChange={setTarget} /></div><div className="grid gap-2"><Label className="text-base" htmlFor="broker-min">מינימום נכסים פעילים למתווך</Label><ImportQuantityInput id="broker-min" min={1} max={max} value={min} onChange={setMin} /></div></>}
+        {mode === 'developers' ? <>{autoDiscovery && !links.trim() && <div className="grid gap-2"><Label htmlFor="developer-target" className="text-base">מספר יזמים לאיתור</Label><ImportQuantityInput id="developer-target" value={targetDevelopers} min={1} max={100} onChange={setTargetDevelopers} /></div>}<div className="grid gap-2"><Label htmlFor="project-limit" className="text-base">מספר פרויקטים ליזם</Label><ImportQuantityInput id="project-limit" value={expectedProjects} min={1} max={100} onChange={setExpectedProjects} /></div></> : <>
+          {autoDiscovery && !links.trim() && <><div className="grid gap-2"><Label className="text-base" htmlFor="broker-target">מספר מתווכים רצוי</Label><ImportQuantityInput id="broker-target" min={1} max={100} value={target} onChange={setTarget} /></div><div className="grid gap-2"><Label className="text-base" htmlFor="broker-min">מינימום נכסים פעילים למתווך</Label><ImportQuantityInput id="broker-min" min={1} max={max} value={min} onChange={setMin} /></div></>}
           <div className="grid gap-2"><Label className="text-base" htmlFor="broker-max">מקסימום נכסים למתווך</Label><ImportQuantityInput id="broker-max" min={links.trim() ? 1 : min} max={10} value={links.trim() ? linkLimit : max} onChange={links.trim() ? setLinkLimit : setMax} /></div>
         </>}
         {error && <p role="alert" className="text-base text-destructive">{error}</p>}
-        <div className="flex justify-between gap-2"><Button className="text-base" variant="outline" onClick={() => setOpen(false)}>ביטול</Button><Button className="text-base" disabled={busy || Boolean(current?.lease_until && Date.parse(current.lease_until) > now) || invalidCount > 0 || mismatchedCount > 0 || (mode === 'developers' && !links.trim()) || (!links.trim() && !validImportParameters(target, min, max))} onClick={() => { if (current && ['running', 'paused'].includes(current.status) && !window.confirm('להפסיק את הייבוא הפעיל ולהתחיל ייבוא חדש? הטיוטות והפרויקטים שכבר נשמרו לא יימחקו.')) return; void action(links.trim() ? 'start_urls' : 'start'); }}><ScanSearch className="h-5 w-5" />{busy ? 'מתחיל…' : 'התחלת ייבוא'}</Button></div>
+        <div className="flex justify-between gap-2"><Button className="text-base" variant="outline" onClick={() => setOpen(false)}>ביטול</Button><Button className="text-base" disabled={busy || Boolean(current?.lease_until && Date.parse(current.lease_until) > now) || invalidCount > 0 || mismatchedCount > 0 || (!autoDiscovery && !links.trim()) || (mode === 'brokers' && autoDiscovery && !links.trim() && !validImportParameters(target, min, max))} onClick={() => { if (current && ['running', 'paused'].includes(current.status) && !window.confirm('להפסיק את הייבוא הפעיל ולהתחיל ייבוא חדש? הטיוטות והפרויקטים שכבר נשמרו לא יימחקו.')) return; void action(links.trim() ? 'start_urls' : mode === 'developers' ? 'start_auto_developers' : 'start'); }}><ScanSearch className="h-5 w-5" />{busy ? 'מתחיל…' : 'התחלת ייבוא'}</Button></div>
       </div>
     </DialogContent></Dialog>
   </section>;
