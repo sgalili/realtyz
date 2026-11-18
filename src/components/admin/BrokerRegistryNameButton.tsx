@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 
 export type RegistryProfile = { id: string; full_name: string; city?: string | null; broker_license_number: string };
-export function BrokerRegistryNameButton({ userId, license, disabled, onUpdated }: { userId: string; license: string; disabled?: boolean; onUpdated: (profile: RegistryProfile) => void }) {
+export function BrokerRegistryNameButton({ userId, license, disabled, compact = false, onUpdated }: { userId: string; license: string; disabled?: boolean; compact?: boolean; onUpdated: (profile: RegistryProfile) => void }) {
   const { isSuperAdmin } = useUserRole();
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -42,11 +42,11 @@ export function BrokerRegistryNameButton({ userId, license, disabled, onUpdated 
       setErrorMessage(message); toast.error(message);
     } finally { if (currentScope.current === requestScope) setBusy(false); }
   };
-  return <div className="min-w-0 space-y-1">
-    <Button type="button" variant="outline" disabled={busy || disabled || !/^[1-9][0-9]{0,9}$/.test(license)} onClick={() => void fetchName()} className="h-auto min-h-9 max-w-full gap-2 whitespace-normal px-3 py-2 text-sm leading-snug">
+  return <div className={compact ? 'flex min-w-0 shrink-0 items-center gap-2' : 'min-w-0 space-y-1'}>
+    <Button type="button" variant="outline" disabled={busy || disabled || !/^[1-9][0-9]{0,9}$/.test(license)} onClick={() => void fetchName()} className={compact ? 'h-8 min-h-8 max-w-full gap-1 whitespace-nowrap px-2 text-xs' : 'h-auto min-h-9 max-w-full gap-2 whitespace-normal px-3 py-2 text-sm leading-snug'}>
       {busy ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Download className="h-4 w-4 shrink-0" />}משוך נתונים מהמאגר הלאומי
     </Button>
-    {found && <p role="status" className="text-sm text-success [overflow-wrap:anywhere]">שם במאגר: <b>{found.full_name}</b>{found.city ? <> · עיר: <b>{found.city}</b></> : null} · הרישיון אומת</p>}
-    {errorMessage && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{errorMessage}</p>}
+    {found && <p role="status" title={compact ? `שם במאגר: ${found.full_name}${found.city ? ` · עיר: ${found.city}` : ''} · הרישיון אומת` : undefined} className={compact ? 'max-w-64 truncate whitespace-nowrap text-xs text-success' : 'text-sm text-success [overflow-wrap:anywhere]'}>שם במאגר: <b>{found.full_name}</b>{found.city ? <> · עיר: <b>{found.city}</b></> : null} · הרישיון אומת</p>}
+    {errorMessage && <p role="alert" title={compact ? errorMessage : undefined} className={compact ? 'max-w-64 truncate whitespace-nowrap text-xs text-destructive' : 'text-sm text-destructive [overflow-wrap:anywhere]'}>{errorMessage}</p>}
   </div>;
 }

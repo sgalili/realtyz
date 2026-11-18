@@ -14,7 +14,7 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { returnState } from '@/lib/returnNav';
 import yad2Symbol from '@/assets/yad2-source-symbol.png.asset.json';
@@ -51,7 +51,7 @@ function EmailSendDialog({ b }: { b: ContactBroker }) {
   });
   const emailDirty = email.trim().toLowerCase() !== (b.email ?? '');
   return <>
-    <Button size="icon" variant="ghost" className="h-10 w-10" aria-label={`שליחת מייל ל${b.full_name || 'מתווך'}`} title="שליחת מייל" onClick={() => setOpen(true)}><Mail className="h-4 w-4" /></Button>
+    <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label={`שליחת מייל ל${b.full_name || 'מתווך'}`} title="שליחת מייל" onClick={() => setOpen(true)}><Mail className="h-4 w-4" /></Button>
     <Dialog open={open} onOpenChange={v => { if (!send.isPending) setOpen(v); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
         <DialogHeader><DialogTitle>שליחת מייל ל{b.full_name || 'מתווך'}</DialogTitle></DialogHeader>
@@ -84,38 +84,62 @@ function BrokerRow({ b }: { b: ContactBroker }) {
   const qc = useQueryClient();
   const openWs = useOpenWorkspace();
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [phone, setPhone] = useState(b.phone ? formatPhoneDisplay(b.phone) : '');
   const save = useMutation({
     mutationFn: () => invoke<{ complete: boolean }>('admin-broker-contact', { action: 'save', user_id: b.user_id, phone: phone.trim() || undefined }),
     onSuccess: d => { toast.success(d.complete ? 'הנייד נשמר · אפשר לשלוח הזמנה' : 'נשמר · עדיין נדרש נייד'); setEditing(false); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
+  const remove = useMutation({
+    mutationFn: async () => {
+      const data = await invoke<{ results?: { user_id: string; status: string }[] }>('super-admin-delete-users', { user_ids: [b.user_id] });
+      if (data.results?.find(result => result.user_id === b.user_id)?.status !== 'deleted') throw new Error('המחיקה לא הושלמה. רעננו ונסו שוב.');
+    },
+    onSuccess: () => {
+      setDeleting(false);
+      toast.success('החשבון נמחק לצמיתות');
+      void Promise.all(['broker-contact-queue', 'broker-contact-history', 'broker-import-history', 'import-invitation-followups', 'workspaces'].map(queryKey => qc.invalidateQueries({ queryKey: [queryKey] })));
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
   const complete = !!b.phone;
   const dirty = !!phone.trim() && phone.replace(/\D/g, '') !== (b.phone ? formatPhoneDisplay(b.phone).replace(/\D/g, '') : '');
   const dest = b.is_developer ? 'הפרויקטים' : 'הנכסים';
   const regLicense = b.profile_license ?? b.license_number;
-  return <li className="space-y-3 rounded-xl border border-border/70 p-4">
-    <div className="flex items-start gap-2">
-      <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
-        {b.avatar_url && <img src={b.avatar_url} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />}
-        {b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-12 w-12 shrink-0 rounded-md border border-border/60 object-contain" />}
-        <div className="min-w-0 space-y-1"><p className="flex items-center gap-1 text-lg font-bold">{b.full_name || 'ללא שם'}{b.license_verified && <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-label="אומת מול המאגר הממשלתי" />}</p><p className="text-base text-muted-foreground">{[b.license_number && `רישיון ${b.license_number}`, b.office_name, b.city, `${b.drafts} טיוטות`].filter(Boolean).join(' · ')}</p></div>
+  const details = [b.license_number && `רישיון ${b.license_number}`, b.office_name, b.city, `${b.drafts} טיוטות`].filter(Boolean).join(' · ');
+  return <li className="space-y-2 rounded-xl border border-border/70 p-3 sm:p-4">
+    <div className="flex items-center gap-1">
+      <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
+        {b.avatar_url && <img src={b.avatar_url} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />}
+        {b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-8 w-8 shrink-0 rounded-md border border-border/60 object-contain" />}
+        <span className="flex min-w-0 items-center gap-1 text-base font-bold sm:text-lg"><span className="truncate">{b.full_name || 'ללא שם'}</span>{b.license_verified && <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-label="אומת מול המאגר הממשלתי" />}</span>
       </button>
-      <div className="flex shrink-0 items-center gap-1 pt-1">
+      <div className="flex shrink-0 items-center gap-0">
         {editing ? <>
-          <Input autoFocus aria-label={`נייד (WhatsApp) של ${b.full_name}`} className="h-9 w-36 text-base" dir="ltr" inputMode="tel" placeholder="05X-XXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && dirty) save.mutate(); if (e.key === 'Escape') setEditing(false); }} />
-          <Button size="icon" variant="ghost" aria-label="שמירת נייד" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>
-          <Button size="icon" variant="ghost" aria-label="ביטול" onClick={() => { setPhone(b.phone ? formatPhoneDisplay(b.phone) : ''); setEditing(false); }}><X className="h-4 w-4" /></Button>
+          <Input autoFocus aria-label={`נייד (WhatsApp) של ${b.full_name}`} className="h-8 w-24 px-2 text-sm sm:w-36 sm:text-base" dir="ltr" inputMode="tel" placeholder="05X-XXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && dirty) save.mutate(); if (e.key === 'Escape') setEditing(false); }} />
+          <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="שמירת נייד" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="ביטול" onClick={() => { setPhone(b.phone ? formatPhoneDisplay(b.phone) : ''); setEditing(false); }}><X className="h-4 w-4" /></Button>
         </> : <>
-          <span dir="ltr" className={`text-base ${b.phone ? '' : 'text-muted-foreground'}`}>{b.phone ? formatPhoneDisplay(b.phone) : 'אין נייד'}</span>
-          <Button size="icon" variant="ghost" aria-label={`עריכת הנייד של ${b.full_name}`} disabled={!!b.first_login_at} onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /></Button>
-          {complete && <OfficialBrokerInvitationDialog broker={{ id: b.user_id, full_name: b.full_name }} triggerClassName="h-10 w-10" />}
+          <span dir="ltr" className={`whitespace-nowrap px-1 text-xs sm:text-base ${b.phone ? '' : 'text-muted-foreground'}`}>{b.phone ? formatPhoneDisplay(b.phone) : 'אין נייד'}</span>
+          <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label={`עריכת הנייד של ${b.full_name}`} disabled={!!b.first_login_at} onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /></Button>
+          {complete && <OfficialBrokerInvitationDialog broker={{ id: b.user_id, full_name: b.full_name }} triggerClassName="h-7 w-7 sm:h-8 sm:w-8" />}
           <EmailSendDialog b={b} />
         </>}
+        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>
       </div>
     </div>
-    {!complete && <Badge variant="secondary" className="text-sm">נדרש נייד לשליחת WhatsApp</Badge>}
-    {!b.is_developer && !b.license_verified && regLicense && <div className="flex flex-wrap items-center gap-2"><BrokerRegistryNameButton userId={b.user_id} license={regLicense} onUpdated={() => void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] })} /></div>}
+    <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">
+      <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground sm:text-base" title={details}>{details}</p>
+      {!b.is_developer && !b.license_verified && regLicense && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense} onUpdated={() => void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] })} />}
+    </div>
+    <Dialog open={deleting} onOpenChange={open => { if (!remove.isPending) setDeleting(open); }}>
+      <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-md text-right">
+        <DialogHeader><DialogTitle>מחיקת החשבון של {b.full_name || 'ללא שם'}</DialogTitle></DialogHeader>
+        <DialogDescription>החשבון, {b.is_developer ? 'הפרויקטים' : 'הנכסים'} והנתונים המשויכים יימחקו לצמיתות. לא ניתן לשחזר את הפעולה.</DialogDescription>
+        <DialogFooter className="flex-row justify-between gap-2 sm:justify-between"><Button variant="outline" disabled={remove.isPending} onClick={() => setDeleting(false)}>ביטול</Button><Button variant="destructive" disabled={remove.isPending} onClick={() => remove.mutate()}>{remove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}מחיקה לצמיתות</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
   </li>;
 }
 

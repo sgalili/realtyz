@@ -1,5 +1,10 @@
 # Roadmap
 
+## Pending invitation card layout and deletion November 18
+- [x] Keep identity, mobile and actions on one compact primary row; remove the mobile-required label.
+- [x] Add confirmed exact-account permanent deletion using the existing protected deletion endpoint.
+- [x] Keep secondary details and registry action on one non-wrapping truncated row; eight focused tests and mobile/desktop verification passed. No real account was deleted.
+
 ## Pending first invitation and 48-hour follow-up
 - [x] Replace contact completion with uninvited imported broker/developer accounts and retain manual channel actions.
 - [x] Track successful initial invitations and tokenized link clicks; queue one follow-up after 48 hours without a click/login using self-removing per-invitation schedules (up to one minute timing tolerance), not recurring polling.
