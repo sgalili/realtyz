@@ -1,5 +1,9 @@
 # Roadmap
 
+## Super Admin demo role switcher November 18
+- [x] Added a dedicated Super Admin section "תצוגות דמו" with a role switcher: quick-select dropdown plus six role cards that enter the matching public demo immediately, and a new-tab link on the canonical domain.
+- [x] 12 focused tests, TypeScript and signed-in browser checks passed: dropdown jumped to /demo/developer and a card button to /demo/broker, with no page errors. Demo pages stay view-only mock data.
+
 ## Role-aware public demo invitations November 18
 - [x] Default first email and official WhatsApp invitations to a public view-only demo link rather than shared login credentials.
 - [x] Resolve all six saved user types to their matching public demo and route unknown types through a role-selection page.

@@ -26,6 +26,7 @@ import { ErrorLogPanel } from '@/components/admin/ErrorLogPanel';
 import { ScrapingUsageReport } from '@/components/admin/ScrapingUsageReport';
 import { RotatingMessagesManager } from '@/components/admin/RotatingMessagesManager';
 import { DynamicQrManager } from '@/components/admin/DynamicQrManager';
+import { DemoRoleSwitcher } from '@/components/admin/DemoRoleSwitcher';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -159,6 +160,7 @@ const SuperAdmin = () => {
       {section === 'messages' && <RotatingMessagesManager />}
       {section === 'rita-chats' && <RitaChatsManager />}
       {section === 'qr' && <DynamicQrManager />}
+      {section === 'demo' && <DemoRoleSwitcher />}
 
       {section === 'import' && (
         <div className="space-y-4">
