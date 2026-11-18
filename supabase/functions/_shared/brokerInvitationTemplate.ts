@@ -1,7 +1,8 @@
 export const BROKER_TEMPLATE_LANGUAGE = 'he';
 export const BROKER_TEMPLATE_BODY = `היי {brokerName},
 בהמשך לשוחחנו, אשמח לשיחת המשך לאחר התרשמותך מהפלטפורמה שלנו לשווק נדל״ן.
-חסכנו לכם את העבודה, הקמנו עבורכם חשבון והזנו דוגמה של פרויקטים של חברת...`;
+חסכנו לכם את העבודה, הקמנו עבורכם חשבון והזנו דוגמה של פרויקטים של חברת...
+קישור הכניסה לנכסים וקישור הסרת ההרשמה מתוספים אוטומטית בסוף המייל.`;
 
 // The requested wording has no gendered verbs; the female variant is kept separate so it can diverge when edited.
 export const BROKER_TEMPLATE_BODY_FEMALE = BROKER_TEMPLATE_BODY;
