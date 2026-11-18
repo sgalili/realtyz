@@ -33,7 +33,7 @@ Deno.serve(async req => {
   }
   const { data: saved } = await admin.from('broker_invitation_template_texts').select('gender,body');
   const savedFor = (g: unknown) => saved?.find(r => r.gender === (g === 'female' ? 'female' : 'male'))?.body ?? brokerTemplateFor(g);
-  if (input.action === 'texts') return json({ male: savedFor('male'), female: savedFor('female') });
+  if (input.action === 'texts') return json({ male: savedFor('male'), female: savedFor('female'), ...(input.broker_id ? { recipient: savedFor(gender), recipient_gender: gender === 'female' ? 'female' : 'male' } : {}) });
   if (input.action === 'save_text') {
     if (input.gender !== 'male' && input.gender !== 'female') return json({ error: 'יש לבחור נוסח לגברים או לנשים' }, 400);
     try { templateBody(input.text ?? ''); } catch (e) { return json({ error: e instanceof Error ? e.message : 'נוסח לא תקין' }, 400); }

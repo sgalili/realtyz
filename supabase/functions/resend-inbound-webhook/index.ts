@@ -26,6 +26,20 @@ const WEBHOOK_SECRET = Deno.env.get("RESEND_WEBHOOK_SECRET") ?? "";
 const SIGNING_SECRET = Deno.env.get("RESEND_INBOUND_SIGNING_SECRET") ?? "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const MAIL_DOMAIN = "realtyz.co.il";
+const JOIN_MAILBOX = (Deno.env.get("RESEND_FROM_EMAIL") || "join@toraff.co.il").toLowerCase();
+const FORWARD_TO = Deno.env.get("JOIN_FORWARD_TO") || "sgalili@gmail.com";
+
+// Forwards mail received at the join@ mailbox to the owner's personal inbox.
+async function forwardJoinMail(from: string, subject: string, text: string, html: string) {
+  const key = Deno.env.get("LOVABLE_API_KEY");
+  if (!key || !RESEND_API_KEY) return;
+  const r = await fetch("https://connector-gateway.lovable.dev/resend/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "X-Connection-Api-Key": RESEND_API_KEY },
+    body: JSON.stringify({ from: `TORAFF <${JOIN_MAILBOX}>`, to: [FORWARD_TO], reply_to: from, subject: `Fwd: ${subject || "(ללא נושא)"} — ${from}`, ...(html ? { html } : { text: text || "(הודעה ריקה)" }) }),
+  });
+  if (!r.ok) console.error("[resend-inbound] forward failed", r.status, await r.text());
+}
 
 // Svix-style signature check used by Resend webhooks.
 async function verifySvix(raw: string, h: Headers): Promise<boolean> {
@@ -160,6 +174,8 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  const isJoinMail = allTo.map(extractEmail).includes(JOIN_MAILBOX);
+
   // Resolve broker by the recipient mailbox prefix: <prefix>@realtyz.co.il
   let matchedBrokerUserId: string | null = null;
   if (toEmail) {
@@ -177,6 +193,7 @@ Deno.serve(async (req) => {
       .select("id").eq("provider_message_id", messageId).limit(1).maybeSingle();
     if (dup) return json({ ok: true, duplicate: true });
   }
+  if (isJoinMail) await forwardJoinMail(fromEmail, subject, rawText, html);
 
   // Strict workspace isolation: only match contacts inside the mailbox's workspace.
   // Mail to info@ or an unknown alias is logged but never attached to any workspace.

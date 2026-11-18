@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck } from 'lucide-react';
@@ -42,6 +42,14 @@ function EmailSendDialog({ b }: { b: ContactBroker }) {
   const waSent = useRef(false);
   const [email, setEmail] = useState(b.email ?? '');
   const [body, setBody] = useState(() => DEFAULT_EMAIL(b.full_name));
+  const bodyTouched = useRef(false);
+  // Same gender-matched default wording as the WhatsApp template, filled with the recipient's first name.
+  const sharedText = useQuery({ queryKey: ['broker-template-texts', 'recipient', b.user_id], enabled: open, queryFn: () => invoke<{ recipient?: string }>('admin-broker-invitation', { action: 'texts', broker_id: b.user_id }) });
+  useEffect(() => {
+    const t = sharedText.data?.recipient;
+    if (!t || bodyTouched.current) return;
+    setBody(t.replace('{brokerName}', b.full_name.split(/\s+/)[0] || '').replace(/\s*\{authLink\}\s*/, '\n').trim());
+  }, [sharedText.data, b.full_name]);
   const saveEmail = useMutation({
     mutationFn: () => invoke('admin-broker-contact', { action: 'save', user_id: b.user_id, email: email.trim() }),
     onSuccess: () => { toast.success('האימייל נשמר'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
@@ -67,7 +75,7 @@ function EmailSendDialog({ b }: { b: ContactBroker }) {
           <Button variant="outline" className="h-11" disabled={!email.trim() || !emailDirty || saveEmail.isPending} onClick={() => saveEmail.mutate()}>{saveEmail.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}שמירה</Button>
         </div>
         {b.email && !b.email_consent_at && <div className="flex items-center gap-2 text-sm text-muted-foreground">נדרשת הסכמה מתועדת לפני שליחה:<BrokerEmailConsentButton broker={{ id: b.user_id, full_name: b.full_name, email: b.email }} state={{ email_consent_at: b.email_consent_at, email_unsubscribed_at: null, email_invited_at: b.email_invited_at }} /></div>}
-        <Textarea aria-label="נוסח המייל" className="min-h-[200px] text-base" value={body} onChange={e => setBody(e.target.value)} />
+        <Textarea aria-label="נוסח המייל" className="min-h-[200px] text-base" value={body} onChange={e => { bodyTouched.current = true; setBody(e.target.value); }} />
         <p className="text-sm text-muted-foreground">קישור הכניסה לנכסים וקישור ההסרה מתווספים אוטומטית בסוף המייל.</p>
         {b.email_invited_at && <p className="text-sm text-muted-foreground">הזמנה כבר נשלחה באימייל למתווך זה.</p>}
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">

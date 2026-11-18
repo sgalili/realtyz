@@ -70,7 +70,7 @@ Deno.serve(async req => {
     const firstName = brokerFirstName(r.p.full_name);
     try {
       const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({
-        from: 'TORAFF <invite@realtyz.co.il>', to: [r.p.email], subject: firstName ? `${firstName}, הנכסים שלך כבר מחכים לך ב-TORAFF` : 'הנכסים שלך כבר מחכים לך ב-TORAFF',
+        from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [r.p.email], subject: firstName ? `${firstName}, הנכסים שלך כבר מחכים לך ב-TORAFF` : 'הנכסים שלך כבר מחכים לך ב-TORAFF',
         html: input.message ? customEmailHtml(input.message, link, unsubscribeUrl) : brokerInvitationEmailHtml({ firstName, examples, link, unsubscribeUrl }),
         headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
         tags: [{ name: 'type', value: 'broker_invitation' }],
