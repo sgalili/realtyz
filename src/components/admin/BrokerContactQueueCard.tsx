@@ -60,7 +60,7 @@ function EmailSendDialog({ b }: { b: ContactBroker }) {
         <DialogHeader><DialogTitle>שליחת הזמנה ל{b.full_name || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">בחירת ערוץ שליחה</DialogDescription></DialogHeader>
         <Tabs value={channel} onValueChange={v => setChannel(v as 'email' | 'whatsapp')} dir="rtl">
         <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="email">אימייל</TabsTrigger><TabsTrigger value="whatsapp">WhatsApp</TabsTrigger></TabsList>
-        <TabsContent value="whatsapp">{b.phone ? <OfficialBrokerInvitationPanel broker={{ id: b.user_id, full_name: b.full_name }} onClose={() => setOpen(false)} onSent={() => { waSent.current = true; }} /> : <p className="py-4 text-base text-muted-foreground">יש להוסיף נייד בכרטיס כדי לשלוח ב-WhatsApp.</p>}</TabsContent>
+        <TabsContent value="whatsapp"><div className="flex justify-end"><BrokerInvitationTemplateEditor /></div>{b.phone ? <OfficialBrokerInvitationPanel broker={{ id: b.user_id, full_name: b.full_name }} onClose={() => setOpen(false)} onSent={() => { waSent.current = true; }} /> : <p className="py-4 text-base text-muted-foreground">יש להוסיף נייד בכרטיס כדי לשלוח ב-WhatsApp.</p>}</TabsContent>
         <TabsContent value="email" className="space-y-3">
         <div className="flex gap-2">
           <Input aria-label="כתובת אימייל" className="h-11 text-base" dir="ltr" type="email" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} />
@@ -119,7 +119,7 @@ function BrokerRow({ b }: { b: ContactBroker }) {
   const dest = b.is_developer ? 'הפרויקטים' : 'הנכסים';
   const regLicense = b.profile_license ?? b.license_number;
   const details = [b.license_number && `רישיון ${b.license_number}`, b.office_name, b.city, ...((b.projects ?? 0) > 0 ? [`${b.projects} פרויקטים`, `${b.apartments ?? 0} דירות`] : []), ...(b.drafts > 0 || !(b.projects ?? 0) ? [`${b.drafts} טיוטות`] : [])].filter(Boolean).join(' · ');
-  return <li className="space-y-2 rounded-xl border border-border/70 p-3 sm:p-4">
+  return <li className="relative space-y-2 rounded-xl border border-border/70 p-3 pl-12 sm:p-4 sm:pl-12">
     <div className="flex items-center gap-1">
       <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
         {b.office_logo_url ? <img src={b.office_logo_url} alt="" className="h-9 w-9 shrink-0 rounded-md border border-border/60 object-contain" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
@@ -134,7 +134,7 @@ function BrokerRow({ b }: { b: ContactBroker }) {
           <button type="button" dir={b.phone ? 'ltr' : 'rtl'} disabled={!!b.first_login_at} aria-label={b.phone ? `עריכת הנייד של ${b.full_name}` : `הוספת נייד ל${b.full_name}`} onClick={() => setEditing(true)} className={`whitespace-nowrap px-1 text-xs underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.phone ? '' : 'text-primary'}`}>{b.phone ? formatPhoneDisplay(b.phone) : 'הוסף נייד'}</button>
           <EmailSendDialog b={b} />
         </>}
-        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>
+        <Button size="icon" variant="ghost" className="absolute left-[10px] top-[10px] h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><X className="h-4 w-4" /></Button>
       </div>
     </div>
     <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">
@@ -226,7 +226,7 @@ export function BrokerContactQueueCard() {
   const brokers = q.data?.brokers ?? [];
   const pending = brokers.length;
   return <section dir="rtl" className="space-y-4 py-5 text-right">
-    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-xl font-bold"><UserRoundSearch className="h-5 w-5 text-primary" />ממתינים להזמנה ראשונה<BrokerInvitationTemplateEditor /></h3>{pending > 0 && <Badge variant="secondary" className="text-sm">{pending} ממתינים</Badge>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-xl font-bold"><UserRoundSearch className="h-5 w-5 text-primary" />ממתינים להזמנה ראשונה</h3>{pending > 0 && <Badge variant="secondary" className="text-sm">{pending} ממתינים</Badge>}</div>
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} />)}</ul>}
     <FollowupQueue />
