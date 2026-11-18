@@ -21,11 +21,13 @@ type Field = 'company' | 'name' | 'phone';
 const dotted = 'whitespace-nowrap underline decoration-dotted underline-offset-4';
 
 /** Marketing company · contact person · contact phone, each click-to-edit (Super Admin only). */
-export function MarketingContactLine({ ownerId, devName, contact }: { ownerId: string; devName: string; contact?: MarketingContact | null }) {
+export function MarketingContactLine({ ownerId, devName, contact, fallbackPhone }: { ownerId: string; devName: string; contact?: MarketingContact | null; fallbackPhone?: string | null }) {
   const qc = useQueryClient();
   const [field, setField] = useState<Field | null>(null);
   const [value, setValue] = useState('');
   const companyId = contact?.company_id ?? null;
+  // The card's phone lives in the contact-phone field; an existing account phone shows there until a contact phone is saved.
+  const shownPhone = contact?.contact_phone || fallbackPhone || null;
   const save = useMutation({
     mutationFn: async (patch: { name?: string; contact_name?: string | null; contact_phone?: string | null; contact_gender?: string | null }) => {
       const { error } = await supabase.from('marketing_companies').update(patch).eq('id', companyId!);
@@ -34,7 +36,7 @@ export function MarketingContactLine({ ownerId, devName, contact }: { ownerId: s
     onSuccess: () => { toast.success('נשמר'); setField(null); void qc.invalidateQueries({ queryKey: ['marketing-contacts'] }); },
     onError: (e: { code?: string }) => toast.error(e?.code === '23505' ? 'חברה בשם זה כבר קיימת' : 'השמירה נכשלה'),
   });
-  const start = (f: Field) => { setField(f); setValue(f === 'company' ? contact?.company_name ?? '' : f === 'name' ? contact?.contact_name ?? '' : contact?.contact_phone ? formatPhoneDisplay(contact.contact_phone) : ''); };
+  const start = (f: Field) => { setField(f); setValue(f === 'company' ? contact?.company_name ?? '' : f === 'name' ? contact?.contact_name ?? '' : shownPhone ? formatPhoneDisplay(shownPhone) : ''); };
   const commit = () => {
     const v = value.trim();
     if (field === 'company') { if (v.length < 2) return toast.error('שם החברה קצר מדי'); save.mutate({ name: v }); }
@@ -55,7 +57,7 @@ export function MarketingContactLine({ ownerId, devName, contact }: { ownerId: s
     <span aria-hidden>·</span>
     <button type="button" className={`${dotted} ${contact?.contact_name ? '' : 'text-primary'}`} onClick={() => start('name')} aria-label="עריכת איש הקשר">{contact?.contact_name || 'איש קשר'}{contact?.contact_gender && <span className="mr-1" aria-label={contact.contact_gender === 'female' ? 'נקבה' : 'זכר'}>{contact.contact_gender === 'female' ? '♀' : '♂'}</span>}</button>
     <span aria-hidden>·</span>
-    <button type="button" dir={contact?.contact_phone ? 'ltr' : 'rtl'} className={`${dotted} ${contact?.contact_phone ? '' : 'text-primary'}`} onClick={() => start('phone')} aria-label="עריכת טלפון איש הקשר">{contact?.contact_phone ? formatPhoneDisplay(contact.contact_phone) : 'טלפון איש קשר'}</button>
+    <button type="button" dir={shownPhone ? 'ltr' : 'rtl'} className={`${dotted} ${shownPhone ? '' : 'text-primary'}`} onClick={() => start('phone')} aria-label="עריכת טלפון איש הקשר">{shownPhone ? formatPhoneDisplay(shownPhone) : 'טלפון איש קשר'}</button>
     <MarketingCompanyLine ownerId={ownerId} name={devName} label={null} iconOnly />
   </div>;
 }
