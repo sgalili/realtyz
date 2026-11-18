@@ -58,7 +58,7 @@ function nextData($: any): any {
   try { return JSON.parse($('script#__NEXT_DATA__').first().text() || 'null'); } catch { return null; }
 }
 /** Current Yad2 directory payload: pageProps.data['realtor-index'] office summaries plus geographic children. */
-export function parseAgencyDirectoryData(data: any, sourceUrl: string) {
+export function parseAgencyDirectoryData(data: any, sourceUrl: string): AgencyParseResult & { children: string[] } {
   const text = (v: unknown) => typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '';
   const query = agencyDirectoryQuery(new URL(sourceUrl).search);
   const seen = new Set<string>();
@@ -113,7 +113,8 @@ export function parseAgencyProfileData(agency: any, sourceUrl: string, maxListin
 }
 
 /** Each identity and its listings are read only from its own card, not office-wide ads. */
-export function parseAgencies($: any, sourceUrl: string) {
+export type AgencyParseResult = { results: Record<string, any>[]; next_url: string | null; children?: string[] };
+export function parseAgencies($: any, sourceUrl: string): AgencyParseResult {
   const blocked = /Radware Page|ShieldSquare|captcha|אנו מניחים שגולשים/.test($('title').text() + $('body').text().slice(0, 600));
   if (blocked) throw new Error('יד2 החזיר עמוד חסימה במקום ספריית משרדים');
   const directory = nextData($)?.props?.pageProps?.data;
