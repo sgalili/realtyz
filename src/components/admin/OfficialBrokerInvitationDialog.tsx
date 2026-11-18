@@ -26,7 +26,7 @@ async function invoke(body: Record<string, unknown>) {
 }
 
 /** WhatsApp invitation content, usable inside any dialog or tab. */
-export function OfficialBrokerInvitationPanel({ broker, onClose, onSent }: { broker: { id: string; full_name?: string | null; recipient_name?: string | null }; onClose: () => void; onSent?: () => void }) {
+export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachmentId }: { broker: { id: string; full_name?: string | null; recipient_name?: string | null }; onClose: () => void; onSent?: () => void; attachmentId?: string | null }) {
   const open = true;
   const [consent, setConsent] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -44,8 +44,8 @@ export function OfficialBrokerInvitationPanel({ broker, onClose, onSent }: { bro
     return data as BrokerOnboardingStatus | null;
   } });
   const sender = useQuery({ queryKey: ['official-wa-number'], enabled: open, queryFn: getOfficialWaNumber });
-  const mutation = useMutation({ mutationFn: (action: 'send') => invoke({ action, broker_id: broker.id, ...(action === 'send' ? { request_id: requestId.current, consent } : {}) }), onSuccess: async () => {
-    setFeedback('Meta קיבלה את ההזמנה. מסירה לנמען טרם אומתה.'); onSent?.(); await qc.invalidateQueries({ queryKey: ['broker-onboarding'] });
+  const mutation = useMutation({ mutationFn: (action: 'send') => invoke({ action, broker_id: broker.id, ...(action === 'send' ? { request_id: requestId.current, consent, attachment_id: attachmentId ?? null } : {}) }), onSuccess: async (d: { attachment_status?: string } | null) => {
+    setFeedback(`Meta קיבלה את ההזמנה. מסירה לנמען טרם אומתה.${d?.attachment_status === 'failed' ? ' הקובץ המצורף לא נשלח: Meta מאפשרת קובץ רק בשיחה פתוחה מ-24 השעות האחרונות.' : d?.attachment_status === 'sent' ? ' הקובץ המצורף נשלח.' : ''}`); onSent?.(); await qc.invalidateQueries({ queryKey: ['broker-onboarding'] });
     await qc.invalidateQueries({ queryKey: ['broker-contact-history'] });
   }, onError: e => setFeedback(e.message) });
   const status = state.data?.status;

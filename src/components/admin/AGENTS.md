@@ -7,3 +7,4 @@
 - Marketing-company contacts (name/phone/gender) live on marketing_companies; when set, developer WhatsApp invitations go to the contact and the contact's phone becomes the account login phone (rejected if used elsewhere). Why: OTP reaches the person who manages the account.
 - Invitation emails log exact subject/body/links in broker_invitation_emails (Super Admin read); send history expands rows from it. Why: auditable sent content.
 - Send-history cards read marketing company/contact/phone from admin_marketing_contacts and render each field plus the quick-dial button only when that value exists, hiding the whole line when none do. Why: no empty or mismatched contact rows.
+- Invitation attachments live in the private invitation-attachments bucket with a Super Admin-only invitation_attachments library; email sends them as Resend attachments, WhatsApp sends a signed-link document message after the template. Why: one reusable file list without public file exposure.

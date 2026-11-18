@@ -1681,6 +1681,13 @@
       "when": 1795010581638,
       "tag": "0239_broker_invitation_emails",
       "breakpoints": true
+    },
+    {
+      "idx": 240,
+      "version": "7",
+      "when": 1795016394473,
+      "tag": "0240_invitation_attachments",
+      "breakpoints": true
     }
   ]
 }

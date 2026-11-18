@@ -2,13 +2,14 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { brokerFirstName, brokerInvitationEmailHtml, propertyExample, BROKER_EMAIL_BATCH_MAX } from '../_shared/brokerInvitationEmail.ts';
+import { loadAttachment, attachmentBase64, markAttachmentSent } from '../_shared/invitationAttachment.ts';
 import { invitationLink, publicSiteOrigin } from '../_shared/importInvitationPolicy.ts';
 
 // Email only to brokers whose consent a Super Admin recorded; never to scraped contacts without consent.
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('summary') }),
   z.object({ action: z.literal('consent'), broker_id: z.string().uuid(), note: z.string().trim().min(3).max(300), revoke: z.boolean().optional() }),
-  z.object({ action: z.literal('send_batch'), broker_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX), message: z.string().trim().min(10).max(4000).optional(), demo: z.boolean().optional(), subject: z.string().trim().min(1).max(200).optional() }),
+  z.object({ action: z.literal('send_batch'), broker_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX), message: z.string().trim().min(10).max(4000).optional(), demo: z.boolean().optional(), subject: z.string().trim().min(1).max(200).optional(), attachment_id: z.string().uuid().nullable().optional() }),
 ]);
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const escHtml = (v: string) => v.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
@@ -52,6 +53,9 @@ Deno.serve(async req => {
   if (!LOVABLE_API_KEY || !RESEND_API_KEY) return json({ error: 'חיבור Resend אינו מוגדר' }, 503);
   const site = new URL(publicSiteOrigin());
   const fnBase = `${Deno.env.get('SUPABASE_URL')}/functions/v1/admin-broker-email-invitation`;
+  let attachments: { filename: string; content: string }[] | undefined; let attachmentId: string | null = null;
+  if (input.attachment_id) { try { const a = await loadAttachment(admin, input.attachment_id); if (a) { attachments = [{ filename: a.file_name, content: await attachmentBase64(admin, a) }]; attachmentId = a.id; } } catch (e) { return json({ error: e instanceof Error ? e.message : 'הקובץ המצורף אינו זמין' }, 400); } }
+  const attachLink = attachments ? [{ label: `קובץ מצורף: ${attachments[0].filename}`, url: '' }] : [];
   const results: { broker_id: string; status: string; error?: string }[] = [];
   // Demo access email: shared view-only account credentials instead of the recipient's personal sign-in. Consent still required.
   if (input.demo) {
@@ -64,12 +68,13 @@ Deno.serve(async req => {
     const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({
       from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [prof.email], subject: input.subject || 'חשבון דמו לצפייה ב-TORAFF',
       html: customEmailHtml(msg, `${site.origin}/auth`, unsubscribeUrl).replace('כניסה לנכסים שלי', 'כניסה לחשבון הדמו'),
-      headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }, tags: [{ name: 'type', value: 'demo_invitation' }],
+      headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }, tags: [{ name: 'type', value: 'demo_invitation' }], ...(attachments ? { attachments } : {}),
     }) });
-    const demoLog = { broker_id: input.broker_id, created_by: caller.userId, to_email: prof.email, subject: input.subject || 'חשבון דמו לצפייה ב-TORAFF', body_text: msg, links: [{ label: 'כניסה לחשבון הדמו', url: `${site.origin}/auth` }, { label: 'הסרה מרשימת התפוצה', url: unsubscribeUrl }], is_demo: true };
+    const demoLog = { broker_id: input.broker_id, created_by: caller.userId, to_email: prof.email, subject: input.subject || 'חשבון דמו לצפייה ב-TORAFF', body_text: msg, links: [{ label: 'כניסה לחשבון הדמו', url: `${site.origin}/auth` }, { label: 'הסרה מרשימת התפוצה', url: unsubscribeUrl }, ...attachLink], is_demo: true };
     if (!res.ok) { const t = await res.text(); await admin.from('broker_invitation_emails').insert({ ...demoLog, status: 'failed', error: t.slice(0, 500) }); console.error('demo invitation email failed', res.status, t); return json({ error: `שליחת המייל נכשלה (${res.status})`, details: t }, 502); }
     let demoId: string | null = null; try { demoId = (await res.clone().json()).id ?? null; } catch { /* ignore */ }
     await admin.from('broker_invitation_emails').insert({ ...demoLog, message_id: demoId });
+    if (attachmentId) await markAttachmentSent(admin, attachmentId);
     return json({ sent: 1, failed: 0 });
   }
   const targets = input.broker_id ? eligible.filter(r => r.user_id === input.broker_id) : eligible;
@@ -96,12 +101,13 @@ Deno.serve(async req => {
         from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [r.p.email], subject: sentSubject,
         html: input.message ? customEmailHtml(input.message, link, unsubscribeUrl) : brokerInvitationEmailHtml({ firstName, examples, link, unsubscribeUrl }),
         headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
-        tags: [{ name: 'type', value: 'broker_invitation' }],
+        tags: [{ name: 'type', value: 'broker_invitation' }], ...(attachments ? { attachments } : {}),
       }) });
       const raw = await res.text();
       if (!res.ok) throw new Error(`[${res.status}]: ${raw}`);
       await admin.from('admin_broker_onboarding').update({ email_message_id: JSON.parse(raw).id ?? null }).eq('user_id', r.user_id);
-      await admin.from('broker_invitation_emails').insert({ broker_id: r.user_id, created_by: caller.userId, to_email: r.p.email, subject: sentSubject, body_text: input.message ?? `ברירת מחדל${examples.length ? `\n${examples.join('\n')}` : ''}`, links: [{ label: 'כניסה לנכסים שלי', url: link }, { label: 'הסרה מרשימת התפוצה', url: unsubscribeUrl }], message_id: JSON.parse(raw).id ?? null });
+      await admin.from('broker_invitation_emails').insert({ broker_id: r.user_id, created_by: caller.userId, to_email: r.p.email, subject: sentSubject, body_text: input.message ?? `ברירת מחדל${examples.length ? `\n${examples.join('\n')}` : ''}`, links: [{ label: 'כניסה לנכסים שלי', url: link }, { label: 'הסרה מרשימת התפוצה', url: unsubscribeUrl }, ...attachLink], message_id: JSON.parse(raw).id ?? null });
+      if (attachmentId) await markAttachmentSent(admin, attachmentId);
       results.push({ broker_id: r.user_id, status: 'sent' });
     } catch (e) {
       console.error('broker invitation email failed', e);

@@ -5559,6 +5559,39 @@ export type Database = {
           },
         ]
       }
+      invitation_attachments: {
+        Row: {
+          created_at: string
+          created_by: string
+          file_name: string
+          id: string
+          last_sent_at: string | null
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          file_name: string
+          id?: string
+          last_sent_at?: string | null
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          file_name?: string
+          id?: string
+          last_sent_at?: string | null
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+        }
+        Relationships: []
+      }
       invite_bonus_settings: {
         Row: {
           friend_credits: number

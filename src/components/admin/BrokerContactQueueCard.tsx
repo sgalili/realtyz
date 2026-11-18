@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { OfficialBrokerInvitationPanel } from './OfficialBrokerInvitationDialog';
 import { BrokerInvitationTemplateEditor } from './BrokerInvitationTemplateEditor';
+import { InvitationAttachmentPicker } from './InvitationAttachmentPicker';
 import { BrokerEmailConsentButton } from './BrokerEmailInvitations';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
@@ -50,6 +51,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
   const bodyTouched = useRef(false);
   const [demo, setDemo] = useState(false);
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
+  const [attachmentId, setAttachmentId] = useState<string | null>(null);
   // Same gender-matched default wording as the WhatsApp template, filled with the recipient's first name.
   const sharedText = useQuery({ queryKey: ['broker-template-texts', 'recipient', b.user_id], enabled: open, queryFn: () => invoke<{ recipient?: string }>('admin-broker-invitation', { action: 'texts', broker_id: b.user_id }) });
   useEffect(() => {
@@ -63,7 +65,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
     onError: (e: Error) => toast.error(e.message),
   });
   const send = useMutation({
-    mutationFn: () => invoke<{ sent: number; results?: { status: string; error?: string }[] }>('admin-broker-email-invitation', { action: 'send_batch', broker_id: b.user_id, limit: 1, message: body.trim(), demo, subject: subject.trim() || DEFAULT_SUBJECT }),
+    mutationFn: () => invoke<{ sent: number; results?: { status: string; error?: string }[] }>('admin-broker-email-invitation', { action: 'send_batch', broker_id: b.user_id, limit: 1, message: body.trim(), demo, subject: subject.trim() || DEFAULT_SUBJECT, attachment_id: attachmentId }),
     onSuccess: d => { if (d.sent) { toast.success('המייל נשלח'); setOpen(false); } else { const r = d.results?.[0]; toast.error(r?.status === 'skipped' ? 'המייל לא נשלח: כבר נשלחה הזמנה או שהחשבון כבר נכנס' : `המייל לא נשלח${r?.error ? `: ${r.error}` : ''}`); } void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-contact-history'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -83,7 +85,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
         <DialogHeader><DialogTitle>שליחת הזמנה ל{recipientName || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">בחירת ערוץ שליחה</DialogDescription></DialogHeader>
         <Tabs value={channel} onValueChange={v => setChannel(v as 'email' | 'whatsapp')} dir="rtl">
         <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="email">אימייל</TabsTrigger><TabsTrigger value="whatsapp">WhatsApp</TabsTrigger></TabsList>
-        <TabsContent value="whatsapp"><div className="flex justify-end"><BrokerInvitationTemplateEditor /></div>{contactPhone && <p className="pt-2 text-sm text-muted-foreground">ההזמנה וקוד הכניסה יישלחו לאיש הקשר בחברת השיווק: <span dir="ltr">{formatPhoneDisplay(contactPhone)}</span></p>}{b.phone || contactPhone ? <OfficialBrokerInvitationPanel broker={{ id: b.user_id, full_name: b.full_name, recipient_name: contactPhone ? contactName : null }} onClose={() => setOpen(false)} onSent={() => { waSent.current = true; }} /> : <p className="py-4 text-base text-muted-foreground">יש להוסיף נייד בכרטיס כדי לשלוח ב-WhatsApp.</p>}</TabsContent>
+        <TabsContent value="whatsapp" className="space-y-3"><div className="flex justify-end"><BrokerInvitationTemplateEditor /></div><InvitationAttachmentPicker value={attachmentId} onChange={setAttachmentId} />{contactPhone && <p className="pt-2 text-sm text-muted-foreground">ההזמנה וקוד הכניסה יישלחו לאיש הקשר בחברת השיווק: <span dir="ltr">{formatPhoneDisplay(contactPhone)}</span></p>}{b.phone || contactPhone ? <OfficialBrokerInvitationPanel broker={{ id: b.user_id, full_name: b.full_name, recipient_name: contactPhone ? contactName : null }} onClose={() => setOpen(false)} onSent={() => { waSent.current = true; }} attachmentId={attachmentId} /> : <p className="py-4 text-base text-muted-foreground">יש להוסיף נייד בכרטיס כדי לשלוח ב-WhatsApp.</p>}</TabsContent>
         <TabsContent value="email" className="space-y-3">
         <div className="flex gap-2">
           <Input aria-label="כתובת אימייל" className="h-11 text-base" dir="ltr" type="email" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} />
@@ -92,6 +94,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
         {b.email && !b.email_consent_at && <div className="flex items-center gap-2 text-sm text-muted-foreground">נדרשת הסכמה מתועדת לפני שליחה:<BrokerEmailConsentButton broker={{ id: b.user_id, full_name: b.full_name, email: b.email }} state={{ email_consent_at: b.email_consent_at, email_unsubscribed_at: null, email_invited_at: b.email_invited_at }} /></div>}
         <label className="block space-y-1"><span className="text-sm font-medium">כותרת המייל</span><Input aria-label="כותרת המייל" className="h-11 text-base" maxLength={200} value={subject} onChange={e => setSubject(e.target.value)} /></label>
         <Textarea aria-label="נוסח המייל" className="min-h-[200px] text-base" value={body} onChange={e => { bodyTouched.current = true; setBody(e.target.value); }} />
+        <InvitationAttachmentPicker value={attachmentId} onChange={setAttachmentId} />
         <p className="text-sm text-muted-foreground">קישור הכניסה לנכסים וקישור ההסרה מתווספים אוטומטית בסוף המייל.</p>
         <label className="flex items-center gap-2 text-base"><input type="checkbox" className="h-4 w-4" checked={demo} onChange={e => setDemo(e.target.checked)} />שלח כחשבון דמו לצפייה בלבד</label>
         {demo && <p className="text-sm text-muted-foreground">יישלחו פרטי חשבון הדמו (0501234567, קוד 1234) במקום כניסה אישית. בחשבון הדמו אין אפשרות לפרסם.</p>}

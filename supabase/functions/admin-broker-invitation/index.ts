@@ -2,6 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { brokerTemplateFor, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName, officialBrokerPhone } from '../_shared/brokerInvitationTemplate.ts';
+import { loadAttachment, attachmentSignedUrl, markAttachmentSent } from '../_shared/invitationAttachment.ts';
 import { publicSiteOrigin, invitationLink } from '../_shared/importInvitationPolicy.ts';
 
 const schema = z.object({
@@ -11,6 +12,7 @@ const schema = z.object({
   gender: z.enum(['male', 'female']).nullable().optional(),
   request_id: z.string().uuid().optional(),
   consent: z.literal(true).optional(),
+  attachment_id: z.string().uuid().nullable().optional(),
 }).strict();
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
@@ -116,6 +118,14 @@ Deno.serve(async req => {
     const { error: sendError } = await admin.from('broker_invitation_sends').update({ status: 'accepted', message_id: messageId }).eq('request_id', input.request_id);
     const { error: trackError } = await admin.from('admin_broker_onboarding').update({ invited_at: new Date().toISOString(), invitation_message_id: messageId }).eq('user_id', broker.id);
     if (sendError || trackError) return json({ error: 'Meta קיבלה את ההודעה אך עדכון שלב ההצטרפות נכשל. אין לשלוח שוב.', message_id: messageId }, 500);
-    return json({ success: true, message_id: messageId, status: 'accepted' });
+    // Attachment follows the approved template as a document message; Meta may reject it outside an open 24h conversation.
+    let attachment_status: string | undefined;
+    if (input.attachment_id) {
+      try {
+        const a = await loadAttachment(admin, input.attachment_id);
+        if (a) { await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'document', document: { link: await attachmentSignedUrl(admin, a), filename: a.file_name } }); await markAttachmentSent(admin, a.id); attachment_status = 'sent'; }
+      } catch (e) { console.error('invitation attachment failed', e); attachment_status = 'failed'; }
+    }
+    return json({ success: true, message_id: messageId, status: 'accepted', attachment_status });
   } catch (e) { return json({ error: e instanceof Error ? e.message : 'שליחת ההזמנה נכשלה' }, 502); }
 });
