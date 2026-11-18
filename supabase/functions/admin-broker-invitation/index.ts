@@ -27,9 +27,18 @@ Deno.serve(async req => {
   const admin = adminClient();
   // Wording is fixed server-side; on send the recipient's saved gender decides the variant.
   let gender: unknown = input.gender;
+  // A developer's marketing-company contact, when saved, receives the invitation and sign-in code.
+  let contact: { name: string | null; phone: string | null; gender: string | null } | null = null;
   if (input.broker_id) {
     const { data: g } = await admin.from('profiles').select('gender').eq('id', input.broker_id).maybeSingle();
     gender = g?.gender;
+    const { data: dev } = await admin.from('developers').select('marketing_company_id').eq('workspace_owner_id', input.broker_id).not('marketing_company_id', 'is', null).order('created_at').limit(1).maybeSingle();
+    const { data: proj } = dev ? { data: null } : await admin.from('developer_projects').select('marketing_company_id').eq('workspace_owner_id', input.broker_id).not('marketing_company_id', 'is', null).order('created_at').limit(1).maybeSingle();
+    const companyId = dev?.marketing_company_id ?? proj?.marketing_company_id;
+    if (companyId) {
+      const { data: mc } = await admin.from('marketing_companies').select('contact_name,contact_phone,contact_gender').eq('id', companyId).maybeSingle();
+      if (mc?.contact_phone) { contact = { name: mc.contact_name, phone: mc.contact_phone, gender: mc.contact_gender }; if (mc.contact_gender) gender = mc.contact_gender; }
+    }
   }
   const { data: saved } = await admin.from('broker_invitation_template_texts').select('gender,body');
   const savedFor = (g: unknown) => saved?.find(r => r.gender === (g === 'female' ? 'female' : 'male'))?.body ?? brokerTemplateFor(g);
@@ -74,13 +83,18 @@ Deno.serve(async req => {
     const { data: broker, error: brokerError } = await admin.from('profiles').select('id,full_name,phone').eq('id', input.broker_id).single();
     const { data: brokerRoles, error: roleError } = await admin.from('user_roles').select('role').eq('user_id', input.broker_id).in('role', ['agent', 'lead_agent', 'managing_broker', 'junior_agent', 'developer']);
     if (brokerError || roleError || !broker || !brokerRoles?.length) return json({ error: 'הנמען אינו מתווך פעיל' }, 400);
-    const phone = officialBrokerPhone(broker.phone ?? '');
+    const phone = officialBrokerPhone(contact?.phone ?? broker.phone ?? '');
     if (!phone) return json({ error: 'חסר מספר נייד תקין למתווך' }, 400);
     const { data: onboarding, error: onboardingError } = await admin.from('admin_broker_onboarding').select('user_id,invitation_link_token,first_invitation_at,first_login_at').eq('user_id', broker.id).maybeSingle();
     if (onboardingError || !onboarding) return json({ error: 'המתווך אינו בתהליך הצטרפות בניהול מנהל' }, 409);
     const { data: account, error: accountError } = await admin.auth.admin.getUserById(broker.id);
     if (accountError || !account.user || account.user.last_sign_in_at) return json({ error: 'החשבון אינו ממתין להזמנה ראשונה' }, 409);
     if (onboarding.first_login_at || onboarding.first_invitation_at) return json({ error: 'הזמנה ראשונה כבר נשלחה או שהחשבון כבר התחבר' }, 409);
+    if (contact?.phone) {
+      // Sign-in codes go to the phone on the account, so the contact's number becomes the account's login phone.
+      const { error: loginPhoneError } = await admin.auth.admin.updateUserById(broker.id, { phone: `+${contact.phone}`, phone_confirm: true });
+      if (loginPhoneError) return json({ error: 'מספר איש הקשר כבר משמש לכניסה לחשבון אחר. יש להזין מספר אחר לאיש הקשר.' }, 409);
+    }
     const { error: claimError } = await admin.from('broker_invitation_sends').insert({ request_id: input.request_id, broker_id: broker.id, created_by: caller.userId, template_name: name });
     if (claimError) {
       const { data: prior } = await admin.from('broker_invitation_sends').select('status,message_id,broker_id,template_name,created_by').eq('request_id', input.request_id).maybeSingle();
@@ -92,7 +106,7 @@ Deno.serve(async req => {
       const site = new URL(Deno.env.get('PUBLIC_SITE_URL') || 'https://toraff.co.il');
       if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');
       const link = invitationLink(site.origin, broker.id, onboarding.invitation_link_token);
-      sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: broker.full_name?.trim().split(/\s+/)[0] || 'מתווך' }, ...(templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });
+      sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: (contact?.name || broker.full_name)?.trim().split(/\s+/)[0] || 'מתווך' }, ...(templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });
     } catch (e) {
       await admin.from('broker_invitation_sends').update({ status: 'unknown' }).eq('request_id', input.request_id);
       throw e;

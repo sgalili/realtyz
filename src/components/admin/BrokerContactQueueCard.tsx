@@ -4,7 +4,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
-import { MarketingCompanyLine } from './MarketingCompanyLine';
+import { MarketingContactLine, type MarketingContact } from './MarketingContactLine';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,7 @@ const DEFAULT_EMAIL = (name: string) => `שלום${name ? ` ${name.split(/\s+/)[
 
 הנכסים לא יתפרסמו בלי אישורך. אחרי כניסה עם קוד אימות אפשר לעבור עליהם, לתקן פרטים ולקבוע עמלת סגירה ותמחור פניות.`;
 
-function EmailSendDialog({ b }: { b: ContactBroker }) {
+function EmailSendDialog({ b, contactPhone }: { b: ContactBroker; contactPhone?: string | null }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [channel, setChannel] = useState<'email' | 'whatsapp'>('email');
@@ -78,7 +78,7 @@ function EmailSendDialog({ b }: { b: ContactBroker }) {
         <DialogHeader><DialogTitle>שליחת הזמנה ל{b.full_name || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">בחירת ערוץ שליחה</DialogDescription></DialogHeader>
         <Tabs value={channel} onValueChange={v => setChannel(v as 'email' | 'whatsapp')} dir="rtl">
         <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="email">אימייל</TabsTrigger><TabsTrigger value="whatsapp">WhatsApp</TabsTrigger></TabsList>
-        <TabsContent value="whatsapp"><div className="flex justify-end"><BrokerInvitationTemplateEditor /></div>{b.phone ? <OfficialBrokerInvitationPanel broker={{ id: b.user_id, full_name: b.full_name }} onClose={() => setOpen(false)} onSent={() => { waSent.current = true; }} /> : <p className="py-4 text-base text-muted-foreground">יש להוסיף נייד בכרטיס כדי לשלוח ב-WhatsApp.</p>}</TabsContent>
+        <TabsContent value="whatsapp"><div className="flex justify-end"><BrokerInvitationTemplateEditor /></div>{contactPhone && <p className="pt-2 text-sm text-muted-foreground">ההזמנה וקוד הכניסה יישלחו לאיש הקשר בחברת השיווק: <span dir="ltr">{formatPhoneDisplay(contactPhone)}</span></p>}{b.phone || contactPhone ? <OfficialBrokerInvitationPanel broker={{ id: b.user_id, full_name: b.full_name }} onClose={() => setOpen(false)} onSent={() => { waSent.current = true; }} /> : <p className="py-4 text-base text-muted-foreground">יש להוסיף נייד בכרטיס כדי לשלוח ב-WhatsApp.</p>}</TabsContent>
         <TabsContent value="email" className="space-y-3">
         <div className="flex gap-2">
           <Input aria-label="כתובת אימייל" className="h-11 text-base" dir="ltr" type="email" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} />
@@ -108,7 +108,7 @@ function useOpenWorkspace() {
   };
 }
 
-function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: string | null }) {
+function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingContact | null }) {
   const qc = useQueryClient();
   const openWs = useOpenWorkspace();
   const [editing, setEditing] = useState(false);
@@ -151,8 +151,8 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: string | nu
           <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="שמירת נייד" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>
           <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="ביטול" onClick={() => { setPhone(b.phone ? formatPhoneDisplay(b.phone) : ''); setEditing(false); }}><X className="h-4 w-4" /></Button>
         </> : <>
-          <button type="button" dir={b.phone ? 'ltr' : 'rtl'} disabled={!!b.first_login_at} aria-label={b.phone ? `עריכת הנייד של ${b.full_name}` : `הוספת נייד ל${b.full_name}`} onClick={() => setEditing(true)} className={`whitespace-nowrap px-1 text-xs underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.phone ? '' : 'text-primary'}`}>{b.phone ? formatPhoneDisplay(b.phone) : 'הוסף נייד'}</button>
-          <EmailSendDialog b={b} />
+          <button type="button" dir={b.phone ? 'ltr' : 'rtl'} disabled={!!b.first_login_at} title="נייד היזם" aria-label={b.phone ? `עריכת הנייד של ${b.full_name}` : `הוספת נייד ל${b.full_name}`} onClick={() => setEditing(true)} className={`whitespace-nowrap px-1 text-xs underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.phone ? '' : 'text-primary'}`}>{b.phone ? formatPhoneDisplay(b.phone) : 'הוסף נייד'}</button>
+          <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} />
         </>}
         <Button size="icon" variant="ghost" className="absolute left-[10px] top-[10px] h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><X className="h-4 w-4" /></Button>
       </div>
@@ -161,7 +161,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: string | nu
       <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground sm:text-base" title={details}>{details}</p>
       {!b.is_developer && !b.license_verified && regLicense && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense} onUpdated={() => void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] })} />}
     </div>
-    {b.is_developer && <MarketingCompanyLine ownerId={b.user_id} name={b.full_name} label={marketing} />}
+    {b.is_developer && <MarketingContactLine ownerId={b.user_id} devName={b.full_name} contact={marketing} />}
     <Dialog open={deleting} onOpenChange={open => { if (!remove.isPending) setDeleting(open); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-md text-right">
         <DialogHeader><DialogTitle>מחיקת החשבון של {b.full_name || 'ללא שם'}</DialogTitle></DialogHeader>
@@ -247,9 +247,9 @@ export function BrokerContactQueueCard() {
   const brokers = q.data?.brokers ?? [];
   const pending = brokers.length;
   const devIds = brokers.filter(b => b.is_developer).map(b => b.user_id);
-  const marketing = useQuery({ queryKey: ['marketing-summaries', devIds.join(',')], enabled: devIds.length > 0, queryFn: async () => {
-    const { data, error } = await supabase.rpc('admin_marketing_summaries', { _owners: devIds });
-    if (error) throw error; return new Map((data ?? []).map(r => [r.owner_id, r.marketing_company_name]));
+  const marketing = useQuery({ queryKey: ['marketing-contacts', devIds.join(',')], enabled: devIds.length > 0, queryFn: async () => {
+    const { data, error } = await supabase.rpc('admin_marketing_contacts', { _owners: devIds });
+    if (error) throw error; return new Map((data ?? []).map(r => [r.owner_id, r as MarketingContact]));
   } });
   return <section dir="rtl" className="space-y-4 py-5 text-right">
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-xl font-bold"><UserRoundSearch className="h-5 w-5 text-primary" />ממתינים להזמנה ראשונה</h3>{pending > 0 && <Badge variant="secondary" className="text-sm">{pending} ממתינים</Badge>}</div>

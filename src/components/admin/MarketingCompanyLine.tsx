@@ -13,7 +13,7 @@ type Overview = { companies: { id: string; name: string }[]; developers: Row[]; 
 const NONE = '__none__';
 
 /** Super Admin-only marketing-company assignment for one developer workspace. */
-export function MarketingCompanyLine({ ownerId, name, label }: { ownerId: string; name: string; label?: string | null }) {
+export function MarketingCompanyLine({ ownerId, name, label, iconOnly }: { ownerId: string; name: string; label?: string | null; iconOnly?: boolean }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -22,7 +22,7 @@ export function MarketingCompanyLine({ ownerId, name, label }: { ownerId: string
     const { data, error } = await supabase.rpc('admin_marketing_overview', { _owner: ownerId });
     if (error) throw error; return data as unknown as Overview;
   } });
-  const refresh = () => { void qc.invalidateQueries({ queryKey: key }); void qc.invalidateQueries({ queryKey: ['marketing-summaries'] }); };
+  const refresh = () => { void qc.invalidateQueries({ queryKey: key }); void qc.invalidateQueries({ queryKey: ['marketing-summaries'] }); void qc.invalidateQueries({ queryKey: ['marketing-contacts'] }); };
   const assign = useMutation({
     mutationFn: async (v: { kind: 'developer' | 'project'; id: string; company: string | null }) => {
       const { error } = await supabase.rpc('admin_assign_marketing_company', { _kind: v.kind, _id: v.id, _company: v.company as string });
@@ -48,9 +48,9 @@ export function MarketingCompanyLine({ ownerId, name, label }: { ownerId: string
     </Select>
   );
   return <>
-    <button type="button" onClick={() => setOpen(true)} className={`flex min-w-0 items-center gap-1 truncate text-sm underline decoration-dotted underline-offset-4 sm:text-base ${label ? 'text-muted-foreground' : 'text-primary'}`}>
+    {iconOnly ? <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" aria-label="שיוך או העברה לחברת שיווק" title="שיוך לחברת שיווק" onClick={() => setOpen(true)}><Building2 className="h-4 w-4" /></Button> : <button type="button" onClick={() => setOpen(true)} className={`flex min-w-0 items-center gap-1 truncate text-sm underline decoration-dotted underline-offset-4 sm:text-base ${label ? 'text-muted-foreground' : 'text-primary'}`}>
       <Building2 className="h-3.5 w-3.5 shrink-0" />{label ? <span className="truncate">חברת שיווק: {label}</span> : 'הוסף חברת שיווק'}
-    </button>
+    </button>}
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
         <DialogHeader><DialogTitle>חברת שיווק · {name || 'יזם'}</DialogTitle><DialogDescription>שיוך והעברת היזם והפרויקטים בין חברות שיווק.</DialogDescription></DialogHeader>

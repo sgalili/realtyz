@@ -6912,6 +6912,9 @@ export type Database = {
       }
       marketing_companies: {
         Row: {
+          contact_gender: string | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -6919,6 +6922,9 @@ export type Database = {
           owner_user_id: string | null
         }
         Insert: {
+          contact_gender?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -6926,6 +6932,9 @@ export type Database = {
           owner_user_id?: string | null
         }
         Update: {
+          contact_gender?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -10451,6 +10460,17 @@ export type Database = {
       admin_link_referral: {
         Args: { _referred: string; _referrer: string }
         Returns: Json
+      }
+      admin_marketing_contacts: {
+        Args: { _owners: string[] }
+        Returns: {
+          company_id: string
+          company_name: string
+          contact_gender: string
+          contact_name: string
+          contact_phone: string
+          owner_id: string
+        }[]
       }
       admin_marketing_overview: { Args: { _owner: string }; Returns: Json }
       admin_marketing_summaries: {
