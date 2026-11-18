@@ -91,7 +91,7 @@ Deno.serve(async req => {
     let template = live.data?.find((t: { name: string; language: string }) => t.name === name && t.language === BROKER_TEMPLATE_LANGUAGE);
     if (template && template.components?.find((c: { type: string }) => c.type === 'BODY')?.text !== body) return json({ error: 'נוסח Meta אינו תואם לתצוגה. יש לרענן לפני שליחה.' }, 409);
     if ((input.action === 'register' || input.action === 'save_text') && !template) {
-      template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/demo/broker'] : ['ישראל ישראלי']] } }] });
+      template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/auth'] : ['ישראל ישראלי']] } }] });
     }
     if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text, sender: '972537983832', demo_link: demoLink });
     if (!input.broker_id || !input.request_id || !input.consent) return json({ error: 'נדרשים מתווך, מזהה שליחה ואישור הסכמת הנמען' }, 400);

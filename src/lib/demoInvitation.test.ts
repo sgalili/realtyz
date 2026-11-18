@@ -12,16 +12,16 @@ describe('role-aware public demo invitations', () => {
     [['affiliate'], 'affiliate'],
   ] as const)('maps %s to its matching public demo', (roles, type) => {
     expect(demoTypeForRoles([...roles])).toBe(type);
-    expect(demoInvitationLink('https://toraff.co.il', [...roles])).toBe(`https://toraff.co.il/demo/${type}`);
+    expect(demoInvitationLink('https://toraff.co.il', [...roles])).toBe('https://toraff.co.il/auth');
   });
 
   it('routes an unknown user type to role selection', () => {
     expect(demoTypeForRoles(['user'])).toBeNull();
-    expect(demoInvitationLink('https://toraff.co.il', [])).toBe('https://toraff.co.il/demo');
+    expect(demoInvitationLink('https://toraff.co.il', [])).toBe('https://toraff.co.il/auth');
   });
 
   it('uses the broker demo when a broker also has a partner role', () => {
-    expect(demoInvitationLink('https://toraff.co.il', ['affiliate', 'agent'])).toBe('https://toraff.co.il/demo/broker');
+    expect(demoInvitationLink('https://toraff.co.il', ['affiliate', 'agent'])).toBe('https://toraff.co.il/auth');
   });
 
   it('uses the demo link in the default email without shared credentials or OTP instructions', () => {

@@ -1702,6 +1702,13 @@
       "when": 1795026942244,
       "tag": "0242_demo_view_accounts_readonly",
       "breakpoints": true
+    },
+    {
+      "idx": 243,
+      "version": "7",
+      "when": 1795038772708,
+      "tag": "0243_marketing_client_projects_full_fields",
+      "breakpoints": true
     }
   ]
 }

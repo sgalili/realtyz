@@ -38,7 +38,7 @@ export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachm
   // Fixed wording only; the server picks the variant from the recipient's saved gender.
   const state = useQuery({ queryKey: ['official-broker-template', broker.id], enabled: open, retry: false, staleTime: 0, queryFn: () => invoke({ action: 'status', broker_id: broker.id }) });
   const text: string = state.data?.text ?? brokerTemplateFor(null);
-  const demoLink: string = state.data?.demo_link ?? publicUrl('/demo');
+  const demoLink: string = state.data?.demo_link ?? publicUrl('/auth');
   const pricing = useCampaignPricing(open);
   const waPrice = pricing.data?.find(p => p.action_key === 'whatsapp_marketing');
   const onboarding = useQuery({ queryKey: ['broker-onboarding', broker.id], enabled: open, queryFn: async () => {

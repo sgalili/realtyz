@@ -36,6 +36,6 @@ export function demoTypeForRoles(roles: readonly string[]): InvitationDemoType |
 export function demoInvitationLink(origin: string, roles: readonly string[]) {
   const site = new URL(origin);
   if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');
-  const type = demoTypeForRoles(roles);
-  return `${site.origin}/demo${type ? `/${type}` : ''}`;
+  void roles; // Public /demo pages were removed; every recipient lands on the regular sign-in screen.
+  return `${site.origin}/auth`;
 }
