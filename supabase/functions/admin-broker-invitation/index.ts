@@ -3,7 +3,7 @@ import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { brokerTemplateFor, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName, officialBrokerPhone } from '../_shared/brokerInvitationTemplate.ts';
 import { loadAttachment, attachmentSignedUrl, markAttachmentSent } from '../_shared/invitationAttachment.ts';
-import { publicSiteOrigin, invitationLink } from '../_shared/importInvitationPolicy.ts';
+import { publicSiteOrigin, invitationLink, demoInvitationLink } from '../_shared/importInvitationPolicy.ts';
 
 const schema = z.object({
   action: z.enum(['status', 'register', 'send', 'texts', 'save_text']),
@@ -12,6 +12,7 @@ const schema = z.object({
   gender: z.enum(['male', 'female']).nullable().optional(),
   request_id: z.string().uuid().optional(),
   consent: z.literal(true).optional(),
+  demo: z.boolean().optional(),
   attachment_id: z.string().uuid().nullable().optional(),
 }).strict();
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -27,6 +28,7 @@ Deno.serve(async req => {
   if (!parsed.success) return json({ error: parsed.error.flatten() }, 400);
   const input = parsed.data;
   const admin = adminClient();
+  const demo = input.demo ?? true;
   // Wording is fixed server-side; on send the recipient's saved gender decides the variant.
   let gender: unknown = input.gender;
   // A developer's marketing-company contact, when saved, receives the invitation and sign-in code.
@@ -42,12 +44,23 @@ Deno.serve(async req => {
       if (mc?.contact_phone) { contact = { name: mc.contact_name, phone: mc.contact_phone, gender: mc.contact_gender }; if (mc.contact_gender) gender = mc.contact_gender; }
     }
   }
+  let roles: string[] = [];
+  let demoLink: string | null = null;
+  if (input.broker_id) {
+    const { data: roleRows, error: roleError } = await admin.from('user_roles').select('role').eq('user_id', input.broker_id);
+    if (roleError) return json({ error: 'קריאת סוג המשתמש נכשלה' }, 500);
+    roles = (roleRows ?? []).map(role => String(role.role));
+    demoLink = demoInvitationLink(publicSiteOrigin(), roles);
+  }
   const { data: saved } = await admin.from('broker_invitation_template_texts').select('gender,body');
   const savedFor = (g: unknown) => saved?.find(r => r.gender === (g === 'female' ? 'female' : 'male'))?.body ?? brokerTemplateFor(g);
-  if (input.action === 'texts') return json({ male: savedFor('male'), female: savedFor('female'), ...(input.broker_id ? { recipient: savedFor(gender), recipient_gender: gender === 'female' ? 'female' : 'male' } : {}) });
+  if (input.action === 'texts') return json({ male: savedFor('male'), female: savedFor('female'), ...(input.broker_id ? { recipient: savedFor(gender), recipient_gender: gender === 'female' ? 'female' : 'male', demo_link: demoLink } : {}) });
   if (input.action === 'save_text') {
     if (input.gender !== 'male' && input.gender !== 'female') return json({ error: 'יש לבחור נוסח לגברים או לנשים' }, 400);
-    try { templateBody(input.text ?? ''); } catch (e) { return json({ error: e instanceof Error ? e.message : 'נוסח לא תקין' }, 400); }
+    try {
+      const candidate = templateBody(input.text ?? '');
+      if (demo && !templateHasLink(candidate)) return json({ error: 'תבנית דמו חייבת לכלול את {authLink} כדי לשלוח קישור צפייה' }, 400);
+    } catch (e) { return json({ error: e instanceof Error ? e.message : 'נוסח לא תקין' }, 400); }
     const { error } = await admin.from('broker_invitation_template_texts').upsert({ gender: input.gender, body: (input.text ?? '').trim(), updated_by: caller.userId, updated_at: new Date().toISOString() });
     if (error) return json({ error: 'שמירת הנוסח נכשלה' }, 500);
     gender = input.gender;
@@ -56,6 +69,7 @@ Deno.serve(async req => {
   let body: string;
   try { body = templateBody(text); } catch (e) { return json({ error: e instanceof Error ? e.message : 'Invalid template' }, 400); }
   const name = await invitationTemplateName(body);
+  if (input.action === 'send' && demo && !templateHasLink(body)) return json({ error: 'תבנית הדמו אינה כוללת קישור. יש לעדכן אותה ולהגיש ל-Meta מחדש.' }, 409);
   try {
     // Use only the platform's already configured official number, never the target broker's WABA.
     const { data: rows, error: configError } = await admin.from('wa_providers').select('config').eq('provider_name', 'WBA').eq('is_official', true).eq('is_active', true).order('updated_at', { ascending: false });
@@ -77,14 +91,14 @@ Deno.serve(async req => {
     let template = live.data?.find((t: { name: string; language: string }) => t.name === name && t.language === BROKER_TEMPLATE_LANGUAGE);
     if (template && template.components?.find((c: { type: string }) => c.type === 'BODY')?.text !== body) return json({ error: 'נוסח Meta אינו תואם לתצוגה. יש לרענן לפני שליחה.' }, 409);
     if ((input.action === 'register' || input.action === 'save_text') && !template) {
-      template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/auth?broker=00000000-0000-4000-8000-000000000001'] : ['ישראל ישראלי']] } }] });
+      template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/demo/broker'] : ['ישראל ישראלי']] } }] });
     }
-    if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text, sender: '972537983832' });
+    if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text, sender: '972537983832', demo_link: demoLink });
     if (!input.broker_id || !input.request_id || !input.consent) return json({ error: 'נדרשים מתווך, מזהה שליחה ואישור הסכמת הנמען' }, 400);
     if (template?.status !== 'APPROVED') return json({ error: 'התבנית טרם אושרה ב-Meta', status: template?.status ?? 'NOT_REGISTERED' }, 409);
     const { data: broker, error: brokerError } = await admin.from('profiles').select('id,full_name,phone').eq('id', input.broker_id).single();
-    const { data: brokerRoles, error: roleError } = await admin.from('user_roles').select('role').eq('user_id', input.broker_id).in('role', ['agent', 'lead_agent', 'managing_broker', 'junior_agent', 'developer']);
-    if (brokerError || roleError || !broker || !brokerRoles?.length) return json({ error: 'הנמען אינו מתווך פעיל' }, 400);
+    const invitedRoles = ['agent', 'lead_agent', 'managing_broker', 'junior_agent', 'developer', 'marketing_company', 'property_owner', 'property_seeker', 'affiliate'];
+    if (brokerError || !broker || !roles.some(role => invitedRoles.includes(role))) return json({ error: 'הנמען אינו חשבון הממתין להזמנה' }, 400);
     const phone = officialBrokerPhone(contact?.phone ?? broker.phone ?? '');
     if (!phone) return json({ error: 'חסר מספר נייד תקין למתווך' }, 400);
     const { data: onboarding, error: onboardingError } = await admin.from('admin_broker_onboarding').select('user_id,invitation_link_token,first_invitation_at,first_login_at').eq('user_id', broker.id).maybeSingle();
@@ -92,8 +106,8 @@ Deno.serve(async req => {
     const { data: account, error: accountError } = await admin.auth.admin.getUserById(broker.id);
     if (accountError || !account.user || account.user.last_sign_in_at) return json({ error: 'החשבון אינו ממתין להזמנה ראשונה' }, 409);
     if (onboarding.first_login_at || onboarding.first_invitation_at) return json({ error: 'הזמנה ראשונה כבר נשלחה או שהחשבון כבר התחבר' }, 409);
-    if (contact?.phone) {
-      // Sign-in codes go to the phone on the account, so the contact's number becomes the account's login phone.
+    if (!demo && contact?.phone) {
+      // Only personal invitations need sign-in codes; public demo links never change the account login phone.
       const { error: loginPhoneError } = await admin.auth.admin.updateUserById(broker.id, { phone: `+${contact.phone}`, phone_confirm: true });
       if (loginPhoneError) return json({ error: 'מספר איש הקשר כבר משמש לכניסה לחשבון אחר. יש להזין מספר אחר לאיש הקשר.' }, 409);
     }
@@ -107,7 +121,7 @@ Deno.serve(async req => {
     try {
       const site = new URL(publicSiteOrigin());
       if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');
-      const link = invitationLink(site.origin, broker.id, onboarding.invitation_link_token);
+      const link = demo ? demoLink! : invitationLink(site.origin, broker.id, onboarding.invitation_link_token);
       sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: (contact?.name || broker.full_name)?.trim().split(/\s+/)[0] || 'מתווך' }, ...(templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });
     } catch (e) {
       await admin.from('broker_invitation_sends').update({ status: 'unknown' }).eq('request_id', input.request_id);

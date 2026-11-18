@@ -19,3 +19,23 @@ export function invitationLink(origin: string, userId: string, token: string) {
   if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');
   return `${site.origin}/auth?broker=${encodeURIComponent(userId)}&invitation=${encodeURIComponent(token)}`;
 }
+
+export type InvitationDemoType = 'broker' | 'marketing' | 'developer' | 'owner' | 'buyer' | 'affiliate';
+
+/** Specific professional roles win over the generic partner role; unknown roles choose their own demo. */
+export function demoTypeForRoles(roles: readonly string[]): InvitationDemoType | null {
+  if (roles.includes('marketing_company')) return 'marketing';
+  if (roles.includes('developer')) return 'developer';
+  if (roles.includes('property_owner')) return 'owner';
+  if (roles.includes('property_seeker')) return 'buyer';
+  if (roles.some(role => ['agent', 'lead_agent', 'managing_broker', 'junior_agent'].includes(role))) return 'broker';
+  if (roles.includes('affiliate')) return 'affiliate';
+  return null;
+}
+
+export function demoInvitationLink(origin: string, roles: readonly string[]) {
+  const site = new URL(origin);
+  if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');
+  const type = demoTypeForRoles(roles);
+  return `${site.origin}/demo${type ? `/${type}` : ''}`;
+}

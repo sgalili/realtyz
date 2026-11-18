@@ -3,7 +3,7 @@ import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { brokerFirstName, brokerInvitationEmailHtml, propertyExample, BROKER_EMAIL_BATCH_MAX } from '../_shared/brokerInvitationEmail.ts';
 import { loadAttachment, attachmentBase64, markAttachmentSent } from '../_shared/invitationAttachment.ts';
-import { invitationLink, publicSiteOrigin } from '../_shared/importInvitationPolicy.ts';
+import { demoInvitationLink, invitationLink, publicSiteOrigin } from '../_shared/importInvitationPolicy.ts';
 
 // Email only to brokers whose consent a Super Admin recorded; never to scraped contacts without consent.
 const schema = z.discriminatedUnion('action', [
@@ -13,8 +13,8 @@ const schema = z.discriminatedUnion('action', [
 ]);
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const escHtml = (v: string) => v.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
-// Super Admin-edited body: escaped plain text only, always followed by the fixed sign-in link and unsubscribe.
-const customEmailHtml = (msg: string, link: string, unsubscribeUrl: string) => `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"></head><body style="margin:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#1f2937"><div style="max-width:560px;margin:0 auto;padding:28px 22px;text-align:right;line-height:1.7;font-size:16px"><div style="font-weight:700;font-size:20px;color:#0f2a4a;margin-bottom:18px">TORAFF</div>${msg.split(/\n{2,}/).map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('')}<p style="margin:8px 0 26px"><a href="${escHtml(link)}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-weight:700">כניסה לנכסים שלי</a></p><p style="margin:0;color:#6b7280;font-size:13px"><a href="${escHtml(unsubscribeUrl)}" style="color:#6b7280">הסרה מרשימת התפוצה</a></p></div></body></html>`;
+// Super Admin-edited body: escaped plain text only, always followed by the selected demo/sign-in link and unsubscribe.
+const customEmailHtml = (msg: string, link: string, unsubscribeUrl: string, demo: boolean) => `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"></head><body style="margin:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#1f2937"><div style="max-width:560px;margin:0 auto;padding:28px 22px;text-align:right;line-height:1.7;font-size:16px"><div style="font-weight:700;font-size:20px;color:#0f2a4a;margin-bottom:18px">TORAFF</div>${msg.split(/\n{2,}/).map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('')}<p style="margin:8px 0 26px"><a href="${escHtml(link)}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-weight:700">${demo ? 'צפייה בחשבון הדמו' : 'כניסה לנכסים שלי'}</a></p><p style="margin:0;color:#6b7280;font-size:13px"><a href="${escHtml(unsubscribeUrl)}" style="color:#6b7280">הסרה מרשימת התפוצה</a></p></div></body></html>`;
 const page = (msg: string) => new Response(`<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><body style="font-family:Arial;text-align:center;padding:60px">${msg}</body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 
 Deno.serve(async req => {
@@ -56,29 +56,10 @@ Deno.serve(async req => {
   let attachments: { filename: string; content: string }[] | undefined; let attachmentId: string | null = null;
   if (input.attachment_id) { try { const a = await loadAttachment(admin, input.attachment_id); if (a) { attachments = [{ filename: a.file_name, content: await attachmentBase64(admin, a) }]; attachmentId = a.id; } } catch (e) { return json({ error: e instanceof Error ? e.message : 'הקובץ המצורף אינו זמין' }, 400); } }
   const attachLink = attachments ? [{ label: `קובץ מצורף: ${attachments[0].filename}`, url: '' }] : [];
-  const results: { broker_id: string; status: string; error?: string }[] = [];
-  // Demo access email: shared view-only account credentials instead of the recipient's personal sign-in. Consent still required.
-  if (input.demo) {
-    if (!input.broker_id) return json({ error: 'יש לבחור נמען' }, 400);
-    const { data: row } = await admin.from('admin_broker_onboarding').select('user_id,email_consent_at,email_unsubscribed_at,email_unsubscribe_token').eq('user_id', input.broker_id).maybeSingle();
-    const { data: prof } = await admin.from('profiles').select('full_name,email').eq('id', input.broker_id).maybeSingle();
-    if (!row?.email_consent_at || row.email_unsubscribed_at || !prof?.email || prof.email.endsWith('.invalid')) return json({ error: 'המתווך אינו זמין לשליחה: נדרשת הסכמה מתועדת וכתובת אימייל תקינה' }, 400);
-    const unsubscribeUrl = `${fnBase}?unsubscribe=${row.email_unsubscribe_token}`;
-    const msg = `${input.message ?? ''}\n\nפרטי כניסה לחשבון הדמו (צפייה בלבד):\nמספר טלפון: 0501234567\nקוד אימות: 1234`.trim();
-    const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({
-      from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [prof.email], subject: input.subject || 'חשבון דמו לצפייה ב-TORAFF',
-      html: customEmailHtml(msg, `${site.origin}/auth`, unsubscribeUrl).replace('כניסה לנכסים שלי', 'כניסה לחשבון הדמו'),
-      headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }, tags: [{ name: 'type', value: 'demo_invitation' }], ...(attachments ? { attachments } : {}),
-    }) });
-    const demoLog = { broker_id: input.broker_id, created_by: caller.userId, to_email: prof.email, subject: input.subject || 'חשבון דמו לצפייה ב-TORAFF', body_text: msg, links: [{ label: 'כניסה לחשבון הדמו', url: `${site.origin}/auth` }, { label: 'הסרה מרשימת התפוצה', url: unsubscribeUrl }, ...attachLink], is_demo: true };
-    if (!res.ok) { const t = await res.text(); await admin.from('broker_invitation_emails').insert({ ...demoLog, status: 'failed', error: t.slice(0, 500) }); console.error('demo invitation email failed', res.status, t); return json({ error: `שליחת המייל נכשלה (${res.status})`, details: t }, 502); }
-    let demoId: string | null = null; try { demoId = (await res.clone().json()).id ?? null; } catch { /* ignore */ }
-    await admin.from('broker_invitation_emails').insert({ ...demoLog, message_id: demoId });
-    if (attachmentId) await markAttachmentSent(admin, attachmentId);
-    return json({ sent: 1, failed: 0 });
-  }
+  const demo = input.demo ?? true;
   const targets = input.broker_id ? eligible.filter(r => r.user_id === input.broker_id) : eligible;
   if (input.broker_id && !targets.length) return json({ error: 'המתווך אינו זמין לשליחה: נדרשת הסכמה מתועדת וכתובת אימייל תקינה' }, 400);
+  const results: { broker_id: string; status: string; error?: string }[] = [];
   for (const r of targets.slice(0, input.limit)) {
     const { data: account, error: accountError } = await admin.auth.admin.getUserById(r.user_id);
     if (accountError || !account.user || account.user.last_sign_in_at) { results.push({ broker_id: r.user_id, status: 'skipped' }); continue; }
@@ -89,7 +70,6 @@ Deno.serve(async req => {
     const { data: listings } = await admin.from('listings').select('property_title,address,city,deal_type').eq('workspace_owner_id', r.user_id).not('status', 'in', '(removed,sold,discarded)').order('created_at', { ascending: false }).limit(10);
     const examples = (listings ?? []).map(propertyExample).filter((v): v is string => !!v).slice(0, 2);
     const unsubscribeUrl = `${fnBase}?unsubscribe=${r.email_unsubscribe_token}`;
-    const link = invitationLink(site.origin, r.user_id, r.invitation_link_token);
     if (!r.p) continue;
     // Same recipient name as the dialog greeting: the marketing-company contact when saved, else the account holder.
     const { data: dev } = await admin.from('developers').select('marketing_company_id').eq('workspace_owner_id', r.user_id).not('marketing_company_id', 'is', null).limit(1).maybeSingle();
@@ -97,16 +77,21 @@ Deno.serve(async req => {
     const firstName = brokerFirstName(mc?.contact_name?.trim() || r.p.full_name);
     const sentSubject = input.subject || (firstName ? `${firstName}, הנכסים שלך כבר מחכים לך ב-TORAFF` : 'הנכסים שלך כבר מחכים לך ב-TORAFF');
     try {
+      const { data: roleRows, error: roleError } = demo ? await admin.from('user_roles').select('role').eq('user_id', r.user_id) : { data: [], error: null };
+      if (roleError) throw new Error('קריאת סוג המשתמש נכשלה');
+      const link = demo ? demoInvitationLink(site.origin, (roleRows ?? []).map(role => String(role.role))) : invitationLink(site.origin, r.user_id, r.invitation_link_token);
+      const message = input.message ? `${input.message}${demo ? '\n\nהקישור מוביל לחשבון הדגמה ציבורי לצפייה בלבד, ללא צורך בהרשמה או קוד אימות.' : ''}` : undefined;
       const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({
         from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [r.p.email], subject: sentSubject,
-        html: input.message ? customEmailHtml(input.message, link, unsubscribeUrl) : brokerInvitationEmailHtml({ firstName, examples, link, unsubscribeUrl }),
+        html: message ? customEmailHtml(message, link, unsubscribeUrl, demo) : brokerInvitationEmailHtml({ firstName, examples, link, unsubscribeUrl, demo }),
         headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
-        tags: [{ name: 'type', value: 'broker_invitation' }], ...(attachments ? { attachments } : {}),
+        tags: [{ name: 'type', value: demo ? 'demo_invitation' : 'broker_invitation' }], ...(attachments ? { attachments } : {}),
       }) });
       const raw = await res.text();
       if (!res.ok) throw new Error(`[${res.status}]: ${raw}`);
-      await admin.from('admin_broker_onboarding').update({ email_message_id: JSON.parse(raw).id ?? null }).eq('user_id', r.user_id);
-      await admin.from('broker_invitation_emails').insert({ broker_id: r.user_id, created_by: caller.userId, to_email: r.p.email, subject: sentSubject, body_text: input.message ?? `ברירת מחדל${examples.length ? `\n${examples.join('\n')}` : ''}`, links: [{ label: 'כניסה לנכסים שלי', url: link }, { label: 'הסרה מרשימת התפוצה', url: unsubscribeUrl }, ...attachLink], message_id: JSON.parse(raw).id ?? null });
+      const messageId = JSON.parse(raw).id ?? null;
+      await admin.from('admin_broker_onboarding').update({ email_message_id: messageId }).eq('user_id', r.user_id);
+      await admin.from('broker_invitation_emails').insert({ broker_id: r.user_id, created_by: caller.userId, to_email: r.p.email, subject: sentSubject, body_text: message ?? `ברירת מחדל${examples.length ? `\n${examples.join('\n')}` : ''}`, links: [{ label: demo ? 'צפייה בחשבון הדמו' : 'כניסה לנכסים שלי', url: link }, { label: 'הסרה מרשימת התפוצה', url: unsubscribeUrl }, ...attachLink], message_id: messageId, is_demo: demo });
       if (attachmentId) await markAttachmentSent(admin, attachmentId);
       results.push({ broker_id: r.user_id, status: 'sent' });
     } catch (e) {

@@ -36,7 +36,7 @@ const DEFAULT_EMAIL = (name: string) => `שלום${name ? ` ${name.split(/\s+/)[
 
 חסכנו לך את העבודה והזנו עבורך את פרטי הנכסים. הם שמורים במרחב האישי שלך ב-TORAFF וממתינים לבדיקה שלך.
 
-הנכסים לא יתפרסמו בלי אישורך. אחרי כניסה עם קוד אימות אפשר לעבור עליהם, לתקן פרטים ולקבוע עמלת סגירה ותמחור פניות.`;
+הנכסים לא יתפרסמו בלי אישורך. לאחר הכניסה אפשר לעבור עליהם, לתקן פרטים ולקבוע עמלת סגירה ותמחור פניות.`;
 
 function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; contactPhone?: string | null; contactName?: string | null }) {
   // Greeting and title use the actual recipient: the saved contact person when set, otherwise the account holder.
@@ -49,7 +49,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
   const [email, setEmail] = useState(b.email ?? '');
   const [body, setBody] = useState(() => DEFAULT_EMAIL(recipientFirst));
   const bodyTouched = useRef(false);
-  const [demo, setDemo] = useState(false);
+  const [demo, setDemo] = useState(true);
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [attachmentId, setAttachmentId] = useState<string | null>(null);
   // Same gender-matched default wording as the WhatsApp template, filled with the recipient's first name.
@@ -95,9 +95,9 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
         <label className="block space-y-1"><span className="text-sm font-medium">כותרת המייל</span><Input aria-label="כותרת המייל" className="h-11 text-base" maxLength={200} value={subject} onChange={e => setSubject(e.target.value)} /></label>
         <Textarea aria-label="נוסח המייל" className="min-h-[200px] text-base" value={body} onChange={e => { bodyTouched.current = true; setBody(e.target.value); }} />
         <InvitationAttachmentPicker value={attachmentId} onChange={setAttachmentId} />
-        <p className="text-sm text-muted-foreground">קישור הכניסה לנכסים וקישור ההסרה מתווספים אוטומטית בסוף המייל.</p>
-        <label className="flex items-center gap-2 text-base"><input type="checkbox" className="h-4 w-4" checked={demo} onChange={e => setDemo(e.target.checked)} />שלח כחשבון דמו לצפייה בלבד</label>
-        {demo && <p className="text-sm text-muted-foreground">יישלחו פרטי חשבון הדמו (0501234567, קוד 1234) במקום כניסה אישית. בחשבון הדמו אין אפשרות לפרסם.</p>}
+        <p className="text-sm text-muted-foreground">{demo ? 'קישור הדמו וקישור ההסרה מתווספים אוטומטית בסוף המייל.' : 'קישור הכניסה לנכסים וקישור ההסרה מתווספים אוטומטית בסוף המייל.'}</p>
+        <label className="flex items-center gap-2 text-base"><input type="checkbox" className="h-4 w-4" checked={demo} onChange={e => setDemo(e.target.checked)} />שלח קישור לחשבון דמו לצפייה בלבד</label>
+        {demo && <p className="text-sm text-muted-foreground">הקישור יותאם אוטומטית לסוג המשתמש, ללא הרשמה או קוד אימות. אם הסוג אינו ידוע, הנמען יבחר אותו לפני הכניסה לדמו.</p>}
         {b.email_invited_at && !demo && <p className="text-sm text-muted-foreground">הזמנה כבר נשלחה באימייל למתווך זה.</p>}
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
           <Button variant="outline" disabled={send.isPending} onClick={() => setOpen(false)}>ביטול</Button>

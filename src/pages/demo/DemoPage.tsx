@@ -24,6 +24,19 @@ function CtaBanner() {
   );
 }
 
+function DemoRoleSelection() {
+  return <div dir="rtl" className="min-h-screen bg-background text-foreground">
+    <main data-no-hero-wave className="mx-auto max-w-4xl space-y-6 p-4 py-8">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground"><Eye className="h-4 w-4" />מצב דמו לצפייה בלבד · ללא הרשמה או קוד אימות</div>
+      <header className="space-y-2"><h1 className="text-2xl font-bold sm:text-3xl">איזה חשבון תרצה לראות?</h1><p className="text-muted-foreground">בחר את סוג המשתמש שלך ותעבור מיד להדגמה המותאמת לך.</p></header>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{DEMO_TYPES.map(t => <Link key={t.id} to={`/demo/${t.id}`} className="group rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary hover:bg-accent" aria-label={`צפייה בדמו: ${t.label}`}>
+        <span className="block text-lg font-semibold">{t.label}</span><span className="mt-2 flex items-center gap-1 text-sm text-primary">צפייה בהדגמה<Eye className="h-4 w-4" /></span>
+      </Link>)}</div>
+      <CtaBanner />
+    </main>
+  </div>;
+}
+
 export default function DemoPage() {
   const { type } = useParams();
   const [tick, setTick] = useState(0);
@@ -47,8 +60,8 @@ export default function DemoPage() {
     },
   });
 
-  if (!type) return <Navigate to="/demo/broker" replace />;
-  if (!cfg) return <Navigate to="/demo/broker" replace />;
+  if (!type) return <DemoRoleSelection />;
+  if (!cfg) return <Navigate to="/demo" replace />;
 
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">

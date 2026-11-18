@@ -1,5 +1,10 @@
 # Roadmap
 
+## Role-aware public demo invitations November 18
+- [x] Default first email and official WhatsApp invitations to a public view-only demo link rather than shared login credentials.
+- [x] Resolve all six saved user types to their matching public demo and route unknown types through a role-selection page.
+- [x] Preserved the explicit personal-invitation alternative, consent, Meta approval and first-invitation claims; 21 focused tests, TypeScript and guest/admin browser checks passed, both functions deployed, no messages sent. The new WhatsApp wording still requires Meta approval before sending.
+
 ## Pending invitation identity and contact gender November 18
 - [x] Keep the company/developer phone immediately beside its name in the first card row.
 - [x] Hide contact gender choices until contact editing; show only a saved, color-coded selection in the closed card.
