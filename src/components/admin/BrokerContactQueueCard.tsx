@@ -36,13 +36,16 @@ const DEFAULT_EMAIL = (name: string) => `שלום${name ? ` ${name.split(/\s+/)[
 
 הנכסים לא יתפרסמו בלי אישורך. אחרי כניסה עם קוד אימות אפשר לעבור עליהם, לתקן פרטים ולקבוע עמלת סגירה ותמחור פניות.`;
 
-function EmailSendDialog({ b, contactPhone }: { b: ContactBroker; contactPhone?: string | null }) {
+function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; contactPhone?: string | null; contactName?: string | null }) {
+  // Greeting and title use the actual recipient: the saved contact person when set, otherwise the account holder.
+  const recipientName = (contactName?.trim() || b.full_name || '').trim();
+  const recipientFirst = recipientName.split(/\s+/)[0] || '';
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [channel, setChannel] = useState<'email' | 'whatsapp'>('email');
   const waSent = useRef(false);
   const [email, setEmail] = useState(b.email ?? '');
-  const [body, setBody] = useState(() => DEFAULT_EMAIL(b.full_name));
+  const [body, setBody] = useState(() => DEFAULT_EMAIL(recipientFirst));
   const bodyTouched = useRef(false);
   const [demo, setDemo] = useState(false);
   // Same gender-matched default wording as the WhatsApp template, filled with the recipient's first name.
@@ -50,16 +53,16 @@ function EmailSendDialog({ b, contactPhone }: { b: ContactBroker; contactPhone?:
   useEffect(() => {
     const t = sharedText.data?.recipient;
     if (!t || bodyTouched.current) return;
-    setBody(t.replace('{brokerName}', b.full_name.split(/\s+/)[0] || '').replace(/\s*\{authLink\}\s*/, '\n').trim());
-  }, [sharedText.data, b.full_name]);
+    setBody(t.replace(/\{brokerName\}|\[שם פרטי\]/g, recipientFirst).replace(/\s*\{authLink\}\s*/, '\n').trim());
+  }, [sharedText.data, recipientFirst]);
   const saveEmail = useMutation({
     mutationFn: () => invoke('admin-broker-contact', { action: 'save', user_id: b.user_id, email: email.trim() }),
     onSuccess: () => { toast.success('האימייל נשמר'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
   const send = useMutation({
-    mutationFn: () => invoke<{ sent: number }>('admin-broker-email-invitation', { action: 'send_batch', broker_id: b.user_id, limit: 1, message: body.trim(), demo }),
-    onSuccess: d => { if (d.sent) { toast.success('המייל נשלח'); setOpen(false); } else toast.error('המייל לא נשלח'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-contact-history'] }); },
+    mutationFn: () => invoke<{ sent: number; results?: { status: string; error?: string }[] }>('admin-broker-email-invitation', { action: 'send_batch', broker_id: b.user_id, limit: 1, message: body.trim(), demo }),
+    onSuccess: d => { if (d.sent) { toast.success('המייל נשלח'); setOpen(false); } else { const r = d.results?.[0]; toast.error(r?.status === 'skipped' ? 'המייל לא נשלח: כבר נשלחה הזמנה או שהחשבון כבר נכנס' : `המייל לא נשלח${r?.error ? `: ${r.error}` : ''}`); } void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-contact-history'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
   const emailDirty = email.trim().toLowerCase() !== (b.email ?? '');
@@ -75,7 +78,7 @@ function EmailSendDialog({ b, contactPhone }: { b: ContactBroker; contactPhone?:
     <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label={`שליחת הזמנה ל${b.full_name || 'מתווך'}`} title="שליחת הזמנה" onClick={() => { setOpen(true); setChannel('email'); }}><Mail className="h-4 w-4" /></Button>
     <Dialog open={open} onOpenChange={v => { if (!send.isPending) { setOpen(v); if (!v && waSent.current) { waSent.current = false; void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); } } }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
-        <DialogHeader><DialogTitle>שליחת הזמנה ל{b.full_name || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">בחירת ערוץ שליחה</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>שליחת הזמנה ל{recipientName || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">בחירת ערוץ שליחה</DialogDescription></DialogHeader>
         <Tabs value={channel} onValueChange={v => setChannel(v as 'email' | 'whatsapp')} dir="rtl">
         <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="email">אימייל</TabsTrigger><TabsTrigger value="whatsapp">WhatsApp</TabsTrigger></TabsList>
         <TabsContent value="whatsapp"><div className="flex justify-end"><BrokerInvitationTemplateEditor /></div>{contactPhone && <p className="pt-2 text-sm text-muted-foreground">ההזמנה וקוד הכניסה יישלחו לאיש הקשר בחברת השיווק: <span dir="ltr">{formatPhoneDisplay(contactPhone)}</span></p>}{b.phone || contactPhone ? <OfficialBrokerInvitationPanel broker={{ id: b.user_id, full_name: b.full_name }} onClose={() => setOpen(false)} onSent={() => { waSent.current = true; }} /> : <p className="py-4 text-base text-muted-foreground">יש להוסיף נייד בכרטיס כדי לשלוח ב-WhatsApp.</p>}</TabsContent>
@@ -152,7 +155,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
           <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="ביטול" onClick={() => { setPhone(b.phone ? formatPhoneDisplay(b.phone) : ''); setEditing(false); }}><X className="h-4 w-4" /></Button>
         </> : <>
           <button type="button" dir={b.phone ? 'ltr' : 'rtl'} disabled={!!b.first_login_at} title="נייד היזם" aria-label={b.phone ? `עריכת הנייד של ${b.full_name}` : `הוספת נייד ל${b.full_name}`} onClick={() => setEditing(true)} className={`whitespace-nowrap px-1 text-xs underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.phone ? '' : 'text-primary'}`}>{b.phone ? formatPhoneDisplay(b.phone) : 'הוסף נייד'}</button>
-          <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} />
+          <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} />
         </>}
         <Button size="icon" variant="ghost" className="absolute left-[10px] top-[10px] h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><X className="h-4 w-4" /></Button>
       </div>

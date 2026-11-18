@@ -50,7 +50,9 @@ Deno.serve(async req => {
 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY'); const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
   if (!LOVABLE_API_KEY || !RESEND_API_KEY) return json({ error: 'חיבור Resend אינו מוגדר' }, 503);
-  const site = new URL(Deno.env.get('PUBLIC_SITE_URL') || 'https://toraff.co.il');
+  const rawSite = (Deno.env.get('PUBLIC_SITE_URL') || '').trim();
+  let site: URL;
+  try { site = new URL(/^https?:\/\//i.test(rawSite) ? rawSite : `https://${rawSite || 'toraff.co.il'}`); } catch { site = new URL('https://toraff.co.il'); }
   const fnBase = `${Deno.env.get('SUPABASE_URL')}/functions/v1/admin-broker-email-invitation`;
   const results: { broker_id: string; status: string; error?: string }[] = [];
   // Demo access email: shared view-only account credentials instead of the recipient's personal sign-in. Consent still required.
@@ -66,7 +68,7 @@ Deno.serve(async req => {
       html: customEmailHtml(msg, `${site.origin}/auth`, unsubscribeUrl).replace('כניסה לנכסים שלי', 'כניסה לחשבון הדמו'),
       headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }, tags: [{ name: 'type', value: 'demo_invitation' }],
     }) });
-    if (!res.ok) { console.error('demo invitation email failed', res.status, await res.text()); return json({ sent: 0, failed: 1 }); }
+    if (!res.ok) { const t = await res.text(); console.error('demo invitation email failed', res.status, t); return json({ error: `שליחת המייל נכשלה (${res.status})`, details: t }, 502); }
     return json({ sent: 1, failed: 0 });
   }
   const targets = input.broker_id ? eligible.filter(r => r.user_id === input.broker_id) : eligible;
