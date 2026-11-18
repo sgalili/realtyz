@@ -318,7 +318,8 @@ const sameProject = (old: any, fresh: any) =>
 export function mergeDeveloperQueuePage(work: DeveloperQueueWork, page: { source_url: string; developer: Partial<DeveloperQueueWork['developer']>; projects: any[]; links: string[]; inventoryPages?: { url: string; parent: RecordValue }[] }) {
   for (const key of ['company_name', 'phone', 'logo_url', 'bio'] as const) {
     const value = page.developer?.[key];
-    if (value != null && value !== '') work.developer[key] = value;
+    // The developer page names the company first; partner names on joint-venture project pages never overwrite it.
+    if (value != null && value !== '' && !(key === 'company_name' && work.developer.company_name)) work.developer[key] = value;
   }
   for (const project of page.projects ?? []) {
     const index = work.projects.findIndex(old => sameProject(old, project));
