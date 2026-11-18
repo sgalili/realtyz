@@ -34,15 +34,20 @@ export function MarketingContactLine({ ownerId, devName, contact }: { ownerId: s
   const companyId = contact?.company_id ?? null;
   const save = useMutation({
     mutationFn: async (patch: { name?: string; contact_name?: string | null; contact_phone?: string | null; contact_gender?: string | null }) => {
-      const { error } = await supabase.from('marketing_companies').update(patch).eq('id', companyId!);
+      if (companyId) {
+        const { error } = await supabase.from('marketing_companies').update(patch).eq('id', companyId);
+        if (error) throw error; return;
+      }
+      // No marketing company yet: keep the contact on the developer itself.
+      const pick = <K extends 'contact_name' | 'contact_phone' | 'contact_gender'>(k: K) => (k in patch ? patch[k] : contact?.[k]) ?? null;
+      const { error } = await supabase.rpc('admin_set_developer_contact', { _owner: ownerId, _name: pick('contact_name') ?? '', _phone: pick('contact_phone') as string, _gender: pick('contact_gender') as string });
       if (error) throw error;
     },
     onSuccess: () => { toast.success('נשמר'); setField(null); void qc.invalidateQueries({ queryKey: ['marketing-contacts'] }); },
     onError: (e: { code?: string }) => toast.error(e?.code === '23505' ? 'חברה בשם זה כבר קיימת' : 'השמירה נכשלה'),
   });
-  const needCompany = () => { toast.error('יש לבחור חברת שיווק תחילה כדי לשמור את פרטי איש הקשר'); return true; };
   const start = (f: Field) => {
-    if (!companyId && needCompany()) return;
+    if (f === 'company' && !companyId) return;
     setField(f);
     setValue(f === 'company' ? contact?.company_name ?? '' : f === 'name' ? contact?.contact_name ?? '' : contact?.contact_phone ? formatPhoneDisplay(contact.contact_phone) : '');
     setPhoneValue(contact?.contact_phone ? formatPhoneDisplay(contact.contact_phone) : '');

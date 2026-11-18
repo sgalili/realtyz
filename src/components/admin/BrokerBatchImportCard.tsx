@@ -107,8 +107,17 @@ export function BrokerBatchImportCard() {
     return startContinuousImportRunner({
       initialDelay: Math.max(0, (checkpoint?.waitUntil ?? 0) - Date.now()),
       step: async () => {
-        const { data, error } = await supabase.functions.invoke('admin-broker-import-queue', { body: { action: 'step', job_id: jobId } });
-        if (error || data?.error) throw error ?? new Error(data.error);
+        // The step keeps running on the server; the screen waits at most 10 seconds and then just checks progress again.
+        let data: { error?: string; failed?: boolean; paused?: boolean; done?: boolean; retry_in_ms?: number; retry_at?: number } | null = null;
+        try {
+          const res = await supabase.functions.invoke('admin-broker-import-queue', { body: { action: 'step', job_id: jobId }, signal: AbortSignal.timeout(10_000) });
+          if (res.error || res.data?.error) throw res.error ?? new Error(res.data.error);
+          data = res.data;
+        } catch (e) {
+          const ctx = (e as { context?: { name?: string; message?: string } })?.context;
+          if (e instanceof Error && /abort|timeout/i.test(`${e.name} ${e.message} ${ctx?.name ?? ''} ${ctx?.message ?? ''}`)) return { done: false, retry_in_ms: 5000 };
+          throw e;
+        }
         return { done: data?.failed === true || data?.paused === true || data?.done === true, retry_in_ms: data?.retry_in_ms ?? (data?.retry_at ? Math.max(0, data.retry_at - Date.now()) : undefined) };
       },
       refresh: () => qc.invalidateQueries({ queryKey: ['admin-broker-import-jobs'] }),

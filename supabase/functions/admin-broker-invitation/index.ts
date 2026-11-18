@@ -43,6 +43,11 @@ Deno.serve(async req => {
       const { data: mc } = await admin.from('marketing_companies').select('contact_name,contact_phone,contact_gender').eq('id', companyId).maybeSingle();
       if (mc?.contact_phone) { contact = { name: mc.contact_name, phone: mc.contact_phone, gender: mc.contact_gender }; if (mc.contact_gender) gender = mc.contact_gender; }
     }
+    if (!contact) {
+      // Contact saved directly on the developer (no marketing company).
+      const { data: dc } = await admin.from('developers').select('contact_name,contact_phone,contact_gender').eq('workspace_owner_id', input.broker_id).not('contact_phone', 'is', null).order('created_at').limit(1).maybeSingle();
+      if (dc?.contact_phone) { contact = { name: dc.contact_name, phone: dc.contact_phone, gender: dc.contact_gender }; if (dc.contact_gender) gender = dc.contact_gender; }
+    }
   }
   let roles: string[] = [];
   let demoLink: string | null = null;

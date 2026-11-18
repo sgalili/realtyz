@@ -74,7 +74,8 @@ Deno.serve(async req => {
     // Same recipient name as the dialog greeting: the marketing-company contact when saved, else the account holder.
     const { data: dev } = await admin.from('developers').select('marketing_company_id').eq('workspace_owner_id', r.user_id).not('marketing_company_id', 'is', null).limit(1).maybeSingle();
     const { data: mc } = dev?.marketing_company_id ? await admin.from('marketing_companies').select('contact_name').eq('id', dev.marketing_company_id).maybeSingle() : { data: null };
-    const firstName = brokerFirstName(mc?.contact_name?.trim() || r.p.full_name);
+    const { data: dc } = mc?.contact_name ? { data: null } : await admin.from('developers').select('contact_name').eq('workspace_owner_id', r.user_id).not('contact_name', 'is', null).limit(1).maybeSingle();
+    const firstName = brokerFirstName(mc?.contact_name?.trim() || dc?.contact_name?.trim() || r.p.full_name);
     const sentSubject = input.subject || (firstName ? `${firstName}, הנכסים שלך כבר מחכים לך ב-TORAFF` : 'הנכסים שלך כבר מחכים לך ב-TORAFF');
     try {
       const { data: roleRows, error: roleError } = demo ? await admin.from('user_roles').select('role').eq('user_id', r.user_id) : { data: [], error: null };

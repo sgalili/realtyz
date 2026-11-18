@@ -1716,6 +1716,13 @@
       "when": 1795039048746,
       "tag": "0244_demo_broker_closing_and_developer_projects",
       "breakpoints": true
+    },
+    {
+      "idx": 245,
+      "version": "7",
+      "when": 1795039461314,
+      "tag": "0245_developer_direct_contact",
+      "breakpoints": true
     }
   ]
 }

@@ -117,6 +117,29 @@ function useOpenWorkspace() {
   };
 }
 
+/** Brokerage office name (bold, click-to-edit with dotted underline) with its logo when one exists. */
+function OfficeNameField({ b }: { b: ContactBroker }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(b.office_name ?? '');
+  const save = useMutation({
+    mutationFn: () => invoke('admin-broker-contact', { action: 'save', user_id: b.user_id, office_name: value.trim() }),
+    onSuccess: () => { toast.success('שם המשרד נשמר'); setEditing(false); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const commit = () => { if (value.trim().length < 2) { toast.error('שם המשרד קצר מדי'); return; } save.mutate(); };
+  if (editing) return <span className="flex shrink-0 items-center gap-1">
+    <Input autoFocus aria-label="שם משרד התיווך" className="h-8 w-40 px-2 text-sm sm:text-base" value={value} onChange={e => setValue(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false); }} />
+    <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="שמירת שם המשרד" disabled={save.isPending} onClick={commit}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>
+    <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="ביטול" onClick={() => { setValue(b.office_name ?? ''); setEditing(false); }}><X className="h-4 w-4" /></Button>
+  </span>;
+  return <span className="flex min-w-0 shrink items-center gap-1.5">
+    {b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-7 w-7 shrink-0 rounded-md border border-border/60 object-contain" />}
+    <button type="button" disabled={!!b.first_login_at} onClick={() => setEditing(true)} aria-label="עריכת שם משרד התיווך" className={`min-w-0 truncate text-sm font-bold underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.office_name ? 'text-foreground' : 'text-primary'}`}>{b.office_name || 'הוסף משרד תיווך'}</button>
+    <span aria-hidden className="text-muted-foreground">·</span>
+  </span>;
+}
+
 function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingContact | null }) {
   const qc = useQueryClient();
   const openWs = useOpenWorkspace();
@@ -153,32 +176,36 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
     onError: (e: Error) => toast.error(e.message),
   });
   const details = b.is_developer ? `${b.projects ?? 0} פרויקטים • ${b.apartments ?? 0} דירות במאגר` : [`${b.drafts} טיוטות`, b.license_number && `רישיון ${b.license_number}`, b.city].filter(Boolean).join(' · ');
-  return <li className="relative space-y-2 rounded-xl border border-border/70 p-3 pl-20 sm:p-4 sm:pl-24">
-    <div className="flex items-center gap-1">
-      <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
-        {b.office_logo_url ? <img src={b.office_logo_url} alt="" className="h-9 w-9 shrink-0 rounded-md border border-border/60 object-contain" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
-        <span className="flex min-w-0 items-center gap-1 text-base font-bold sm:text-lg"><span className="truncate">{b.full_name || 'ללא שם'}</span>{b.license_verified && <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-label="אומת מול המאגר הממשלתי" />}</span>
-      </button>
-      <div className="flex shrink-0 items-center gap-0">
-        {editing ? <>
+  const phoneControls = editing ? <>
           <Input autoFocus aria-label={`נייד (WhatsApp) של ${b.full_name}`} className="h-8 w-24 px-2 text-sm sm:w-36 sm:text-base" dir="ltr" inputMode="tel" placeholder="05X-XXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && dirty) save.mutate(); if (e.key === 'Escape') setEditing(false); }} />
           <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="שמירת נייד" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>
           <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="ביטול" onClick={() => { setPhone(b.phone ? formatPhoneDisplay(b.phone) : ''); setEditing(false); }}><X className="h-4 w-4" /></Button>
         </> : <>
-          <button type="button" dir={b.phone ? 'ltr' : 'rtl'} disabled={!!b.first_login_at} title="נייד היזם" aria-label={b.phone ? `עריכת הנייד של ${b.full_name}` : `הוספת נייד ל${b.full_name}`} onClick={() => setEditing(true)} className={`whitespace-nowrap px-1 text-xs underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.phone ? '' : 'text-primary'}`}>{b.phone ? formatPhoneDisplay(b.phone) : 'הוסף טלפון'}</button>
+          <button type="button" dir={b.phone ? 'ltr' : 'rtl'} disabled={!!b.first_login_at} title="נייד" aria-label={b.phone ? `עריכת הנייד של ${b.full_name}` : `הוספת נייד ל${b.full_name}`} onClick={() => setEditing(true)} className={`whitespace-nowrap px-1 text-xs underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.phone ? '' : 'text-primary'}`}>{b.phone ? formatPhoneDisplay(b.phone) : 'הוסף טלפון'}</button>
           {b.phone && <a href={`tel:+${b.phone}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-primary hover:bg-accent" aria-label={`חיוג אל ${b.full_name} ${formatPhoneDisplay(b.phone)}`} title={formatPhoneDisplay(b.phone)}><Phone className="h-4 w-4" /></a>}
-        </>}
-        <div className="absolute left-[10px] top-[10px] flex items-center gap-0" dir="ltr"><Button size="icon" variant="ghost" className="h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><X className="h-4 w-4" /></Button><EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} /></div>
+        </>;
+  return <li className="space-y-2 rounded-xl border border-border/70 p-3 sm:p-4">
+    <div className="flex items-center gap-1">
+      <div className="flex min-w-0 flex-1 items-center gap-1">
+        {b.license_verified && <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-label="אומת מול המאגר הממשלתי" />}
+        <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
+          {b.is_developer && b.office_logo_url ? <img src={b.office_logo_url} alt="" className="h-9 w-9 shrink-0 rounded-md border border-border/60 object-contain" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
+          <span className="truncate text-base font-bold sm:text-lg">{b.full_name || 'ללא שם'}</span>
+        </button>
+        {!b.is_developer && !b.gender && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'זכר', '\u2642\uFE0E'], ['female', 'נקבה', '\u2640\uFE0E']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role="radio" aria-checked={false} aria-label={label} title={label} className="h-7 w-7 text-base text-muted-foreground" disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>}
+      </div>
+      <div className="flex shrink-0 items-center gap-0">
+        {phoneControls}
+        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><X className="h-4 w-4" /></Button>
+        <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} />
       </div>
     </div>
     <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">
+      {!b.is_developer && <OfficeNameField b={b} />}
       <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground sm:text-base" title={details}>{details}</p>
       {!b.is_developer && !b.license_verified && regLicense && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense} onUpdated={() => void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] })} />}
     </div>
-    {b.is_developer ? <MarketingContactLine ownerId={b.user_id} devName={b.full_name} contact={marketing} /> : <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground sm:text-base">
-      {b.office_name && <><span className="min-w-0 truncate" title={b.office_name}>{b.office_name}</span><span aria-hidden>·</span></>}
-      <div role="radiogroup" aria-label="מגדר המתווך" className="flex">{([['male', 'זכר', '♂'], ['female', 'נקבה', '♀']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant={b.gender === g ? 'secondary' : 'ghost'} role="radio" aria-checked={b.gender === g} aria-label={label} title={label} className="h-7 w-7 text-base" disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>
-    </div>}
+    {b.is_developer && <MarketingContactLine ownerId={b.user_id} devName={b.full_name} contact={marketing} />}
     <Dialog open={deleting} onOpenChange={open => { if (!remove.isPending) setDeleting(open); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-md text-right">
         <DialogHeader><DialogTitle>מחיקת החשבון של {b.full_name || 'ללא שם'}</DialogTitle></DialogHeader>

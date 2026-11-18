@@ -13,7 +13,7 @@ const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('followups') }),
   z.object({ action: z.literal('imports') }),
   z.object({ action: z.literal('delete_import'), record_id: z.string().min(1).max(120).regex(/^(?:(?:batch|dev|onb):)?[0-9a-f-]{36}(?::[dbp]\d+)?$/i) }),
-  z.object({ action: z.literal('save'), user_id: z.string().uuid(), phone: z.string().trim().max(20).optional(), email: z.string().trim().max(254).optional(), gender: z.enum(['male','female']).optional() }),
+  z.object({ action: z.literal('save'), user_id: z.string().uuid(), phone: z.string().trim().max(20).optional(), email: z.string().trim().max(254).optional(), gender: z.enum(['male','female']).optional(), office_name: z.string().trim().min(2).max(120).optional() }),
 ]);
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const normalizePhone = (v: string) => { const d = v.replace(/\D/g, ''); return /^05\d{8}$/.test(d) ? `972${d.slice(1)}` : /^9725\d{8}$/.test(d) ? d : null; };
@@ -191,6 +191,13 @@ Deno.serve(async req => {
   const { data: row } = await admin.from('admin_broker_onboarding').select('user_id,first_login_at').eq('user_id', input.user_id).not('import_source', 'is', null).maybeSingle();
   if (!row) return json({ error: 'החשבון לא הוקם ביבוא' }, 404);
   if (row.first_login_at) return json({ error: 'המתווך כבר התחבר; פרטי ההתקשרות שלו מנוהלים על ידו' }, 400);
+  if (input.office_name && !input.phone && !input.email && !input.gender) {
+    const { data: updated, error: oe } = await admin.from('white_label_settings').update({ agency_name: input.office_name }).eq('user_id', input.user_id).select('user_id');
+    const { error: ie } = !oe && !updated?.length ? await admin.from('white_label_settings').insert({ user_id: input.user_id, agency_name: input.office_name }) : { error: null };
+    if (oe || ie) return json({ error: 'שמירת שם המשרד נכשלה' }, 500);
+    await admin.from('audit_logs').insert({ actor_id: caller.userId, action: 'super_admin.broker_office_set', target_table: 'white_label_settings', target_id: input.user_id, details: { agency_name: input.office_name } });
+    return json({ ok: true, complete: false });
+  }
   if (input.gender && !input.phone && !input.email) {
     const { error: ge } = await admin.from('profiles').update({ gender: input.gender }).eq('id', input.user_id);
     if (ge) return json({ error: 'שמירת המגדר נכשלה' }, 500);

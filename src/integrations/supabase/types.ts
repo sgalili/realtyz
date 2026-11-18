@@ -3591,6 +3591,9 @@ export type Database = {
         Row: {
           commission_config: Json
           company_name: string
+          contact_gender: string | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string
           first_project_name: string | null
           first_project_units: number | null
@@ -3607,6 +3610,9 @@ export type Database = {
         Insert: {
           commission_config?: Json
           company_name: string
+          contact_gender?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           first_project_name?: string | null
           first_project_units?: number | null
@@ -3623,6 +3629,9 @@ export type Database = {
         Update: {
           commission_config?: Json
           company_name?: string
+          contact_gender?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           first_project_name?: string | null
           first_project_units?: number | null
@@ -10593,6 +10602,10 @@ export type Database = {
       }
       admin_purge_user_data: { Args: { _uid: string }; Returns: number }
       admin_remove_broker_license: { Args: { _user_id: string }; Returns: Json }
+      admin_set_developer_contact: {
+        Args: { _gender: string; _name: string; _owner: string; _phone: string }
+        Returns: undefined
+      }
       admin_submit_broker_license: {
         Args: { _certificate_path: string; _license: string; _user_id: string }
         Returns: Json
