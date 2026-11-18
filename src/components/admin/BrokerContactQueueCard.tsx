@@ -62,6 +62,14 @@ function EmailSendDialog({ b }: { b: ContactBroker }) {
     onError: (e: Error) => toast.error(e.message),
   });
   const emailDirty = email.trim().toLowerCase() !== (b.email ?? '');
+  // The button stays clickable; missing details are explained instead of silently disabling it.
+  const trySend = async () => {
+    if (!email.trim()) { toast.error('יש להזין כתובת אימייל'); return; }
+    if (emailDirty) { try { await saveEmail.mutateAsync(); } catch { return; } }
+    if (!b.email_consent_at) { toast.error('יש לתעד הסכמה לקבלת מייל לפני השליחה'); return; }
+    if (body.trim().length < 10) { toast.error('נוסח המייל קצר מדי'); return; }
+    send.mutate();
+  };
   return <>
     <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label={`שליחת הזמנה ל${b.full_name || 'מתווך'}`} title="שליחת הזמנה" onClick={() => { setOpen(true); setChannel('email'); }}><Mail className="h-4 w-4" /></Button>
     <Dialog open={open} onOpenChange={v => { if (!send.isPending) { setOpen(v); if (!v && waSent.current) { waSent.current = false; void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); } } }}>
@@ -81,7 +89,7 @@ function EmailSendDialog({ b }: { b: ContactBroker }) {
         {b.email_invited_at && <p className="text-sm text-muted-foreground">הזמנה כבר נשלחה באימייל למתווך זה.</p>}
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
           <Button variant="outline" disabled={send.isPending} onClick={() => setOpen(false)}>ביטול</Button>
-          <Button disabled={!b.email || emailDirty || !b.email_consent_at || !!b.email_invited_at || body.trim().length < 10 || send.isPending} onClick={() => send.mutate()}>{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}שליחה</Button>
+          <Button disabled={send.isPending} onClick={() => void trySend()}>{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}שליחה</Button>
         </DialogFooter>
         </TabsContent></Tabs>
       </DialogContent>
