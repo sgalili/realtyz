@@ -197,6 +197,12 @@ export function mergeProject(old: any, fresh: any) {
   return merged;
 }
 
+/** Direct Yad2 ad page for a project listing (token is the item path id). */
+export function unitAdUrl(l: RecordValue): string | null {
+  const token = text(l.token);
+  return token && /^[A-Za-z0-9_-]+$/.test(token) ? `https://www.yad2.co.il/realestate/item/${token}` : null;
+}
+
 /** One independent unit per Yad2 listing ad of the current project (exact source fields only). */
 export function projectListingUnits(listings: unknown[], base: string) {
   return listings.filter(record).flatMap((l: RecordValue) => {
@@ -208,7 +214,7 @@ export function projectListingUnits(listings: unknown[], base: string) {
     return [{ source_unit_id: id, building_id: null, building_name: null,
       rooms: number(d.roomsCount ?? d.rooms), floor: text(d.floor ?? (record(a.house) ? a.house.floor : null)), size_sqm: number(d.squareMeter ?? d.squareMeters ?? d.area),
       price: price && price > 0 ? price : null, type: text(record(d.property) ? d.property.text : null), address: text(a.display),
-      images: imagesOf(l), source_url: developerImportUrl(base), source_details: l }];
+      images: imagesOf(l), source_url: unitAdUrl(l) ?? developerImportUrl(base), source_details: l }];
   });
 }
 
