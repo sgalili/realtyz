@@ -5,5 +5,6 @@ export async function refreshImportedInventory(client: Pick<QueryClient, 'invali
   await Promise.all([
     'broker-contact-queue', 'broker-import-history', 'developer-projects',
     'my-developer', 'properties', 'sidebar-counts', 'campaign-inventory',
+    'workspace-inventory-counts', 'developers',
   ].map(key => client.invalidateQueries({ queryKey: [key] })));
 }

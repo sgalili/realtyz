@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { developerImportPageKind, developerImportUrl } from '@/lib/developerImportUrl';
 import { startContinuousImportRunner } from '@/lib/continuousImportRunner';
+import { refreshImportedInventory } from '@/lib/refreshImportedInventory';
+import { readAllRows } from '../../../supabase/functions/_shared/readAllRows';
 
 const YAD2_RE = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i;
 
@@ -45,20 +47,33 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
     refetchInterval: query => query.state.data?.status === 'running' ? 2000 : false,
     queryFn: async () => {
       if (!activeWorkspaceId || !jobId) return null;
-      const { data, error: queryError } = await supabase.from('developer_import_jobs').select('id,status,stage,error,source_url').eq('workspace_owner_id', activeWorkspaceId).eq('id', jobId).single();
+      const { data, error: queryError } = await supabase.from('developer_import_jobs').select('id,status,stage,error,source_url,developer_id,updated_at').eq('workspace_owner_id', activeWorkspaceId).eq('id', jobId).single();
       if (queryError) throw queryError;
       return data;
     },
   });
+
+  const inventory = useQuery({
+    queryKey: ['developer-import-inventory', activeWorkspaceId, job?.developer_id, job?.updated_at],
+    enabled: !!activeWorkspaceId && !!job?.developer_id,
+    queryFn: async () => {
+      const developerId = job?.developer_id;
+      if (!activeWorkspaceId || !developerId) throw new Error('inventory_unavailable');
+      const rows = await readAllRows((from, to) => supabase.from('developer_projects').select('id,apartments').eq('developer_id', developerId).eq('workspace_owner_id', activeWorkspaceId).order('id').range(from, to));
+      return { projects: rows.length, units: rows.reduce((sum, row) => sum + (Array.isArray(row.apartments) ? row.apartments.length : 0), 0) };
+    },
+  });
+  useEffect(() => {
+    if (job?.updated_at) void refreshImportedInventory(qc);
+  }, [job?.updated_at, qc]);
   const { data: pages = [] } = useQuery({
     queryKey: ['developer-import-pages', activeWorkspaceId, jobId],
     enabled: !!activeWorkspaceId && !!jobId,
     refetchInterval: job?.status === 'running' ? 2000 : false,
     queryFn: async () => {
       if (!jobId) return [];
-      const { data, error: queryError } = await supabase.from('developer_import_pages').select('id,kind,status,attempts,error,next_attempt_at').eq('job_id', jobId).order('created_at');
-      if (queryError) throw queryError;
-      return data;
+      const currentJobId = jobId;
+      return readAllRows((from, to) => supabase.from('developer_import_pages').select('id,kind,status,attempts,error,next_attempt_at').eq('job_id', currentJobId).order('created_at').order('id').range(from, to));
     },
   });
 
@@ -86,11 +101,11 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
   const waiting = pages.find(page => page.status === 'pending' && page.next_attempt_at && new Date(page.next_attempt_at).getTime() > Date.now());
 
   useEffect(() => {
-    if (!job || job.status !== 'completed' || reported.current === job.id) return;
+    if (!job || job.status !== 'completed' || !inventory.data || reported.current === job.id) return;
     reported.current = job.id;
-    toast.success(failed ? `הייבוא הסתיים: ${completed} פרויקטים נשמרו, ${failed} נכשלו` : `נשמרו ${completed} פרויקטים`);
-    onSaved?.({ projects: completed, units: 0 });
-  }, [job, completed, failed, onSaved]);
+    toast.success(failed ? `הייבוא הסתיים: ${inventory.data.projects} פרויקטים שמורים, ${failed} עמודים נכשלו` : `שמורים ${inventory.data.projects} פרויקטים ו־${inventory.data.units} דירות`);
+    onSaved?.(inventory.data);
+  }, [job, inventory.data, failed, onSaved]);
 
   const start = async (value: string) => {
     if (starting || !activeWorkspaceId) return;
@@ -130,7 +145,8 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
       </div>
       <Progress value={progress} className="h-2" />
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-        <span>{completed} פרויקטים נשמרו</span>
+        {inventory.data && <span>{inventory.data.projects} פרויקטים · {inventory.data.units} דירות שמורות</span>}
+        {inventory.isError && <span className="text-destructive">לא ניתן לקרוא את ספירת המלאי</span>}
         {projectPages.length > 0 && <span>{completed + failed} מתוך {projectPages.length} עמודים</span>}
         {job.status === 'running' && <span>{pending} עמודים נותרו</span>}
         {failed > 0 && <span className="text-destructive">{failed} נכשלו</span>}

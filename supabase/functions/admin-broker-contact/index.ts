@@ -5,6 +5,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { invitationLink, pendingFirstInvitation } from '../_shared/importInvitationPolicy.ts';
+import { readAllRows } from '../_shared/readAllRows.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list') }),
@@ -108,10 +109,14 @@ Deno.serve(async req => {
     const bIds = [...new Set(raw.flatMap(r => r.kind === 'broker' && r.ref ? [r.ref] : []))];
     const [devs, projects, profiles, offices, listings] = await Promise.all([
       chunked(devIds, p => admin.from('developers').select('id,company_name,logo_url,workspace_owner_id,owner_user_id').in('id', p)),
-      chunked(devIds, p => admin.from('developer_projects').select('developer_id').in('developer_id', p).limit(10000)),
+      Promise.all(devIds.map(async developer_id => {
+        const { count, error } = await admin.from('developer_projects').select('id', { count: 'exact', head: true }).eq('developer_id', developer_id);
+        if (error || count === null) throw error ?? new Error('inventory_count_unavailable');
+        return { developer_id, count };
+      })),
       chunked(bIds, p => admin.from('profiles').select('id,full_name,avatar_url').in('id', p)),
       chunked(bIds, p => admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', p)),
-      chunked(bIds, p => admin.from('listings').select('workspace_owner_id,source_url').in('workspace_owner_id', p).limit(10000)),
+      chunked(bIds, p => readAllRows((from, to) => admin.from('listings').select('workspace_owner_id,source_url').in('workspace_owner_id', p).order('id').range(from, to)).then(data => ({ data, error: null }))),
     ]);
     const developerOwners = [...new Set(devs.flatMap(d => d.workspace_owner_id ? [d.workspace_owner_id] : []))];
     const devProfiles = await chunked(developerOwners, p => admin.from('profiles').select('id,full_name,avatar_url').in('id', p));
@@ -119,7 +124,7 @@ Deno.serve(async req => {
     const items = raw.filter(r => !deleted.has(r.id)).map(r => {
       if (r.kind === 'developer') { const d = devs.find(x => x.id === r.ref);
         const p = devProfiles.find(p => p.id === d?.workspace_owner_id);
-        return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name || d?.company_name || r.name || '', workspace_owner_id: d?.workspace_owner_id ?? null, public_user_id: d?.owner_user_id ?? d?.workspace_owner_id ?? null, avatar_url: p?.avatar_url ?? null, agency_name: d?.company_name ?? r.name ?? null, logo_url: d?.logo_url ?? null, agency_imported: !!d?.company_name, projects: r.ref ? projects.filter(p => p.developer_id === r.ref).length : 0, source_url: r.source_url, imported_at: r.at }; }
+        return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name || d?.company_name || r.name || '', workspace_owner_id: d?.workspace_owner_id ?? null, public_user_id: d?.owner_user_id ?? d?.workspace_owner_id ?? null, avatar_url: p?.avatar_url ?? null, agency_name: d?.company_name ?? r.name ?? null, logo_url: d?.logo_url ?? null, agency_imported: !!d?.company_name, projects: projects.find(p => p.developer_id === r.ref)?.count ?? 0, source_url: r.source_url, imported_at: r.at }; }
       const p = profiles.find(x => x.id === r.ref); const o = offices.find(x => x.user_id === r.ref); const l = listings.filter(x => x.workspace_owner_id === r.ref);
       return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name ?? r.name ?? '', workspace_owner_id: p?.id ?? null, public_user_id: p?.id ?? null, avatar_url: p?.avatar_url ?? null, logo_url: o?.logo_url ?? null, agency_imported: !!o?.agency_name, agency_name: o?.agency_name ?? null, projects: l.length, source_url: r.source_url ?? l.find(x => /yad2\.co\.il/.test(String(x.source_url)))?.source_url ?? null, imported_at: r.at };
     }).sort((a, b) => String(b.imported_at).localeCompare(String(a.imported_at)));

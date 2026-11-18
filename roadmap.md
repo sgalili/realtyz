@@ -1,5 +1,9 @@
 # Roadmap
 
+## Inventory count flow sweep November 18
+- [x] Read invitation cards/history, developer dashboard/import completion, Developers directory, workspace/sidebar count RPCs, public profile projection and both background workers. Directory first-project units are source facts, not imported-inventory totals; public projects remain publication-filtered.
+- [x] Removed capped saved-row/history/page reads and zero-unit completion placeholders, refreshed both import flows and polled visible inventory counts. Twenty-one tests passed and real Shviro/Azorim cards verified again. No past jobs/inventory/publication/permissions changed; no new paid source import was run, so live worker completion remains unverified.
+
 ## Dynamic invitation inventory counts November 18
 - [x] Count saved developer projects and apartment entries by developer_id using a service-only database COUNT RPC, without row-limit truncation or silent zero on errors; deployed protected invitation endpoint.
 - [x] Refresh invitation/history/developer inventory queries when import progress is saved; eight focused tests pass. Real signed-in cards show Shviro 26 projects/1 apartment and Azorim 3 projects/2 apartments, checked desktop/mobile without runtime errors. No import, messaging or inventory writes triggered.

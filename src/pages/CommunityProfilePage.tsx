@@ -24,6 +24,7 @@ import { ProfilePageShare } from '@/components/community/ProfilePageShare';
 import { SendProfileMessage } from '@/components/community/SendProfileMessage';
 import ProjectTimelineBar from '@/components/developers/ProjectTimelineBar';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
+import { readAllRows } from '../../supabase/functions/_shared/readAllRows';
 
 export const communityProfilePath = (id: string) => `/broker/${encodeURIComponent(id)}`;
 
@@ -76,9 +77,7 @@ export default function CommunityProfilePage() {
   const genders = useCommunityGenders([userId]);
   const p = profile.data;
   const projects = useQuery({ queryKey: ['community-projects', user?.id, userId], enabled: p?.category === 'developer', queryFn: async () => {
-    const { data, error } = await supabase.rpc('community_public_projects', { _user: userId });
-    if (error) throw error;
-    return data ?? [];
+    return readAllRows((from, to) => supabase.rpc('community_public_projects', { _user: userId }).range(from, to));
   } });
   const close = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/'));
   const isOwner = isSuperAdmin || user?.id === userId;

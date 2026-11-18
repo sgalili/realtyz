@@ -7,6 +7,7 @@ import { rotatingUnlockerPayload } from '../_shared/brightDataRotation.ts';
 import { developerImportPageKind, developerImportUrl, developerProjectImportRow, readPage } from '../_shared/yad2DeveloperImport.ts';
 import { developerRetryDelay, MAX_PAGE_ATTEMPTS, mergeProjectPage, projectPageRows, safeImportError } from './queue.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { readAllRows } from '../_shared/readAllRows.ts';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -112,8 +113,7 @@ async function ensureDeveloper(job: any, page: any) {
 async function saveProjects(job: any, developerId: string, projects: any[]) {
   if (!projects.length) return;
   const admin = adminClient();
-  const { data: existing, error } = await admin.from('developer_projects').select('*').eq('developer_id', developerId).eq('workspace_owner_id', job.workspace_owner_id);
-  if (error) throw error;
+  const existing = await readAllRows((from, to) => admin.from('developer_projects').select('*').eq('developer_id', developerId).eq('workspace_owner_id', job.workspace_owner_id).order('id').range(from, to));
   const rows = projects.map(project => {
     const old = (existing ?? []).find(row => row.source_project_id === String(project.source_project_id ?? project.source_url ?? project.name) || !!project.source_url && row.source_url === project.source_url);
     return developerProjectImportRow(old, project, developerId, job.workspace_owner_id);
@@ -124,8 +124,7 @@ async function saveProjects(job: any, developerId: string, projects: any[]) {
 
 async function finalizeIfDone(jobId: string) {
   const admin = adminClient();
-  const { data: pages, error } = await admin.from('developer_import_pages').select('kind,status,attempts,next_attempt_at').eq('job_id', jobId);
-  if (error) throw error;
+  const pages = await readAllRows((from, to) => admin.from('developer_import_pages').select('kind,status,attempts,next_attempt_at').eq('job_id', jobId).order('id').range(from, to));
   const active = (pages ?? []).find(page => page.status === 'running' || (page.status === 'pending' && page.attempts < MAX_PAGE_ATTEMPTS));
   if (active) return { done: false, waiting: active.next_attempt_at ? new Date(active.next_attempt_at).getTime() > Date.now() : false };
   const profileFailed = (pages ?? []).some(page => page.kind === 'profile' && page.status === 'failed');

@@ -14,6 +14,7 @@ export function useWorkspaceInventoryCounts(open: boolean) {
     queryKey: ['workspace-inventory-counts', user?.id],
     enabled: open && !!user?.id,
     staleTime: 0,
+    refetchInterval: 30000,
     queryFn: async (): Promise<WorkspaceInventoryCount[]> => {
       const { data, error } = await supabase.rpc('get_workspace_inventory_counts');
       if (error) throw error;

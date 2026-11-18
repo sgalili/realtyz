@@ -23,10 +23,12 @@ describe('saved import inventory refresh', () => {
     client.setQueryData(['developer-projects', 'owner-a'], []);
     client.setQueryData(['developer-projects', 'owner-b'], []);
     client.setQueryData(['broker-import-history'], []);
+    client.setQueryData(['workspace-inventory-counts', 'admin'], []);
     await refreshImportedInventory(client);
     expect(client.getQueryState(['developer-projects', 'owner-a'])?.isInvalidated).toBe(true);
     expect(client.getQueryState(['developer-projects', 'owner-b'])?.isInvalidated).toBe(true);
     expect(client.getQueryState(['broker-import-history'])?.isInvalidated).toBe(true);
+    expect(client.getQueryState(['workspace-inventory-counts', 'admin'])?.isInvalidated).toBe(true);
     client.clear();
   });
 });

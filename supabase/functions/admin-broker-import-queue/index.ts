@@ -8,6 +8,7 @@ import { agencyPageUrl, agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recen
 import { PROVIDER_GAP_MS, ProviderRateLimitError, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
 import { developerImportUrl, developerProjectImportRow, developerQueuePhaseAfterPage, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, type DeveloperQueueWork } from '../_shared/yad2DeveloperImport.ts';
 import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY, developerRetryDeadline } from '../_shared/developerImportRetry.ts';
+import { readAllRows } from '../_shared/readAllRows.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
@@ -203,7 +204,8 @@ Deno.serve(async req => {
         if(!work.accountId||!work.developerId)throw new Error('חשבון היזם לא נשמר; אפשר להמשיך מאותה נקודה');
         const dirty=work.projects.filter(project=>work.dirtyProjectKeys.includes(String(project.source_project_id??project.source_url??project.name)));
         if(dirty.length) {
-          const {data:existingProjects,error:readError}=await admin.from('developer_projects').select('*').eq('developer_id',work.developerId);if(readError)throw readError;
+          const existingProjects=await readAllRows(fromToProjects);
+          function fromToProjects(from:number,to:number) { return admin.from('developer_projects').select('*').eq('developer_id',String(work.developerId)).order('id').range(from,to); }
           const rows=dirty.map(project=>{
             const old=(existingProjects??[]).find(row=>row.source_project_id===(project.source_project_id??project.source_url??project.name)||!!project.source_url&&row.source_url===project.source_url);
             return developerProjectImportRow(old,project,work.developerId!,work.accountId!);
@@ -212,7 +214,7 @@ Deno.serve(async req => {
           work.dirtyProjectKeys=[];
         }
         if(work.pendingUrls.length){c.phase='developer_scanning';await save();return json({ok:true});}
-        const {data:savedProjects,error:finalReadError}=await admin.from('developer_projects').select('*').eq('developer_id',work.developerId);if(finalReadError)throw finalReadError;
+        const savedProjects=await readAllRows((from,to)=>admin.from('developer_projects').select('*').eq('developer_id',String(work.developerId)).order('id').range(from,to));
         const first=savedProjects?.[0];
         const {error:companyError}=await admin.from('developers').update({first_project_name:first?.name??null,first_project_units:first?.total_units??null,last_synced_at:new Date().toISOString()}).eq('id',work.developerId);if(companyError)throw companyError;
         const result={developer_id:work.developerId,account_id:work.accountId,company_name:work.developer.company_name,projects:savedProjects?.length??0,units:(savedProjects??[]).reduce((sum,project)=>sum+detailedUnitCount(project),0),expected_projects:work.expectedProjects,source_url:work.url};

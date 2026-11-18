@@ -107,7 +107,7 @@ function DeveloperDashboardContent() {
     },
   });
   const { data: projects = [], isLoading, error: projectError } = useQuery({
-    queryKey: ['developer-projects', ws], enabled: !!ws, refetchOnMount: 'always',
+    queryKey: ['developer-projects', ws], enabled: !!ws, refetchOnMount: 'always', refetchInterval: 30000,
     queryFn: async () => {
       if (!ws) return [];
       const projects: DeveloperProject[] = [];
