@@ -4,6 +4,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
+import { MarketingCompanyLine } from './MarketingCompanyLine';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -96,7 +97,7 @@ function useOpenWorkspace() {
   };
 }
 
-function BrokerRow({ b }: { b: ContactBroker }) {
+function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: string | null }) {
   const qc = useQueryClient();
   const openWs = useOpenWorkspace();
   const [editing, setEditing] = useState(false);
@@ -149,6 +150,7 @@ function BrokerRow({ b }: { b: ContactBroker }) {
       <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground sm:text-base" title={details}>{details}</p>
       {!b.is_developer && !b.license_verified && regLicense && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense} onUpdated={() => void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] })} />}
     </div>
+    {b.is_developer && <MarketingCompanyLine ownerId={b.user_id} name={b.full_name} label={marketing} />}
     <Dialog open={deleting} onOpenChange={open => { if (!remove.isPending) setDeleting(open); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-md text-right">
         <DialogHeader><DialogTitle>מחיקת החשבון של {b.full_name || 'ללא שם'}</DialogTitle></DialogHeader>
@@ -233,10 +235,15 @@ export function BrokerContactQueueCard() {
   const q = useQuery({ queryKey: ['broker-contact-queue'], queryFn: () => invoke<{ brokers: ContactBroker[] }>('admin-broker-contact', { action: 'list' }), refetchOnWindowFocus: true, refetchInterval: 30000 });
   const brokers = q.data?.brokers ?? [];
   const pending = brokers.length;
+  const devIds = brokers.filter(b => b.is_developer).map(b => b.user_id);
+  const marketing = useQuery({ queryKey: ['marketing-summaries', devIds.join(',')], enabled: devIds.length > 0, queryFn: async () => {
+    const { data, error } = await supabase.rpc('admin_marketing_summaries', { _owners: devIds });
+    if (error) throw error; return new Map((data ?? []).map(r => [r.owner_id, r.marketing_company_name]));
+  } });
   return <section dir="rtl" className="space-y-4 py-5 text-right">
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-xl font-bold"><UserRoundSearch className="h-5 w-5 text-primary" />ממתינים להזמנה ראשונה</h3>{pending > 0 && <Badge variant="secondary" className="text-sm">{pending} ממתינים</Badge>}</div>
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
-      <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} />)}</ul>}
+      <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} marketing={marketing.data?.get(b.user_id)} />)}</ul>}
     <FollowupQueue />
     <Tabs value={params.get('history') === 'sends' ? 'sends' : 'imports'} onValueChange={value => setParams(current => { const next = new URLSearchParams(current); next.set('history', value); return next; }, { replace: true })} dir="rtl" className="pt-2">
       <TabsList><TabsTrigger value="imports">היסטוריית יבוא</TabsTrigger><TabsTrigger value="sends">היסטוריית שליחות</TabsTrigger></TabsList>

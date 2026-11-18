@@ -1632,6 +1632,13 @@
       "when": 1795001029375,
       "tag": "0232_developer_import_identity_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 233,
+      "version": "7",
+      "when": 1795004453759,
+      "tag": "0233_marketing_companies",
+      "breakpoints": true
     }
   ]
 }

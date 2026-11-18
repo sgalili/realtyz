@@ -3429,6 +3429,7 @@ export type Database = {
           image_url: string | null
           images: Json
           is_public: boolean
+          marketing_company_id: string | null
           name: string
           neighborhood: string | null
           price_from: number | null
@@ -3456,6 +3457,7 @@ export type Database = {
           image_url?: string | null
           images?: Json
           is_public?: boolean
+          marketing_company_id?: string | null
           name: string
           neighborhood?: string | null
           price_from?: number | null
@@ -3483,6 +3485,7 @@ export type Database = {
           image_url?: string | null
           images?: Json
           is_public?: boolean
+          marketing_company_id?: string | null
           name?: string
           neighborhood?: string | null
           price_from?: number | null
@@ -3504,6 +3507,13 @@ export type Database = {
             referencedRelation: "developers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "developer_projects_marketing_company_id_fkey"
+            columns: ["marketing_company_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_companies"
+            referencedColumns: ["id"]
+          },
         ]
       }
       developers: {
@@ -3516,6 +3526,7 @@ export type Database = {
           id: string
           last_synced_at: string | null
           logo_url: string | null
+          marketing_company_id: string | null
           owner_user_id: string | null
           phone: string | null
           source_url: string | null
@@ -3531,6 +3542,7 @@ export type Database = {
           id?: string
           last_synced_at?: string | null
           logo_url?: string | null
+          marketing_company_id?: string | null
           owner_user_id?: string | null
           phone?: string | null
           source_url?: string | null
@@ -3546,13 +3558,22 @@ export type Database = {
           id?: string
           last_synced_at?: string | null
           logo_url?: string | null
+          marketing_company_id?: string | null
           owner_user_id?: string | null
           phone?: string | null
           source_url?: string | null
           updated_at?: string
           workspace_owner_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "developers_marketing_company_id_fkey"
+            columns: ["marketing_company_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       distribution_funnel_items: {
         Row: {
@@ -6886,6 +6907,27 @@ export type Database = {
           source?: string
           updated_at?: string
           watermark_published_at?: string | null
+        }
+        Relationships: []
+      }
+      marketing_companies: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -10399,9 +10441,21 @@ export type Database = {
         Args: { _amount: number; _reason?: string; _user_id: string }
         Returns: number
       }
+      admin_assign_marketing_company: {
+        Args: { _company: string; _id: string; _kind: string }
+        Returns: undefined
+      }
       admin_link_referral: {
         Args: { _referred: string; _referrer: string }
         Returns: Json
+      }
+      admin_marketing_overview: { Args: { _owner: string }; Returns: Json }
+      admin_marketing_summaries: {
+        Args: { _owners: string[] }
+        Returns: {
+          marketing_company_name: string
+          owner_id: string
+        }[]
       }
       admin_onboarding_recipient_silent: {
         Args: { _phone: string }
