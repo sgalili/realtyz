@@ -179,5 +179,5 @@ Deno.serve(async req => {
     const runId = gateway.getRunId();
     if (runId) headers.set('X-Lovable-AIG-Run-ID', runId);
     return new Response(stream, { headers: getLovableAiGatewayResponseHeaders(undefined, headers) });
-  } catch { return json(500, 'לא ניתן לטעון את השיחה'); }
+  } catch (error) { console.error('rita-conversation failed', kind, action, error instanceof Error ? error.message : error); return json(500, 'לא ניתן לטעון את השיחה'); }
 });

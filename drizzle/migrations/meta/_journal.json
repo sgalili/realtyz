@@ -1723,6 +1723,13 @@
       "when": 1795039461314,
       "tag": "0245_developer_direct_contact",
       "breakpoints": true
+    },
+    {
+      "idx": 246,
+      "version": "7",
+      "when": 1795039876148,
+      "tag": "0246_fix_group_rita_autopilot_trigger",
+      "breakpoints": true
     }
   ]
 }
