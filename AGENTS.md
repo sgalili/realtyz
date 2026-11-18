@@ -42,7 +42,7 @@
 - Roles come only from user_roles; partner reads use server-redacted RPCs and verified-license guards.
 
 <!-- LOVABLE:BEGIN -->
-- Admin import uses typed broker/developer controls, explicit project caps, bounded discovery retries and a leased browser fallback for every running job. Why: prevent endless scans, lost inventory and overlapping steps.
+- Admin imports use explicit broker/developer discovery, project caps, bounded retries and leased continuation. Normalized company identity serializes admin provisioning; account imports match only inside authorized workspaces. Why: no duplicate accounts, lost inventory or tenant reassignment.
 - Profile completion validates the displayed owner's persisted record, consumes scoped save readback immediately and rechecks on focus/visible polling; stale or unavailable reads never prove fields missing. Why: prevent false warnings and tenant mixing.
 - Account notifications share user-keyed settings and per-event dispatch via notify-agent; recipient lead context requires workspace authorization, external sends use official WhatsApp/workspace SMS/service-only app email, and panel filters never control client/security messages. Why: prevent duplicate delivery and tenant leaks.
 

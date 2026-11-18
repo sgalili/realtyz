@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Developer identity and automatic discovery November 18
-- [ ] Normalize company identity and prevent duplicate account/project creation across imports without cross-workspace reassignment.
-- [ ] Add explicit automatic Yad2 discovery for broker/developer tabs with optional seed links and selected limits.
-- [ ] Test matching, discovery and signed-in controls; deploy and verify what can be read without new paid scans.
+- [x] Conservative normalized names plus service-only identity lease prevent parallel admin provisioning; account imports match within their workspace. Merged the two verified silent Karso company rows into the oldest workspace: three projects/five apartments preserved; redundant Auth account retained, not purged.
+- [x] Added explicit automatic discovery toggle and target/project bounds for both tabs; developer directory feeds existing leased deep-import workflow. Source blocks fail visibly.
+- [x] 46 focused tests including database identity locking passed; signed-in toggle/quantity controls checked on desktop/mobile; three functions deployed. Unpaid source read returned Radware, not real directory content; no new paid import was run, so live automatic developer discovery is unverified.
 
 ## Import performance and controls November 18
 - [x] Bound authorized discovery to 50 seconds/three attempts, reduce redundant queue gap to one second, and continue running broker/developer jobs via the existing leased worker. Provider cooldowns, publication and identity rules remain unchanged.
