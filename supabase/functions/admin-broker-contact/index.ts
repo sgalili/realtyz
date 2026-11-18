@@ -160,6 +160,7 @@ Deno.serve(async req => {
       admin.from('broker_license_verifications').select('user_id,license_number,verified_at').in('user_id', ids),
       admin.from('user_roles').select('user_id').in('user_id', ids).eq('role', 'developer'),
     ]);
+    const { data: devProjects } = await admin.from('developer_projects').select('workspace_owner_id,apartments').in('workspace_owner_id', ids);
     const { data: devCompanies } = await admin.from('developers').select('workspace_owner_id,company_name,logo_url').in('workspace_owner_id', ids);
     const brokers = eligible.map(r => {
       const p = profiles?.find(x => x.id === r.user_id);
@@ -171,6 +172,8 @@ Deno.serve(async req => {
         license_verified: !!verified?.find(l => l.user_id === r.user_id && l.verified_at) || !!(p as any)?.locked_broker_name,
         is_developer: (devRoles ?? []).some(d => d.user_id === r.user_id),
         drafts: (drafts ?? []).filter(d => d.workspace_owner_id === r.user_id).length,
+        projects: (devProjects ?? []).filter(d => d.workspace_owner_id === r.user_id).length,
+        apartments: (devProjects ?? []).filter(d => d.workspace_owner_id === r.user_id).reduce((n, d: any) => n + (Array.isArray(d.apartments) ? d.apartments.length : 0), 0),
         contact_status: r.contact_status, first_login_at: r.first_login_at, email_consent_at: r.email_consent_at, email_invited_at: r.email_invited_at };
     });
     return json({ brokers });
