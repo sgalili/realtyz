@@ -44,6 +44,7 @@ function EmailSendDialog({ b }: { b: ContactBroker }) {
   const [email, setEmail] = useState(b.email ?? '');
   const [body, setBody] = useState(() => DEFAULT_EMAIL(b.full_name));
   const bodyTouched = useRef(false);
+  const [demo, setDemo] = useState(false);
   // Same gender-matched default wording as the WhatsApp template, filled with the recipient's first name.
   const sharedText = useQuery({ queryKey: ['broker-template-texts', 'recipient', b.user_id], enabled: open, queryFn: () => invoke<{ recipient?: string }>('admin-broker-invitation', { action: 'texts', broker_id: b.user_id }) });
   useEffect(() => {
@@ -57,7 +58,7 @@ function EmailSendDialog({ b }: { b: ContactBroker }) {
     onError: (e: Error) => toast.error(e.message),
   });
   const send = useMutation({
-    mutationFn: () => invoke<{ sent: number }>('admin-broker-email-invitation', { action: 'send_batch', broker_id: b.user_id, limit: 1, message: body.trim() }),
+    mutationFn: () => invoke<{ sent: number }>('admin-broker-email-invitation', { action: 'send_batch', broker_id: b.user_id, limit: 1, message: body.trim(), demo }),
     onSuccess: d => { if (d.sent) { toast.success('המייל נשלח'); setOpen(false); } else toast.error('המייל לא נשלח'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-contact-history'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -86,7 +87,9 @@ function EmailSendDialog({ b }: { b: ContactBroker }) {
         {b.email && !b.email_consent_at && <div className="flex items-center gap-2 text-sm text-muted-foreground">נדרשת הסכמה מתועדת לפני שליחה:<BrokerEmailConsentButton broker={{ id: b.user_id, full_name: b.full_name, email: b.email }} state={{ email_consent_at: b.email_consent_at, email_unsubscribed_at: null, email_invited_at: b.email_invited_at }} /></div>}
         <Textarea aria-label="נוסח המייל" className="min-h-[200px] text-base" value={body} onChange={e => { bodyTouched.current = true; setBody(e.target.value); }} />
         <p className="text-sm text-muted-foreground">קישור הכניסה לנכסים וקישור ההסרה מתווספים אוטומטית בסוף המייל.</p>
-        {b.email_invited_at && <p className="text-sm text-muted-foreground">הזמנה כבר נשלחה באימייל למתווך זה.</p>}
+        <label className="flex items-center gap-2 text-base"><input type="checkbox" className="h-4 w-4" checked={demo} onChange={e => setDemo(e.target.checked)} />שלח כחשבון דמו לצפייה בלבד</label>
+        {demo && <p className="text-sm text-muted-foreground">יישלחו פרטי חשבון הדמו (0501234567, קוד 1234) במקום כניסה אישית. בחשבון הדמו אין אפשרות לפרסם.</p>}
+        {b.email_invited_at && !demo && <p className="text-sm text-muted-foreground">הזמנה כבר נשלחה באימייל למתווך זה.</p>}
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
           <Button variant="outline" disabled={send.isPending} onClick={() => setOpen(false)}>ביטול</Button>
           <Button disabled={send.isPending} onClick={() => void trySend()}>{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}שליחה</Button>

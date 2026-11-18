@@ -56,6 +56,7 @@ import { ClosingFeeSlider } from '@/components/affiliate/ClosingFeeSlider';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
+import { isViewOnlyDemo } from '@/lib/viewOnlyDemo';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkspaceOwnerRoles } from '@/hooks/useWorkspaceFeatures';
 import { supabase } from '@/integrations/supabase/client';
@@ -169,6 +170,7 @@ export function PublicListingPublisher(props: Parameters<typeof ScopedPublicList
   if ((previous.userId && previous.userId !== user?.id) || (previous.ownerId && activeWorkspaceId && previous.ownerId !== activeWorkspaceId)) previous.key += 1;
   previous.userId = user?.id ?? null;
   if (activeWorkspaceId) previous.ownerId = activeWorkspaceId;
+  if (isViewOnlyDemo(user?.id)) return null;
   return <ScopedPublicListingPublisher key={previous.key} {...props} disabled={props.disabled || (!!user && loading)} />;
 }
 

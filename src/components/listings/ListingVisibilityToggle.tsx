@@ -1,3 +1,5 @@
+import { useAuth } from '@/hooks/useAuth';
+import { isViewOnlyDemo } from '@/lib/viewOnlyDemo';
 import { useState } from 'react';
 import { Star, Megaphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,7 +29,8 @@ export function ListingVisibilityToggle({
   const { settings } = usePlatformSettings();
   const [busy, setBusy] = useState<null | 'featured' | 'promoted'>(null);
 
-  const canEdit = isAdmin || isManagingBroker || isSuperAdmin;
+  const { user } = useAuth();
+  const canEdit = (isAdmin || isManagingBroker || isSuperAdmin) && !isViewOnlyDemo(user?.id);
   if (!canEdit || !settings.enable_featured_listings) return null;
 
   const update = async (col: 'is_featured' | 'is_promoted', value: boolean) => {

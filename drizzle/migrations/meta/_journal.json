@@ -1653,6 +1653,13 @@
       "when": 1795005477138,
       "tag": "0235_marketing_company_clients",
       "breakpoints": true
+    },
+    {
+      "idx": 236,
+      "version": "7",
+      "when": 1795007377355,
+      "tag": "0236_demo_workspace_view_only",
+      "breakpoints": true
     }
   ]
 }

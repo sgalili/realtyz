@@ -9,11 +9,17 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { mintShareUrlForResult, prepareCampaignListingIds } from '@/lib/propertyShare';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { useAuth } from '@/hooks/useAuth';
+import { isViewOnlyDemo } from '@/lib/viewOnlyDemo';
 import { JoinPartnerDialog } from '@/components/affiliate/JoinPartnerDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { publicUrl } from '@/lib/publicUrl';
 
-export function BoardPublishButton({ result, open: openProp, onOpenChange, hideTrigger = false }: { result: UnifiedResult; open?: boolean; onOpenChange?: (v: boolean) => void; hideTrigger?: boolean }) {
+export function BoardPublishButton(props: Parameters<typeof BoardPublishButtonInner>[0]) {
+  const { user } = useAuth();
+  return isViewOnlyDemo(user?.id) ? null : <BoardPublishButtonInner {...props} />;
+}
+
+function BoardPublishButtonInner({ result, open: openProp, onOpenChange, hideTrigger = false }: { result: UnifiedResult; open?: boolean; onOpenChange?: (v: boolean) => void; hideTrigger?: boolean }) {
   const { user } = useAuth();
   const [openState, setOpenState] = useState(false);
   const open = openProp ?? openState;

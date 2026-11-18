@@ -8,7 +8,7 @@ import { invitationLink } from '../_shared/importInvitationPolicy.ts';
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('summary') }),
   z.object({ action: z.literal('consent'), broker_id: z.string().uuid(), note: z.string().trim().min(3).max(300), revoke: z.boolean().optional() }),
-  z.object({ action: z.literal('send_batch'), broker_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX), message: z.string().trim().min(10).max(4000).optional() }),
+  z.object({ action: z.literal('send_batch'), broker_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX), message: z.string().trim().min(10).max(4000).optional(), demo: z.boolean().optional() }),
 ]);
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const escHtml = (v: string) => v.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
@@ -53,6 +53,22 @@ Deno.serve(async req => {
   const site = new URL(Deno.env.get('PUBLIC_SITE_URL') || 'https://toraff.co.il');
   const fnBase = `${Deno.env.get('SUPABASE_URL')}/functions/v1/admin-broker-email-invitation`;
   const results: { broker_id: string; status: string; error?: string }[] = [];
+  // Demo access email: shared view-only account credentials instead of the recipient's personal sign-in. Consent still required.
+  if (input.demo) {
+    if (!input.broker_id) return json({ error: 'יש לבחור נמען' }, 400);
+    const { data: row } = await admin.from('admin_broker_onboarding').select('user_id,email_consent_at,email_unsubscribed_at,email_unsubscribe_token').eq('user_id', input.broker_id).maybeSingle();
+    const { data: prof } = await admin.from('profiles').select('full_name,email').eq('id', input.broker_id).maybeSingle();
+    if (!row?.email_consent_at || row.email_unsubscribed_at || !prof?.email || prof.email.endsWith('.invalid')) return json({ error: 'המתווך אינו זמין לשליחה: נדרשת הסכמה מתועדת וכתובת אימייל תקינה' }, 400);
+    const unsubscribeUrl = `${fnBase}?unsubscribe=${row.email_unsubscribe_token}`;
+    const msg = `${input.message ?? ''}\n\nפרטי כניסה לחשבון הדמו (צפייה בלבד):\nמספר טלפון: 0501234567\nקוד אימות: 1234`.trim();
+    const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({
+      from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [prof.email], subject: 'חשבון דמו לצפייה ב-TORAFF',
+      html: customEmailHtml(msg, `${site.origin}/auth`, unsubscribeUrl).replace('כניסה לנכסים שלי', 'כניסה לחשבון הדמו'),
+      headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }, tags: [{ name: 'type', value: 'demo_invitation' }],
+    }) });
+    if (!res.ok) { console.error('demo invitation email failed', res.status, await res.text()); return json({ sent: 0, failed: 1 }); }
+    return json({ sent: 1, failed: 0 });
+  }
   const targets = input.broker_id ? eligible.filter(r => r.user_id === input.broker_id) : eligible;
   if (input.broker_id && !targets.length) return json({ error: 'המתווך אינו זמין לשליחה: נדרשת הסכמה מתועדת וכתובת אימייל תקינה' }, 400);
   for (const r of targets.slice(0, input.limit)) {
