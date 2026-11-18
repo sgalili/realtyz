@@ -33,6 +33,7 @@ function UnitDetails({ units, project, onPublish, onPost }: { units: ProjectUnit
         <DeveloperCommissionBadges project={project} unit={unit} />
         {onPublish && <Button variant="outline" disabled={projectCommissionErrors(project, unit).length > 0} onClick={() => onPublish(unit)}>פרסום היחידה בלוח</Button>}
         {onPost && <Button variant="outline" onClick={() => onPost(unit)}>יצירת קמפיין ליחידה</Button>}
+        {typeof (unit as { source_url?: unknown }).source_url === 'string' && <a href={(unit as { source_url: string }).source_url} target="_blank" rel="noreferrer" className="text-sm text-primary underline underline-offset-4">צפייה במודעה ביד 2</a>}
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
           {([['מרפסת (מ״ר)', unit.balcony_sqm], ['חניות', unit.parking], ['מספר יחידות', unit.count], ['זמינות', unit.availability ?? unit.status], ['מועד מסירה', unit.delivery_date ?? unit.deliveryDate], ['תיאור', unit.description], ['מפרט', unit.specifications ?? sourceRecord(unit.source_details).specifications], ['מאפיינים', unit.features ?? unit.amenities]] as const).filter(([, value]) => labelValue(value)).map(([label, value]) => <div key={label}><dt className="text-muted-foreground">{label}</dt><dd className="break-words whitespace-pre-line font-medium">{labelValue(value)}</dd></div>)}
         </dl>
