@@ -434,6 +434,7 @@ Deno.serve(async req => {
         return json({ok:true,waiting:true});
       }
       const message=e instanceof Error?e.message:'הייבוא נעצר';
+      if(c.phase==='developer_discovering'){await save({status:'failed',error:message});return json({ok:true,failed:true});}
       // Batch links: a permanent failure on one developer link is logged per item and the loop continues with the next link.
       if(String(c.phase??'').startsWith('developer_') && Array.isArray(c.developerUrls)) {
         const url=c.developerUrls[c.developerIndex??0];
