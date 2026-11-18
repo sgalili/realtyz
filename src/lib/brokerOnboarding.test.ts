@@ -16,7 +16,7 @@ describe('official broker invitation rules', () => {
   it('defaults to link-less wording and validates variables', () => {
     const body = templateBody(BROKER_TEMPLATE_BODY);
     expect(body.match(/\{\{\d\}\}/g)).toEqual(['{{1}}']);
-    expect(templateBody(BROKER_TEMPLATE_BODY.replace('בברכה', 'קישור: {authLink} בברכה'))).toContain('{{2}}');
+    expect(templateBody(BROKER_TEMPLATE_BODY.replace('בכל שאלה', 'קישור: {authLink} בכל שאלה'))).toContain('{{2}}');
     expect(() => templateBody(BROKER_TEMPLATE_BODY.replace('{brokerName}', ''))).toThrow();
     expect(() => templateBody(BROKER_TEMPLATE_BODY + ' {unknown}')).toThrow();
     expect(() => templateBody('{authLink} ' + BROKER_TEMPLATE_BODY)).toThrow();
