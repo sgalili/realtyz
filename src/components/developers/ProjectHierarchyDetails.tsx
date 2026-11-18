@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Building2 } from 'lucide-react';
 import ProjectTimelineBar from './ProjectTimelineBar';
 import DeveloperCommissionBadges from './DeveloperCommissionBadges';
@@ -20,27 +22,36 @@ const timelineLabel = (value: unknown) => {
   const row = sourceRecord(value);
   return [labelValue(row.label ?? row.title ?? row.name ?? row.text), labelValue(row.date), labelValue(row.status)].filter(Boolean).join(' · ');
 };
+const unitSourceUrl = (unit: ProjectUnit) => { const url = (unit as { source_url?: unknown }).source_url ?? sourceRecord(unit.source_details).url; return typeof url === 'string' && /^https?:\/\//.test(url) ? url : ''; };
+const unitTitle = (unit: ProjectUnit) => [labelValue(unit.type), unit.rooms != null ? `${unit.rooms} חדרים` : '', unit.size_sqm != null ? `${unit.size_sqm} מ״ר` : '', unit.floor != null ? `קומה ${unit.floor}` : ''].filter(Boolean).join(' · ') || `יחידה ${unit.source_unit_id}`;
 function UnitDetails({ units, project, onPublish, onPost }: { units: ProjectUnit[]; project: DeveloperProject; onPublish?: (unit: ProjectUnit) => void; onPost?: (unit: ProjectUnit) => void }) {
-  return <Accordion type="single" collapsible className="min-w-0">
-    {units.map(unit => <AccordionItem value={`${unit.building_id}:${unit.source_unit_id}`} key={`${unit.building_id}:${unit.source_unit_id}`}>
-      <AccordionTrigger className="gap-3 py-3 text-start hover:no-underline">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2 text-sm">
-          <span>{[labelValue(unit.type), unit.rooms != null ? `${unit.rooms} חדרים` : '', unit.size_sqm != null ? `${unit.size_sqm} מ״ר` : '', unit.floor != null ? `קומה ${unit.floor}` : ''].filter(Boolean).join(' · ') || `יחידה ${unit.source_unit_id}`}</span>
-          {unit.price != null && unit.price > 0 && <strong className="whitespace-nowrap text-success">₪{unit.price.toLocaleString('he-IL')}</strong>}
-        </div>
-      </AccordionTrigger>
-      <AccordionContent className="space-y-3">
-        <DeveloperCommissionBadges project={project} unit={unit} />
-        {onPublish && <Button variant="outline" disabled={projectCommissionErrors(project, unit).length > 0} onClick={() => onPublish(unit)}>פרסום היחידה בלוח</Button>}
-        {onPost && <Button variant="outline" onClick={() => onPost(unit)}>יצירת קמפיין ליחידה</Button>}
-        {typeof (unit as { source_url?: unknown }).source_url === 'string' && <a href={(unit as { source_url?: unknown }).source_url as string} target="_blank" rel="noreferrer" className="text-sm text-primary underline underline-offset-4">צפייה במודעה ביד 2</a>}
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          {([['מרפסת (מ״ר)', unit.balcony_sqm], ['חניות', unit.parking], ['מספר יחידות', unit.count], ['זמינות', unit.availability ?? unit.status], ['מועד מסירה', unit.delivery_date ?? unit.deliveryDate], ['תיאור', unit.description], ['מפרט', unit.specifications ?? sourceRecord(unit.source_details).specifications], ['מאפיינים', unit.features ?? unit.amenities]] as const).filter(([, value]) => labelValue(value)).map(([label, value]) => <div key={label}><dt className="text-muted-foreground">{label}</dt><dd className="break-words whitespace-pre-line font-medium">{labelValue(value)}</dd></div>)}
-        </dl>
-        {unit.images.length > 0 && <PropertyGallerySlider photos={unit.images} alt="תמונות היחידה" />}
-      </AccordionContent>
-    </AccordionItem>)}
-  </Accordion>;
+  const [opened, setOpened] = useState<ProjectUnit | null>(null);
+  const extra = opened ? Object.entries(sourceRecord(opened.source_details)).filter(([key, value]) => !['url', 'specifications'].includes(key) && labelValue(value) && labelValue(value).length < 400) : [];
+  const url = opened ? unitSourceUrl(opened) : '';
+  return <div className="grid min-w-0 gap-2">
+    {units.map(unit => <button type="button" key={`${unit.building_id}:${unit.source_unit_id}`} onClick={() => setOpened(unit)} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border bg-card p-3 text-start text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <span>{unitTitle(unit)}</span>
+      {unit.price != null && unit.price > 0 && <strong className="whitespace-nowrap text-success">₪{unit.price.toLocaleString('he-IL')}</strong>}
+    </button>)}
+    <Dialog open={!!opened} onOpenChange={open => { if (!open) setOpened(null); }}>
+      <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader><DialogTitle>{opened ? unitTitle(opened) : ''}</DialogTitle></DialogHeader>
+        {opened && <div className="space-y-4">
+          {opened.price != null && opened.price > 0 && <p className="text-xl font-bold text-success">₪{opened.price.toLocaleString('he-IL')}</p>}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            {([['סוג', opened.type], ['חדרים', opened.rooms], ['שטח (מ״ר)', opened.size_sqm], ['קומה', opened.floor], ['מרפסת (מ״ר)', opened.balcony_sqm], ['חניות', opened.parking], ['מספר יחידות', opened.count], ['זמינות', opened.availability ?? opened.status], ['מועד מסירה', opened.delivery_date ?? opened.deliveryDate], ['תיאור', opened.description], ['מפרט', opened.specifications ?? sourceRecord(opened.source_details).specifications], ['מאפיינים', opened.features ?? opened.amenities], ...extra] as const).filter(([, value]) => labelValue(value)).map(([label, value]) => <div key={String(label)}><dt className="text-muted-foreground">{String(label)}</dt><dd className="break-words whitespace-pre-line font-medium">{labelValue(value)}</dd></div>)}
+          </dl>
+          {opened.images.length > 0 && <PropertyGallerySlider photos={opened.images} alt="תמונות היחידה" />}
+          <DeveloperCommissionBadges project={project} unit={opened} />
+          <div className="flex flex-wrap gap-2">
+            {url ? <Button asChild variant="outline"><a href={url} target="_blank" rel="noreferrer">צפייה במודעה המקורית ביד 2</a></Button> : <span className="text-sm text-muted-foreground">אין קישור ישיר למודעה במקור</span>}
+            {onPublish && <Button variant="outline" disabled={projectCommissionErrors(project, opened).length > 0} onClick={() => onPublish(opened)}>פרסום היחידה בלוח</Button>}
+            {onPost && <Button variant="outline" onClick={() => onPost(opened)}>יצירת קמפיין ליחידה</Button>}
+          </div>
+        </div>}
+      </DialogContent>
+    </Dialog>
+  </div>;
 }
 export default function ProjectHierarchyDetails({ project, onPublish, onPost, enlarged = false }: { project: DeveloperProject; onPublish?: (unit: ProjectUnit) => void; onPost?: (unit: ProjectUnit) => void; enlarged?: boolean }) {
   const { buildings, apartments, unassigned } = savedProjectHierarchy(project);
