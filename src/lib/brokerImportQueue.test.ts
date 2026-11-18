@@ -53,7 +53,7 @@ describe('restricted listings and fresh pagination', () => {
   it('new import resets all offsets and active state and requests fresh search pages', () => {
     const old = {page:9,brokerIndex:4,listingIndex:3,waitUntil:999,rateRetries:2};
     const fresh = freshImportCheckpoint();
-    expect(fresh).toEqual({page:1,source:'agencies',discoveryVersion:3,rows:[],brokers:[],brokerIndex:0,listingIndex:0,phase:'scanning',freshSearch:true});
+    expect(fresh).toEqual({page:1,source:'agencies',discoveryVersion:4,directoryQueue:[''],directoryVisited:0,rows:[],brokers:[],brokerIndex:0,listingIndex:0,phase:'scanning',freshSearch:true});
     expect(old.page).toBe(9);
     expect('waitUntil' in fresh).toBe(false);
   });

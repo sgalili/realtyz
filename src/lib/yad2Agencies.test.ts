@@ -20,7 +20,7 @@ describe('agency directory discovery', () => {
     expect(agencyPageUrl(1)).toBe('https://www.yad2.co.il/realestate/agencies');
     expect(new URL(agencyPageUrl(2)).searchParams.get('page')).toBe('2');
     const c = freshImportCheckpoint(); advanceSearchPoint(c); expect(c.page).toBe(2);
-    advanceSearchPoint(c,true); expect(c.phase).toBe('completed');
+    c.directoryQueue=[]; advanceSearchPoint(c,true); expect(c.phase).toBe('completed');
   });
   it('retains explicit license identity and draft links when mobile is hidden', () => {
     const html = `<main><article data-testid="broker-card"><span data-testid="broker-name">אדיר פנחס</span><h2>משרד א</h2><p>רישיון תיווך: 3151443</p><a href="/realestate/agencies/office-a">משרד</a><a href="/realestate/item/aaaa1111">נכס</a></article></main>`;
@@ -73,7 +73,7 @@ describe('early agency filtering and seven-day registry', () => {
     const u=new URL(agencyPageUrl(2,'/realestate/agencies?page=2&city=2400&area=2&topArea=1'));
     expect([...u.searchParams.keys()]).toEqual(['page']);
     expect(u.searchParams.get('page')).toBe('2');
-    const c:Record<string,any>={...freshImportCheckpoint(),cacheHits:4};
+    const c:Record<string,any>={...freshImportCheckpoint(),directoryQueue:[],cacheHits:4};
     advanceSearchPoint(c,true);
     expect(c).toMatchObject({phase:'completed',cacheHits:4});
   });

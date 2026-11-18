@@ -38,7 +38,7 @@ const BD_TOKEN = Deno.env.get("BRIGHT_DATA_API_KEY")?.trim() || Deno.env.get("BR
 // Pointing the REST call at the Browser API zone returns 200 with an empty
 // body + x-brd-err-code: client_10090, which is what made every Yad2 search
 // silently return zero rows.
-const BD_ZONE = WEB_UNLOCKER_ZONE;
+const BD_ZONE = (Deno.env.get('BRIGHTDATA_UNLOCKER_ZONE') ?? Deno.env.get('BRIGHTDATA_ZONE') ?? WEB_UNLOCKER_ZONE).trim();
 const BD_WS = Deno.env.get("BRIGHTDATA_WS_ENDPOINT") ?? "";
 
 
@@ -2237,6 +2237,18 @@ Deno.serve(async (req) => {
       const html = await unlock(inputUrl, {maxAttempts:1});
       const $page = cheerio.load(html);
       const parsed = body?.agency_profile===true && isAgencyProfileUrl(inputUrl) ? parseAgencyProfile($page,inputUrl,Math.min(10,Math.max(1,Number(body?.max_listings)||10))) : parseAgencies($page,inputUrl);
+      // Office feeds show five ads per page; read one more page when needed to reach the listing cap.
+      if (body?.agency_profile===true) {
+        const max=Math.min(10,Math.max(1,Number(body?.max_listings)||10));
+        const first=(parsed as any).results?.[0];
+        if (first?.publisher?.broker_license_number && (first.listing_urls?.length??0)<max && Number((parsed as any).total_pages)>1) {
+          try {
+            const pageUrl=new URL(inputUrl);pageUrl.searchParams.set('page','2');
+            const more=parseAgencyProfile(cheerio.load(await unlock(pageUrl.href,{maxAttempts:1})),inputUrl,max).results[0];
+            first.listing_urls=[...new Set([...(first.listing_urls??[]),...(more?.listing_urls??[])])].slice(0,max);
+          } catch (e) { console.warn('[yad2-unlocker] agency feed page 2 skipped', String((e as Error)?.message ?? e).slice(0,200)); }
+        }
+      }
       // Profile pages hide the phone behind a "show phone" button: click it in the managed browser.
       if (body?.agency_profile===true) for (const r of (parsed as any).results ?? []) if (!r.owner_phone) r.owner_phone = await revealAgencyPhone(inputUrl);
       return json({success:true,...parsed,served_from:'agencies_html',records_saved:0});

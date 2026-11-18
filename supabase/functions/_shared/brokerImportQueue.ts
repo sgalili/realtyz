@@ -28,14 +28,15 @@ export function nextImportPoint(brokerIndex: number, listingIndex: number, listi
 }
 
 export function freshImportCheckpoint() {
-  return { page: 1, source: 'agencies', discoveryVersion: 3, rows: [], brokers: [], brokerIndex: 0, listingIndex: 0, phase: 'scanning', freshSearch: true };
+  return { page: 1, source: 'agencies', discoveryVersion: 4, directoryQueue: [''], directoryVisited: 0, rows: [], brokers: [], brokerIndex: 0, listingIndex: 0, phase: 'scanning', freshSearch: true };
 }
 
 export function advanceSearchPoint(c: Record<string, any>, exhausted = false) {
   // Pasted links are a closed list: never fall through to directory pagination.
   if (c.source === 'urls') { c.phase = c.brokers?.length ? 'validating' : 'completed'; delete c.rows; delete c.enrichUrls; return; }
   if (c.source === 'agencies') {
-    if (!exhausted && c.page < 100) { c.page++; c.phase = 'scanning'; return; }
+    // Geography frontier replaces page numbers; Yad2 directory pages have no numeric pagination.
+    if (Array.isArray(c.directoryQueue) && c.directoryQueue.length && c.directoryVisited < 600) { c.page = (c.page ?? 1) + 1; c.phase = 'scanning'; return; }
     c.phase = c.brokers?.length ? 'validating' : 'completed';
     delete c.rows; delete c.enrichUrls; return;
   }

@@ -41,8 +41,83 @@ export function agencyPageUrl(page: number, next?: unknown) {
   return u.href;
 }
 
+/** Yad2 shows 16 top offices per geography node; full coverage walks topArea -> area -> city -> neighborhood. */
+export const AGENCY_DIRECTORY_LEVELS = ['topArea', 'area', 'city', 'neighborhood'] as const;
+export const AGENCY_DIRECTORY_MAX_NODES = 600;
+export function agencyDirectoryQuery(value: unknown): string {
+  const input = new URLSearchParams(typeof value === 'string' ? value.replace(/^\?/, '') : '');
+  const out = new URLSearchParams();
+  for (const level of AGENCY_DIRECTORY_LEVELS) { const v = input.get(level); if (v && /^\d{1,9}$/.test(v)) out.set(level, v); else break; }
+  return out.toString();
+}
+export function agencyDirectoryUrl(query = '') {
+  const q = agencyDirectoryQuery(query);
+  return q ? `${AGENCIES_URL}?${q}` : AGENCIES_URL;
+}
+function nextData($: any): any {
+  try { return JSON.parse($('script#__NEXT_DATA__').first().text() || 'null'); } catch { return null; }
+}
+/** Current Yad2 directory payload: pageProps.data['realtor-index'] office summaries plus geographic children. */
+export function parseAgencyDirectoryData(data: any, sourceUrl: string) {
+  const text = (v: unknown) => typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '';
+  const query = agencyDirectoryQuery(new URL(sourceUrl).search);
+  const seen = new Set<string>();
+  const results: Record<string, any>[] = [];
+  for (const office of Array.isArray(data?.['realtor-index']) ? data['realtor-index'] : []) {
+    const id = String(office?.CustID ?? '');
+    if (!/^\d{1,12}$/.test(id) || seen.has(id)) continue;
+    seen.add(id);
+    const logo = text(office.office_logo_url);
+    results.push({
+      source_url: `https://www.yad2.co.il/realestate/agency/${id}`, active_listing_count: agencyListingCount(office.total),
+      owner_name: null, owner_phone: null, owner_email: null, listing_urls: [],
+      publisher: { publisher_kind: 'broker', office_name: text(office.office_name) || null, broker_name: null,
+        office_logo_url: logo ? (logo.startsWith('//') ? `https:${logo}` : logo) : null },
+    });
+  }
+  const children: string[] = [];
+  for (const node of Array.isArray(data?.geographical) ? data.geographical : []) {
+    const level = node?.nextLevelName; const id = String(node?.id ?? '');
+    if (!AGENCY_DIRECTORY_LEVELS.includes(level) || !/^\d{1,9}$/.test(id)) continue;
+    const q = new URLSearchParams(query); q.set(level, id);
+    const child = agencyDirectoryQuery(q.toString());
+    if (child && child !== query && !children.includes(child)) children.push(child);
+  }
+  return { results: results.map(r => ({ ...r, directory_next_url: null })), next_url: null, children };
+}
+/** Current Yad2 office profile payload: identity only from an exact office-license/broker match. */
+export function parseAgencyProfileData(agency: any, sourceUrl: string, maxListings = 10) {
+  const text = (v: unknown) => typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '';
+  const details = agency?.details ?? {};
+  const license = text(String(details.licenseNumber ?? ''));
+  const broker = /^[1-9]\d{3,9}$/.test(license) && Array.isArray(agency?.brokers) ? agency.brokers.find((b: any) => text(String(b?.licenseNumber ?? '')) === license) : null;
+  const name = text(broker?.name);
+  const validLicense = Boolean(name);
+  const links = (Array.isArray(agency?.feed) ? agency.feed : []).flatMap((item: any) => {
+    const token = text(item?.token);
+    const kind = text(item?.additionalDetails?.property?.text);
+    if (!/^[a-z0-9]{4,20}$/i.test(token) || NON_RESIDENTIAL_RE.test(kind)) return [];
+    return [`https://www.yad2.co.il/realestate/item/${token}`];
+  });
+  const listingUrls = batchListingUrls(links).slice(0, Math.max(1, maxListings));
+  const total = agencyListingCount(agency?.pagination?.total);
+  return { results: [{
+    source_url: agencyUrl(sourceUrl.split('?')[0]), active_listing_count: total ?? listingUrls.length,
+    owner_name: name || null, owner_phone: batchPhone(details.phone ?? '') ?? null, owner_email: null,
+    listing_urls: validLicense ? listingUrls : [],
+    publisher: { publisher_kind: 'broker', broker_name: name || null, office_name: text(details.officeName) || null,
+      agency_description: text(details.description).slice(0, 5000) || null,
+      ...(validLicense ? { broker_license_number: license } : {}) },
+    directory_next_url: null,
+  }], next_url: null, total_pages: Number(agency?.pagination?.totalPages) || 1 };
+}
+
 /** Each identity and its listings are read only from its own card, not office-wide ads. */
 export function parseAgencies($: any, sourceUrl: string) {
+  const blocked = /Radware Page|ShieldSquare|captcha|אנו מניחים שגולשים/.test($('title').text() + $('body').text().slice(0, 600));
+  if (blocked) throw new Error('יד2 החזיר עמוד חסימה במקום ספריית משרדים');
+  const directory = nextData($)?.props?.pageProps?.data;
+  if (Array.isArray(directory?.['realtor-index'])) return parseAgencyDirectoryData(directory, sourceUrl);
   const rows: Record<string, any>[] = [];
   const seen = new Set<string>();
   const text = (v: unknown) => typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '';
@@ -133,6 +208,8 @@ export function parseAgencyProfile($: any, sourceUrl: string, maxListings = 10) 
   const text = (v: unknown) => typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '';
   const challenge = /Radware Page|ShieldSquare|captcha|אנו מניחים שגולשים/.test($('title').text() + $('body').text().slice(0, 600));
   if (challenge) throw new Error('יד2 החזיר עמוד חסימה במקום עמוד המתווך');
+  const agencyData = nextData($)?.props?.pageProps?.agencyData;
+  if (agencyData?.details) return parseAgencyProfileData(agencyData, sourceUrl, maxListings);
   let name = '', office = '', license = '', phone: string | null = null, email = '';
   let bio = '', agencyDescription = '';
   const visit = (node: any, depth = 0) => {

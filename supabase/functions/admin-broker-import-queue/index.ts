@@ -4,7 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { collectBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
 import { readWorkerResponse, ImportAvailabilityError, ProviderTimeoutError } from '../_shared/brightDataDiagnostics.ts';
-import { agencyPageUrl, agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck } from '../_shared/yad2Agencies.ts';
+import { agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck, agencyDirectoryQuery, agencyDirectoryUrl, isAgencyProfileUrl, AGENCY_DIRECTORY_MAX_NODES } from '../_shared/yad2Agencies.ts';
 import { ProviderRateLimitError, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
 import { IMPORT_QUEUE_GAP_MS, canRetryDeveloperPage } from '../_shared/importScanPolicy.ts';
 import { developerImportUrl, developerProjectImportRow, developerQueuePhaseAfterPage, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, type DeveloperQueueWork } from '../_shared/yad2DeveloperImport.ts';
@@ -108,7 +108,7 @@ Deno.serve(async req => {
       const {error}=await admin.from('broker_import_agency_registry').upsert({agency_key:key,criteria_key:criteriaKey,outcome,reason,listing_count:row.active_listing_count??null,checked_at:new Date().toISOString()});
       if(error)throw error;
     };
-    if (c.source !== 'urls' && ['scanning','enriching'].includes(c.phase) && (c.source !== 'agencies' || c.discoveryVersion !== 2)) {
+    if (c.source !== 'urls' && ['scanning','enriching'].includes(c.phase) && (c.source !== 'agencies' || c.discoveryVersion !== freshImportCheckpoint().discoveryVersion)) {
       Object.assign(c, freshImportCheckpoint()); delete c.deal; delete c.enrichUrls; delete c.enriched;
       delete c.directoryNextUrl; delete c.directoryPages; delete c.directoryExhausted;
     }
@@ -268,21 +268,27 @@ Deno.serve(async req => {
         await save({...totals,...(c.phase==='completed'?{status:'completed'}:{})});return json({ok:true});
       }
       if(c.phase==='scanning') {
-        const compactAll=(rs:Record<string,any>[])=>rs.map(r=>({...compactDirectoryRows([r])[0],directory_next_url:r.directory_next_url}));
-        const results=await cached(admin,'search_page',`agencies:v3:national:${c.page}`,c,async()=>{
-          const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url:agencyPageUrl(c.page,c.directoryNextUrl),page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
+        const query=agencyDirectoryQuery(c.directoryQueue?.[0]??'');
+        let fetchedChildren:string[]|null=null;
+        const results=await cached(admin,'search_page',`agencies:v4:${query||'national'}`,c,async()=>{
+          const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url:agencyDirectoryUrl(query),page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
           if(!d)throw new DelayStepFinished();
           if(!Array.isArray(d.results) || d.served_from==='pool') throw new Error('הסריקה לא החזירה תוצאות מאומתות מ־Bright Data');
-          return compactAll(d.results);
+          fetchedChildren=Array.isArray(d.children)?d.children.map(agencyDirectoryQuery).filter(Boolean):[];
+          return d.results.map((r:Record<string,any>)=>({...compactDirectoryRows([r])[0],directory_children:fetchedChildren}));
         });
-        const fingerprint=results.map(r=>`${r.source_url}:${r.publisher?.broker_license_number??''}`).sort().join('|');
-        c.directoryExhausted=!results.length || (c.directoryPages??[]).includes(fingerprint);
-        if(c.directoryExhausted) {advanceSearchPoint(c,true);await save(c.phase==='completed'?{status:'completed'}:{});return json({ok:true});}
-        c.directoryPages=[...(c.directoryPages??[]),fingerprint];
-        c.directoryNextUrl=agencyUrl(results[0]?.directory_next_url);
-        const known=await recentKeys(results);
+        const children:string[]=fetchedChildren??results[0]?.directory_children??[];
+        const visited=new Set<string>(c.directoryDone??[]);visited.add(query);
+        c.directoryQueue=[...(c.directoryQueue??[]).slice(1),...children.filter(q=>!visited.has(q)&&!(c.directoryQueue??[]).includes(q))];
+        c.directoryDone=[...visited].slice(-AGENCY_DIRECTORY_MAX_NODES);c.directoryVisited=(c.directoryVisited??0)+1;
+        // Offices recur across regions; each is inspected once per job.
+        const seenOffices=new Set<string>(c.seenOffices??[]);
+        const fresh=results.filter(r=>{const k=agencyRegistryKey(r);if(!k||seenOffices.has(k))return false;seenOffices.add(k);return true;});
+        c.seenOffices=[...seenOffices].slice(-3000);
+        if(!fresh.length){advanceSearchPoint(c);await save(c.phase==='completed'?{status:'completed'}:{});return json({ok:true});}
+        const known=await recentKeys(fresh);
         const eligible:Record<string,any>[]=[];
-        for(const r of results){
+        for(const r of fresh){
           const key=agencyRegistryKey(r);
           if(key && known.has(key)){c.registrySkips=(c.registrySkips??0)+1;continue;}
           if(!agencyVolumeAllowed(r,job.min_listings,job.max_listings)){
@@ -298,7 +304,7 @@ Deno.serve(async req => {
         for(const r of eligible.filter(r=>!needsDetail(r)))await recordCheck(r,'checked','complete_card');
         if(c.enrichUrls.length && c.brokers.length<job.target_brokers){c.phase='enriching';await save();return json({ok:true});}
         if(c.brokers.length>=job.target_brokers) {c.phase='validating';delete c.rows;}
-        else advanceSearchPoint(c,results.length===0);
+        else advanceSearchPoint(c);
         await save(c.phase==='completed'?{status:'completed'}:{});
       } else if(c.phase==='enriching') {
         const url=c.enrichUrls[0];
@@ -311,9 +317,11 @@ Deno.serve(async req => {
             if(!c.enrichUrls.length)advanceSearchPoint(c);
             await save(c.phase==='completed'?{status:'completed'}:{});return json({ok:true,skipped:true});
           }
-          const profile=c.source==='urls';
-          const rows=await cached(admin,'item_detail',profile?`agency-profile:v1:${job.max_listings}:${url}`:`agency:v2:${url}`,c,async()=>{
-            const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url,preview_only:true,...(profile?{agency_profile:true,max_listings:job.max_listings}:{}),limit:60,pages:1,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
+          // Directory offices are read through their profile payload: exact license identity and up to ten own ads.
+          const profile=c.source==='urls' || isAgencyProfileUrl(url);
+          const perLink=c.source==='urls'?job.max_listings:10;
+          const rows=await cached(admin,'item_detail',profile?`agency-profile:v2:${perLink}:${url}`:`agency:v2:${url}`,c,async()=>{
+            const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url,preview_only:true,...(profile?{agency_profile:true,max_listings:perLink}:{}),limit:60,pages:1,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
             if(!d)throw new DelayStepFinished();
             return Array.isArray(d.results) ? compactDirectoryRows(d.results) : [];
           });
