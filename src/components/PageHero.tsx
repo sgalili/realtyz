@@ -478,7 +478,7 @@ export function PageHero() {
           )}
           {location.pathname.startsWith("/lead-crm") && <LeadsHeroAddButton />}
           {isPostsPage && <CampaignsHeroAddButton />}
-          {origin && !isPropertyDetail && !isPostsPage && (
+          {origin && !isPropertyDetail && !isPostsPage && !location.pathname.startsWith('/developer-dashboard') && (
             <Button
               size="icon"
               variant="ghost"

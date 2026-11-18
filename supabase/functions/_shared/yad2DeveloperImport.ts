@@ -197,6 +197,21 @@ export function mergeProject(old: any, fresh: any) {
   return merged;
 }
 
+/** One independent unit per Yad2 listing ad of the current project (exact source fields only). */
+export function projectListingUnits(listings: unknown[], base: string) {
+  return listings.filter(record).flatMap((l: RecordValue) => {
+    const id = text(l.listingId ?? l.token);
+    if (!id) return [];
+    const d = record(l.additionalDetails) ? l.additionalDetails : {};
+    const a = record(l.address) ? l.address : {};
+    const price = number(l.price);
+    return [{ source_unit_id: id, building_id: null, building_name: null,
+      rooms: number(d.roomsCount ?? d.rooms), floor: text(d.floor ?? (record(a.house) ? a.house.floor : null)), size_sqm: number(d.squareMeter ?? d.squareMeters ?? d.area),
+      price: price && price > 0 ? price : null, type: text(record(d.property) ? d.property.text : null), address: text(a.display),
+      images: imagesOf(l), source_url: developerImportUrl(base), source_details: l }];
+  });
+}
+
 export function readPage(html: string, base: string, parentProject?: RecordValue) {
   const payloads: unknown[] = [];
   for (const m of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)) {
@@ -219,6 +234,20 @@ export function readPage(html: string, base: string, parentProject?: RecordValue
       ...parentProject, apartments: hierarchy.apartments, buildings: hierarchy.buildings,
       source_details: { hierarchy },
     })];
+  }
+  // Yad2 project pages embed each published apartment ad in pageProps.listings; store each as its own unit under its project.
+  if (developerImportPageKind(base) === 'project') {
+    for (const payload of payloads) {
+      const props = record(payload) && record(payload.props) && record(payload.props.pageProps) ? payload.props.pageProps : null;
+      if (!props || !Array.isArray(props.listings)) continue;
+      const units = projectListingUnits(props.listings, base);
+      if (!units.length) continue;
+      const projectId = text(record(props.project) ? (props.project.projectYzerId ?? props.project.token) : null) ?? text(units[0].source_details?.projectYzerId);
+      let target = result.projects.find(p => projectId && String(p.source_project_id) === projectId) ?? (result.projects.length === 1 ? result.projects[0] : null);
+      if (!target && parentProject) { target = { ...parentProject }; result.projects.push(target); }
+      if (!target) continue;
+      Object.assign(target, mergeProject(target, { apartments: units }));
+    }
   }
   const rendered = extractRenderedHtml(html, base);
   result.developer.company_name ??= rendered.developer.company_name;
