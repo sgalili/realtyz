@@ -47,6 +47,8 @@ export function BrokerBatchImportCard() {
   const linkLines = links.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const mismatchedCount = linkLines.filter(line => validLink(line) && (mode === 'developers' ? !developerImportUrl(line) : !agencyUrl(line))).length;
   const invalidCount = linkLines.filter(line => !validLink(line)).length;
+  // Pasted links only drive the import while auto-discovery is off; while it is on the paste area is hidden and ignored.
+  const useLinks = !autoDiscovery && links.trim().length > 0;
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -170,18 +172,30 @@ export function BrokerBatchImportCard() {
       </Tabs>
       <div className="grid gap-4">
         <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3"><Label htmlFor="auto-discovery" className="text-base">איתור אוטומטי מיד 2</Label><Switch id="auto-discovery" checked={autoDiscovery} onCheckedChange={setAutoDiscovery} /></div>
-        <Label htmlFor="import-links" className="text-base">{mode === 'developers' ? 'קישורי יזמים או פרויקטים ביד2' : 'קישורי מתווכים ביד2'}{autoDiscovery ? ' (לא חובה)' : ''}</Label>
-        <Textarea id="import-links" dir="ltr" className="min-h-20 text-left text-base" placeholder={mode === 'developers' ? 'https://www.yad2.co.il/yad1/developers/1000318' : 'https://www.yad2.co.il/realestate/agency/...'} value={links} onChange={event => setLinks(event.target.value)} onPaste={event => { event.preventDefault(); const element = event.currentTarget; const pasted = separateLinks(event.clipboardData.getData('text').trim()); setLinks(separateLinks(links.slice(0, element.selectionStart) + pasted + '\n' + links.slice(element.selectionEnd))); }} />
-        {(invalidCount > 0 || mismatchedCount > 0) && <p role="alert" className="text-base text-destructive">יש להזין קישורים תקינים התואמים ללשונית שנבחרה.</p>}
-        {mode === 'developers' ? <>{autoDiscovery && !links.trim() && <div className="grid gap-2"><Label htmlFor="developer-target" className="text-base">מספר יזמים לאיתור</Label><ImportQuantityInput id="developer-target" value={targetDevelopers} min={1} max={100} onChange={setTargetDevelopers} /></div>}<div className="grid gap-2"><Label htmlFor="project-limit" className="text-base">מספר פרויקטים ליזם</Label><ImportQuantityInput id="project-limit" value={expectedProjects} min={1} max={100} onChange={setExpectedProjects} /></div></> : <>
-          {autoDiscovery && !links.trim() && <><div className="grid gap-2"><Label className="text-base" htmlFor="broker-target">מספר מתווכים רצוי</Label><ImportQuantityInput id="broker-target" min={1} max={100} value={target} onChange={setTarget} /></div><div className="grid gap-2"><Label className="text-base" htmlFor="broker-min">מינימום נכסים פעילים למתווך</Label><ImportQuantityInput id="broker-min" min={1} max={max} value={min} onChange={setMin} /></div></>}
-          <div className="grid gap-2"><Label className="text-base" htmlFor="broker-max">מקסימום נכסים למתווך</Label><ImportQuantityInput id="broker-max" min={links.trim() ? 1 : min} max={10} value={links.trim() ? linkLimit : max} onChange={links.trim() ? setLinkLimit : setMax} /></div>
+        {!autoDiscovery && <>
+          <Label htmlFor="import-links" className="text-base">{mode === 'developers' ? 'קישורי יזמים או פרויקטים ביד2' : 'קישורי מתווכים ביד2'}</Label>
+          <Textarea id="import-links" dir="ltr" className="min-h-20 text-left text-base" placeholder={mode === 'developers' ? 'https://www.yad2.co.il/yad1/developers/1000318' : 'https://www.yad2.co.il/realestate/agency/...'} value={links} onChange={event => setLinks(event.target.value)} onPaste={event => { event.preventDefault(); const element = event.currentTarget; const pasted = separateLinks(event.clipboardData.getData('text').trim()); setLinks(separateLinks(links.slice(0, element.selectionStart) + pasted + '\n' + links.slice(element.selectionEnd))); }} />
+          {(invalidCount > 0 || mismatchedCount > 0) && <p role="alert" className="text-base text-destructive">יש להזין קישורים תקינים התואמים ללשונית שנבחרה.</p>}
+        </>}
+        {mode === 'developers' ? <>{autoDiscovery && <CountField id="developer-target" label="מספר יזמים לאיתור" value={targetDevelopers} min={1} max={100} onChange={setTargetDevelopers} />}
+          <CountField id="project-limit" label="מספר פרויקטים ליזם" value={expectedProjects} min={1} max={100} onChange={setExpectedProjects} />
+        </> : <>
+          {autoDiscovery && <><CountField id="broker-target" label="מספר מתווכים רצוי" value={target} min={1} max={100} onChange={setTarget} /><CountField id="broker-min" label="מינימום נכסים פעילים למתווך" value={min} min={1} max={max} onChange={setMin} /></>}
+          <CountField id="broker-max" label="מקסימום נכסים למתווך" value={useLinks ? linkLimit : max} min={useLinks ? 1 : min} max={10} onChange={useLinks ? setLinkLimit : setMax} />
         </>}
         {error && <p role="alert" className="text-base text-destructive">{error}</p>}
-        <div className="flex justify-between gap-2"><Button className="text-base" variant="outline" onClick={() => setOpen(false)}>ביטול</Button><Button className="text-base" disabled={busy || Boolean(current?.lease_until && Date.parse(current.lease_until) > now) || invalidCount > 0 || mismatchedCount > 0 || (!autoDiscovery && !links.trim()) || (mode === 'brokers' && autoDiscovery && !links.trim() && !validImportParameters(target, min, max))} onClick={() => { if (current && ['running', 'paused'].includes(current.status) && !window.confirm('להפסיק את הייבוא הפעיל ולהתחיל ייבוא חדש? הטיוטות והפרויקטים שכבר נשמרו לא יימחקו.')) return; void action(links.trim() ? 'start_urls' : mode === 'developers' ? 'start_auto_developers' : 'start'); }}><ScanSearch className="h-5 w-5" />{busy ? 'מתחיל…' : 'התחלת ייבוא'}</Button></div>
+        <div className="flex justify-between gap-2"><Button className="text-base" variant="outline" onClick={() => setOpen(false)}>ביטול</Button><Button className="text-base" disabled={busy || Boolean(current?.lease_until && Date.parse(current.lease_until) > now) || (useLinks && (invalidCount > 0 || mismatchedCount > 0)) || (!autoDiscovery && !links.trim()) || (mode === 'brokers' && autoDiscovery && !validImportParameters(target, min, max))} onClick={() => { if (current && ['running', 'paused'].includes(current.status) && !window.confirm('להפסיק את הייבוא הפעיל ולהתחיל ייבוא חדש? הטיוטות והפרויקטים שכבר נשמרו לא יימחקו.')) return; void action(useLinks ? 'start_urls' : mode === 'developers' ? 'start_auto_developers' : 'start'); }}><ScanSearch className="h-5 w-5" />{busy ? 'מתחיל…' : 'התחלת ייבוא'}</Button></div>
       </div>
     </DialogContent></Dialog>
   </section>;
+}
+
+// One quantity control on the same row as its title.
+function CountField({ id, label, value, min, max, onChange }: { id: string; label: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
+  return <div className="flex items-center justify-between gap-3">
+    <Label className="text-base" htmlFor={id}>{label}</Label>
+    <div className="w-36 shrink-0"><ImportQuantityInput id={id} value={value} min={min} max={max} onChange={onChange} /></div>
+  </div>;
 }
 
 // Completion summary: names only what this run actually imported, and only for the requested entity type.
