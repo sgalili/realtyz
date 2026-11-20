@@ -1,5 +1,11 @@
 # Roadmap
 
+## Developer projects and import adjustments November 20
+- [x] Show actual developer logos in fixed square frames everywhere developer identity cards appear.
+- [x] Move Our Projects back navigation into the blue hero and rebalance count, multi-select and commission controls.
+- [x] Scope the page's Yad2 import to the current developer and skip existing projects/apartments.
+- [x] Collapse Super Admin import status panels by default and verify mobile/desktop behavior.
+
 ## Scoped image rotation November 20
 - [x] Restrict first-two-image rotation controls and execution to authenticated Super Admins, excluding demo accounts.
 - [x] Add scoped broker/developer record actions covering only their listings, projects and apartments, with confirmation and counts.

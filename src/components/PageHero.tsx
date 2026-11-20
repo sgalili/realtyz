@@ -261,7 +261,7 @@ export function PageHero() {
   const isMyAdsPage = location.pathname.startsWith("/my-ads");
   const myListingsPath = "/my-ads";
   const { isAffiliate, isTeamMember, isPropertyOwner } = useUserRole();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
   const { data: ownerAds = [] } = useQuery({
     queryKey: ['my-ads-stats', user?.id, activeWorkspaceId],
     enabled: isPublicBoard && !!user && isPropertyOwner && !isAffiliate && !isTeamMember && !!activeWorkspaceId,
@@ -291,8 +291,10 @@ export function PageHero() {
     const ts = [50, 300, 800].map((d) => window.setTimeout(() => window.scrollTo({ top: y }), d));
     return () => ts.forEach(clearTimeout);
   }, [location.key]);
-  const goBackToOrigin = () => {
+  const goBackToOrigin = async () => {
     if (!origin) return;
+    const previousWorkspaceId = (location.state as { previousWorkspaceId?: string } | null)?.previousWorkspaceId;
+    if (previousWorkspaceId && previousWorkspaceId !== activeWorkspaceId) await setActiveWorkspace(previousWorkspaceId);
     navigate(origin.ret.returnTo!, { state: { restoreScroll: origin.ret.returnScroll ?? 0 } });
   };
   const propertySuffix = usePropertyHeroSuffix(location.pathname);
@@ -469,6 +471,9 @@ export function PageHero() {
             </Button>
           )}
           {access.properties && location.pathname === "/properties" && <PropertiesHeroAddButton />}
+          {origin && location.pathname === '/developer-dashboard' && (
+            <Button size="icon" variant="ghost" onClick={() => void goBackToOrigin()} aria-label="חזרה למסך הקודם" title="חזרה למסך הקודם" className="h-10 w-10 rounded-full text-white hover:bg-white/15 hover:text-white"><ArrowLeft className="!h-6 !w-6" strokeWidth={2.5} /></Button>
+          )}
           {access.projects && location.pathname === "/developer-dashboard" && (
             <Button size="icon" variant="ghost" aria-label="הוספת פרויקט" title="הוספת פרויקט"
               className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
@@ -482,7 +487,7 @@ export function PageHero() {
             <Button
               size="icon"
               variant="ghost"
-              onClick={goBackToOrigin}
+              onClick={() => void goBackToOrigin()}
               aria-label="חזרה למסך הקודם"
               title="חזרה למסך הקודם"
               className="h-10 w-10 rounded-full text-white hover:bg-white/15 hover:text-white"

@@ -16,7 +16,7 @@ import { readAllRows } from '../../../supabase/functions/_shared/readAllRows';
 const YAD2_RE = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i;
 
 /** Starts a durable import; every developer/project page runs in its own background chunk. */
-export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summary: { projects: number; units: number }) => void; initialUrl?: string | null }) {
+export function DeveloperYad2Import({ onSaved, initialUrl, developerId }: { onSaved?: (summary: { projects: number; units: number }) => void; initialUrl?: string | null; developerId?: string | null }) {
   const { activeWorkspaceId } = useWorkspace();
   const qc = useQueryClient();
   const [url, setUrl] = useState(initialUrl ?? '');
@@ -27,14 +27,17 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
   const workspaceRef = useRef(activeWorkspaceId);
   workspaceRef.current = activeWorkspaceId;
 
-  useEffect(() => { setUrl(initialUrl ?? ''); setJobId(null); setError(''); setStarting(false); reported.current = null; }, [activeWorkspaceId, initialUrl]);
+  useEffect(() => { setUrl(initialUrl ?? ''); setJobId(null); setError(''); setStarting(false); reported.current = null; }, [activeWorkspaceId, developerId, initialUrl]);
 
   const { data: recovered } = useQuery({
-    queryKey: ['developer-import-active', activeWorkspaceId, initialUrl],
+    queryKey: ['developer-import-active', activeWorkspaceId, developerId, initialUrl],
     enabled: !!activeWorkspaceId && !jobId,
+    // A running job may only be recovered for the exact developer shown on this page.
     queryFn: async () => {
       if (!activeWorkspaceId) return null;
-      const { data, error: queryError } = await supabase.from('developer_import_jobs').select('id').eq('workspace_owner_id', activeWorkspaceId).eq('status', 'running').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      let query = supabase.from('developer_import_jobs').select('id').eq('workspace_owner_id', activeWorkspaceId).eq('status', 'running').order('created_at', { ascending: false }).limit(1);
+      if (developerId) query = query.eq('developer_id', developerId);
+      const { data, error: queryError } = await query.maybeSingle();
       if (queryError) throw queryError;
       return data;
     },
@@ -113,7 +116,7 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
     if (!clean) { setError('הדביקו קישור תקין לעמוד היזם או לפרויקט מסוים ביד2'); return; }
     const originWorkspace = activeWorkspaceId;
     setStarting(true); setError(''); setUrl(clean); reported.current = null;
-    const { data, error: invokeError } = await supabase.functions.invoke('developer-import-jobs', { body: { action: 'start', url: clean, workspace_owner_id: originWorkspace } });
+    const { data, error: invokeError } = await supabase.functions.invoke('developer-import-jobs', { body: { action: 'start', url: clean, workspace_owner_id: originWorkspace, ...(developerId ? { developer_id: developerId } : {}) } });
     if (workspaceRef.current !== originWorkspace) return;
     setStarting(false);
     if (invokeError || !data?.job_id) {
@@ -125,11 +128,12 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
   };
 
   const directProject = developerImportPageKind(url) === 'project';
+  const scopedDeveloper = developerId ? ' הייבוא ישויך רק ליזם הנוכחי וישלים פרויקטים ודירות חסרים ללא כפילויות.' : '';
 
   return <div className="space-y-4">
     <div className="space-y-2">
       <Label htmlFor="dev-yad2-url" className="text-base font-bold">קישור לעמוד יזם או לפרויקט ביד2</Label>
-      <p id="dev-yad2-help" className="text-base text-muted-foreground">אפשר להדביק עמוד חברה לייבוא כל הפרויקטים, או קישור ישיר לפרויקט אחד. החברה, הפרויקטים, הדירות וציר הזמן נשמרים ברקע.</p>
+      <p id="dev-yad2-help" className="text-base text-muted-foreground">אפשר להדביק עמוד חברה לייבוא כל הפרויקטים, או קישור ישיר לפרויקט אחד. החברה, הפרויקטים, הדירות וציר הזמן נשמרים ברקע.{scopedDeveloper}</p>
     </div>
     <div className="flex flex-col gap-2 sm:flex-row">
       <Input id="dev-yad2-url" aria-describedby="dev-yad2-help" dir="ltr" type="url" placeholder="https://www.yad2.co.il/yad1/developers/... או /yad1/project/..." value={url} disabled={starting || job?.status === 'running'}

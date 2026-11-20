@@ -31,6 +31,11 @@ describe('developer project hierarchy', () => {
     expect(result.apartments).toHaveLength(2);
     expect(result.buildings[0].units[0]).toMatchObject({ rooms: 4, price: 1800000, balcony_sqm: 12 });
   });
+  it('keeps explicitly deleted units out after a source reimport', () => {
+    const sourceUnit = { source_unit_id: 'u1', building_id: 'b1', rooms: 4, price: 100 };
+    const result = savedProjectHierarchy({ apartments: [sourceUnit], source_details: { apartments: [sourceUnit], manual: { excluded_units: [JSON.stringify(['b1', 'u1'])] } } });
+    expect(result.apartments).toEqual([]);
+  });
   it('uses the saved apartment photo order instead of the original source order', () => {
     const hierarchy = extractProjectHierarchy({ apartments: [{ id: '1', rooms: 4, price: 100, images: ['https://img.test/a', 'https://img.test/b', 'https://img.test/c', 'https://img.test/d'] }] });
     const project = { apartments: [{ source_unit_id: '1', rooms: 4, price: 100, images: ['https://img.test/c', 'https://img.test/d', 'https://img.test/a', 'https://img.test/b'] }], source_details: { hierarchy } };

@@ -23,6 +23,7 @@ import { returnState } from '@/lib/returnNav';
 import { invitationHistoryKey, threadInvitationHistory } from '@/lib/invitationHistory';
 import { adminHistoryFromParams, readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
 import { RotateFirstTwoPhotosAction } from './RotateFirstTwoPhotosAction';
+import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 
 export type ContactBroker = { user_id: string; full_name: string; phone: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
@@ -115,7 +116,8 @@ function useOpenWorkspace() {
   const { setActiveWorkspace } = useWorkspace();
   const navigate = useNavigate();
   return async (id: string, developer?: boolean) => {
-    try { await setActiveWorkspace(id); navigate(developer ? '/developer-dashboard' : '/properties'); } catch { /* toast shown by switcher */ }
+    const origin = returnState();
+    try { await setActiveWorkspace(id); navigate(developer ? '/developer-dashboard' : '/properties', developer ? { state: origin } : undefined); } catch { /* toast shown by switcher */ }
   };
 }
 
@@ -136,7 +138,7 @@ function OfficeNameField({ b }: { b: ContactBroker }) {
     <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="ביטול" onClick={() => { setValue(b.office_name ?? ''); setEditing(false); }}><X className="h-4 w-4" /></Button>
   </span>;
   return <span className="flex min-w-0 shrink items-center gap-1.5">
-    {b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-7 w-7 shrink-0 rounded-md border border-border/60 object-contain" />}
+    {b.is_developer ? <DeveloperLogo name={b.office_name} logoUrl={b.office_logo_url} className="h-7 w-7" /> : b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-7 w-7 shrink-0 rounded-md border border-border/60 object-contain" />}
     <button type="button" disabled={!!b.first_login_at} onClick={() => setEditing(true)} aria-label="עריכת שם משרד התיווך" className={`min-w-0 truncate text-sm font-bold underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.office_name ? 'text-foreground' : 'text-primary'}`}>{b.office_name || 'הוסף משרד תיווך'}</button>
     <span aria-hidden className="text-muted-foreground">·</span>
   </span>;
@@ -191,7 +193,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
       <div className="flex min-w-0 flex-1 items-center gap-1">
         {b.license_verified && <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-label="אומת מול המאגר הממשלתי" />}
         <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
-          {b.is_developer && b.office_logo_url ? <img src={b.office_logo_url} alt="" className="h-9 w-9 shrink-0 rounded-md border border-border/60 object-contain" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
+          {b.is_developer ? <DeveloperLogo name={b.full_name} logoUrl={b.office_logo_url} className="h-9 w-9" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
           <span className="truncate text-base font-bold sm:text-lg">{b.full_name || 'ללא שם'}</span>
         </button>
         {!b.is_developer && !b.gender && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'זכר', '\u2642\uFE0E'], ['female', 'נקבה', '\u2640\uFE0E']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role="radio" aria-checked={false} aria-label={label} title={label} className="h-7 w-7 text-base text-muted-foreground" disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>}
@@ -312,7 +314,7 @@ export function ImportHistory() {
     <table className="w-full min-w-[520px] text-right text-sm">
       <thead className="bg-muted/50 text-muted-foreground"><tr><th className="p-2 font-semibold">לוגו</th><th className="p-2 font-semibold">שם</th><th className="p-2 font-semibold">סוג</th><th className="p-2 font-semibold">{'פרויקטים/נכסים'}</th><th className="p-2 font-semibold">סטטוס</th><th className="p-2 font-semibold">תאריך</th><th className="p-2"><span className="sr-only">מחיקת רשומה</span></th></tr></thead>
       <tbody className="divide-y divide-border/70">{items.map(i => <tr key={`${i.kind}-${i.id}`}>
-        <td className="p-2">{i.logo_url ? <img src={i.logo_url} alt="לוגו שיובא" className="h-8 w-8 rounded-md object-contain" /> : <X className="h-4 w-4 text-muted-foreground" aria-label="חסר" />}</td>
+        <td className="p-2">{i.kind === 'developer' ? <DeveloperLogo name={i.name} logoUrl={i.logo_url} className="h-8 w-8" /> : i.logo_url ? <img src={i.logo_url} alt="לוגו שיובא" className="h-8 w-8 rounded-md object-contain" /> : <X className="h-4 w-4 text-muted-foreground" aria-label="חסר" />}</td>
         <td className="p-2"><Button variant="ghost" className="h-auto justify-start gap-2 p-0 text-right font-bold whitespace-normal" disabled={!i.workspace_owner_id || opening !== null} aria-label={`פתיחת ${i.kind === 'developer' ? 'הפרויקטים' : 'הנכסים'} של ${i.name}`} onClick={() => void openInventory(i)}>{i.avatar_url && <img src={i.avatar_url} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />}<span>{i.name || 'ללא שם'}</span>{opening === i.id && <Loader2 className="h-4 w-4 animate-spin" />}</Button></td>
         <td className="p-2">{i.kind === 'developer' ? 'יזם' : 'מתווך'}</td>
         <td className="p-2">{i.projects}</td>

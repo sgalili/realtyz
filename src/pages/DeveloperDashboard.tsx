@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { FullPageLoading } from '@/components/ui/full-page-loading';
-import { ImportHistoryBack } from '@/components/admin/ImportHistoryBack';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -35,10 +34,13 @@ function ProjectStatusCell({ project, hasImages, stage }: { project: DeveloperPr
 }
 import DeveloperCommissionBadges from '@/components/developers/DeveloperCommissionBadges';
 import { commissionConfig, developerFeesErrors, projectCommissionErrors, unitCommissionKey, type DeveloperCommissionConfig } from '@/lib/developerCommissions';
+import { commissionForSelection, projectUnitSelectionKey, withoutSelectedUnits } from '@/lib/developerProjectSelection';
 import DeveloperCommissionEditor from '@/components/developers/DeveloperCommissionEditor';
 import { projectCampaignTargets } from '../../supabase/functions/_shared/projectCampaignTargets';
 import type { Json } from '@/integrations/supabase/types';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu, type BoardColumnId } from '@/components/public/PublicBoardTableControls';
+import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
+import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { useDeveloperSubscription } from '@/hooks/useDeveloperSubscription';
 
 const projectImages = developerProjectImages;
@@ -65,6 +67,10 @@ function DeveloperDashboardContent() {
   const [editing, setEditing] = useState<DeveloperProject | undefined>();
   const [commissionProject, setCommissionProject] = useState<DeveloperProject | null>(null);
   const [companyPricing, setCompanyPricing] = useState(false);
+  const [bulkPricing, setBulkPricing] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
+  const [selectedUnits, setSelectedUnits] = useState<Set<string>>(new Set());
   const [feeConfig, setFeeConfig] = useState<DeveloperCommissionConfig>({});
   const [savingFees, setSavingFees] = useState(false);
   useEffect(() => {
@@ -75,7 +81,7 @@ function DeveloperDashboardContent() {
     window.addEventListener('developer-projects:add', add);
     return () => window.removeEventListener('developer-projects:add', add);
   }, []);
-  useEffect(() => { setEditing(undefined); setExpandedId(null); setQuery(''); setPropFilter(EMPTY_PROPERTY_FILTER); setCommissionProject(null); setCompanyPricing(false); setFeeConfig({}); }, [ws]);
+  useEffect(() => { setEditing(undefined); setExpandedId(null); setQuery(''); setPropFilter(EMPTY_PROPERTY_FILTER); setCommissionProject(null); setCompanyPricing(false); setBulkPricing(false); setSelectionMode(false); setSelectedProjects(new Set()); setSelectedUnits(new Set()); setFeeConfig({}); }, [ws]);
   const [query, setQuery] = useState('');
   const [deals, setDeals] = useState({ sale: true, rent: true });
   const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
@@ -127,14 +133,21 @@ function DeveloperDashboardContent() {
   const developer = editing ? companies.find(company => company.id === editing.developer_id) : companies[0];
   const developerFor = (project: DeveloperProject) => companies.find(company => company.id === project.developer_id) ?? companies[0];
   const filtered = useMemo(() => projects.filter(project => projectMatches(project, query, deals, propFilter)), [projects, query, deals, propFilter]);
+  const selectedCount = selectedProjects.size + selectedUnits.size;
+  const toggleSelected = (setter: Dispatch<SetStateAction<Set<string>>>, key: string) => setter(current => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next; });
   const columns = usePublicBoardColumns(`developer-projects:${ws ?? ''}`, filtered, PROJECT_COLUMNS);
   const cities = useMemo(() => [...new Set(projects.map(project => project.city).filter(Boolean) as string[])].sort(), [projects]);
   const neighborhoods = useMemo(() => [...new Set(projects.map(project => project.neighborhood).filter(Boolean) as string[])].sort(), [projects]);
   const propertyTypes = useMemo(() => [...new Set(projects.flatMap(project => savedProjectHierarchy(project).apartments.map(unit => unit.type)).filter((type): type is string => typeof type === 'string' && !!type))].sort(), [projects]);
   const refresh = () => { void qc.invalidateQueries({ queryKey: ['my-developer', ws] }); void qc.invalidateQueries({ queryKey: ['developer-projects', ws] }); void qc.invalidateQueries({ queryKey: ['sidebar-counts', ws] }); void qc.invalidateQueries({ queryKey: ['campaign-inventory', ws] }); };
   const openPricing = (project?: DeveloperProject) => {
-    setCommissionProject(project ?? null); setCompanyPricing(!project);
+    setBulkPricing(false); setCommissionProject(project ?? null); setCompanyPricing(!project);
     setFeeConfig(commissionConfig(project?.commission_config ?? companies[0]?.commission_config));
+  };
+  const openBulkPricing = () => {
+    if (!selectedCount) return;
+    setCommissionProject(null); setCompanyPricing(false); setBulkPricing(true);
+    setFeeConfig(commissionConfig(companies[0]?.commission_config));
   };
   const saveFees = async () => {
     if (!ws || savingFees) return;
@@ -142,6 +155,16 @@ function DeveloperDashboardContent() {
     if (errors.length) { toast.error(`יש להשלים: ${errors.join(' · ')}`); return; }
     setSavingFees(true);
     try {
+      if (bulkPricing) {
+        const selected = projects.filter(project => selectedProjects.has(project.id) || savedProjectHierarchy(project).apartments.some(unit => selectedUnits.has(projectUnitSelectionKey(project.id, unit))));
+        for (const project of selected) {
+          const config = commissionForSelection(project, selectedProjects.has(project.id), selectedUnits, feeConfig.defaults!);
+          const { error } = await supabase.from('developer_projects').update({ commission_config: config as unknown as Json }).eq('id', project.id).eq('workspace_owner_id', ws).select('id').single();
+          if (error) throw error;
+        }
+        refresh(); setBulkPricing(false); setSelectedProjects(new Set()); setSelectedUnits(new Set()); setSelectionMode(false); toast.success(`העמלות נשמרו עבור ${selectedCount} פריטים`);
+        return;
+      }
       if (commissionProject) {
         const { error } = await supabase.from('developer_projects').update({ commission_config: feeConfig as unknown as Json }).eq('id', commissionProject.id).eq('workspace_owner_id', ws).select('id').single();
         if (error) throw error;
@@ -171,6 +194,24 @@ function DeveloperDashboardContent() {
     onSuccess: () => { refresh(); toast.success('הפרויקט נמחק'); },
     onError: () => toast.error('מחיקת הפרויקט נכשלה'),
   });
+  const bulkRemove = useMutation({
+    mutationFn: async () => {
+      if (!ws || !selectedCount) throw new Error('לא נבחרו פריטים');
+      for (const projectId of selectedProjects) {
+        const { error } = await supabase.from('developer_projects').delete().eq('id', projectId).eq('workspace_owner_id', ws).select('id').single();
+        if (error) throw error;
+      }
+      const unitProjects = projects.filter(project => !selectedProjects.has(project.id) && savedProjectHierarchy(project).apartments.some(unit => selectedUnits.has(projectUnitSelectionKey(project.id, unit))));
+      for (const project of unitProjects) {
+        const patch = withoutSelectedUnits(project, selectedUnits);
+        const { error } = await supabase.from('developer_projects').update({ apartments: patch.apartments as unknown as Json, commission_config: patch.commission_config as unknown as Json, source_details: patch.source_details as unknown as Json }).eq('id', project.id).eq('workspace_owner_id', ws).select('id').single();
+        if (error) throw error;
+      }
+      return { projects: selectedProjects.size, units: selectedUnits.size };
+    },
+    onSuccess: result => { refresh(); setSelectedProjects(new Set()); setSelectedUnits(new Set()); setSelectionMode(false); toast.success(`נמחקו ${result.projects} פרויקטים ו־${result.units} דירות`); },
+    onError: () => { refresh(); toast.error('המחיקה המרובה לא הושלמה. ייתכן שחלק מהפריטים עודכנו; הרשימה רועננה.'); },
+  });
   const busy = !ws || isLoading || companiesLoading;
   const publish = useMutation({
     mutationFn: async ({ project, key }: { project: DeveloperProject; key?: string }) => {
@@ -198,23 +239,24 @@ function DeveloperDashboardContent() {
   const meta = (p: DeveloperProject) => { const h = savedProjectHierarchy(p); return [h.buildings.length ? `${h.buildings.length} בניינים` : '', h.apartments.length ? `${h.apartments.length} סוגי יחידות` : '', p.available_units ? `${p.available_units} זמינות` : ''].filter(Boolean); };
   return (
     <div dir="rtl" className={grid ? 'w-full min-w-0 space-y-5 py-4 [&>*:not(.grid)]:px-4 [&>.grid]:px-2' : 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-5 overflow-hidden py-4 [&>*:not(.board-full)]:px-4'}>
-      <ImportHistoryBack />
       {params.get('search') === '1' && <BoardSearchControls id="developer-project-search" hideViewToggle query={query} onQueryChange={setQuery} grid={grid} onViewToggle={toggleGrid} filter={<LeadTypeFilterButton hideLeadFilters state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} propertyTypes={propertyTypes} />} />}
       {busy ? <div role="status" className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">טוען פרויקטים</span></div>
       : projectError || companyError ? <div role="alert" className="space-y-3 py-8 text-center"><p className="text-lg text-destructive">לא ניתן לטעון את הפרויקטים</p><Button variant="outline" onClick={refresh}>ניסיון נוסף</Button></div>
       : projects.length === 0 ? <section className="flex flex-col items-center gap-3 py-16 text-center"><Building2 className="h-12 w-12 text-muted-foreground/50" /><h2 className="text-xl font-semibold">עדיין אין פרויקטים</h2><p className="text-base text-muted-foreground">ייבוא מיד2 נשמר אוטומטית ברקע, פרויקט אחר פרויקט.</p><div className="flex gap-2"><Button onClick={() => setMode('import')}><FileDown className="h-4 w-4" />ייבוא מיד2</Button><Button variant="outline" onClick={() => { setEditing(undefined); setMode('manual'); }}><Pencil className="h-4 w-4" />יצירה ידנית</Button></div></section>
       : <>
         <div data-developer-toolbar className="flex w-full min-w-0 flex-nowrap items-center gap-1 sm:gap-3">
-          {companies[0]?.logo_url && <PublicIdentityLink className="shrink-0" userId={companies[0].owner_user_id} label={`פתיחת הפרופיל של ${companies[0].company_name}`}><img src={companies[0].logo_url} alt="לוגו החברה" className="h-16 w-16 rounded object-contain sm:h-20 sm:w-20" /></PublicIdentityLink>}
+          {companies[0] && <PublicIdentityLink className="shrink-0" userId={companies[0].owner_user_id} label={`פתיחת הפרופיל של ${companies[0].company_name}`}><DeveloperLogo name={companies[0].company_name} logoUrl={companies[0].logo_url} className="h-16 w-16 sm:h-20 sm:w-20" /></PublicIdentityLink>}
           <PublicIdentityLink userId={companies[0]?.owner_user_id} className="min-w-0 flex-1 truncate font-semibold">{companies[0]?.company_name}</PublicIdentityLink>
-          <span aria-label="סך הפרויקטים" className="shrink-0 whitespace-nowrap rounded-full border border-border bg-muted px-2 py-1 text-sm font-semibold">{projects.length} פרויקטים</span>
           <Button variant="ghost" size="icon" className="shrink-0" aria-label="סנכרון מיד2" title="סנכרון מיד2" onClick={() => setMode('import')}><FileDown className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" className="shrink-0" onClick={toggleGrid} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'} title={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
         </div>
-        <div><Button variant="outline" onClick={() => openPricing()}><span aria-hidden className="text-base font-bold leading-none">₪</span>הגדרת עמלות ותגמולים</Button></div>
+        <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2"><span aria-label="סך הפרויקטים" className="shrink-0 whitespace-nowrap rounded-full border border-border bg-muted px-2 py-1 text-sm font-semibold">{projects.length} פרויקטים</span><SelectModeToggle total={filtered.length} active={selectionMode} count={selectedCount} onToggle={() => { setSelectionMode(value => !value); setSelectedProjects(new Set()); setSelectedUnits(new Set()); }} onSelectAll={() => setSelectedProjects(new Set(filtered.map(project => project.id)))} /></div>
+          <div className="flex flex-wrap items-center gap-2">{selectedCount > 0 && <Button variant="outline" className="text-destructive" disabled={bulkRemove.isPending} onClick={() => { if (confirm(`למחוק ${selectedProjects.size} פרויקטים ו־${selectedUnits.size} דירות?`)) bulkRemove.mutate(); }}>{bulkRemove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}מחיקה מרובה</Button>}<Button variant="outline" onClick={selectedCount ? openBulkPricing : () => openPricing()}><span aria-hidden className="text-base font-bold leading-none">₪</span>הגדרת עמלות ותגמולים</Button></div>
+        </div>
         {filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו פרויקטים מתאימים</p> : grid ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(p => { const open = expandedId === p.id; const deal = projectDeal(p); return <article key={p.id} className={cn('flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md', open && 'sm:col-span-2 lg:col-span-3')}>
-            <div className="flex flex-wrap items-start gap-2 p-3"><div className="min-w-0 w-full"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3"><h2 className="min-w-0 whitespace-normal [overflow-wrap:anywhere] text-[19px] font-bold leading-snug">{p.name}</h2>{priceLabel(p.price_from) && <p className={cn('shrink-0 whitespace-nowrap text-[17px] font-bold', deal === 'rent' ? 'text-sale' : 'text-success')}>{priceLabel(p.price_from)}</p>}</div><p className="mt-1 truncate text-sm text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</p></div>{actions(p)}</div>
+            <div className="flex flex-wrap items-start gap-2 p-3"><div className="min-w-0 w-full"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3"><h2 className="min-w-0 whitespace-normal [overflow-wrap:anywhere] text-[19px] font-bold leading-snug">{p.name}</h2>{priceLabel(p.price_from) && <p className={cn('shrink-0 whitespace-nowrap text-[17px] font-bold', deal === 'rent' ? 'text-sale' : 'text-success')}>{priceLabel(p.price_from)}</p>}</div><p className="mt-1 truncate text-sm text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</p></div>{selectionMode && <SelectBox checked={selectedProjects.has(p.id)} onChange={() => toggleSelected(setSelectedProjects, p.id)} label={`בחירת הפרויקט ${p.name}`} />}{actions(p)}</div>
             <div className="px-3 pb-2"><ProjectStatusCell project={p} hasImages={projectImages(p).length > 0} stage={PROJECT_STATUS[p.status] ?? p.status} /></div>
             <PropertyGallerySlider photos={projectImages(p)} alt={p.name} overlay={<span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">{PROJECT_STATUS[p.status] ?? p.status}</span>} />
             <div className="flex flex-1 flex-col gap-3 p-4">
@@ -222,11 +264,12 @@ function DeveloperDashboardContent() {
               <DeveloperCommissionBadges project={p} onEdit={() => openPricing(p)} />
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">{meta(p).map(item => <span key={item} className="inline-flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-primary" />{item}</span>)}</div>
               <Button variant="outline" className="mt-auto justify-between" aria-expanded={open} onClick={event => toggleProject(p.id, event.currentTarget)}>בניינים ויחידות<ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button>
-              <AnimatedExpansion open={open} autoReveal={false}><ProjectHierarchyDetails enlarged project={p} developer={developerFor(p)} grid={grid} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => postUnit(p, unit)} onEdit={() => { setEditing(p); setMode('manual'); }} /></AnimatedExpansion>
+              <AnimatedExpansion open={open} autoReveal={false}><ProjectHierarchyDetails enlarged project={p} developer={developerFor(p)} grid={grid} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => postUnit(p, unit)} onEdit={() => { setEditing(p); setMode('manual'); }} selectionMode={selectionMode} selectedUnits={selectedUnits} onToggleUnit={key => toggleSelected(setSelectedUnits, key)} /></AnimatedExpansion>
             </div>
           </article>; })}
-        </div> : <BoardColumnDragArea controls={columns}><HorizontalTableScroll className="board-full listing-results-scroll board-head-sticky flex-1 rounded-none border-0"><table className="w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{columns.visible.map((id) => <BoardColumnHeader key={id} id={id} controls={columns} />)}<th className="p-2"><BoardColumnMenu controls={columns} /></th></tr></thead><tbody>
+        </div> : <BoardColumnDragArea controls={columns}><HorizontalTableScroll className="board-full listing-results-scroll board-head-sticky flex-1 rounded-none border-0"><table className="w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{selectionMode && <th className="w-8 p-2"><span className="sr-only">בחירה</span></th>}{columns.visible.map((id) => <BoardColumnHeader key={id} id={id} controls={columns} />)}<th className="p-2"><BoardColumnMenu controls={columns} /></th></tr></thead><tbody>
           {columns.sorted.flatMap(p => { const open = expandedId === p.id; const deal = projectDeal(p); const hierarchy = savedProjectHierarchy(p); return [<tr key={p.id} tabIndex={0} aria-expanded={open} onClick={() => setExpandedId(open ? null : p.id)} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? null : p.id); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {selectionMode && <td className="p-2"><SelectBox checked={selectedProjects.has(p.id)} onChange={() => toggleSelected(setSelectedProjects, p.id)} label={`בחירת הפרויקט ${p.name}`} /></td>}
             {columns.visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'price' && 'text-right whitespace-nowrap font-bold max-sm:sticky max-sm:left-0 max-sm:z-[3] max-sm:bg-card', id === 'price' && (deal === 'rent' ? 'text-sale' : 'text-success'))}>
               {id === 'photo' ? projectImages(p)[0] ? <img src={projectImages(p)[0]} alt="" className="h-12 w-12 rounded object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded bg-muted"><Building2 className="h-5 w-5 text-muted-foreground" /></div>
               : id === 'address' ? <div className="min-w-[8rem] max-w-64"><strong className="block whitespace-normal [overflow-wrap:anywhere]">{p.name}</strong><span className="block break-words text-xs text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</span></div>
@@ -234,7 +277,7 @@ function DeveloperDashboardContent() {
               : id === 'commissions' ? <DeveloperCommissionBadges project={p} onEdit={() => openPricing(p)} /> : id === 'rooms' ? hierarchy.apartments.length || '' : <ProjectStatusCell project={p} hasImages={projectImages(p).length > 0} stage={PROJECT_STATUS[p.status] ?? p.status} />}
             </td>)}
             <td className="p-2"><div className="flex items-center">{actions(p)}<Button variant="ghost" size="icon-sm" aria-label={`בניינים ויחידות ${p.name}`} aria-expanded={open} onClick={event => { event.stopPropagation(); setExpandedId(open ? null : p.id); }}><ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button></div></td>
-          </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1} className="p-0"><FixedTablePanel><AnimatedExpansion open={open} autoReveal={false}><div className="min-w-0 space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails enlarged project={p} developer={developerFor(p)} grid={grid} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => postUnit(p, unit)} onEdit={() => { setEditing(p); setMode('manual'); }} /></div></AnimatedExpansion></FixedTablePanel></td></tr>]; })}
+          </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1 + (selectionMode ? 1 : 0)} className="p-0"><FixedTablePanel><AnimatedExpansion open={open} autoReveal={false}><div className="min-w-0 space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails enlarged project={p} developer={developerFor(p)} grid={grid} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => postUnit(p, unit)} onEdit={() => { setEditing(p); setMode('manual'); }} selectionMode={selectionMode} selectedUnits={selectedUnits} onToggleUnit={key => toggleSelected(setSelectedUnits, key)} /></div></AnimatedExpansion></FixedTablePanel></td></tr>]; })}
         </tbody></table></HorizontalTableScroll></BoardColumnDragArea>}
       </>}
       <Dialog open={mode !== null} onOpenChange={open => { if (!open) close(); }}>
@@ -244,11 +287,11 @@ function DeveloperDashboardContent() {
             <Button variant="outline" className="h-24 gap-3 text-lg" onClick={() => setMode('import')}><FileDown />ייבוא מיד2</Button>
             <Button variant="outline" className="h-24 gap-3 text-lg" onClick={() => setMode('manual')}><Pencil />יצירה ידנית</Button>
           </div>}
-          {mode === 'import' && <div className="space-y-4"><DeveloperYad2Import onSaved={saved} initialUrl={companies[0]?.source_url ?? null} /><Button variant="ghost" onClick={() => setMode('manual')}>יצירה ידנית</Button></div>}
+          {mode === 'import' && <div className="space-y-4"><DeveloperYad2Import onSaved={saved} initialUrl={companies[0]?.source_url ?? null} developerId={companies[0]?.id ?? null} /><Button variant="ghost" onClick={() => setMode('manual')}>יצירה ידנית</Button></div>}
           {mode === 'manual' && !busy && <DeveloperProjectWizard key={`${ws}-${editing?.id ?? 'new'}`} project={editing} company={developer} onSaved={saved} onCancel={close} />}
         </DialogContent>
       </Dialog>
-      <Dialog open={companyPricing || !!commissionProject} onOpenChange={open => { if (!open && !savingFees) { setCompanyPricing(false); setCommissionProject(null); } }}><DialogContent dir="rtl" className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{commissionProject ? `עמלות ${commissionProject.name}` : 'עמלות החברה לכל הפרויקטים'}</DialogTitle><DialogDescription>{commissionProject ? 'ברירת מחדל לפרויקט והתאמות ליחידות' : 'שמירה תחיל את ברירת המחדל על כל פרויקטי החברה, בלי לשנות התאמות אישיות ליחידות. מודעות שכבר פורסמו יתעדכנו רק בפרסום מחדש.'}</DialogDescription></DialogHeader><DeveloperCommissionEditor key={commissionProject?.id ?? 'company'} value={feeConfig} units={commissionProject ? savedProjectHierarchy(commissionProject).apartments : []} price={commissionProject?.price_from || 0} deal="sale" onChange={setFeeConfig} /><Button disabled={savingFees} onClick={() => void saveFees()}>{savingFees && <Loader2 className="animate-spin" />}שמירת עמלות</Button></DialogContent></Dialog>
+      <Dialog open={companyPricing || !!commissionProject || bulkPricing} onOpenChange={open => { if (!open && !savingFees) { setCompanyPricing(false); setCommissionProject(null); setBulkPricing(false); } }}><DialogContent dir="rtl" className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{bulkPricing ? `עמלות ל־${selectedCount} פריטים נבחרים` : commissionProject ? `עמלות ${commissionProject.name}` : 'עמלות החברה לכל הפרויקטים'}</DialogTitle><DialogDescription>{bulkPricing ? 'השמירה תחיל את התמחור על הפרויקטים והדירות שנבחרו בלבד, בלי לשנות את שאר המלאי.' : commissionProject ? 'ברירת מחדל לפרויקט והתאמות ליחידות' : 'שמירה תחיל את ברירת המחדל על כל פרויקטי החברה, בלי לשנות התאמות אישיות ליחידות. מודעות שכבר פורסמו יתעדכנו רק בפרסום מחדש.'}</DialogDescription></DialogHeader><DeveloperCommissionEditor key={bulkPricing ? 'bulk' : commissionProject?.id ?? 'company'} value={feeConfig} units={commissionProject && !bulkPricing ? savedProjectHierarchy(commissionProject).apartments : []} price={commissionProject?.price_from || 0} deal="sale" onChange={setFeeConfig} /><Button disabled={savingFees} onClick={() => void saveFees()}>{savingFees && <Loader2 className="animate-spin" />}שמירת עמלות</Button></DialogContent></Dialog>
     </div>
   );
 }

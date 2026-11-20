@@ -23,6 +23,7 @@ import type { ComponentType } from 'react';
 import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { returnState } from '@/lib/returnNav';
 import { useAuth } from '@/hooks/useAuth';
 import { SidebarWalletIndicator } from '@/components/billing/SidebarWalletIndicator';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -400,6 +401,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     <SidebarMenuButton asChild isActive={active}>
                       <NavLink
                         to={item.url}
+                        state={item.url === '/developer-dashboard' ? returnState() : undefined}
                         data-walkthrough-path={item.url}
                         data-walkthrough-title={item.title.trim()}
                         end={item.url === '/command-center'}

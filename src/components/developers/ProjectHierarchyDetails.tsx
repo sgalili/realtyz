@@ -16,6 +16,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
 import { RotateFirstTwoPhotosAction } from '@/components/admin/RotateFirstTwoPhotosAction';
+import { DeveloperLogo } from './DeveloperLogo';
+import { SelectBox } from '@/components/ui/multi-select-controls';
+import { projectUnitSelectionKey } from '@/lib/developerProjectSelection';
 
 const labelValue = (value: unknown): string => {
   if (value == null) return '';
@@ -40,6 +43,12 @@ export type ProjectDeveloperIdentity = {
   phone: string | null;
   contact_name: string | null;
   contact_phone: string | null;
+};
+
+type UnitSelectionProps = {
+  selectionMode?: boolean;
+  selectedUnits?: Set<string>;
+  onToggleUnit?: (key: string) => void;
 };
 
 type UnitActionProps = {
@@ -68,7 +77,7 @@ function DeveloperUnitMenu({ unit, project, onOpen, onPublish, onPost, onEdit, o
 
 function DeveloperIdentity({ developer }: { developer: ProjectDeveloperIdentity }) {
   return <section aria-label="פרטי היזם" className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/20 p-3">
-    {developer.logo_url ? <img src={developer.logo_url} alt={`לוגו ${developer.company_name}`} className="h-14 w-14 shrink-0 rounded object-contain" /> : <Building2 className="h-10 w-10 shrink-0 text-muted-foreground" />}
+    <DeveloperLogo name={developer.company_name} logoUrl={developer.logo_url} />
     <div className="min-w-0 space-y-1">
       <h3 className="break-words text-lg font-bold">{developer.company_name}</h3>
       <p className="text-sm text-muted-foreground">פרטי היזם</p>
@@ -79,19 +88,21 @@ function DeveloperIdentity({ developer }: { developer: ProjectDeveloperIdentity 
   </section>;
 }
 
-function UnitDetails({ units, project, developer, grid, onPublish, onPost, onEdit }: { units: ProjectUnit[]; project: DeveloperProject; developer?: ProjectDeveloperIdentity; grid: boolean; onPublish?: (unit: ProjectUnit) => void; onPost?: (unit: ProjectUnit) => void; onEdit?: () => void }) {
+function UnitDetails({ units, project, developer, grid, onPublish, onPost, onEdit, selectionMode = false, selectedUnits, onToggleUnit }: { units: ProjectUnit[]; project: DeveloperProject; developer?: ProjectDeveloperIdentity; grid: boolean; onPublish?: (unit: ProjectUnit) => void; onPost?: (unit: ProjectUnit) => void; onEdit?: () => void } & UnitSelectionProps) {
   const [opened, setOpened] = useState<ProjectUnit | null>(null);
   const extra = opened ? Object.entries(sourceRecord(opened.source_details)).filter(([key, value]) => !['url', 'specifications'].includes(key) && labelValue(value) && labelValue(value).length < 400) : [];
   const edit = () => { setOpened(null); onEdit?.(); };
   return <div className="min-w-0">
     {grid ? <div className="property-card-grid">
-      {units.map(unit => <StandardPropertyCard key={`${unit.building_id}:${unit.source_unit_id}`} card={unitCard(unit, project)} onOpen={() => setOpened(unit)} onFavorite={() => undefined} showContact={false} showOwnerMenu={false} menu={<DeveloperUnitMenu unit={unit} project={project} onOpen={() => setOpened(unit)} onPublish={onPublish} onPost={onPost} onEdit={onEdit} onRotated={() => setOpened(null)} />} />)}
+      {units.map(unit => { const selectionKey = projectUnitSelectionKey(project.id, unit); return <div key={`${unit.building_id}:${unit.source_unit_id}`} className="relative">{selectionMode && <SelectBox className="absolute right-2 top-2 z-20 h-6 w-6 bg-background shadow-sm" checked={selectedUnits?.has(selectionKey) ?? false} onChange={() => onToggleUnit?.(selectionKey)} label={`בחירת ${unitTitle(unit)}`} />}<StandardPropertyCard card={unitCard(unit, project)} onOpen={() => setOpened(unit)} onFavorite={() => undefined} showContact={false} showOwnerMenu={false} menu={<DeveloperUnitMenu unit={unit} project={project} onOpen={() => setOpened(unit)} onPublish={onPublish} onPost={onPost} onEdit={onEdit} onRotated={() => setOpened(null)} />} /></div>; })}
     </div> : <div className="overflow-x-auto rounded-lg border bg-card">
       <table className="w-full min-w-[760px] text-right text-sm">
-        <thead className="bg-muted/40 text-muted-foreground"><tr><th className="p-2 font-semibold">תמונה</th><th className="p-2 font-semibold">דירה</th><th className="p-2 font-semibold">מחיר</th><th className="p-2 font-semibold">תגמולים</th><th className="p-2 font-semibold">חדרים</th><th className="p-2 font-semibold">מ״ר</th><th className="p-2 font-semibold">קומה</th><th className="p-2"><span className="sr-only">פעולות</span></th></tr></thead>
+        <thead className="bg-muted/40 text-muted-foreground"><tr>{selectionMode && <th className="w-8 p-2"><span className="sr-only">בחירה</span></th>}<th className="p-2 font-semibold">תמונה</th><th className="p-2 font-semibold">דירה</th><th className="p-2 font-semibold">מחיר</th><th className="p-2 font-semibold">תגמולים</th><th className="p-2 font-semibold">חדרים</th><th className="p-2 font-semibold">מ״ר</th><th className="p-2 font-semibold">קומה</th><th className="p-2"><span className="sr-only">פעולות</span></th></tr></thead>
         <tbody className="divide-y divide-border/70">{units.map(unit => {
           const card = unitCard(unit, project);
+          const selectionKey = projectUnitSelectionKey(project.id, unit);
           return <tr key={`${unit.building_id}:${unit.source_unit_id}`} tabIndex={0} onClick={() => setOpened(unit)} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setOpened(unit); } }} className="cursor-pointer hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {selectionMode && <td className="p-2"><SelectBox checked={selectedUnits?.has(selectionKey) ?? false} onChange={() => onToggleUnit?.(selectionKey)} label={`בחירת ${unitTitle(unit)}`} /></td>}
             <td className="p-2">{card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded bg-muted"><Building2 className="h-5 w-5 text-muted-foreground" /></div>}</td>
             <td className="min-w-56 p-2"><PublicCardSummary card={card} showCommissions={false} showBroker={false} dense /></td>
             <td className="whitespace-nowrap p-2 text-[17px] font-bold text-success">{card.price ? `₪${Number(card.price).toLocaleString('he-IL')}` : ''}</td>
@@ -126,7 +137,7 @@ function UnitDetails({ units, project, developer, grid, onPublish, onPost, onEdi
   </div>;
 }
 
-export default function ProjectHierarchyDetails({ project, developer, grid = true, onPublish, onPost, onEdit, enlarged = false }: { project: DeveloperProject; developer?: ProjectDeveloperIdentity; grid?: boolean; onPublish?: (unit: ProjectUnit) => void; onPost?: (unit: ProjectUnit) => void; onEdit?: () => void; enlarged?: boolean }) {
+export default function ProjectHierarchyDetails({ project, developer, grid = true, onPublish, onPost, onEdit, enlarged = false, selectionMode = false, selectedUnits, onToggleUnit }: { project: DeveloperProject; developer?: ProjectDeveloperIdentity; grid?: boolean; onPublish?: (unit: ProjectUnit) => void; onPost?: (unit: ProjectUnit) => void; onEdit?: () => void; enlarged?: boolean } & UnitSelectionProps) {
   const { buildings, unassigned } = savedProjectHierarchy(project);
   const details = sourceRecord(project.source_details);
   const manual = sourceRecord(details.manual);
@@ -147,10 +158,10 @@ export default function ProjectHierarchyDetails({ project, developer, grid = tru
         <AccordionTrigger className="hover:no-underline"><span className="flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" />{building.name ? `בניין ${building.name}` : `בניין ${index + 1}`}<span className="text-sm font-normal text-muted-foreground">{building.units.length} סוגי יחידות</span></span></AccordionTrigger>
         <AccordionContent>
           <p className="mb-2 text-sm text-muted-foreground">{[building.address, building.deliveryDate, building.description].map(labelValue).filter(Boolean).join(' · ')}</p>
-          {building.units.length ? <UnitDetails units={building.units} project={project} developer={developer} grid={grid} onPublish={onPublish} onPost={onPost} onEdit={onEdit} /> : null}
+          {building.units.length ? <UnitDetails units={building.units} project={project} developer={developer} grid={grid} onPublish={onPublish} onPost={onPost} onEdit={onEdit} selectionMode={selectionMode} selectedUnits={selectedUnits} onToggleUnit={onToggleUnit} /> : null}
         </AccordionContent>
       </AccordionItem>)}
     </Accordion>
-    {unassigned.length > 0 && <div><h3 className="text-sm font-semibold">{buildings.length ? 'יחידות ללא שיוך לבניין' : 'דירות וסוגי יחידות'}</h3><UnitDetails units={unassigned} project={project} developer={developer} grid={grid} onPublish={onPublish} onPost={onPost} onEdit={onEdit} /></div>}
+    {unassigned.length > 0 && <div><h3 className="text-sm font-semibold">{buildings.length ? 'יחידות ללא שיוך לבניין' : 'דירות וסוגי יחידות'}</h3><UnitDetails units={unassigned} project={project} developer={developer} grid={grid} onPublish={onPublish} onPost={onPost} onEdit={onEdit} selectionMode={selectionMode} selectedUnits={selectedUnits} onToggleUnit={onToggleUnit} /></div>}
   </div>;
 }

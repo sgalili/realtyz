@@ -23,6 +23,7 @@ import { ProfilePageClose } from '@/components/community/ProfilePageClose';
 import { ProfilePageShare } from '@/components/community/ProfilePageShare';
 import { SendProfileMessage } from '@/components/community/SendProfileMessage';
 import ProjectTimelineBar from '@/components/developers/ProjectTimelineBar';
+import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 import { readAllRows } from '../../supabase/functions/_shared/readAllRows';
 
@@ -82,6 +83,7 @@ export default function CommunityProfilePage() {
   const close = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/'));
   const isOwner = isSuperAdmin || user?.id === userId;
   const initials = (p?.full_name ?? '').split(' ').map(s => s[0]).slice(0, 2).join('');
+  const profileImage = p?.category === 'developer' ? p.logo_url : p?.avatar_url;
   const cities = p?.service_areas?.filter(Boolean).join(', ') || p?.city;
   return <main dir="rtl" data-no-hero-wave className="relative mx-auto w-full max-w-6xl space-y-6 px-2 pb-6 sm:px-6">
     <ProfilePageClose onClose={close} />
@@ -91,8 +93,8 @@ export default function CommunityProfilePage() {
     {!profile.isLoading && !profile.isError && !p && <div className="space-y-3 text-center"><p className="text-muted-foreground">הפרופיל אינו זמין</p><Button variant="outline" onClick={close}>סגירה</Button></div>}
     {p && <section className="!mt-0 space-y-5">
       <div className="flex flex-col items-center gap-3 text-center">
-        <Button variant="ghost" disabled={!p.avatar_url} aria-label={`הצגת תמונת הפרופיל של ${p.full_name}`} onClick={() => setImageOpen(true)} className="h-28 w-28 rounded-full p-0 sm:h-32 sm:w-32 disabled:opacity-100">
-          <Avatar className="h-full w-full"><AvatarImage src={p.avatar_url ?? undefined} alt={p.full_name ?? ''} className="object-cover" /><AvatarFallback className="text-3xl font-bold text-foreground">{initials}</AvatarFallback></Avatar>
+        <Button variant="ghost" disabled={!profileImage} aria-label={`הצגת תמונת הפרופיל של ${p.full_name}`} onClick={() => setImageOpen(true)} className={`h-28 w-28 p-0 sm:h-32 sm:w-32 disabled:opacity-100 ${p.category === 'developer' ? 'rounded-md' : 'rounded-full'}`}>
+          {p.category === 'developer' ? <DeveloperLogo name={p.office_name ?? p.full_name} logoUrl={p.logo_url} className="h-full w-full border-0" /> : <Avatar className="h-full w-full"><AvatarImage src={p.avatar_url ?? undefined} alt={p.full_name ?? ''} className="object-cover" /><AvatarFallback className="text-3xl font-bold text-foreground">{initials}</AvatarFallback></Avatar>}
         </Button>
         <h1 className="max-w-full break-words text-xl font-bold leading-relaxed sm:text-2xl">{p.full_name} - {professionalRole(p.category, genders.data?.get(p.id) ?? null)}{p.category === 'broker' && p.license_number ? <span className="ms-2 inline text-base font-medium"><bdi>{p.license_number}</bdi></span> : null}</h1>
         {cities && <p className="max-w-full break-words text-base text-muted-foreground">{cities}</p>}
@@ -103,17 +105,17 @@ export default function CommunityProfilePage() {
         </div>
       </div>
       {(p.office_name || p.logo_url) && <div className="mx-auto flex w-full max-w-2xl items-center gap-4 rounded-md bg-muted p-4">
-        <PublicIdentityLink userId={userId} office={p.category !== 'developer'} className="shrink-0" label={`פתיחת ${p.office_name ?? 'המשרד'}`}>{p.logo_url ? <img src={p.logo_url} alt={p.office_name ? `לוגו ${p.office_name}` : 'לוגו משרד'} className="h-20 w-20 bg-background object-contain p-1" /> : <Building2 className="h-12 w-12 text-muted-foreground" />}</PublicIdentityLink>
+        <PublicIdentityLink userId={userId} office={p.category !== 'developer'} className="shrink-0" label={`פתיחת ${p.office_name ?? 'המשרד'}`}>{p.category === 'developer' ? <DeveloperLogo name={p.office_name} logoUrl={p.logo_url} className="h-20 w-20" /> : p.logo_url ? <img src={p.logo_url} alt={p.office_name ? `לוגו ${p.office_name}` : 'לוגו משרד'} className="h-20 w-20 rounded-md bg-background object-contain p-1" /> : <Building2 className="h-12 w-12 text-muted-foreground" />}</PublicIdentityLink>
         <div className="min-w-0 flex-1 space-y-1"><h3 className="break-words text-lg font-bold"><PublicIdentityLink userId={userId} office={p.category !== 'developer'}>{p.office_name}</PublicIdentityLink></h3><div className="flex items-start gap-2 text-base"><span className="min-w-0 flex-1 break-words text-muted-foreground">{cities}</span><PublicIdentityLink userId={userId} office exactOffice className="profile-office-link shrink-0 text-sm text-primary">לעמוד המשרד</PublicIdentityLink></div></div>
 
       </div>}
-      <Dialog open={imageOpen} onOpenChange={setImageOpen}><DialogContent data-fullscreen className="!h-[100dvh] !w-screen !max-w-none !rounded-none border-0 bg-background p-4 pt-14 shadow-none" aria-describedby={undefined}><DialogTitle className="sr-only">תמונת הפרופיל של {p.full_name}</DialogTitle>{p.avatar_url && <img src={p.avatar_url} alt={p.full_name ?? ''} className="h-full max-h-[calc(100dvh-5rem)] w-full object-contain" />}</DialogContent></Dialog>
+      <Dialog open={imageOpen} onOpenChange={setImageOpen}><DialogContent data-fullscreen className="!h-[100dvh] !w-screen !max-w-none !rounded-none border-0 bg-background p-4 pt-14 shadow-none" aria-describedby={undefined}><DialogTitle className="sr-only">תמונת הפרופיל של {p.full_name}</DialogTitle>{profileImage && <img src={profileImage} alt={p.full_name ?? ''} className="h-full max-h-[calc(100dvh-5rem)] w-full object-contain" />}</DialogContent></Dialog>
     </section>}
     {p?.category === 'developer' && <section className="space-y-3"><h2 className="text-xl font-bold">{projects.data?.length ?? ''} פרויקטים פעילים</h2>
       {projects.isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
       {projects.isError && <p role="alert" className="text-destructive">טעינת הפרויקטים נכשלה</p>}
       {projects.data?.length === 0 && <p className="text-muted-foreground">אין כרגע פרויקטים ציבוריים פעילים</p>}
-      <ul className="divide-y divide-border">{projects.data?.map(project => <li key={project.id} className="flex items-start gap-3 py-4">{project.image_url && <img src={project.image_url} alt={project.name} className="h-24 w-28 shrink-0 rounded-md object-cover" loading="lazy" />}<div className="min-w-0 flex-1 space-y-1"><h3 className="flex min-w-0 items-center gap-2 break-words text-lg font-bold">{p.logo_url && <img src={p.logo_url} alt={p.office_name ? `לוגו ${p.office_name}` : ''} className="h-7 w-7 shrink-0 rounded-sm bg-background object-contain" />}<span className="min-w-0">{project.name}</span></h3>{p.office_name && <p className="text-sm font-semibold text-muted-foreground">{p.office_name}</p>}<ProjectTimelineBar compact timeline={project.timeline} className="py-1" /><p className="text-muted-foreground">{[project.city, project.address].filter(Boolean).join(' · ')}</p>{project.price_from != null && <p className="font-semibold">החל מ־₪{project.price_from.toLocaleString('he-IL')}</p>}{project.description && <p className="whitespace-pre-line break-words text-base">{project.description}</p>}{project.delivery_date && <p className="text-sm text-muted-foreground">מסירה: {project.delivery_date}</p>}</div></li>)}</ul>
+      <ul className="divide-y divide-border">{projects.data?.map(project => <li key={project.id} className="flex items-start gap-3 py-4">{project.image_url && <img src={project.image_url} alt={project.name} className="h-24 w-28 shrink-0 rounded-md object-cover" loading="lazy" />}<div className="min-w-0 flex-1 space-y-1"><h3 className="flex min-w-0 items-center gap-2 break-words text-lg font-bold"><DeveloperLogo name={p.office_name} logoUrl={p.logo_url} className="h-7 w-7 rounded-sm" /><span className="min-w-0">{project.name}</span></h3>{p.office_name && <p className="text-sm font-semibold text-muted-foreground">{p.office_name}</p>}<ProjectTimelineBar compact timeline={project.timeline} className="py-1" /><p className="text-muted-foreground">{[project.city, project.address].filter(Boolean).join(' · ')}</p>{project.price_from != null && <p className="font-semibold">החל מ־₪{project.price_from.toLocaleString('he-IL')}</p>}{project.description && <p className="whitespace-pre-line break-words text-base">{project.description}</p>}{project.delivery_date && <p className="text-sm text-muted-foreground">מסירה: {project.delivery_date}</p>}</div></li>)}</ul>
     </section>}
     {p && <section className="min-h-[calc(100dvh-150px)] space-y-3">
       <div ref={controls} data-profile-property-controls className="sticky top-0 z-30 flex items-center justify-between gap-2 bg-background py-2"><h2 className="min-w-0 text-xl font-bold">{listingIds.isLoading || feed.isLoading || listingIds.isError || feed.isError ? '' : `${cards.length} `}נכסים פעילים לשיתוף פעולה</h2>

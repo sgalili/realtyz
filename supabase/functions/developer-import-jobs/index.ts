@@ -4,7 +4,8 @@ import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
 import { DEVELOPER_CACHE_SECONDS } from '../_shared/scrapingPolicy.ts';
 import { ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
 import { rotatingUnlockerPayload } from '../_shared/brightDataRotation.ts';
-import { developerImportPageKind, developerImportUrl, developerProjectImportRow, readPage } from '../_shared/yad2DeveloperImport.ts';
+import { developerProjectImportRow, readPage } from '../_shared/yad2DeveloperImport.ts';
+import { developerImportJobRow, developerImportTarget, developerSourceMatches } from '../_shared/developerImportTarget.ts';
 import { developerRetryDelay, MAX_PAGE_ATTEMPTS, mergeProjectPage, projectPageRows, safeImportError } from './queue.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { readAllRows } from '../_shared/readAllRows.ts';
@@ -19,10 +20,8 @@ async function startImport(req: Request, body: Record<string, unknown>) {
   if (caller.kind !== 'user') return json({ error: 'unauthorized' }, 401);
   const scoped = await enforceRequestScope(req, caller);
   if (scoped) return scoped;
-  const workspace = typeof body.workspace_owner_id === 'string' && UUID.test(body.workspace_owner_id) ? body.workspace_owner_id : '';
-  const rawUrl = typeof body.url === 'string' ? body.url : '';
-  const sourceUrl = developerImportUrl(rawUrl);
-  const sourceKind = developerImportPageKind(rawUrl);
+  const target = developerImportTarget(body);
+  const { workspace, developerId, sourceUrl, sourceKind } = target ?? { workspace: '', developerId: null, sourceUrl: null, sourceKind: null };
   if (!workspace || !sourceUrl || !sourceKind) return json({ error: 'invalid_url', message: 'הדביקו קישור תקין לעמוד יזם או לפרויקט ביד2' }, 400);
   const admin = adminClient();
   if (!await canAccessWorkspace(caller.userId, workspace, admin)) return json({ error: 'forbidden', message: 'אין הרשאה לסביבת העבודה' }, 403);
@@ -34,7 +33,14 @@ async function startImport(req: Request, body: Record<string, unknown>) {
   if (!(subscription as { active?: boolean; workspace_owner_id?: string } | null)?.active || subscription.workspace_owner_id !== workspace) {
     return json({ error: 'developer_subscription_required', message: 'ייבוא פרויקטים זמין בחשבון יזם' }, 402);
   }
-  const { data: existing, error: existingError } = await admin.from('developer_import_jobs').select('id,status,lease_until').eq('workspace_owner_id', workspace).eq('source_url', sourceUrl).eq('status', 'running').maybeSingle();
+  if (developerId) {
+    const { data: requestedDeveloper, error: developerError } = await admin.from('developers').select('id').eq('id', developerId).eq('workspace_owner_id', workspace).maybeSingle();
+    if (developerError) return json({ error: 'developer_unavailable', message: 'לא ניתן לאמת את היזם כרגע' }, 503);
+    if (!requestedDeveloper) return json({ error: 'developer_not_found', message: 'היזם אינו משויך לסביבת העבודה הנוכחית' }, 403);
+  }
+  let existingQuery = admin.from('developer_import_jobs').select('id,status,lease_until').eq('workspace_owner_id', workspace).eq('source_url', sourceUrl).eq('status', 'running');
+  if (developerId) existingQuery = existingQuery.eq('developer_id', developerId);
+  const { data: existing, error: existingError } = await existingQuery.maybeSingle();
   if (existingError) return json({ error: 'queue_unavailable', message: 'לא ניתן לפתוח את תור הייבוא' }, 503);
   if (existing) {
     if (!existing.lease_until || new Date(existing.lease_until).getTime() <= Date.now()) {
@@ -43,7 +49,7 @@ async function startImport(req: Request, body: Record<string, unknown>) {
     return json({ ok: true, job_id: existing.id, resumed: true }, 202);
   }
   const lease = crypto.randomUUID();
-  const { data: job, error: jobError } = await admin.from('developer_import_jobs').insert({ workspace_owner_id: workspace, requested_by: caller.userId, source_url: sourceUrl, stage: sourceKind === 'project' ? 'projects' : 'profile', lease_token: lease, lease_until: new Date(Date.now() + 60_000).toISOString() }).select('id').single();
+  const { data: job, error: jobError } = await admin.from('developer_import_jobs').insert(developerImportJobRow(target!, caller.userId, lease)).select('id').single();
   if (jobError || !job) return json({ error: 'queue_unavailable', message: 'לא ניתן לפתוח את תור הייבוא' }, 503);
   const { error: pageError } = await admin.from('developer_import_pages').insert({ job_id: job.id, url: sourceUrl, kind: sourceKind });
   if (pageError) {
@@ -84,8 +90,10 @@ async function ensureDeveloper(job: any, page: any) {
     ? await admin.from('developers').select('*').eq('id', developerId).eq('workspace_owner_id', job.workspace_owner_id).maybeSingle()
     : await admin.from('developers').select('*').eq('workspace_owner_id', job.workspace_owner_id).eq('source_url', job.source_url).maybeSingle();
   if (error) throw error;
+  if (developerId && !existing) throw new Error('developer_not_found');
   const source = page.developer ?? {};
   let current = existing;
+  if (developerId && current && !developerSourceMatches(current.company_name, source.company_name)) throw new Error('developer_source_mismatch');
   if (!current && source.company_name) {
     const rows = await readAllRows((from, to) => admin.from('developers').select('*').eq('workspace_owner_id', job.workspace_owner_id).order('created_at').range(from, to));
     current = matchingDevelopers(rows ?? [], source.company_name)[0] ?? null;

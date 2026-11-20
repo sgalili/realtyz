@@ -1751,6 +1751,13 @@
       "when": 1795190941529,
       "tag": "0249_admin_rotate_first_two_property_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 250,
+      "version": "7",
+      "when": 1795191699849,
+      "tag": "0250_developer_public_logo_fallback",
+      "breakpoints": true
     }
   ]
 }

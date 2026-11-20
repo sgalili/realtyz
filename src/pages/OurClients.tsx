@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Building2, ChevronDown, Layers, LayoutGrid, List, Loader2 } from 'lucide-react';
+import { ArrowRight, ChevronDown, Layers, LayoutGrid, List, Loader2 } from 'lucide-react';
+import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import BoardSearchControls from '@/components/public/BoardSearchControls';
@@ -50,7 +51,7 @@ export default function OurClients() {
   return <div dir="rtl" className="w-full min-w-0 space-y-5 py-4 [&>*:not(.grid)]:px-4 [&>.grid]:px-2">
     <div className="flex w-full min-w-0 items-center gap-2">
       {dev && <Button size="icon" variant="ghost" aria-label="חזרה" onClick={() => open(null)}><ArrowRight className="h-5 w-5" /></Button>}
-      {dev?.logo_url && <img src={dev.logo_url} alt="" className="h-16 w-16 rounded object-contain" />}
+      {dev && <DeveloperLogo name={dev.name} logoUrl={dev.logo_url} className="h-16 w-16" />}
       <div className="min-w-0 flex-1"><h2 className="truncate text-2xl font-bold text-foreground">{dev?.name || 'הלקוחות שלנו'}</h2>{!dev && clients.data?.company && <p className="text-muted-foreground">{clients.data.company}</p>}</div>
       <span className="shrink-0 whitespace-nowrap rounded-full border border-border bg-muted px-2 py-1 text-sm font-semibold">{dev ? `${list.length} פרויקטים` : `${clients.data?.clients.length ?? 0} יזמים`}</span>
       <Button variant="ghost" size="icon" className="shrink-0" onClick={toggleGrid} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'} title={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
@@ -62,7 +63,7 @@ export default function OurClients() {
       : !filteredClients.length ? <p className="py-16 text-center text-muted-foreground">לא נמצאו יזמים</p>
       : <div className={grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-2'}>{filteredClients.map(c =>
         <button key={c.id} type="button" onClick={() => open(c)} className={cn('flex w-full min-w-0 items-center gap-3 rounded-lg border bg-card p-3 text-right shadow-sm transition-shadow hover:shadow-md', grid && 'flex-col items-start')}>
-          {c.logo_url ? <img src={c.logo_url} alt="" className={grid ? 'h-20 w-20 rounded object-contain' : 'h-12 w-12 rounded object-contain'} /> : <Building2 className="h-10 w-10 text-muted-foreground" />}
+          <DeveloperLogo name={c.name} logoUrl={c.logo_url} className={grid ? 'h-20 w-20' : 'h-12 w-12'} />
           <div className="min-w-0"><p className="truncate text-[19px] font-bold">{c.name || 'יזם'}</p><p className="text-sm text-muted-foreground">{c.projects} פרויקטים · {c.units} דירות</p></div>
         </button>)}</div>)}
 

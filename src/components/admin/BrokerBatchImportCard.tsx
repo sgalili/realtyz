@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { Upload, Pause, Play, Loader2, ScanSearch, Building2, UserRound } from 'lucide-react';
+import { Pause, Play, Loader2, ScanSearch, Building2, UserRound, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ImportQuantityInput } from './ImportQuantityInput';
@@ -61,6 +61,8 @@ export function BrokerBatchImportCard() {
     refetchInterval: query => query.state.data?.some(job => job.status === 'running' || (job.lease_until && Date.parse(job.lease_until) > Date.now())) ? 4000 : false,
   });
   const current = jobs?.[0];
+  const [statusExpanded, setStatusExpanded] = useState(false);
+  useEffect(() => { setStatusExpanded(false); }, [current?.id]);
   // Each saved checkpoint (including final completion) may add inventory for an account.
   useEffect(() => {
     if (current?.id && current.updated_at) void refreshImportedInventory(qc);
@@ -142,7 +144,8 @@ export function BrokerBatchImportCard() {
     <div className="flex items-center justify-between gap-3"><h3 className="min-w-0 text-lg font-semibold">ייבוא, יזמים ומתווכים</h3>{newImportButton}</div>
     {notice && <p className="text-base text-muted-foreground">{notice}</p>}
     {current && <div role="status" className="space-y-3 rounded-xl border border-border/70 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex items-center gap-2 text-lg font-semibold">{current.status === 'running' && !stalled && <Loader2 className="h-5 w-5 animate-spin" />}{current.status === 'paused' ? 'מושהה · ' : ''}{stages[current.stage] ?? current.stage}</span><span className="text-base text-muted-foreground">{linkJob ? `${entitiesDone}/${current.target_brokers} קישורים` : `${current.brokers_done}/${current.target_brokers} מתווכים`} · {current.listings_done} טיוטות{(current.developers_done ?? 0) > 0 ? ` · ${current.developers_done} יזמים · ${current.projects_done} פרויקטים · ${current.units_done} יחידות` : ''}{current.skipped > 0 ? ` · ${current.skipped} דולגו` : ''}</span></div>
+      <button type="button" aria-label={statusExpanded ? 'כיווץ פרטי הייבוא' : 'הרחבת פרטי הייבוא'} aria-expanded={statusExpanded} aria-controls="import-status-details" className="flex w-full flex-wrap items-center justify-between gap-2 text-right" onClick={() => setStatusExpanded(value => !value)}><span className="flex items-center gap-2 text-lg font-semibold"><ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${statusExpanded ? 'rotate-180' : ''}`} />{current.status === 'running' && !stalled && <Loader2 className="h-5 w-5 animate-spin" />}{current.status === 'paused' ? 'מושהה · ' : ''}{stages[current.stage] ?? current.stage}</span><span className="text-base text-muted-foreground">{linkJob ? `${entitiesDone}/${current.target_brokers} קישורים` : `${current.brokers_done}/${current.target_brokers} מתווכים`} · {current.listings_done} טיוטות{(current.developers_done ?? 0) > 0 ? ` · ${current.developers_done} יזמים · ${current.projects_done} פרויקטים · ${current.units_done} יחידות` : ''}{current.skipped > 0 ? ` · ${current.skipped} דולגו` : ''}</span></button>
+      {statusExpanded && <div id="import-status-details" className="space-y-3">
       <Progress className="h-3" value={current.status === 'completed' ? 100 : Math.min(99, (entitiesDone + (developerStage && checkpoint?.developerWork ? (checkpoint.developerWork.visitedUrls?.length ?? 0) / Math.max(1, (checkpoint.developerWork.visitedUrls?.length ?? 0) + (checkpoint.developerWork.pendingUrls?.length ?? 0) + 1) : 0)) / Math.max(1, current.target_brokers) * 100)} />
       {current.status === 'completed' && <ImportSummary checkpoint={checkpoint} job={current} />}
       {expectedWarnings.map(result => <p key={result.developer_id} className="text-base font-medium text-warning">ב{result.company_name} נמצאו {result.projects} פרויקטים מתוך {result.expected_projects} צפויים. לא הומצאו פרויקטים חסרים.</p>)}
@@ -152,6 +155,7 @@ export function BrokerBatchImportCard() {
       {current.status === 'paused' && current.lease_until && Date.parse(current.lease_until) > Date.now() && <p className="text-base text-muted-foreground">הפעולה שכבר התחילה תסתיים ותישמר; לא תתחיל פעולה נוספת.</p>}
       {stalled && <p role="alert" className="text-base font-medium text-destructive">שגיאת חיבור ל־Bright Data - אנא בדוק את המפתחות או נסה שוב</p>}
       {current.error && <p role="alert" className="text-base font-medium text-destructive">{current.error}</p>}
+      </div>}
     </div>}
     {error && <p role="alert" className="text-base text-destructive">{error}</p>}
     <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" className="max-h-[85dvh] max-w-lg overflow-y-auto"><DialogHeader><DialogTitle className="text-2xl">איתור וייבוא</DialogTitle></DialogHeader>

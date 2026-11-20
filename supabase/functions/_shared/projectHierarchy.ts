@@ -80,7 +80,12 @@ export function savedProjectHierarchy(project: { apartments?: unknown; source_de
   const original = extractProjectHierarchy(Object.keys(hierarchy).length ? hierarchy : details);
   const edited = extractProjectHierarchy({ apartments: project.apartments ?? [] });
   const units = new Map(original.apartments.map(unit => [`${unit.building_id ?? ''}:${unit.source_unit_id}`, unit]));
+  const manual = sourceRecord(details.manual);
+  const excluded = new Set((Array.isArray(manual.excluded_units) ? manual.excluded_units : []).filter((key): key is string => typeof key === 'string'));
+  const excludedUnit = (unit: ProjectUnit) => excluded.has(JSON.stringify([unit.building_id ?? '', unit.source_unit_id]));
+  [...units.keys()].forEach(key => { const unit = units.get(key); if (unit && excludedUnit(unit)) units.delete(key); });
   edited.apartments.forEach(unit => {
+    if (excludedUnit(unit)) return;
     const key = `${unit.building_id ?? ''}:${unit.source_unit_id}`;
     const merged = mergeSource(units.get(key), unit) as ProjectUnit;
     // Explicitly saved apartment photo order overrides the original source gallery.
