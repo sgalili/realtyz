@@ -10,16 +10,16 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { allowsQueuedContactlessAccount, developerImportPlaceholderId, requiresLicenseVerification } from '../_shared/importedAccountPolicy.ts';
 
 const Body = z.object({
-  email: z.string().email().optional(),
+  email: z.string().email().nullish(),
   password: z.string().min(8).max(128).optional(),
-  full_name: z.string().min(1).max(200).optional(),
+  full_name: z.string().min(1).max(200).nullish(),
   phone_e164: z.string().min(8).max(20).nullish(),       // for WhatsApp invite (e.g. 9725XXXXXXXX)
-  broker_license_number: z.string().regex(/^[1-9][0-9]{3,9}$/).optional(),
+  broker_license_number: z.string().regex(/^[1-9][0-9]{3,9}$/).nullish(),
   approve_broker: z.boolean().default(false),
   user_type: z.enum(["broker", "developer", "property_owner", "property_seeker", "affiliate"]).default("broker"),
   action: z.enum(["create", "check_registry"]).default("create"),
   import_job_id: z.string().uuid().optional(),
-  import_source_url: z.string().max(500).optional(),
+  import_source_url: z.string().max(500).nullish(),
   pending_contact: z.boolean().default(false), // explicit Super Admin request for a registry-verified broker with no known mobile
   initial_balance_agorot: z.number().int().nonnegative().default(100000),
 });
