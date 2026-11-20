@@ -157,8 +157,7 @@ Deno.serve(async (req) => {
     const neighborhood = (listing as any).neighborhood ?? null;
     const city = (listing as any).city ?? null;
     if (!city && !neighborhood && !address) {
-      return new Response(JSON.stringify({ ok: false, error: "no address/neighborhood/city" }), {
-        status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ ok: true, skipped: "no_location", area_perks: null }), { headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
