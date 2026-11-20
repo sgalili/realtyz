@@ -1758,6 +1758,13 @@
       "when": 1795191699849,
       "tag": "0250_developer_public_logo_fallback",
       "breakpoints": true
+    },
+    {
+      "idx": 251,
+      "version": "7",
+      "when": 1795193281946,
+      "tag": "0251_admin_rotate_project_photos",
+      "breakpoints": true
     }
   ]
 }

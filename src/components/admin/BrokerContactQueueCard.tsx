@@ -22,7 +22,6 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { returnState } from '@/lib/returnNav';
 import { invitationHistoryKey, threadInvitationHistory } from '@/lib/invitationHistory';
 import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
-import { RotateFirstTwoPhotosAction } from './RotateFirstTwoPhotosAction';
 import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 
 export type ContactBroker = { user_id: string; full_name: string; phone: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
@@ -200,9 +199,8 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
       </div>
       <div className="flex shrink-0 items-center gap-0">
         {phoneControls}
-        <RotateFirstTwoPhotosAction standalone scope={{ type: 'workspace', workspaceOwnerId: b.user_id, label: b.full_name || (b.is_developer ? 'היזם' : 'המתווך') }} />
-        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><X className="h-4 w-4" /></Button>
         <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} />
+        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>
       </div>
     </div>
     <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">

@@ -475,15 +475,15 @@ export function PageHero() {
             </Button>
           )}
           {access.properties && location.pathname === "/properties" && <PropertiesHeroAddButton />}
-          {origin && location.pathname === '/developer-dashboard' && (
-            <Button size="icon" variant="ghost" onClick={() => void goBackToOrigin()} aria-label="חזרה למסך הקודם" title="חזרה למסך הקודם" className="h-10 w-10 rounded-full text-white hover:bg-white/15 hover:text-white"><ArrowLeft className="!h-6 !w-6" strokeWidth={2.5} /></Button>
-          )}
           {access.projects && location.pathname === "/developer-dashboard" && (
             <Button size="icon" variant="ghost" aria-label="הוספת פרויקט" title="הוספת פרויקט"
               className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
               onClick={() => window.dispatchEvent(new Event('developer-projects:add'))}>
               <Plus className="!h-5 !w-5" strokeWidth={2.5} />
             </Button>
+          )}
+          {origin && location.pathname === '/developer-dashboard' && (
+            <Button size="icon" variant="ghost" onClick={() => void goBackToOrigin()} aria-label="חזרה למסך הקודם" title="חזרה למסך הקודם" className="h-10 w-10 rounded-full text-white hover:bg-white/15 hover:text-white"><ArrowLeft className="!h-6 !w-6" strokeWidth={2.5} /></Button>
           )}
           {location.pathname.startsWith("/lead-crm") && <LeadsHeroAddButton />}
           {isPostsPage && <CampaignsHeroAddButton />}

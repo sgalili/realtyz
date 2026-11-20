@@ -42,6 +42,10 @@ import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardCol
 import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { useDeveloperSubscription } from '@/hooks/useDeveloperSubscription';
+import { Images } from 'lucide-react';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useDemoViewStatus } from '@/components/demo/DemoViewBar';
+import { canRotateFirstTwoPhotos } from '@/lib/photoRotation';
 
 const projectImages = developerProjectImages;
 const priceLabel = (price: number | null) => price && price > 0 ? `החל מ־₪${Number(price).toLocaleString('he-IL')}` : '';
@@ -134,6 +138,9 @@ function DeveloperDashboardContent() {
   const developerFor = (project: DeveloperProject) => companies.find(company => company.id === project.developer_id) ?? companies[0];
   const filtered = useMemo(() => projects.filter(project => projectMatches(project, query, deals, propFilter)), [projects, query, deals, propFilter]);
   const selectedCount = selectedProjects.size + selectedUnits.size;
+  const { isSuperAdmin } = useUserRole();
+  const { type: demoType, loading: demoLoading } = useDemoViewStatus();
+  const canRotate = !demoLoading && canRotateFirstTwoPhotos(isSuperAdmin, !!demoType);
   const toggleSelected = (setter: Dispatch<SetStateAction<Set<string>>>, key: string) => setter(current => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next; });
   const columns = usePublicBoardColumns(`developer-projects:${ws ?? ''}`, filtered, PROJECT_COLUMNS);
   const cities = useMemo(() => [...new Set(projects.map(project => project.city).filter(Boolean) as string[])].sort(), [projects]);
@@ -212,6 +219,27 @@ function DeveloperDashboardContent() {
     onSuccess: result => { refresh(); setSelectedProjects(new Set()); setSelectedUnits(new Set()); setSelectionMode(false); toast.success(`נמחקו ${result.projects} פרויקטים ו־${result.units} דירות`); },
     onError: () => { refresh(); toast.error('המחיקה המרובה לא הושלמה. ייתכן שחלק מהפריטים עודכנו; הרשימה רועננה.'); },
   });
+  const bulkRotate = useMutation({
+    mutationFn: async () => {
+      if (!selectionMode || !selectedCount) throw new Error('לא נבחרו פריטים');
+      let total = 0;
+      for (const projectId of selectedProjects) {
+        const { data, error } = await supabase.rpc('admin_rotate_project_photos', { _project_id: projectId });
+        if (error) throw error; total += Number((data as { total?: number })?.total ?? 0);
+      }
+      for (const project of projects) {
+        if (selectedProjects.has(project.id)) continue;
+        for (const unit of savedProjectHierarchy(project).apartments) {
+          if (!selectedUnits.has(projectUnitSelectionKey(project.id, unit))) continue;
+          const { data, error } = await supabase.rpc('admin_rotate_first_two_photos', { _scope: 'project_unit', _project_id: project.id, _unit_id: unit.source_unit_id, _building_id: unit.building_id ?? null });
+          if (error) throw error; total += Number((data as { total?: number })?.total ?? 0);
+        }
+      }
+      return total;
+    },
+    onSuccess: total => { refresh(); setSelectedProjects(new Set()); setSelectedUnits(new Set()); setSelectionMode(false); toast.success(total ? `סדר התמונות עודכן ב־${total} פריטים` : 'לא נמצאו פריטים עם יותר משתי תמונות'); },
+    onError: () => { refresh(); toast.error('עדכון סדר התמונות לא הושלם'); },
+  });
   const busy = !ws || isLoading || companiesLoading;
   const publish = useMutation({
     mutationFn: async ({ project, key }: { project: DeveloperProject; key?: string }) => {
@@ -251,8 +279,8 @@ function DeveloperDashboardContent() {
           <Button variant="ghost" size="icon" className="shrink-0" onClick={toggleGrid} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'} title={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
         </div>
         <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-2"><span aria-label="סך הפרויקטים" className="shrink-0 whitespace-nowrap rounded-full border border-border bg-muted px-2 py-1 text-sm font-semibold">{projects.length} פרויקטים</span><SelectModeToggle total={filtered.length} active={selectionMode} count={selectedCount} closeAction onToggle={() => { setSelectionMode(value => !value); setSelectedProjects(new Set()); setSelectedUnits(new Set()); }} onSelectAll={() => setSelectedProjects(new Set(filtered.map(project => project.id)))} /></div>
-          <div className="flex flex-wrap items-center gap-2">{selectionMode && selectedCount > 0 && <Button variant="outline" className="text-destructive" disabled={bulkRemove.isPending} onClick={() => { if (confirm(`למחוק ${selectedProjects.size} פרויקטים ו־${selectedUnits.size} דירות?`)) bulkRemove.mutate(); }}>{bulkRemove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}מחיקה מרובה</Button>}<Button variant="outline" onClick={selectionMode && selectedCount ? openBulkPricing : () => openPricing()}><span aria-hidden className="text-base font-bold leading-none">₪</span>הגדרת עמלות ותגמולים</Button></div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2"><SelectModeToggle total={filtered.length} active={selectionMode} count={selectedCount} closeAction onToggle={() => { setSelectionMode(value => !value); setSelectedProjects(new Set()); setSelectedUnits(new Set()); }} onSelectAll={() => setSelectedProjects(new Set(filtered.map(project => project.id)))} /><span aria-label="סך הפרויקטים" className="shrink-0 whitespace-nowrap rounded-full border border-border bg-muted px-2 py-1 text-sm font-semibold">{projects.length} פרויקטים</span></div>
+          <div className="flex flex-wrap items-center gap-2">{selectionMode && selectedCount > 0 && canRotate && <Button variant="outline" disabled={bulkRotate.isPending} onClick={() => { if (confirm(`להעביר את 2 התמונות הראשונות לסוף ב־${selectedProjects.size} פרויקטים ו־${selectedUnits.size} דירות שנבחרו?`)) bulkRotate.mutate(); }}>{bulkRotate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />}העבר 2 תמונות ראשונות לסוף</Button>}{selectionMode && selectedCount > 0 && <Button variant="outline" className="text-destructive" disabled={bulkRemove.isPending} onClick={() => { if (confirm(`למחוק ${selectedProjects.size} פרויקטים ו־${selectedUnits.size} דירות?`)) bulkRemove.mutate(); }}>{bulkRemove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}מחיקה מרובה</Button>}<Button variant="outline" onClick={selectionMode && selectedCount ? openBulkPricing : () => openPricing()}><span aria-hidden className="text-base font-bold leading-none">₪</span>הגדרת עמלות ותגמולים</Button></div>
         </div>
         {filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו פרויקטים מתאימים</p> : grid ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(p => { const open = expandedId === p.id; const deal = projectDeal(p); return <article key={p.id} className={cn('flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md', open && 'sm:col-span-2 lg:col-span-3')}>

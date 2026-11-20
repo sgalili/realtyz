@@ -12,6 +12,7 @@ import { sourceRecord, type ProjectUnit } from '../../../supabase/functions/_sha
 import type { DeveloperProject } from '@/lib/developerProjectForm';
 import StandardPropertyCard from '@/components/public/StandardPropertyCard';
 import PublicCardSummary from '@/components/public/PublicCardSummary';
+import PublicAdHeading from '@/components/public/PublicAdHeading';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
@@ -36,6 +37,30 @@ const unitCard = (unit: ProjectUnit, project: DeveloperProject): PublicCard => {
   const floor = unit.floor != null && /^-?\d+$/.test(String(unit.floor)) ? Number(unit.floor) : null;
   return { id: `${project.id}:${unit.building_id ?? ''}:${unit.source_unit_id}`, slug: null, title: [project.name, unitTitle(unit)].filter(Boolean).join(' · '), city: (project as { city?: string | null }).city ?? null, neighborhood: null, street: project.address ?? '', deal_type: 'sale', rooms: unit.rooms, sqm: unit.size_sqm, floor, total_floors: null, price: unit.price, description: labelValue(unit.description) || null, photos: unit.images ?? [], contact_options: null, property_type: labelValue(unit.type) || null };
 };
+
+/** Only curated Hebrew fields: raw source keys (slug, token, ids…) and source-site names never render. */
+const hebrewOnly = (value: unknown) => { const text = labelValue(value).trim(); return /[\u0590-\u05FF]/.test(text) && !/יד\s?2|yad\s?2/i.test(text) ? text : ''; };
+const numberOnly = (value: unknown) => { const text = labelValue(value).trim(); return /^-?\d+(\.\d+)?$/.test(text) ? text : ''; };
+export function unitDisplayFields(unit: ProjectUnit, project: DeveloperProject): [string, string][] {
+  const details = sourceRecord(unit.source_details);
+  const floor = numberOnly(unit.floor);
+  return ([
+    ['פרויקט', hebrewOnly(project.name) || labelValue(project.name)],
+    ['כתובת', [project.address, (project as { city?: string | null }).city].filter(Boolean).join(', ')],
+    ['סוג נכס', hebrewOnly(unit.type)],
+    ['חדרים', numberOnly(unit.rooms)],
+    ['שטח', numberOnly(unit.size_sqm) && `${unit.size_sqm} מ״ר`],
+    ['קומה', floor && (floor === '0' ? 'קרקע' : floor)],
+    ['מרפסת', numberOnly(unit.balcony_sqm) && `${unit.balcony_sqm} מ״ר`],
+    ['חניות', numberOnly(unit.parking) || hebrewOnly(unit.parking)],
+    ['יחידות זמינות', numberOnly(unit.count)],
+    ['זמינות', hebrewOnly(unit.availability ?? unit.status)],
+    ['מועד מסירה', hebrewOnly(unit.delivery_date ?? unit.deliveryDate) || labelValue(unit.delivery_date ?? project.delivery_date).match(/^\d{4}(-\d{2})?(-\d{2})?$/)?.[0] || ''],
+    ['תיאור', hebrewOnly(unit.description)],
+    ['מפרט', hebrewOnly(unit.specifications ?? details.specifications)],
+    ['מאפיינים', hebrewOnly(unit.features ?? unit.amenities)],
+  ] as [string, string][]).filter(([, value]) => !!value);
+}
 
 export type ProjectDeveloperIdentity = {
   company_name: string;
@@ -90,7 +115,6 @@ function DeveloperIdentity({ developer }: { developer: ProjectDeveloperIdentity 
 
 function UnitDetails({ units, project, developer, grid, onPublish, onPost, onEdit, selectionMode = false, selectedUnits, onToggleUnit }: { units: ProjectUnit[]; project: DeveloperProject; developer?: ProjectDeveloperIdentity; grid: boolean; onPublish?: (unit: ProjectUnit) => void; onPost?: (unit: ProjectUnit) => void; onEdit?: () => void } & UnitSelectionProps) {
   const [opened, setOpened] = useState<ProjectUnit | null>(null);
-  const extra = opened ? Object.entries(sourceRecord(opened.source_details)).filter(([key, value]) => !['url', 'specifications'].includes(key) && labelValue(value) && labelValue(value).length < 400) : [];
   const edit = () => { setOpened(null); onEdit?.(); };
   return <div className="min-w-0">
     {grid ? <div className="property-card-grid">
@@ -120,12 +144,12 @@ function UnitDetails({ units, project, developer, grid, onPublish, onPost, onEdi
           {opened && <div className="shrink-0" onClick={event => event.stopPropagation()}><DeveloperUnitMenu unit={opened} project={project} onPublish={onPublish} onPost={onPost} onEdit={edit} onRotated={() => setOpened(null)} /></div>}
         </DialogHeader>
         {opened && <div className="space-y-4">
+          <PropertyGallerySlider photos={opened.images} alt={unitTitle(opened)} />
+          <PublicAdHeading title={[project.name, unitTitle(opened)].join(' · ')} price={opened.price ? `₪${opened.price.toLocaleString('he-IL')}` : undefined} dealType="sale" />
           {developer && <DeveloperIdentity developer={developer} />}
-          {opened.price != null && opened.price > 0 && <p className="text-xl font-bold text-success">₪{opened.price.toLocaleString('he-IL')}</p>}
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            {([['סוג', opened.type], ['חדרים', opened.rooms], ['שטח (מ״ר)', opened.size_sqm], ['קומה', opened.floor], ['מרפסת (מ״ר)', opened.balcony_sqm], ['חניות', opened.parking], ['מספר יחידות', opened.count], ['זמינות', opened.availability ?? opened.status], ['מועד מסירה', opened.delivery_date ?? opened.deliveryDate], ['תיאור', opened.description], ['מפרט', opened.specifications ?? sourceRecord(opened.source_details).specifications], ['מאפיינים', opened.features ?? opened.amenities], ...extra] as const).filter(([, value]) => labelValue(value)).map(([label, value]) => <div key={String(label)}><dt className="text-muted-foreground">{String(label)}</dt><dd className="break-words whitespace-pre-line font-medium">{labelValue(value)}</dd></div>)}
+          <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,150px),1fr))] gap-2 text-sm">
+            {unitDisplayFields(opened, project).map(([label, value]) => <div key={label} className="rounded-lg border bg-background p-2.5"><dt className="text-[11px] text-muted-foreground">{label}</dt><dd className="break-words whitespace-pre-line font-semibold">{value}</dd></div>)}
           </dl>
-          {opened.images.length > 0 && <PropertyGallerySlider photos={opened.images} alt="תמונות היחידה" />}
           <DeveloperCommissionBadges project={project} unit={opened} />
           <div className="flex flex-wrap gap-2">
             {onPublish && <Button variant="outline" disabled={projectCommissionErrors(project, opened).length > 0} onClick={() => onPublish(opened)}>פרסום היחידה בלוח</Button>}

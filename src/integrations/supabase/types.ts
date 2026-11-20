@@ -10613,6 +10613,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_rotate_project_photos: {
+        Args: { _project_id: string }
+        Returns: Json
+      }
       admin_set_developer_contact: {
         Args: { _gender: string; _name: string; _owner: string; _phone: string }
         Returns: undefined

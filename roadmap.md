@@ -1,5 +1,11 @@
 # Roadmap
 
+## Developer and broker card refinements November 20
+- [x] Swap the developer hero back and add buttons into their requested positions.
+- [x] Remove per-account photo reordering, swap delete/invitation actions and use a trash icon.
+- [x] Swap the project count and multi-select toggle, and add photo reordering for selected items.
+- [x] Match project apartment details to the homepage presentation, with Hebrew fields and no Yad2/raw identifiers.
+
 ## Import hero action and office logos November 20
 - [x] Remove the import body title and move its new-import action to the far-left Super Admin hero controls.
 - [x] Keep available broker office logos immediately before office names in queue and send-history cards.
