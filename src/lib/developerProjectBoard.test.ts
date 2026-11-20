@@ -31,6 +31,11 @@ describe('developer project hierarchy', () => {
     expect(result.apartments).toHaveLength(2);
     expect(result.buildings[0].units[0]).toMatchObject({ rooms: 4, price: 1800000, balcony_sqm: 12 });
   });
+  it('uses the saved apartment photo order instead of the original source order', () => {
+    const hierarchy = extractProjectHierarchy({ apartments: [{ id: '1', rooms: 4, price: 100, images: ['https://img.test/a', 'https://img.test/b', 'https://img.test/c', 'https://img.test/d'] }] });
+    const project = { apartments: [{ source_unit_id: '1', rooms: 4, price: 100, images: ['https://img.test/c', 'https://img.test/d', 'https://img.test/a', 'https://img.test/b'] }], source_details: { hierarchy } };
+    expect(savedProjectHierarchy(project).apartments[0].images).toEqual(['https://img.test/c', 'https://img.test/d', 'https://img.test/a', 'https://img.test/b']);
+  });
   it('matches price and room constraints against the same unit rather than project minimum', () => {
     const hierarchy = extractProjectHierarchy(source);
     const project = { name: 'Tower', city: 'תל אביב', price_from: 1, apartments: hierarchy.apartments, source_details: { hierarchy } };

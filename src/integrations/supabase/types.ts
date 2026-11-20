@@ -10602,6 +10602,17 @@ export type Database = {
       }
       admin_purge_user_data: { Args: { _uid: string }; Returns: number }
       admin_remove_broker_license: { Args: { _user_id: string }; Returns: Json }
+      admin_rotate_first_two_photos: {
+        Args: {
+          _building_id?: string
+          _listing_id?: string
+          _project_id?: string
+          _scope: string
+          _unit_id?: string
+          _workspace_owner_id?: string
+        }
+        Returns: Json
+      }
       admin_set_developer_contact: {
         Args: { _gender: string; _name: string; _owner: string; _phone: string }
         Returns: undefined

@@ -15,6 +15,7 @@ import PublicCardSummary from '@/components/public/PublicCardSummary';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
+import { RotateFirstTwoPhotosAction } from '@/components/admin/RotateFirstTwoPhotosAction';
 
 const labelValue = (value: unknown): string => {
   if (value == null) return '';
@@ -43,21 +44,24 @@ export type ProjectDeveloperIdentity = {
 
 type UnitActionProps = {
   unit: ProjectUnit;
+  project: DeveloperProject;
   onOpen?: () => void;
   onPublish?: (unit: ProjectUnit) => void;
   onPost?: (unit: ProjectUnit) => void;
   onEdit?: () => void;
+  onRotated?: () => void;
 };
 
-function DeveloperUnitMenu({ unit, onOpen, onPublish, onPost, onEdit }: UnitActionProps) {
+function DeveloperUnitMenu({ unit, project, onOpen, onPublish, onPost, onEdit, onRotated }: UnitActionProps) {
   return <DropdownMenu>
     <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`אפשרויות ${unitTitle(unit)}`} title="אפשרויות דירה" onClick={event => event.stopPropagation()}><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-    <DropdownMenuContent align="start" className="w-52" onClick={event => event.stopPropagation()}>
+    <DropdownMenuContent align="start" className="w-64" onClick={event => event.stopPropagation()}>
       <DropdownMenuLabel className="text-xs">פעולות דירה</DropdownMenuLabel>
       {onOpen && <DropdownMenuItem className="gap-2" onSelect={onOpen}><ExternalLink className="h-4 w-4" />פרטי הדירה המלאים</DropdownMenuItem>}
       {onPost && <DropdownMenuItem className="gap-2" onSelect={() => onPost(unit)}><Megaphone className="h-4 w-4 text-primary" />יצירת קמפיין לדירה</DropdownMenuItem>}
       {onPublish && <DropdownMenuItem className="gap-2" onSelect={() => onPublish(unit)}><Globe className="h-4 w-4" />פרסום הדירה בלוח</DropdownMenuItem>}
       {onEdit && <DropdownMenuItem className="gap-2" onSelect={onEdit}><Pencil className="h-4 w-4" />עריכה מלאה של הפרויקט והדירות</DropdownMenuItem>}
+      <RotateFirstTwoPhotosAction scope={{ type: 'project-unit', projectId: project.id, unitId: unit.source_unit_id, buildingId: unit.building_id, label: unitTitle(unit) }} onCompleted={onRotated} />
     </DropdownMenuContent>
   </DropdownMenu>;
 }
@@ -81,7 +85,7 @@ function UnitDetails({ units, project, developer, grid, onPublish, onPost, onEdi
   const edit = () => { setOpened(null); onEdit?.(); };
   return <div className="min-w-0">
     {grid ? <div className="property-card-grid">
-      {units.map(unit => <StandardPropertyCard key={`${unit.building_id}:${unit.source_unit_id}`} card={unitCard(unit, project)} onOpen={() => setOpened(unit)} onFavorite={() => undefined} showContact={false} showOwnerMenu={false} menu={<DeveloperUnitMenu unit={unit} onOpen={() => setOpened(unit)} onPublish={onPublish} onPost={onPost} onEdit={onEdit} />} />)}
+      {units.map(unit => <StandardPropertyCard key={`${unit.building_id}:${unit.source_unit_id}`} card={unitCard(unit, project)} onOpen={() => setOpened(unit)} onFavorite={() => undefined} showContact={false} showOwnerMenu={false} menu={<DeveloperUnitMenu unit={unit} project={project} onOpen={() => setOpened(unit)} onPublish={onPublish} onPost={onPost} onEdit={onEdit} onRotated={() => setOpened(null)} />} />)}
     </div> : <div className="overflow-x-auto rounded-lg border bg-card">
       <table className="w-full min-w-[760px] text-right text-sm">
         <thead className="bg-muted/40 text-muted-foreground"><tr><th className="p-2 font-semibold">תמונה</th><th className="p-2 font-semibold">דירה</th><th className="p-2 font-semibold">מחיר</th><th className="p-2 font-semibold">תגמולים</th><th className="p-2 font-semibold">חדרים</th><th className="p-2 font-semibold">מ״ר</th><th className="p-2 font-semibold">קומה</th><th className="p-2"><span className="sr-only">פעולות</span></th></tr></thead>
@@ -93,7 +97,7 @@ function UnitDetails({ units, project, developer, grid, onPublish, onPost, onEdi
             <td className="whitespace-nowrap p-2 text-[17px] font-bold text-success">{card.price ? `₪${Number(card.price).toLocaleString('he-IL')}` : ''}</td>
             <td className="p-2"><DeveloperCommissionBadges project={project} unit={unit} /></td>
             <td className="p-2">{card.rooms || ''}</td><td className="p-2">{card.sqm || ''}</td><td className="whitespace-nowrap p-2">{card.floor ?? ''}</td>
-            <td className="p-2" onClick={event => event.stopPropagation()}><DeveloperUnitMenu unit={unit} onOpen={() => setOpened(unit)} onPublish={onPublish} onPost={onPost} onEdit={onEdit} /></td>
+            <td className="p-2" onClick={event => event.stopPropagation()}><DeveloperUnitMenu unit={unit} project={project} onOpen={() => setOpened(unit)} onPublish={onPublish} onPost={onPost} onEdit={onEdit} onRotated={() => setOpened(null)} /></td>
           </tr>;
         })}</tbody>
       </table>
@@ -102,7 +106,7 @@ function UnitDetails({ units, project, developer, grid, onPublish, onPost, onEdi
       <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader className="flex flex-row items-start gap-2 space-y-0">
           <DialogTitle className="min-w-0 flex-1">{opened ? unitTitle(opened) : ''}</DialogTitle>
-          {opened && <div className="shrink-0" onClick={event => event.stopPropagation()}><DeveloperUnitMenu unit={opened} onPublish={onPublish} onPost={onPost} onEdit={edit} /></div>}
+          {opened && <div className="shrink-0" onClick={event => event.stopPropagation()}><DeveloperUnitMenu unit={opened} project={project} onPublish={onPublish} onPost={onPost} onEdit={edit} onRotated={() => setOpened(null)} /></div>}
         </DialogHeader>
         {opened && <div className="space-y-4">
           {developer && <DeveloperIdentity developer={developer} />}

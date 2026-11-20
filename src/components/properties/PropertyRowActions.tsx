@@ -21,6 +21,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { sourceYad2Url } from '@/lib/yad2Ad';
 import { mapLocalListingRow, type UnifiedResult } from '@/lib/propertySearch';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
+import { RotateFirstTwoPhotosAction } from '@/components/admin/RotateFirstTwoPhotosAction';
 
 export function Yad2AdButton({ url }: { url: string }) {
   const status = useYad2AdStatus(url);
@@ -141,6 +142,7 @@ export function OwnerListingActions({ listingId, onOpenNewPage }: { listingId: s
           <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/properties/${listingId}`, { state: { ...returnState(), returnTo: window.location.pathname + window.location.search, openEdit: true } })}>
             <Pencil className="h-4 w-4" /> עריכת הנכס
           </DropdownMenuItem>
+          <RotateFirstTwoPhotosAction scope={{ type: 'listing', listingId, label: row.title || 'הנכס' }} onCompleted={() => setReloadKey(key => key + 1)} />
           <DropdownMenuSeparator />
           <DropdownMenuItem className="gap-2 text-sm text-destructive focus:text-destructive" onSelect={() => setConfirm(true)}>
             <Trash2 className="h-4 w-4" /> מחיקת נכס

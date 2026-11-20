@@ -80,7 +80,13 @@ export function savedProjectHierarchy(project: { apartments?: unknown; source_de
   const original = extractProjectHierarchy(Object.keys(hierarchy).length ? hierarchy : details);
   const edited = extractProjectHierarchy({ apartments: project.apartments ?? [] });
   const units = new Map(original.apartments.map(unit => [`${unit.building_id ?? ''}:${unit.source_unit_id}`, unit]));
-  edited.apartments.forEach(unit => units.set(`${unit.building_id ?? ''}:${unit.source_unit_id}`, mergeSource(units.get(`${unit.building_id ?? ''}:${unit.source_unit_id}`), unit) as ProjectUnit));
+  edited.apartments.forEach(unit => {
+    const key = `${unit.building_id ?? ''}:${unit.source_unit_id}`;
+    const merged = mergeSource(units.get(key), unit) as ProjectUnit;
+    // Explicitly saved apartment photo order overrides the original source gallery.
+    if (unit.images.length > 0) merged.images = [...unit.images];
+    units.set(key, merged);
+  });
   const grouped: ProjectBuilding[] = original.buildings.map(building => ({ ...building, units: [...units.values()].filter(unit => unit.building_id === building.source_building_id) }));
   [...units.values()].forEach(unit => { if (unit.building_id && !grouped.some(building => building.source_building_id === unit.building_id)) grouped.push({ source_building_id: unit.building_id, name: unit.building_name, units: [...units.values()].filter(item => item.building_id === unit.building_id) }); });
   return { buildings: grouped, apartments: [...units.values()], unassigned: [...units.values()].filter(unit => !unit.building_id) };

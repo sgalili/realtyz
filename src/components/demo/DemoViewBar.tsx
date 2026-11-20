@@ -9,10 +9,10 @@ import { DEMO_TYPES, isDemoType, type DemoType } from '@/pages/demo/demoData';
 import { DEMO_HOME, installDemoWriteGuard, removeDemoWriteGuard, startDemoSession } from '@/lib/demoView';
 import { toast } from 'sonner';
 
-/** Server-confirmed demo account type of the signed-in session, or null. */
-export function useDemoViewType(): DemoType | null {
+/** Server-confirmed demo account status of the signed-in session. */
+export function useDemoViewStatus(): { type: DemoType | null; loading: boolean } {
   const { user } = useAuth();
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['demo-view-type', user?.id ?? null],
     enabled: !!user?.id,
     staleTime: Infinity,
@@ -22,7 +22,11 @@ export function useDemoViewType(): DemoType | null {
       return isDemoType(data as string) ? (data as DemoType) : null;
     },
   });
-  return user?.id ? data ?? null : null;
+  return { type: user?.id ? data ?? null : null, loading: !!user?.id && isLoading };
+}
+
+export function useDemoViewType(): DemoType | null {
+  return useDemoViewStatus().type;
 }
 
 export function DemoViewBar() {

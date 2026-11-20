@@ -1,5 +1,10 @@
 # Roadmap
 
+## Scoped image rotation November 20
+- [x] Restrict first-two-image rotation controls and execution to authenticated Super Admins, excluding demo accounts.
+- [x] Add scoped broker/developer record actions covering only their listings, projects and apartments, with confirmation and counts.
+- [x] Add single-listing/project-apartment actions, focused permission and rotation tests, and browser verification.
+
 ## Invitation history and developer property cards November 20
 - [x] Hide unsent 48-hour follow-ups and thread only actually sent follow-ups into the original invitation card.
 - [x] Restore the Super Admin section, history tab and open send card from session state.
