@@ -25,7 +25,7 @@ const genderSymbol = (gender: Gender) => gender === 'male' ? '\u2642\uFE0E' : '\
 const genderColor = (gender: Gender) => gender === 'male' ? 'text-primary' : 'text-destructive';
 
 /** Marketing company · contact person · contact phone, each click-to-edit (Super Admin only). */
-export function MarketingContactLine({ ownerId, devName, contact }: { ownerId: string; devName: string; contact?: MarketingContact | null }) {
+export function MarketingContactLine({ ownerId, devName, contact, avatarUrl }: { ownerId: string; devName: string; contact?: MarketingContact | null; avatarUrl?: string | null }) {
   const qc = useQueryClient();
   const [field, setField] = useState<Field | null>(null);
   const [value, setValue] = useState('');
@@ -85,6 +85,7 @@ export function MarketingContactLine({ ownerId, devName, contact }: { ownerId: s
   return <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground sm:text-base">
     <MarketingCompanyLine ownerId={ownerId} name={devName} label={contact?.company_name ?? null} plain />
     <span aria-hidden>·</span>
+    {avatarUrl && <img src={avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />}
     <button type="button" className={`${dotted} min-w-0 truncate ${contact?.contact_name ? '' : 'text-primary'}`} onClick={() => start('name')} aria-label="עריכת איש הקשר">{contact?.contact_name || 'הוסף איש קשר'}</button>
     {gender && <span role="img" aria-label={`מגדר איש הקשר: ${genderLabel(gender)}`} title={genderLabel(gender)} className={`inline-flex h-7 w-7 shrink-0 items-center justify-center text-base ${genderColor(gender)}`}>{genderSymbol(gender)}</span>}
     <span className="inline-flex shrink-0 items-center gap-1"><button type="button" dir="ltr" className={`${dotted} ${phone ? '' : 'text-primary'}`} onClick={() => start('phone')} aria-label="עריכת נייד איש הקשר">{phone ? formatPhoneDisplay(phone) : 'הוסף טלפון'}</button>

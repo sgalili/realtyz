@@ -67,13 +67,14 @@ Deno.serve(async req => {
     const ids = [...new Set(items.map(i => i.user_id))];
     if (!ids.length) return json({ items: [] });
     const [{ data: profiles }, { data: offices }, { data: roles }] = await Promise.all([
-      admin.from('profiles').select('id,full_name,avatar_url').in('id', ids),
+      admin.from('profiles').select('id,full_name,avatar_url,phone').in('id', ids),
       admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', ids),
       admin.from('user_roles').select('user_id,role').in('user_id', ids).in('role', ['developer', 'marketing_company']),
     ]);
+    const { data: histDevs } = await admin.from('developers').select('workspace_owner_id,logo_url').in('workspace_owner_id', ids);
     const kindOf = (id: string) => (roles ?? []).some(r => r.user_id === id && r.role === 'marketing_company') ? 'marketing_company' : (roles ?? []).some(r => r.user_id === id && r.role === 'developer') ? 'developer' : 'broker';
     return json({ items: items.map(i => { const p = profiles?.find(x => x.id === i.user_id); const o = offices?.find(x => x.user_id === i.user_id);
-      return { ...i, recipient_kind: kindOf(i.user_id), full_name: p?.full_name ?? '', avatar_url: (p as any)?.avatar_url ?? null, office_name: o?.agency_name ?? null, office_logo_url: o?.logo_url ?? null }; }) });
+      return { ...i, recipient_kind: kindOf(i.user_id), full_name: p?.full_name ?? '', avatar_url: (p as any)?.avatar_url ?? null, phone: (p as any)?.phone ?? null, developer_logo_url: histDevs?.find(d => d.workspace_owner_id === i.user_id)?.logo_url ?? o?.logo_url ?? null, office_name: o?.agency_name ?? null, office_logo_url: o?.logo_url ?? null }; }) });
   }
 
   if (input.action === 'imports') {

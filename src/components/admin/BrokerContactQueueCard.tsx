@@ -220,20 +220,28 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
   </li>;
 }
 
-type HistoryItem = { user_id: string; recipient_kind?: string | null; channel: 'whatsapp' | 'email'; status: string; sent_at: string; full_name: string; avatar_url: string | null; office_name: string | null; office_logo_url: string | null; content?: { to?: string; subject?: string; body?: string; links?: { label: string; url: string }[]; demo?: boolean; error?: string | null; template?: string } };
+type HistoryItem = { user_id: string; recipient_kind?: string | null; phone?: string | null; developer_logo_url?: string | null; channel: 'whatsapp' | 'email'; status: string; sent_at: string; full_name: string; avatar_url: string | null; office_name: string | null; office_logo_url: string | null; content?: { to?: string; subject?: string; body?: string; links?: { label: string; url: string }[]; demo?: boolean; error?: string | null; template?: string } };
 const STATUS: Record<string, string> = { accepted: 'נשלח', sent: 'נשלח', pending: 'בשליחה', failed: 'נכשל', delivered: 'נמסר', read: 'נקרא' };
 
-/** Marketing company · contact · contact phone with a quick-dial button, shown only for fields that exist. */
-function SendHistoryContactLine({ contact }: { contact?: MarketingContact | null }) {
-  const parts: ReactNode[] = [];
-  if (contact?.company_name?.trim()) parts.push(<span key="company" className="truncate" title={contact.company_name}>{contact.company_name}</span>);
-  if (contact?.contact_name?.trim()) parts.push(<span key="name" className="truncate" title={contact.contact_name}>{contact.contact_name}</span>);
-  if (contact?.contact_phone?.trim()) parts.push(<span key="phone" dir="ltr" className="whitespace-nowrap">{formatPhoneDisplay(contact.contact_phone)}</span>);
-  if (!parts.length) return null;
-  return <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap px-3 -mt-1 pb-3 text-sm text-muted-foreground sm:text-base">
-    {parts.map((p, n) => <span key={n} className="flex min-w-0 items-center gap-2">{n > 0 && <span aria-hidden>·</span>}{p}</span>)}
-    {contact?.contact_phone?.trim() && <a href={`tel:+${contact.contact_phone}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-primary hover:bg-accent" aria-label={`חיוג לאיש הקשר ${formatPhoneDisplay(contact.contact_phone)}`} title={formatPhoneDisplay(contact.contact_phone)}><Phone className="h-4 w-4" /></a>}
-  </div>;
+/** Recipient phone beside the name in send history: dotted edit, or "הוסף טלפון" when missing. */
+function HistoryPhoneField({ userId, name, phone }: { userId: string; name: string; phone: string | null }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(phone ? formatPhoneDisplay(phone) : '');
+  const save = useMutation({
+    mutationFn: () => invoke('admin-broker-contact', { action: 'save', user_id: userId, phone: value.trim() }),
+    onSuccess: () => { toast.success('הטלפון נשמר'); setEditing(false); void qc.invalidateQueries({ queryKey: ['broker-contact-history'] }); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  if (editing) return <span className="inline-flex shrink-0 items-center">
+    <Input autoFocus aria-label={`טלפון של ${name}`} className="h-8 w-28 px-2 text-sm" dir="ltr" inputMode="tel" placeholder="05X-XXXXXXX" value={value} onChange={e => setValue(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && value.trim()) save.mutate(); if (e.key === 'Escape') setEditing(false); }} />
+    <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="שמירת טלפון" disabled={!value.trim() || save.isPending} onClick={() => save.mutate()}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>
+    <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="ביטול" onClick={() => setEditing(false)}><X className="h-4 w-4" /></Button>
+  </span>;
+  return <span className="inline-flex shrink-0 items-center">
+    <button type="button" dir={phone ? 'ltr' : 'rtl'} onClick={() => { setValue(phone ? formatPhoneDisplay(phone) : ''); setEditing(true); }} aria-label={phone ? `עריכת הטלפון של ${name}` : `הוספת טלפון ל${name}`} className={`whitespace-nowrap px-1 text-sm underline decoration-dotted underline-offset-4 ${phone ? 'text-muted-foreground' : 'text-primary'}`}>{phone ? formatPhoneDisplay(phone) : 'הוסף טלפון'}</button>
+    {phone && <a href={`tel:+${phone}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-primary hover:bg-accent" aria-label={`חיוג אל ${name}`}><Phone className="h-4 w-4" /></a>}
+  </span>;
 }
 
 function SendHistoryContent({ item }: { item: HistoryItem }) {
@@ -269,13 +277,17 @@ function SendHistory() {
     </TabsList></Tabs>
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : shown.length === 0 ? <p className="text-base text-muted-foreground">אין שליחות בלשונית זו.</p> :
       <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{shown.map(i => { const key = invitationHistoryKey(i); const isOpen = openKey === key; const contact = contacts.data?.get(i.user_id); return <li key={key}>
-        <button type="button" aria-expanded={isOpen} onClick={() => toggleOpen(key)} className="flex w-full items-center gap-3 p-3 text-right hover:bg-muted/40">
-        {i.avatar_url ? <img src={i.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" /> : <span className="h-10 w-10 shrink-0" />}
-        <div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{i.full_name || 'ללא שם'}</p>{i.office_name && <p className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">{i.office_logo_url && <img src={i.office_logo_url} alt={`לוגו ${i.office_name}`} className="h-7 w-7 shrink-0 rounded-md border border-border/60 object-contain" />}<span className="truncate">{i.office_name}</span></p>}
-          <p className="text-sm text-muted-foreground">{i.channel === 'whatsapp' ? 'וואטסאפ' : 'מייל'} · {STATUS[i.status] ?? i.status} · {new Date(i.sent_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</p></div>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-        <SendHistoryContactLine contact={contact} />
+        {(() => { const isBroker = recipientGroup(i, contact?.company_name) === 'broker'; const statusLine = <p className="text-sm text-muted-foreground">{i.channel === 'whatsapp' ? 'וואטסאפ' : 'מייל'} · {STATUS[i.status] ?? i.status} · {new Date(i.sent_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</p>;
+          return <div className="flex w-full items-start gap-3 p-3 text-right">
+            {isBroker ? (i.avatar_url ? <img src={i.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" /> : <span className="h-10 w-10 shrink-0" />) : <DeveloperLogo name={i.full_name} logoUrl={i.developer_logo_url ?? null} className="h-10 w-10" />}
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex min-w-0 items-center gap-1"><p className="truncate text-base font-bold">{i.full_name || 'ללא שם'}</p><HistoryPhoneField userId={i.user_id} name={i.full_name} phone={i.phone ?? null} /></div>
+              {isBroker ? i.office_name && <p className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">{i.office_logo_url && <img src={i.office_logo_url} alt={`לוגו ${i.office_name}`} className="h-7 w-7 shrink-0 rounded-md border border-border/60 object-contain" />}<span className="truncate">{i.office_name}</span></p>
+                : <MarketingContactLine ownerId={i.user_id} devName={i.full_name} contact={contact} avatarUrl={i.avatar_url} />}
+              {statusLine}
+            </div>
+            <button type="button" aria-expanded={isOpen} aria-label={isOpen ? 'סגירת פרטי השליחה' : 'פתיחת פרטי השליחה'} onClick={() => toggleOpen(key)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-muted/40"><ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} /></button>
+          </div>; })()}
         <div className={`grid transition-all duration-300 ease-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}><div className="overflow-hidden"><div className="space-y-2 border-t border-border/60 bg-muted/20 p-3 text-sm">
           <SendHistoryContent item={i} />
           {i.followups.map(followup => <div key={invitationHistoryKey(followup)} className="space-y-2 border-t border-border/60 pt-3">
