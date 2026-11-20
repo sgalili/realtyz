@@ -11,9 +11,10 @@ export function agencyListingCount(value: unknown): number | null {
   const match = raw.match(/^(\d+)$/) ?? raw.match(/(\d+)\s*(?:נכסים|נכס(?:ים)? פעיל|מודעות|נכסים למכירה|נכסים להשכרה|properties|listings)/i);
   return match ? Number(match[1]) : null;
 }
-export function agencyVolumeAllowed(row: Record<string, any>, min: number, max: number) {
+/** Offices are never rejected for having many ads; `max` caps saved ads per broker draft instead (see collectBrokers). */
+export function agencyVolumeAllowed(row: Record<string, any>, min: number, _max?: number) {
   const count = agencyListingCount(row.active_listing_count);
-  return count === null || (count >= min && count <= max);
+  return count === null || count >= min;
 }
 export function agencyRegistryKey(row: Record<string, any>): string | null {
   const url = agencyUrl(row.source_url);

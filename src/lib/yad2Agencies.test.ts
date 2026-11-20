@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { load } from 'cheerio';
 import { agencyPageUrl, agencyUrl, parseAgencies, parseAgencyProfile, agencyVolumeAllowed, agencyListingCount, agencyRegistryKey, recentAgencyCheck } from '../../supabase/functions/_shared/yad2Agencies';
-import { collectBrokers, freshImportCheckpoint, advanceSearchPoint } from '../../supabase/functions/_shared/brokerImportQueue';
+import { collectBrokers, mergeBrokers, flushFoundBrokers, freshImportCheckpoint, advanceSearchPoint } from '../../supabase/functions/_shared/brokerImportQueue';
 
 describe('agency directory discovery', () => {
   it('carries only the identified broker bio into the import checkpoint', () => {
@@ -55,10 +55,10 @@ describe('early agency filtering and seven-day registry', () => {
     const rows=parseAgencies(load(html),agencyPageUrl(1)).results;
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.every(r=>r.active_listing_count===714)).toBe(true);
-    expect(rows.filter(r=>agencyVolumeAllowed(r,3,10))).toEqual([]);
+    expect(rows.filter(r=>agencyVolumeAllowed(r,3,10))).toHaveLength(rows.length);
   });
-  it('accepts exactly 3–10 properties and rejects both bounds outside that range', () => {
-    expect([2,3,10,11].map(active_listing_count=>agencyVolumeAllowed({active_listing_count},3,10))).toEqual([false,true,true,false]);
+  it('rejects offices below the minimum but never offices with more than 10 ads', () => {
+    expect([2,3,10,11,714].map(active_listing_count=>agencyVolumeAllowed({active_listing_count},3,10))).toEqual([false,true,true,true,true]);
     expect(agencyListingCount('1,250 נכסים מתאימים לך')).toBe(1250);
     expect(agencyVolumeAllowed({active_listing_count:null},3,10)).toBe(true);
   });
@@ -68,6 +68,24 @@ describe('early agency filtering and seven-day registry', () => {
     const eligible=rows.filter(r=>agencyVolumeAllowed(r,3,10));
     expect(eligible.every(r=>r.active_listing_count===3)).toBe(true);
     expect(collectBrokers(eligible,3,10)[0]).toMatchObject({license_number:'12345',phone:null});
+  });
+  it('caps saved ads per broker at the maximum instead of rejecting the office', () => {
+    const urls=Array.from({length:14},(_,i)=>`https://www.yad2.co.il/realestate/item/ab${i}`);
+    const b=collectBrokers([{source_url:urls[0],listing_urls:urls,publisher:{publisher_kind:'broker',broker_name:'טל זנו',broker_license_number:'12345'}}],1,10);
+    expect(b[0].listing_urls).toHaveLength(10);
+  });
+  it('saves found brokers right away, keeps their order and resumes discovery', () => {
+    const one={full_name:'א',phone:null,license_number:'1111',listing_urls:['u1']};
+    const two={full_name:'ב',phone:null,license_number:'2222',listing_urls:['u2']};
+    const c:Record<string,any>={source:'agencies',phase:'scanning',brokers:mergeBrokers([],[one],10),brokerIndex:0};
+    expect(flushFoundBrokers(c)).toBe(true);
+    expect(c).toMatchObject({phase:'validating',resumePhase:'scanning'});
+    c.brokerIndex=1;c.phase='scanning';
+    c.brokers=mergeBrokers(c.brokers,[two,one],10);
+    expect(c.brokers.map((b:any)=>b.license_number)).toEqual(['1111','2222']);
+    expect(flushFoundBrokers(c)).toBe(true);
+    c.brokerIndex=2;c.phase='scanning';
+    expect(flushFoundBrokers(c)).toBe(false);
   });
   it('strips every geographic filter, even from next links', () => {
     const u=new URL(agencyPageUrl(2,'/realestate/agencies?page=2&city=2400&area=2&topArea=1'));
@@ -82,7 +100,7 @@ describe('early agency filtering and seven-day registry', () => {
     const {results}=parseAgencies($,'https://www.yad2.co.il/realestate/agencies');
     expect(results.find(r=>r.source_url.endsWith('/agency/777'))?.active_listing_count).toBe(7);
     expect(results.filter(r=>agencyVolumeAllowed(r,3,10))).not.toHaveLength(0);
-    expect(results.filter(r=>agencyVolumeAllowed(r,8,10))).toHaveLength(0);
+    expect(results.filter(r=>agencyVolumeAllowed(r,8,10))).toHaveLength(0); // 7 ads is below the minimum of 8
   });
   it('skips completed checks for exactly seven days without extending their timestamp', () => {
     const checked='2026-11-01T00:00:00Z';const start=Date.parse(checked);

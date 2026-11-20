@@ -23,6 +23,22 @@ export function collectBrokers(rows: Record<string, any>[], min: number, max: nu
   }
   return [...grouped.values()].filter(b => b.listing_urls.length >= min).map(b => ({ ...b, listing_urls: b.listing_urls.slice(0, max) }));
 }
+/** Append-only broker list: already found (and possibly saved) brokers keep their index; new licenses append up to target. */
+export function mergeBrokers(existing: DiscoveredBroker[] | undefined, found: DiscoveredBroker[], target: number): DiscoveredBroker[] {
+  const out = [...(existing ?? [])];
+  const seen = new Set(out.map(b => b.license_number));
+  for (const b of found) { if (out.length >= target) break; if (!seen.has(b.license_number)) { out.push(b); seen.add(b.license_number); } }
+  return out;
+}
+
+/** Directory scans save each newly found broker as a draft right away, then resume discovery from the same checkpoint. */
+export function flushFoundBrokers(c: Record<string, any>) {
+  if (c.source === 'urls' || !['scanning', 'enriching'].includes(c.phase)) return false;
+  if ((c.brokerIndex ?? 0) >= (c.brokers?.length ?? 0)) return false;
+  c.resumePhase = c.phase; c.phase = 'validating'; c.listingIndex = 0;
+  return true;
+}
+
 export function nextImportPoint(brokerIndex: number, listingIndex: number, listingCount: number) {
   return listingIndex + 1 >= listingCount ? { brokerIndex: brokerIndex + 1, listingIndex: 0 } : { brokerIndex, listingIndex: listingIndex + 1 };
 }

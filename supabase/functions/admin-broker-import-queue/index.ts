@@ -2,7 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
-import { collectBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
+import { collectBrokers, mergeBrokers, flushFoundBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
 import { readWorkerResponse, ImportAvailabilityError, ProviderTimeoutError } from '../_shared/brightDataDiagnostics.ts';
 import { agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck, agencyDirectoryQuery, agencyDirectoryUrl, isAgencyProfileUrl, AGENCY_DIRECTORY_MAX_NODES } from '../_shared/yad2Agencies.ts';
 import { ProviderRateLimitError, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
@@ -96,7 +96,7 @@ Deno.serve(async req => {
     const job=claimed?.[0]; if(!job) return json({ok:true,idle:true,done:existing.status!=='running',retry_in_ms:Math.max(1000,(Date.parse(existing.lease_until??'')||0)-Date.now())});
     const c=job.checkpoint as Record<string,any>; const started=Date.now();
     const autonomousDeveloper=()=>autonomousDeveloperCheckpoint(c);
-    const criteriaKey=`volume:${job.min_listings}:${job.max_listings}`;
+    const criteriaKey=`volume:v2:${job.min_listings}`;
     const recentKeys=async(rows:Record<string,any>[])=>{
       const keys=[...new Set(rows.map(agencyRegistryKey).filter((key):key is string=>Boolean(key)))];
       if(!keys.length)return new Set<string>();
@@ -320,14 +320,16 @@ Deno.serve(async req => {
           eligible.push(r);
         }
         console.log('[broker-import-filter]',JSON.stringify({job_id:job.id,fresh:fresh.length,eligible:eligible.length,min:job.min_listings,max:job.max_listings,volume_rejected:fresh.filter(r=>!agencyVolumeAllowed(r,job.min_listings,job.max_listings)).map(r=>r.active_listing_count??null).slice(0,20)}));
-        c.rows=[...c.rows,...compactDirectoryRows(eligible)]; c.brokers=collectBrokers(c.rows,job.min_listings,job.max_listings).slice(0,job.target_brokers);
+        c.rows=[...c.rows,...compactDirectoryRows(eligible)];
         c.enriched=c.enriched??0;
         const needsDetail=(r:Record<string,any>)=>agencyRegistryKey(r) && (!r.publisher?.broker_license_number || !r.publisher?.broker_name || !(r.listing_urls?.length));
         c.enrichUrls=[...new Set(eligible.filter(needsDetail).map(r=>r.source_url))].slice(0,Math.max(0,ENRICH_BUDGET-c.enriched));
+        const pendingDetail=new Set(c.enrichUrls);
+        c.brokers=mergeBrokers(c.brokers,collectBrokers(c.rows.filter((r:Record<string,any>)=>!pendingDetail.has(r.source_url)),job.min_listings,job.max_listings),job.target_brokers);
         for(const r of eligible.filter(r=>!needsDetail(r)))await recordCheck(r,'checked','complete_card');
-        if(c.enrichUrls.length && c.brokers.length<job.target_brokers){c.phase='enriching';await save();return json({ok:true});}
+        if(c.enrichUrls.length && c.brokers.length<job.target_brokers){c.phase='enriching';flushFoundBrokers(c);await save();return json({ok:true});}
         if(c.brokers.length>=job.target_brokers) {c.phase='validating';delete c.rows;}
-        else advanceSearchPoint(c);
+        else {advanceSearchPoint(c);flushFoundBrokers(c);}
         await save(c.phase==='completed'?{status:'completed'}:{});
       } else if(c.phase==='enriching') {
         const url=c.enrichUrls[0];
@@ -356,22 +358,28 @@ Deno.serve(async req => {
         }
         {
           // Skip brokers that already exist (same phone) so only new brokers are imported.
-          const all=collectBrokers(c.rows,job.min_listings,job.max_listings);
+          const pendingDetail=new Set(c.enrichUrls??[]);
+          const all=collectBrokers(c.rows.filter((r:Record<string,any>)=>!pendingDetail.has(r.source_url)),job.min_listings,job.max_listings);
           const phones=[...new Set(all.map((b:Record<string,any>)=>b.phone).filter(Boolean))];
           const had=new Set<string>();
           for(let i=0;i<phones.length;i+=200){const {data,error}=await admin.from('profiles').select('phone').in('phone',phones.slice(i,i+200));if(error)throw error;for(const r of data??[])if(r.phone)had.add(r.phone);}
           const seen=new Set((c.skippedExisting??[]).map((x:Record<string,any>)=>x.key));
           for(const b of all)if(b.phone&&had.has(b.phone)&&!seen.has(b.phone)){c.skippedExisting=[...(c.skippedExisting??[]),{kind:'broker',key:b.phone,name:b.full_name??b.office_name??null}];seen.add(b.phone);}
-          c.brokers=all.filter((b:Record<string,any>)=>!(b.phone&&had.has(b.phone))).slice(0,job.target_brokers);
+          c.brokers=mergeBrokers(c.brokers,all.filter((b:Record<string,any>)=>!(b.phone&&had.has(b.phone))),job.target_brokers);
         }
         if(c.brokers.length>=job.target_brokers){c.phase='validating';delete c.rows;delete c.enrichUrls;}
-        else if(!c.enrichUrls.length){
-          advanceSearchPoint(c);
+        else {
+          if(!c.enrichUrls.length)advanceSearchPoint(c);
+          flushFoundBrokers(c);
         }
         await save(c.phase==='completed'?{status:'completed'}:{});
       } else {
         const b=c.brokers[c.brokerIndex];
-        if(!b) {await save({status:'completed',stage:'completed'});return json({ok:true});}
+        if(!b) {
+          // Saved every broker found so far: go back to discovery from the exact checkpoint until the target is met.
+          if(c.resumePhase && c.brokers.length<job.target_brokers){c.phase=c.resumePhase;delete c.resumePhase;await save();return json({ok:true,resumed:true});}
+          await save({status:'completed',stage:'completed'});return json({ok:true});
+        }
         if(c.phase==='validating' && c.source==='urls') {
           // Instant mode: pasted links are trusted; skip per-ad pre-validation (the save step still rejects non-residential/unavailable ads).
           c.listingIndex=0;delete c.liveUrls;
