@@ -24,7 +24,11 @@ export function BrokerImportWorkspace() {
   return <div dir="rtl" className="min-w-0">
     <BrokerBatchImportCard />
     <Tabs value={activeTab} onValueChange={selectTab} dir="rtl" className="min-w-0">
-      <div data-import-tabs className="sticky top-0 z-20 bg-background py-2">
+      {/* The page's scroll container keeps a 20px top padding and 15px side gutters, so the
+          sticky tab band is pulled up into that padding and widened past the gutters: while
+          scrolling, the white band hides the cards passing behind it instead of letting them
+          peek above and beside the tabs. */}
+      <div data-import-tabs className="sticky -top-[20px] z-20 -mx-[15px] bg-background px-[15px] pb-2 pt-[28px]">
         <TabsList className="grid w-full min-w-0 grid-cols-3">
           <TabsTrigger value="pending" className="px-1 text-base">ממתינים להזמנה{pendingCount ? ` (${pendingCount})` : ''}</TabsTrigger>
           <TabsTrigger value="imports" className="px-1 text-base">היסטוריית ייבוא</TabsTrigger>
