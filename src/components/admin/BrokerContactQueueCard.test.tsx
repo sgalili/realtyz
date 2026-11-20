@@ -46,7 +46,7 @@ it('does not report deletion when the protected endpoint refuses it', async () =
 });
 
 const devId = '00000000-0000-0000-0000-000000000456';
-const historyItem = { user_id: devId, channel: 'email', status: 'sent', sent_at: '2026-11-18T10:00:00Z', full_name: 'אלמוגים', avatar_url: null, office_name: 'אנגלו סקסון', office_logo_url: 'https://cdn.example.com/office.png', content: { to: 'office@example.com', subject: 'כותרת', body: 'גוף' } };
+const historyItem = { user_id: devId, recipient_kind: 'developer', channel: 'email', status: 'sent', sent_at: '2026-11-18T10:00:00Z', full_name: 'אלמוגים', avatar_url: null, office_name: 'אנגלו סקסון', office_logo_url: 'https://cdn.example.com/office.png', content: { to: 'office@example.com', subject: 'כותרת', body: 'גוף' } };
 
 function setupHistory(contactRow: Record<string, unknown> | null) {
   state.invoke.mockImplementation((name, { body }) => {
@@ -69,6 +69,7 @@ it('shows marketing company, contact, contact phone and a quick-dial button when
 
 it('hides every marketing detail when the contact person was never defined', async () => {
   setupHistory({ owner_id: devId, company_id: null, company_name: null, contact_name: null, contact_phone: null, contact_gender: null });
+  fireEvent.mouseDown(await screen.findByRole('tab', { name: 'יזמים' }));
   expect(await screen.findByText('אלמוגים')).toBeTruthy();
   expect(screen.queryByText('שיווקא')).toBeNull();
   expect(screen.queryByText('מורן')).toBeNull();
@@ -78,8 +79,16 @@ it('hides every marketing detail when the contact person was never defined', asy
 
 it('places an available office logo immediately before the office name', async () => {
   setupHistory(null);
+  fireEvent.mouseDown(await screen.findByRole('tab', { name: 'יזמים' }));
   const logo = await screen.findByRole('img', { name: 'לוגו אנגלו סקסון' });
   const officeName = screen.getByText('אנגלו סקסון');
   expect(logo.parentElement).toBe(officeName.parentElement);
   expect(logo.compareDocumentPosition(officeName) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it('lists a developer invitation sent to a marketing company only under the marketing tab', async () => {
+  setupHistory({ owner_id: devId, company_id: 'c1', company_name: 'שיווקא', contact_name: 'מורן', contact_phone: '972509999999', contact_gender: 'male' });
+  expect(await screen.findByText('שיווקא')).toBeTruthy();
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'יזמים' }));
+  await waitFor(() => expect(screen.queryByText('אלמוגים')).toBeNull());
 });

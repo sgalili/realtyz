@@ -1,0 +1,2 @@
+GRANT UPDATE ON public.invitation_attachments TO authenticated;
+CREATE POLICY "Super admins update invitation attachments" ON public.invitation_attachments FOR UPDATE TO authenticated USING (public.has_role(auth.uid(),'super_admin'::app_role)) WITH CHECK (public.has_role(auth.uid(),'super_admin'::app_role));

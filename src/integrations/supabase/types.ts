@@ -5596,6 +5596,7 @@ export type Database = {
           mime_type: string | null
           size_bytes: number | null
           storage_path: string
+          summary_role: string | null
         }
         Insert: {
           created_at?: string
@@ -5606,6 +5607,7 @@ export type Database = {
           mime_type?: string | null
           size_bytes?: number | null
           storage_path: string
+          summary_role?: string | null
         }
         Update: {
           created_at?: string
@@ -5616,6 +5618,7 @@ export type Database = {
           mime_type?: string | null
           size_bytes?: number | null
           storage_path?: string
+          summary_role?: string | null
         }
         Relationships: []
       }

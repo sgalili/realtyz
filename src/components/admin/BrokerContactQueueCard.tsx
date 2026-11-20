@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { OfficialBrokerInvitationPanel } from './OfficialBrokerInvitationDialog';
 import { BrokerInvitationTemplateEditor } from './BrokerInvitationTemplateEditor';
 import { InvitationAttachmentPicker } from './InvitationAttachmentPicker';
+import { recipientGroup, type RecipientGroup } from '@/lib/invitationSummaries';
 import { BrokerEmailConsentButton } from './BrokerEmailInvitations';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
@@ -87,7 +88,8 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
         <DialogHeader><DialogTitle>שליחת הזמנה ל{recipientName || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">בחירת ערוץ שליחה</DialogDescription></DialogHeader>
         <Tabs value={channel} onValueChange={v => setChannel(v as 'email' | 'whatsapp')} dir="rtl">
         <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="email">אימייל</TabsTrigger><TabsTrigger value="whatsapp">WhatsApp</TabsTrigger></TabsList>
-        <TabsContent value="whatsapp" className="space-y-3"><div className="flex justify-end"><BrokerInvitationTemplateEditor /></div><InvitationAttachmentPicker value={attachmentId} onChange={setAttachmentId} />{contactPhone && <p className="pt-2 text-sm text-muted-foreground">ההזמנה וקוד הכניסה יישלחו לאיש הקשר בחברת השיווק: <span dir="ltr">{formatPhoneDisplay(contactPhone)}</span></p>}{b.phone || contactPhone ? <OfficialBrokerInvitationPanel broker={{ id: b.user_id, full_name: b.full_name, recipient_name: contactPhone ? contactName : null }} onClose={() => setOpen(false)} onSent={() => { waSent.current = true; }} attachmentId={attachmentId} /> : <p className="py-4 text-base text-muted-foreground">יש להוסיף נייד בכרטיס כדי לשלוח ב-WhatsApp.</p>}</TabsContent>
+        <div className="mt-3"><InvitationAttachmentPicker value={attachmentId} onChange={setAttachmentId} recipientRole={contactPhone ? 'marketing_company' : b.is_developer ? 'developer' : 'broker'} /></div>
+        <TabsContent value="whatsapp" className="space-y-3"><div className="flex justify-end"><BrokerInvitationTemplateEditor /></div>{contactPhone && <p className="pt-2 text-sm text-muted-foreground">ההזמנה וקוד הכניסה יישלחו לאיש הקשר בחברת השיווק: <span dir="ltr">{formatPhoneDisplay(contactPhone)}</span></p>}{b.phone || contactPhone ? <OfficialBrokerInvitationPanel broker={{ id: b.user_id, full_name: b.full_name, recipient_name: contactPhone ? contactName : null }} onClose={() => setOpen(false)} onSent={() => { waSent.current = true; }} attachmentId={attachmentId} /> : <p className="py-4 text-base text-muted-foreground">יש להוסיף נייד בכרטיס כדי לשלוח ב-WhatsApp.</p>}</TabsContent>
         <TabsContent value="email" className="space-y-3">
         <div className="flex gap-2">
           <Input aria-label="כתובת אימייל" className="h-11 text-base" dir="ltr" type="email" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} />
@@ -96,7 +98,6 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
         {b.email && !b.email_consent_at && <div className="flex items-center gap-2 text-sm text-muted-foreground">נדרשת הסכמה מתועדת לפני שליחה:<BrokerEmailConsentButton broker={{ id: b.user_id, full_name: b.full_name, email: b.email }} state={{ email_consent_at: b.email_consent_at, email_unsubscribed_at: null, email_invited_at: b.email_invited_at }} /></div>}
         <label className="block space-y-1"><span className="text-sm font-medium">כותרת המייל</span><Input aria-label="כותרת המייל" className="h-11 text-base" maxLength={200} value={subject} onChange={e => setSubject(e.target.value)} /></label>
         <Textarea aria-label="נוסח המייל" className="min-h-[200px] text-base" value={body} onChange={e => { bodyTouched.current = true; setBody(e.target.value); }} />
-        <InvitationAttachmentPicker value={attachmentId} onChange={setAttachmentId} />
         <p className="text-sm text-muted-foreground">{demo ? 'קישור הדמו וקישור ההסרה מתווספים אוטומטית בסוף המייל.' : 'קישור הכניסה לנכסים וקישור ההסרה מתווספים אוטומטית בסוף המייל.'}</p>
         <label className="flex items-center gap-2 text-base"><input type="checkbox" className="h-4 w-4" checked={demo} onChange={e => setDemo(e.target.checked)} />שלח קישור לחשבון דמו לצפייה בלבד</label>
         {demo && <p className="text-sm text-muted-foreground">הקישור יותאם אוטומטית לסוג המשתמש, ללא הרשמה או קוד אימות. אם הסוג אינו ידוע, הנמען יבחר אותו לפני הכניסה לדמו.</p>}
@@ -219,7 +220,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
   </li>;
 }
 
-type HistoryItem = { user_id: string; channel: 'whatsapp' | 'email'; status: string; sent_at: string; full_name: string; avatar_url: string | null; office_name: string | null; office_logo_url: string | null; content?: { to?: string; subject?: string; body?: string; links?: { label: string; url: string }[]; demo?: boolean; error?: string | null; template?: string } };
+type HistoryItem = { user_id: string; recipient_kind?: string | null; channel: 'whatsapp' | 'email'; status: string; sent_at: string; full_name: string; avatar_url: string | null; office_name: string | null; office_logo_url: string | null; content?: { to?: string; subject?: string; body?: string; links?: { label: string; url: string }[]; demo?: boolean; error?: string | null; template?: string } };
 const STATUS: Record<string, string> = { accepted: 'נשלח', sent: 'נשלח', pending: 'בשליחה', failed: 'נכשל', delivered: 'נמסר', read: 'נקרא' };
 
 /** Marketing company · contact · contact phone with a quick-dial button, shown only for fields that exist. */
@@ -254,6 +255,8 @@ function SendHistory() {
     const { data, error } = await supabase.rpc('admin_marketing_contacts', { _owners: ownerIds });
     if (error) throw error; return new Map((data ?? []).map(r => [r.owner_id, r as MarketingContact]));
   } });
+  const [group, setGroup] = useState<RecipientGroup>('marketing');
+  const shown = items.filter(i => recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) === group);
   const [openKey, setOpenKey] = useState<string | null>(() => readSuperAdminViewState().openSendKey ?? null);
   const toggleOpen = (key: string) => {
     const next = openKey === key ? null : key;
@@ -261,8 +264,11 @@ function SendHistory() {
     saveSuperAdminViewState({ openSendKey: next });
   };
   return <div className="space-y-3">
-    {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : items.length === 0 ? <p className="text-base text-muted-foreground">עדיין לא נשלחו הודעות.</p> :
-      <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{items.map(i => { const key = invitationHistoryKey(i); const isOpen = openKey === key; const contact = contacts.data?.get(i.user_id); return <li key={key}>
+    <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList className="grid w-full grid-cols-3">
+      <TabsTrigger value="marketing" className="px-1">חברות שיווק נדל"ן</TabsTrigger><TabsTrigger value="broker" className="px-1">מתווכים</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים</TabsTrigger>
+    </TabsList></Tabs>
+    {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : shown.length === 0 ? <p className="text-base text-muted-foreground">אין שליחות בלשונית זו.</p> :
+      <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{shown.map(i => { const key = invitationHistoryKey(i); const isOpen = openKey === key; const contact = contacts.data?.get(i.user_id); return <li key={key}>
         <button type="button" aria-expanded={isOpen} onClick={() => toggleOpen(key)} className="flex w-full items-center gap-3 p-3 text-right hover:bg-muted/40">
         {i.avatar_url ? <img src={i.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" /> : <span className="h-10 w-10 shrink-0" />}
         <div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{i.full_name || 'ללא שם'}</p>{i.office_name && <p className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">{i.office_logo_url && <img src={i.office_logo_url} alt={`לוגו ${i.office_name}`} className="h-7 w-7 shrink-0 rounded-md border border-border/60 object-contain" />}<span className="truncate">{i.office_name}</span></p>}
@@ -303,11 +309,13 @@ export function ImportHistory() {
     finally { setOpening(null); }
   };
   const q = useQuery({ queryKey: ['broker-import-history'], queryFn: () => invoke<{ items: ImportItem[] }>('admin-broker-contact', { action: 'imports' }) });
-  const items = q.data?.items ?? [];
+  const [kind, setKind] = useState<'broker' | 'developer'>('broker');
+  const items = (q.data?.items ?? []).filter(i => i.kind === kind);
+  const kindTabs = <Tabs value={kind} onValueChange={v => setKind(v as 'broker' | 'developer')} dir="rtl" className="mb-3"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="broker">מתווכים</TabsTrigger><TabsTrigger value="developer">יזמים</TabsTrigger></TabsList></Tabs>;
   if (q.isLoading) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
   if (q.isError) return <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p>;
-  if (!items.length) return <p className="text-base text-muted-foreground">עדיין לא בוצעו יבואים.</p>;
-  return <div className="overflow-x-auto rounded-xl border border-border/70">
+  if (!items.length) return <div>{kindTabs}<p className="text-base text-muted-foreground">אין יבואים בלשונית זו.</p></div>;
+  return <div>{kindTabs}<div className="overflow-x-auto rounded-xl border border-border/70">
     <table className="w-full min-w-[520px] text-right text-sm">
       <thead className="bg-muted/50 text-muted-foreground"><tr><th className="p-2 font-semibold">לוגו</th><th className="p-2 font-semibold">שם</th><th className="p-2 font-semibold">סוג</th><th className="p-2 font-semibold">{'פרויקטים/נכסים'}</th><th className="p-2 font-semibold">סטטוס</th><th className="p-2 font-semibold">תאריך</th><th className="p-2"><span className="sr-only">מחיקת רשומה</span></th></tr></thead>
       <tbody className="divide-y divide-border/70">{items.map(i => <tr key={`${i.kind}-${i.id}`}>
@@ -321,7 +329,7 @@ export function ImportHistory() {
       </tr>)}</tbody>
     </table>
     <Dialog open={!!deleting} onOpenChange={open => { if (!open && !remove.isPending) setDeleting(null); }}><DialogContent dir="rtl"><DialogHeader><DialogTitle>מחיקת רשומה מההיסטוריה</DialogTitle></DialogHeader><p>למחוק את רשומת היבוא של {deleting?.name}? החשבון, הפרויקטים והנכסים יישארו ללא שינוי.</p><DialogFooter className="flex-row justify-between sm:justify-between"><Button variant="outline" disabled={remove.isPending} onClick={() => setDeleting(null)}>ביטול</Button><Button variant="destructive" disabled={remove.isPending} onClick={() => { if (deleting) remove.mutate(deleting); }}>{remove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}מחיקה</Button></DialogFooter></DialogContent></Dialog>
-  </div>;
+  </div></div>;
 }
 
 /** Silently imported accounts awaiting their first successful invitation. */

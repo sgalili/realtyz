@@ -1765,6 +1765,20 @@
       "when": 1795193281946,
       "tag": "0251_admin_rotate_project_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 252,
+      "version": "7",
+      "when": 1795193995325,
+      "tag": "0252_invitation_summary_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 253,
+      "version": "7",
+      "when": 1795194010380,
+      "tag": "0253_invitation_attachments_admin_update",
+      "breakpoints": true
     }
   ]
 }

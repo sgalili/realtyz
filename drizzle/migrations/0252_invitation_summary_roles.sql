@@ -1,0 +1,2 @@
+ALTER TABLE public.invitation_attachments ADD COLUMN IF NOT EXISTS summary_role text CHECK (summary_role IN ('developer','marketing_company','broker','property_owner','affiliate'));
+CREATE UNIQUE INDEX IF NOT EXISTS invitation_attachments_summary_role_key ON public.invitation_attachments(summary_role) WHERE summary_role IS NOT NULL;
