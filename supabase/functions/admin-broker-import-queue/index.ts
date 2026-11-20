@@ -117,6 +117,7 @@ Deno.serve(async req => {
       const duration=Date.now()-started;
       const {error}=await admin.from('broker_import_jobs').update({checkpoint:c,stage:c.phase,lease_token:null,lease_until:null,step_average_ms:job.step_average_ms?Number(job.step_average_ms)*0.7+duration*0.3:duration,updated_at:new Date().toISOString(),...patch}).eq('id',job.id).eq('lease_token',job.lease_token);
       if(error) throw error;
+      console.log('[broker-import-step]',JSON.stringify({job_id:job.id,phase:c.phase,status:patch.status??'running',ms:duration,brokers_found:c.brokers?.length??0,target:job.target_brokers,broker_index:c.brokerIndex??0,enrich_queue:c.enrichUrls?.length??0,enriched:c.enriched??0,registry_skips:c.registrySkips??0,volume_skips:c.volumeSkips??0,existing_skips:c.skippedExisting?.length??0,error:patch.error??null}));
     };
     const pacedCall=async (name:string,body:unknown)=> {
       // Cache reads never reach this function; each live chunk has its own lease.
@@ -295,6 +296,7 @@ Deno.serve(async req => {
         const fresh=results.filter(r=>{const k=agencyRegistryKey(r);if(!k||seenOffices.has(k))return false;seenOffices.add(k);return true;});
         c.seenOffices=[...seenOffices].slice(-3000);
         if(!fresh.length){advanceSearchPoint(c);await save(c.phase==='completed'?{status:'completed'}:{});return json({ok:true});}
+        console.log('[broker-import-directory]',JSON.stringify({job_id:job.id,url:agencyDirectoryUrl(query),results:results.length,fresh:fresh.length,children:children.length,sample:fresh.slice(0,3).map(r=>({url:r.source_url,name:r.publisher?.broker_name??r.owner_name??null,office:r.publisher?.office_name??null,license:r.publisher?.broker_license_number??null,phone:Boolean(r.owner_phone),count:r.active_listing_count??null,links:r.listing_urls?.length??0}))}));
         const known=await recentKeys(fresh);
         // Pre-check saved brokers by unique license/phone before any paid detail read; existing brokers are skipped immediately.
         const licenses=[...new Set(fresh.map(r=>String(r.publisher?.broker_license_number??'').trim()).filter(Boolean))];
@@ -317,6 +319,7 @@ Deno.serve(async req => {
           }
           eligible.push(r);
         }
+        console.log('[broker-import-filter]',JSON.stringify({job_id:job.id,fresh:fresh.length,eligible:eligible.length,min:job.min_listings,max:job.max_listings,volume_rejected:fresh.filter(r=>!agencyVolumeAllowed(r,job.min_listings,job.max_listings)).map(r=>r.active_listing_count??null).slice(0,20)}));
         c.rows=[...c.rows,...compactDirectoryRows(eligible)]; c.brokers=collectBrokers(c.rows,job.min_listings,job.max_listings).slice(0,job.target_brokers);
         c.enriched=c.enriched??0;
         const needsDetail=(r:Record<string,any>)=>agencyRegistryKey(r) && (!r.publisher?.broker_license_number || !r.publisher?.broker_name || !(r.listing_urls?.length));
@@ -347,6 +350,7 @@ Deno.serve(async req => {
           });
           const eligible=c.source==='urls'?rows:rows.filter(r=>agencyVolumeAllowed(r,job.min_listings,job.max_listings));
           await recordCheck({...card,active_listing_count:rows.find(r=>r.active_listing_count!=null)?.active_listing_count??card.active_listing_count},eligible.length?'checked':'disqualified',eligible.length?'detail_checked':'detail_volume_or_empty');
+          console.log('[broker-import-office]',JSON.stringify({job_id:job.id,url,rows:rows.length,eligible:eligible.length,parsed:rows.slice(0,3).map(r=>({name:r.publisher?.broker_name??r.owner_name??null,license:r.publisher?.broker_license_number??null,phone:Boolean(r.owner_phone),count:r.active_listing_count??null,links:r.listing_urls?.length??0}))}));
           c.rows=[...c.rows.filter((r:Record<string,any>)=>r.source_url!==url),...eligible];
           c.enrichUrls.shift(); c.enriched=(c.enriched??0)+1;
         }
