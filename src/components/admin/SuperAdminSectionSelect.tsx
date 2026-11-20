@@ -3,14 +3,15 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ADMIN_SECTIONS, adminSectionLabel, resolveAdminSection } from '@/lib/superAdminSections';
+import { ADMIN_SECTIONS, adminSectionLabel } from '@/lib/superAdminSections';
+import { adminSectionFromParams, saveSuperAdminViewState } from '@/lib/superAdminViewState';
 
 // The blue page hero carries the Super Admin section switcher in place of the
 // static title, so the page body reads the same ?section= value it writes.
 export function SuperAdminSectionSelect() {
   const [params, setParams] = useSearchParams();
   const { isSuperAdmin } = useUserRole();
-  const section = resolveAdminSection(params.get('section'));
+  const section = adminSectionFromParams(params.get('section'));
 
   // Shares the connections view's query key, so react-query keeps one fetch.
   const { data } = useQuery({
@@ -31,6 +32,7 @@ export function SuperAdminSectionSelect() {
   const openAlerts = data?.length ?? 0;
 
   const choose = (value: string) => {
+    saveSuperAdminViewState({ section: adminSectionFromParams(value) });
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev);

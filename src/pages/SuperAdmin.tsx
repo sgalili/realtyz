@@ -1,12 +1,13 @@
 import { RitaChatsManager } from '@/components/admin/RitaChatsManager';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GoLoginTokenCard } from '@/components/admin/GoLoginTokenCard';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useSearchParams } from 'react-router-dom';
-import { resolveAdminSection, type AdminSection } from '@/lib/superAdminSections';
+import { type AdminSection } from '@/lib/superAdminSections';
+import { adminSectionFromParams, saveSuperAdminViewState } from '@/lib/superAdminViewState';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,7 +33,8 @@ import { format } from 'date-fns';
 const SuperAdmin = () => {
   const { isSuperAdmin, loading: roleLoading } = useUserRole();
   const [searchParams] = useSearchParams();
-  const section = resolveAdminSection(searchParams.get('section'));
+  const section = adminSectionFromParams(searchParams.get('section'));
+  useEffect(() => saveSuperAdminViewState({ section }), [section]);
   const [health, setHealth] = useState<Record<'whatsapp' | 'ai', 'idle' | 'checking' | 'online' | 'degraded'>>({ whatsapp: 'idle', ai: 'idle' });
 
   // Platform-wide totals come from a super-admin RPC: direct table reads are

@@ -20,6 +20,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { returnState } from '@/lib/returnNav';
+import { invitationHistoryKey, threadInvitationHistory } from '@/lib/invitationHistory';
+import { adminHistoryFromParams, readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
 
 export type ContactBroker = { user_id: string; full_name: string; phone: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
@@ -231,19 +233,35 @@ function SendHistoryContactLine({ contact }: { contact?: MarketingContact | null
   </div>;
 }
 
+function SendHistoryContent({ item }: { item: HistoryItem }) {
+  return item.content?.body ? <>
+    {item.content.to && <p><span className="font-semibold">אל: </span><span dir="ltr">{item.content.to}</span></p>}
+    <p><span className="font-semibold">כותרת: </span>{item.content.subject}</p>
+    {item.content.demo && <p className="text-muted-foreground">נשלח כחשבון דמו לצפייה בלבד</p>}
+    <p className="whitespace-pre-wrap break-words rounded-md border border-border/60 bg-background p-3 text-base leading-relaxed">{item.content.body}</p>
+    {!!item.content.links?.length && <ul className="space-y-1">{item.content.links.map(l => <li key={l.url} className="break-all"><span className="font-semibold">{l.label}: </span><a href={l.url} target="_blank" rel="noreferrer" className="text-primary underline" dir="ltr">{l.url}</a></li>)}</ul>}
+    {item.content.error && <p className="text-destructive break-words">{item.content.error}</p>}
+  </> : item.content?.template ? <p>נשלחה תבנית WhatsApp מאושרת: <span dir="ltr">{item.content.template}</span></p> : <p className="text-muted-foreground">התוכן המלא לא נשמר עבור שליחה זו (נשלחה לפני הוספת התיעוד).</p>;
+}
+
 function SendHistory() {
   const q = useQuery({ queryKey: ['broker-contact-history'], queryFn: () => invoke<{ items: HistoryItem[] }>('admin-broker-contact', { action: 'history' }) });
-  const items = q.data?.items ?? [];
+  const items = threadInvitationHistory(q.data?.items ?? []);
   const ownerIds = Array.from(new Set(items.map(i => i.user_id))).sort();
   const contacts = useQuery({ queryKey: ['marketing-contacts', ownerIds.join(',')], enabled: ownerIds.length > 0, queryFn: async () => {
     const { data, error } = await supabase.rpc('admin_marketing_contacts', { _owners: ownerIds });
     if (error) throw error; return new Map((data ?? []).map(r => [r.owner_id, r as MarketingContact]));
   } });
-  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [openKey, setOpenKey] = useState<string | null>(() => readSuperAdminViewState().openSendKey ?? null);
+  const toggleOpen = (key: string) => {
+    const next = openKey === key ? null : key;
+    setOpenKey(next);
+    saveSuperAdminViewState({ openSendKey: next });
+  };
   return <div className="space-y-3">
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : items.length === 0 ? <p className="text-base text-muted-foreground">עדיין לא נשלחו הודעות.</p> :
-      <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{items.map((i, n) => { const key = `${i.user_id}-${i.channel}-${n}`; const isOpen = openKey === key; const contact = contacts.data?.get(i.user_id); return <li key={key}>
-        <button type="button" aria-expanded={isOpen} onClick={() => setOpenKey(isOpen ? null : key)} className="flex w-full items-center gap-3 p-3 text-right hover:bg-muted/40">
+      <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{items.map(i => { const key = invitationHistoryKey(i); const isOpen = openKey === key; const contact = contacts.data?.get(i.user_id); return <li key={key}>
+        <button type="button" aria-expanded={isOpen} onClick={() => toggleOpen(key)} className="flex w-full items-center gap-3 p-3 text-right hover:bg-muted/40">
         {i.avatar_url ? <img src={i.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" /> : <span className="h-10 w-10 shrink-0" />}
         <div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{i.full_name || 'ללא שם'}</p>{i.office_name && <p className="truncate text-sm text-muted-foreground">{i.office_name}</p>}
           <p className="text-sm text-muted-foreground">{i.channel === 'whatsapp' ? 'וואטסאפ' : 'מייל'} · {STATUS[i.status] ?? i.status} · {new Date(i.sent_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</p></div>
@@ -252,14 +270,11 @@ function SendHistory() {
         </button>
         <SendHistoryContactLine contact={contact} />
         <div className={`grid transition-all duration-300 ease-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}><div className="overflow-hidden"><div className="space-y-2 border-t border-border/60 bg-muted/20 p-3 text-sm">
-          {i.content?.body ? <>
-            {i.content.to && <p><span className="font-semibold">אל: </span><span dir="ltr">{i.content.to}</span></p>}
-            <p><span className="font-semibold">כותרת: </span>{i.content.subject}</p>
-            {i.content.demo && <p className="text-muted-foreground">נשלח כחשבון דמו לצפייה בלבד</p>}
-            <p className="whitespace-pre-wrap break-words rounded-md border border-border/60 bg-background p-3 text-base leading-relaxed">{i.content.body}</p>
-            {!!i.content.links?.length && <ul className="space-y-1">{i.content.links.map(l => <li key={l.url} className="break-all"><span className="font-semibold">{l.label}: </span><a href={l.url} target="_blank" rel="noreferrer" className="text-primary underline" dir="ltr">{l.url}</a></li>)}</ul>}
-            {i.content.error && <p className="text-destructive break-words">{i.content.error}</p>}
-          </> : i.content?.template ? <p>נשלחה תבנית WhatsApp מאושרת: <span dir="ltr">{i.content.template}</span></p> : <p className="text-muted-foreground">התוכן המלא לא נשמר עבור שליחה זו (נשלחה לפני הוספת התיעוד).</p>}
+          <SendHistoryContent item={i} />
+          {i.followups.map(followup => <div key={invitationHistoryKey(followup)} className="space-y-2 border-t border-border/60 pt-3">
+            <p className="font-semibold">הודעת המשך · {STATUS[followup.status] ?? followup.status} · {new Date(followup.sent_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</p>
+            <SendHistoryContent item={followup} />
+          </div>)}
         </div></div></div>
       </li>; })}</ul>}
   </div>;
@@ -308,16 +323,11 @@ export function ImportHistory() {
   </div>;
 }
 
-function FollowupQueue() {
-  const q = useQuery({ queryKey: ['import-invitation-followups'], queryFn: () => invoke<{ items: { user_id: string; full_name: string; channel: string; message: string; due_at: string }[] }>('admin-broker-contact', { action: 'followups' }) });
-  if (q.isError) return <p role="alert" className="text-destructive">{(q.error as Error).message}</p>;
-  if (!q.data?.items.length) return null;
-  return <section className="space-y-3"><h4 className="text-lg font-bold">תזכורות לאחר 48 שעות</h4><ul className="divide-y divide-border">{q.data.items.map(item => <li key={item.user_id} className="space-y-2 py-3"><p className="font-semibold">{item.full_name} · {item.channel === 'email' ? 'מייל' : 'WhatsApp'} · ממתין לשליחה</p><p className="text-base leading-relaxed">{item.message}</p></li>)}</ul></section>;
-}
-
 /** Silently imported accounts awaiting their first successful invitation. */
 export function BrokerContactQueueCard() {
   const [params, setParams] = useSearchParams();
+  const historyTab = adminHistoryFromParams(params.get('history'));
+  useEffect(() => saveSuperAdminViewState({ history: historyTab }), [historyTab]);
   const q = useQuery({ queryKey: ['broker-contact-queue'], queryFn: () => invoke<{ brokers: ContactBroker[] }>('admin-broker-contact', { action: 'list' }), refetchOnWindowFocus: true, refetchInterval: 30000 });
   const brokers = q.data?.brokers ?? [];
   const pending = brokers.length;
@@ -330,8 +340,7 @@ export function BrokerContactQueueCard() {
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-xl font-bold"><UserRoundSearch className="h-5 w-5 text-primary" />ממתינים להזמנה ראשונה</h3>{pending > 0 && <Badge variant="secondary" className="text-sm">{pending} ממתינים</Badge>}</div>
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} marketing={marketing.data?.get(b.user_id)} />)}</ul>}
-    <FollowupQueue />
-    <Tabs value={params.get('history') === 'sends' ? 'sends' : 'imports'} onValueChange={value => setParams(current => { const next = new URLSearchParams(current); next.set('history', value); return next; }, { replace: true })} dir="rtl" className="pt-2">
+    <Tabs value={historyTab} onValueChange={value => { const history = value === 'sends' ? 'sends' : 'imports'; saveSuperAdminViewState({ history }); setParams(current => { const next = new URLSearchParams(current); next.set('history', history); return next; }, { replace: true }); }} dir="rtl" className="pt-2">
       <TabsList><TabsTrigger value="imports">היסטוריית יבוא</TabsTrigger><TabsTrigger value="sends">היסטוריית שליחות</TabsTrigger></TabsList>
       <TabsContent value="sends"><SendHistory /></TabsContent>
       <TabsContent value="imports"><ImportHistory /></TabsContent>

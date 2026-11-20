@@ -94,7 +94,7 @@ function DeveloperDashboardContent() {
       owner.scrollTop += summary.getBoundingClientRect().top - top;
     }, 300);
   };
-  const [grid, setGrid] = useState(() => { try { return localStorage.getItem('developer-projects-view') !== 'list'; } catch { return true; } });
+  const [grid, setGrid] = useState(() => { try { return localStorage.getItem('developer-projects-view') === 'grid'; } catch { return false; } });
   const toggleGrid = () => setGrid(value => { try { localStorage.setItem('developer-projects-view', value ? 'list' : 'grid'); } catch { /* storage unavailable */ } return !value; });
   const toggleDeal = (key: 'sale' | 'rent') => setDeals(current => { const next = { ...current, [key]: !current[key] }; return next.sale || next.rent ? next : current; });
   const { data: companies = [], isLoading: companiesLoading, error: companyError } = useQuery({
@@ -125,6 +125,7 @@ function DeveloperDashboardContent() {
     },
   });
   const developer = editing ? companies.find(company => company.id === editing.developer_id) : companies[0];
+  const developerFor = (project: DeveloperProject) => companies.find(company => company.id === project.developer_id) ?? companies[0];
   const filtered = useMemo(() => projects.filter(project => projectMatches(project, query, deals, propFilter)), [projects, query, deals, propFilter]);
   const columns = usePublicBoardColumns(`developer-projects:${ws ?? ''}`, filtered, PROJECT_COLUMNS);
   const cities = useMemo(() => [...new Set(projects.map(project => project.city).filter(Boolean) as string[])].sort(), [projects]);
@@ -182,6 +183,10 @@ function DeveloperDashboardContent() {
     onError: (error) => toast.error(`הפרסום לא הושלם: ${error instanceof Error ? error.message : 'יש לבדוק מחיר, עמלות ומגבלות לכל יחידה'}`),
   });
   const publishProject = (project: DeveloperProject, key?: string) => { if (confirm(key ? 'לפרסם את היחידה בלוח הציבורי?' : 'לפרסם את הפרויקט וכל היחידות בלוח הציבורי?')) publish.mutate({ project, key }); };
+  const postUnit = (project: DeveloperProject, unit: Parameters<typeof unitCommissionKey>[0]) => {
+    const target = projectCampaignTargets(project).find(t => t.id.endsWith(`:unit:${encodeURIComponent(`${unit.building_id ?? ''}:${unit.source_unit_id}`)}`));
+    if (target) navigate(`/campaigns?tab=create&listing=${encodeURIComponent(target.id)}&fresh=1`);
+  };
   const actions = (p: DeveloperProject) => <div className="flex items-center gap-1" onClick={event => event.stopPropagation()}>
     <Button size="sm" variant="outline" disabled={publish.isPending} title="קידום הפרויקט בלוח הציבורי" onClick={() => { const errors = projectCommissionErrors(p); if (errors.length) { toast.error(`לפני פרסום יש להשלים: ${[...new Set(errors)].slice(0, 6).join(' · ')}`); openPricing(p); return; } publishProject(p); }}><Globe className="h-4 w-4" />פרסום בלוח</Button>
     <Button size="icon-sm" variant="ghost" aria-label={`יצירת קמפיין ${p.name}`} title="יצירת קמפיין" onClick={() => navigate(`/campaigns?tab=create&listing=${encodeURIComponent(`project:${p.id}`)}&fresh=1`)}><Megaphone /></Button>
@@ -217,7 +222,7 @@ function DeveloperDashboardContent() {
               <DeveloperCommissionBadges project={p} onEdit={() => openPricing(p)} />
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">{meta(p).map(item => <span key={item} className="inline-flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-primary" />{item}</span>)}</div>
               <Button variant="outline" className="mt-auto justify-between" aria-expanded={open} onClick={event => toggleProject(p.id, event.currentTarget)}>בניינים ויחידות<ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button>
-              <AnimatedExpansion open={open} autoReveal={false}><ProjectHierarchyDetails enlarged project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => { const target = projectCampaignTargets(p).find(t => t.id.endsWith(`:unit:${encodeURIComponent(`${unit.building_id ?? ''}:${unit.source_unit_id}`)}`)); if (target) navigate(`/campaigns?tab=create&listing=${encodeURIComponent(target.id)}&fresh=1`); }} /></AnimatedExpansion>
+              <AnimatedExpansion open={open} autoReveal={false}><ProjectHierarchyDetails enlarged project={p} developer={developerFor(p)} grid={grid} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => postUnit(p, unit)} onEdit={() => { setEditing(p); setMode('manual'); }} /></AnimatedExpansion>
             </div>
           </article>; })}
         </div> : <BoardColumnDragArea controls={columns}><HorizontalTableScroll className="board-full listing-results-scroll board-head-sticky flex-1 rounded-none border-0"><table className="w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{columns.visible.map((id) => <BoardColumnHeader key={id} id={id} controls={columns} />)}<th className="p-2"><BoardColumnMenu controls={columns} /></th></tr></thead><tbody>
@@ -229,7 +234,7 @@ function DeveloperDashboardContent() {
               : id === 'commissions' ? <DeveloperCommissionBadges project={p} onEdit={() => openPricing(p)} /> : id === 'rooms' ? hierarchy.apartments.length || '' : <ProjectStatusCell project={p} hasImages={projectImages(p).length > 0} stage={PROJECT_STATUS[p.status] ?? p.status} />}
             </td>)}
             <td className="p-2"><div className="flex items-center">{actions(p)}<Button variant="ghost" size="icon-sm" aria-label={`בניינים ויחידות ${p.name}`} aria-expanded={open} onClick={event => { event.stopPropagation(); setExpandedId(open ? null : p.id); }}><ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button></div></td>
-          </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1} className="p-0"><FixedTablePanel><AnimatedExpansion open={open} autoReveal={false}><div className="min-w-0 space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails enlarged project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} /></div></AnimatedExpansion></FixedTablePanel></td></tr>]; })}
+          </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1} className="p-0"><FixedTablePanel><AnimatedExpansion open={open} autoReveal={false}><div className="min-w-0 space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails enlarged project={p} developer={developerFor(p)} grid={grid} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => postUnit(p, unit)} onEdit={() => { setEditing(p); setMode('manual'); }} /></div></AnimatedExpansion></FixedTablePanel></td></tr>]; })}
         </tbody></table></HorizontalTableScroll></BoardColumnDragArea>}
       </>}
       <Dialog open={mode !== null} onOpenChange={open => { if (!open) close(); }}>

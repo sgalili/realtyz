@@ -1,5 +1,11 @@
 # Roadmap
 
+## Invitation history and developer property cards November 20
+- [x] Hide unsent 48-hour follow-ups and thread only actually sent follow-ups into the original invitation card.
+- [x] Restore the Super Admin section, history tab and open send card from session state.
+- [x] Match developer project apartments to home list/grid presentation and include developer details in expansion.
+- [x] Add permission-aware three-dot actions to closed and expanded property cards, including full Super Admin editing.
+
 ## Final broker import updates November 20
 - [x] Automatically resume broker imports after an adapted 429 delay, including background wake-up.
 - [x] Remove original Yad2 source links from Super Admin import history.

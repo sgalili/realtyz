@@ -44,6 +44,7 @@ import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
 import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
 import { accountIdentity } from '@/lib/accountMode';
 import { activityAudience } from '@/lib/activityAudience';
+import { canOpenPropertyManagement } from '@/lib/propertyMenuPolicy';
 import { rolePageAllowed, PERSONAL_PATHS } from '@/lib/roleNavigation';
 import { usePartnerConsent } from '@/hooks/usePartnerConsent';
 import { PartnerOnboarding } from '@/components/affiliate/PartnerOnboarding';
@@ -360,9 +361,10 @@ function ListingsRoute({ children }: { children: React.ReactNode }) {
   const { listingsEnabled } = useWorkspaceFeatures();
   const access = usePropertyPageAccess();
   const { isPartnerMode } = useAppMode();
+  const { isSuperAdmin, loading: roleLoading } = useUserRole();
   if (isPartnerMode) return <Navigate to="/public-listings" replace />;
-  if (access.loading) return <PageLoader />;
-  if (!access.properties) return <Navigate to="/my-ads" replace />;
+  if (access.loading || roleLoading) return <PageLoader />;
+  if (!canOpenPropertyManagement(access.properties, isSuperAdmin)) return <Navigate to="/my-ads" replace />;
   if (!listingsEnabled) return <Navigate to="/lead-crm" replace />;
   return <>{children}</>;
 }

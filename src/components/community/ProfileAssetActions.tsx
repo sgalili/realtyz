@@ -6,6 +6,8 @@ import { OwnerListingActions } from '@/components/properties/PropertyRowActions'
 import { publicUrl } from '@/lib/publicUrl';
 import { toast } from '@/hooks/use-toast';
 import { addToDistributionFunnel } from '@/lib/distributionFunnel';
+import { useUserRole } from '@/hooks/useUserRole';
+import { canManageListing } from '@/lib/propertyMenuPolicy';
 
 export const profileAssetPath = (card: { id: string; slug?: string | null }) => `/p/${encodeURIComponent(card.slug || card.id)}`;
 
@@ -28,7 +30,8 @@ export function QuickShareButton({ title, path, label = false }: { title: string
 /** Owners (and Super Admin) get the full management menu; partners get viewer-safe actions. */
 export function ProfileAssetMenu({ card, title, isOwner, isFav, onFavorite, onPublish, onOpenNewPage }: { card: { id: string; slug?: string | null }; title: string; isOwner: boolean; isFav: boolean; onFavorite: () => void; onPublish?: () => void; onOpenNewPage?: () => void }) {
   const navigate = useNavigate();
-  if (isOwner) return <OwnerListingActions listingId={card.id} onOpenNewPage={onOpenNewPage} />;
+  const { isSuperAdmin } = useUserRole();
+  if (canManageListing(isOwner, isSuperAdmin)) return <OwnerListingActions listingId={card.id} onOpenNewPage={onOpenNewPage} />;
   const path = profileAssetPath(card);
   return <DropdownMenu>
     <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="אפשרויות נכס" title="אפשרויות נכס" onClick={(e) => e.stopPropagation()}><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
