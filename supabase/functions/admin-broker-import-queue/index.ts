@@ -301,10 +301,21 @@ Deno.serve(async req => {
         c.seenOffices=[...seenOffices].slice(-3000);
         if(!fresh.length){advanceSearchPoint(c);await save(c.phase==='completed'?{status:'completed'}:{});return json({ok:true});}
         const known=await recentKeys(fresh);
+        // Pre-check saved brokers by unique license/phone before any paid detail read; existing brokers are skipped immediately.
+        const licenses=[...new Set(fresh.map(r=>String(r.publisher?.broker_license_number??'').trim()).filter(Boolean))];
+        const cardPhones=[...new Set(fresh.map(r=>r.owner_phone).filter(Boolean))];
+        const savedLicenses=new Set<string>(),savedPhones=new Set<string>();
+        if(licenses.length){const {data,error}=await admin.from('profiles').select('broker_license_number').in('broker_license_number',licenses);if(error)throw error;for(const r of data??[])if(r.broker_license_number)savedLicenses.add(String(r.broker_license_number).trim());}
+        if(cardPhones.length){const {data,error}=await admin.from('profiles').select('phone').in('phone',cardPhones);if(error)throw error;for(const r of data??[])if(r.phone)savedPhones.add(r.phone);}
         const eligible:Record<string,any>[]=[];
         for(const r of fresh){
           const key=agencyRegistryKey(r);
           if(key && known.has(key)){c.registrySkips=(c.registrySkips??0)+1;continue;}
+          const lic=String(r.publisher?.broker_license_number??'').trim();
+          if((lic&&savedLicenses.has(lic))||(r.owner_phone&&savedPhones.has(r.owner_phone))){
+            c.skippedExisting=[...(c.skippedExisting??[]),{kind:'broker',key:lic||r.owner_phone,name:r.publisher?.broker_name??r.owner_name??null}].slice(-500);
+            await recordCheck(r,'checked','already_saved');if(key)known.add(key);continue;
+          }
           if(!agencyVolumeAllowed(r,job.min_listings,job.max_listings)){
             await recordCheck(r,'disqualified','summary_volume');if(key)known.add(key);
             c.volumeSkips=(c.volumeSkips??0)+1;continue;
