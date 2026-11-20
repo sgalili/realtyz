@@ -31,9 +31,9 @@ export function mergeBrokers(existing: DiscoveredBroker[] | undefined, found: Di
   return out;
 }
 
-/** Directory scans save each newly found broker as a draft right away, then resume discovery from the same checkpoint. */
+/** Directory scans and pasted links save each newly found broker as a draft right away, then resume discovery from the same checkpoint. */
 export function flushFoundBrokers(c: Record<string, any>) {
-  if (c.source === 'urls' || !['scanning', 'enriching'].includes(c.phase)) return false;
+  if (!['scanning', 'enriching'].includes(c.phase)) return false;
   if ((c.brokerIndex ?? 0) >= (c.brokers?.length ?? 0)) return false;
   c.resumePhase = c.phase; c.phase = 'validating'; c.listingIndex = 0;
   return true;
