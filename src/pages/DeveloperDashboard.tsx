@@ -145,7 +145,7 @@ function DeveloperDashboardContent() {
     setFeeConfig(commissionConfig(project?.commission_config ?? companies[0]?.commission_config));
   };
   const openBulkPricing = () => {
-    if (!selectedCount) return;
+    if (!selectionMode || !selectedCount) return;
     setCommissionProject(null); setCompanyPricing(false); setBulkPricing(true);
     setFeeConfig(commissionConfig(companies[0]?.commission_config));
   };
@@ -196,7 +196,7 @@ function DeveloperDashboardContent() {
   });
   const bulkRemove = useMutation({
     mutationFn: async () => {
-      if (!ws || !selectedCount) throw new Error('לא נבחרו פריטים');
+      if (!ws || !selectionMode || !selectedCount) throw new Error('לא נבחרו פריטים');
       for (const projectId of selectedProjects) {
         const { error } = await supabase.from('developer_projects').delete().eq('id', projectId).eq('workspace_owner_id', ws).select('id').single();
         if (error) throw error;
@@ -251,8 +251,8 @@ function DeveloperDashboardContent() {
           <Button variant="ghost" size="icon" className="shrink-0" onClick={toggleGrid} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'} title={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
         </div>
         <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-2"><span aria-label="סך הפרויקטים" className="shrink-0 whitespace-nowrap rounded-full border border-border bg-muted px-2 py-1 text-sm font-semibold">{projects.length} פרויקטים</span><SelectModeToggle total={filtered.length} active={selectionMode} count={selectedCount} onToggle={() => { setSelectionMode(value => !value); setSelectedProjects(new Set()); setSelectedUnits(new Set()); }} onSelectAll={() => setSelectedProjects(new Set(filtered.map(project => project.id)))} /></div>
-          <div className="flex flex-wrap items-center gap-2">{selectedCount > 0 && <Button variant="outline" className="text-destructive" disabled={bulkRemove.isPending} onClick={() => { if (confirm(`למחוק ${selectedProjects.size} פרויקטים ו־${selectedUnits.size} דירות?`)) bulkRemove.mutate(); }}>{bulkRemove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}מחיקה מרובה</Button>}<Button variant="outline" onClick={selectedCount ? openBulkPricing : () => openPricing()}><span aria-hidden className="text-base font-bold leading-none">₪</span>הגדרת עמלות ותגמולים</Button></div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2"><span aria-label="סך הפרויקטים" className="shrink-0 whitespace-nowrap rounded-full border border-border bg-muted px-2 py-1 text-sm font-semibold">{projects.length} פרויקטים</span><SelectModeToggle total={filtered.length} active={selectionMode} count={selectedCount} closeAction onToggle={() => { setSelectionMode(value => !value); setSelectedProjects(new Set()); setSelectedUnits(new Set()); }} onSelectAll={() => setSelectedProjects(new Set(filtered.map(project => project.id)))} /></div>
+          <div className="flex flex-wrap items-center gap-2">{selectionMode && selectedCount > 0 && <Button variant="outline" className="text-destructive" disabled={bulkRemove.isPending} onClick={() => { if (confirm(`למחוק ${selectedProjects.size} פרויקטים ו־${selectedUnits.size} דירות?`)) bulkRemove.mutate(); }}>{bulkRemove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}מחיקה מרובה</Button>}<Button variant="outline" onClick={selectionMode && selectedCount ? openBulkPricing : () => openPricing()}><span aria-hidden className="text-base font-bold leading-none">₪</span>הגדרת עמלות ותגמולים</Button></div>
         </div>
         {filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו פרויקטים מתאימים</p> : grid ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(p => { const open = expandedId === p.id; const deal = projectDeal(p); return <article key={p.id} className={cn('flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md', open && 'sm:col-span-2 lg:col-span-3')}>

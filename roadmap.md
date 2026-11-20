@@ -1,5 +1,8 @@
 # Roadmap
 
+## Multi-select visibility November 20
+- [x] Show project and apartment selection marks only while general multi-select mode is active, and clear bulk actions on cancellation.
+
 ## Developer projects and import adjustments November 20
 - [x] Show actual developer logos in fixed square frames everywhere developer identity cards appear.
 - [x] Move Our Projects back navigation into the blue hero and rebalance count, multi-select and commission controls.
