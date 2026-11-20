@@ -46,7 +46,7 @@ it('does not report deletion when the protected endpoint refuses it', async () =
 });
 
 const devId = '00000000-0000-0000-0000-000000000456';
-const historyItem = { user_id: devId, channel: 'email', status: 'sent', sent_at: '2026-11-18T10:00:00Z', full_name: 'אלמוגים', avatar_url: null, office_name: null, office_logo_url: null, content: { to: 'office@example.com', subject: 'כותרת', body: 'גוף' } };
+const historyItem = { user_id: devId, channel: 'email', status: 'sent', sent_at: '2026-11-18T10:00:00Z', full_name: 'אלמוגים', avatar_url: null, office_name: 'אנגלו סקסון', office_logo_url: 'https://cdn.example.com/office.png', content: { to: 'office@example.com', subject: 'כותרת', body: 'גוף' } };
 
 function setupHistory(contactRow: Record<string, unknown> | null) {
   state.invoke.mockImplementation((name, { body }) => {
@@ -74,4 +74,12 @@ it('hides every marketing detail when the contact person was never defined', asy
   expect(screen.queryByText('מורן')).toBeNull();
   expect(screen.queryByText('050-9999999')).toBeNull();
   expect(screen.queryByRole('link', { name: /^חיוג לאיש הקשר/ })).toBeNull();
+});
+
+it('places an available office logo immediately before the office name', async () => {
+  setupHistory(null);
+  const logo = await screen.findByRole('img', { name: 'לוגו אנגלו סקסון' });
+  const officeName = screen.getByText('אנגלו סקסון');
+  expect(logo.parentElement).toBe(officeName.parentElement);
+  expect(logo.compareDocumentPosition(officeName) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });

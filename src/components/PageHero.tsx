@@ -28,8 +28,10 @@ import {
   UserPlus,
   Search,
   Star,
+  ScanSearch,
 } from "lucide-react";
 import { SuperAdminSectionSelect } from "@/components/admin/SuperAdminSectionSelect";
+import { adminSectionFromParams } from "@/lib/superAdminViewState";
 import { useAffiliatePreferences } from "@/hooks/useAffiliate";
 import { useAppMode } from "@/hooks/useAppMode";
 import { useAuth } from "@/hooks/useAuth";
@@ -277,6 +279,7 @@ export function PageHero() {
   const isProfilePage = location.pathname.startsWith('/profile');
   const isPostsPage = location.pathname.startsWith("/campaigns") || location.pathname.startsWith("/posts");
   const isPropertyDetail = /^\/properties\/[^/]+/.test(location.pathname);
+  const isAdminImport = location.pathname.startsWith('/super-admin') && adminSectionFromParams(searchParams.get('section')) === 'import';
   // Remember where the user came from for this page, even after in-page
   // query changes (tabs) drop router state.
   const [origin, setOrigin] = React.useState<{ path: string; ret: ReturnState } | null>(null);
@@ -421,6 +424,7 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
+          {isAdminImport && <Button size="icon" variant="ghost" className="h-10 w-10 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" aria-label="ייבוא חדש" title="ייבוא חדש" onClick={() => window.dispatchEvent(new Event('admin-broker-import:new'))}><ScanSearch className="!h-5 !w-5" /></Button>}
           {location.pathname.startsWith('/inbox') && <Button variant="ghost" size="icon" className="h-[46.8px] w-[46.8px] text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" aria-label="הוסף משתמש" title="הוסף משתמש" onClick={() => window.dispatchEvent(new Event('inbox:add-user'))}><UserPlus className="!h-[26px] !w-[26px]" /></Button>}
           {location.pathname.startsWith('/wallet') && <Button size="icon" variant="ghost" onClick={() => {
             const returnTo = location.state?.walletReturnTo;

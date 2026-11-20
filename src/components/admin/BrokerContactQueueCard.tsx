@@ -267,9 +267,8 @@ function SendHistory() {
       <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{items.map(i => { const key = invitationHistoryKey(i); const isOpen = openKey === key; const contact = contacts.data?.get(i.user_id); return <li key={key}>
         <button type="button" aria-expanded={isOpen} onClick={() => toggleOpen(key)} className="flex w-full items-center gap-3 p-3 text-right hover:bg-muted/40">
         {i.avatar_url ? <img src={i.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" /> : <span className="h-10 w-10 shrink-0" />}
-        <div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{i.full_name || 'ללא שם'}</p>{i.office_name && <p className="truncate text-sm text-muted-foreground">{i.office_name}</p>}
+        <div className="min-w-0 flex-1"><p className="truncate text-base font-bold">{i.full_name || 'ללא שם'}</p>{i.office_name && <p className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">{i.office_logo_url && <img src={i.office_logo_url} alt={`לוגו ${i.office_name}`} className="h-7 w-7 shrink-0 rounded-md border border-border/60 object-contain" />}<span className="truncate">{i.office_name}</span></p>}
           <p className="text-sm text-muted-foreground">{i.channel === 'whatsapp' ? 'וואטסאפ' : 'מייל'} · {STATUS[i.status] ?? i.status} · {new Date(i.sent_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</p></div>
-        {i.office_logo_url && <img src={i.office_logo_url} alt="" className="h-10 w-10 shrink-0 rounded-md border border-border/60 object-contain" />}
         <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
         </button>
         <SendHistoryContactLine contact={contact} />

@@ -1,5 +1,9 @@
 # Roadmap
 
+## Import hero action and office logos November 20
+- [x] Remove the import body title and move its new-import action to the far-left Super Admin hero controls.
+- [x] Keep available broker office logos immediately before office names in queue and send-history cards.
+
 ## Import workspace tabs November 20
 - [x] Keep a collapsed import status above three sticky campaign/chat-style tabs: pending invitations, import history and send history.
 - [x] Show only the selected tab's content, preserve view restoration and verify mobile scrolling and transitions.

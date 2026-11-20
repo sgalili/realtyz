@@ -135,13 +135,19 @@ export function BrokerBatchImportCard() {
     : checkpoint && ['scanning', 'enriching'].includes(current?.stage ?? '')
       ? [`${checkpoint.source === 'urls' ? 'קישורים שהודבקו' : checkpoint.source === 'agencies' ? 'משרדי תיווך' : checkpoint.deal === 'rent' ? 'השכרה' : 'מכירה'} · עמוד ${checkpoint.page ?? 1}`, checkpoint.rows?.length ? `${checkpoint.rows.length} כרטיסים נסרקו` : null, checkpoint.enriched ? `${checkpoint.enriched} משרדים נפתחו לאיתור מתווך` : null, checkpoint.enrichUrls?.length ? `${checkpoint.enrichUrls.length} ממתינות` : null, checkpoint.cacheHits ? `${checkpoint.cacheHits} נטענו מהמטמון ללא עלות` : null, checkpoint.timeoutSkips ? `${checkpoint.timeoutSkips} עמודים איטיים דולגו` : null].filter(Boolean).join(' · ')
       : '';
-  const newImportButton = <Button size="icon" className="h-11 w-11 shrink-0" variant="outline" aria-label="ייבוא חדש" title="ייבוא חדש" disabled={busy || (autonomousDeveloper && current?.status === 'running')} onClick={() => { setError(''); setTarget(10); setMin(3); setMax(10); setOpen(true); }}><ScanSearch className="h-5 w-5" /></Button>;
+  useEffect(() => {
+    const openNewImport = () => {
+      if (busy || (autonomousDeveloper && current?.status === 'running')) return;
+      setError(''); setTarget(10); setMin(3); setMax(10); setOpen(true);
+    };
+    window.addEventListener('admin-broker-import:new', openNewImport);
+    return () => window.removeEventListener('admin-broker-import:new', openNewImport);
+  }, [busy, autonomousDeveloper, current?.status]);
   const linkJob = checkpoint?.source === 'urls';
   const entitiesDone = (current?.brokers_done ?? 0) + (current?.developers_done ?? 0);
   const expectedWarnings = checkpoint?.developerResults?.filter(result => result.projects < result.expected_projects) ?? [];
 
   return <section dir="rtl" className="space-y-4 border-b border-border py-5 text-right">
-    <div className="flex items-center justify-between gap-3"><h3 className="min-w-0 text-lg font-semibold">ייבוא, יזמים ומתווכים</h3>{newImportButton}</div>
     {notice && <p className="text-base text-muted-foreground">{notice}</p>}
     <div role="status" className="space-y-3 rounded-xl border border-border/70 p-4">
       {current ? <button type="button" aria-label={statusExpanded ? 'כיווץ פרטי הייבוא' : 'הרחבת פרטי הייבוא'} aria-expanded={statusExpanded} aria-controls="import-status-details" className="flex w-full flex-wrap items-center justify-between gap-2 text-right" onClick={() => setStatusExpanded(value => !value)}><span className="flex items-center gap-2 text-lg font-semibold"><ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${statusExpanded ? 'rotate-180' : ''}`} />{current.status === 'running' && !stalled && <Loader2 className="h-5 w-5 animate-spin" />}{current.status === 'paused' ? 'מושהה · ' : ''}{stages[current.stage] ?? current.stage}</span><span className="text-base text-muted-foreground">{linkJob ? `${entitiesDone}/${current.target_brokers} קישורים` : `${current.brokers_done}/${current.target_brokers} מתווכים`} · {current.listings_done} טיוטות{(current.developers_done ?? 0) > 0 ? ` · ${current.developers_done} יזמים · ${current.projects_done} פרויקטים · ${current.units_done} יחידות` : ''}{current.skipped > 0 ? ` · ${current.skipped} דולגו` : ''}</span></button> : <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-lg font-semibold"><ScanSearch className="h-5 w-5 text-muted-foreground" />סטטוס ייבוא</span><span className="text-base text-muted-foreground">אין ייבוא פעיל</span></div>}
