@@ -12,6 +12,7 @@ import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY, developerRetr
 import { readAllRows } from '../_shared/readAllRows.ts';
 import { matchingDevelopers, normalizeDeveloperName } from '../_shared/developerIdentity.ts';
 import { DEVELOPER_DIRECTORY_URL } from '../_shared/yad2DeveloperDirectory.ts';
+import { scheduleImportRateLimitRetry } from '../_shared/importRateLimitRetry.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
@@ -141,19 +142,13 @@ Deno.serve(async req => {
     };
     try {
       if(c.waitReason==='rate_limit' || c.waitReason===DEVELOPER_TRANSIENT_RETRY) {
-        if(autonomousDeveloper()) {
-          const remaining=Math.max(0,Number(c.waitUntil??0)-Date.now());
-          if(remaining>0) {
-            // The database trigger arms a one-off delayed wake-up; do not spin or require Continue.
-            await save({status:'running',error:null});
-            return json({ok:true,waiting:true,retry_in_ms:remaining});
-          }
-          delete c.waitReason;delete c.waitUntil;delete c.waitScope;
-        } else {
-          // Broker imports retain their explicit manual cooldown/resume policy.
-          await save({status:'paused',error:'מגבלת בקשות (429). הייבוא מושהה; ההתקדמות והמטמון נשמרו. יש להמשיך ידנית לאחר השהיית הבטיחות.'});
-          return json({ok:true,paused:true});
+        const remaining=Math.max(0,Number(c.waitUntil??0)-Date.now());
+        if(remaining>0) {
+          // The database trigger arms a one-off delayed wake-up for brokers and developers.
+          await save({status:'running',error:null});
+          return json({ok:true,waiting:true,retry_in_ms:remaining});
         }
+        delete c.waitReason;delete c.waitUntil;delete c.waitScope;
       }
       if(c.phase==='developer_discovering') {
         const url=c.directoryUrl;
@@ -465,16 +460,10 @@ Deno.serve(async req => {
         return json({ok:true,skipped:true});
       }
       if(e instanceof ProviderRateLimitError) {
-        c.rateRetries=(c.rateRetries??0)+1;c.waitReason='rate_limit';
-        c.waitUntil=developerRetryDeadline('rate_limit',c.rateRetries,Date.now(),e.retryAfterMs);
-        if(autonomousDeveloper()) {
-          c.waitScope='developer';
-          console.warn('[developer-import-rate-retry]',JSON.stringify({job_id:job.id,phase:c.phase,attempt:c.rateRetries,retry_at:new Date(c.waitUntil).toISOString()}));
-          await save({status:'running',error:null});
-          return json({ok:true,waiting:true,retry_at:c.waitUntil});
-        }
-        await save({status:'paused',error:'מגבלת בקשות (429). הייבוא מושהה; ההתקדמות והמטמון נשמרו. יש להמשיך ידנית לאחר השהיית הבטיחות.'});
-        return json({ok:true,waiting:true});
+        const retry=scheduleImportRateLimitRetry(c,e.retryAfterMs);
+        console.warn('[import-rate-auto-retry]',JSON.stringify({job_id:job.id,phase:c.phase,scope:retry.waitScope,attempt:retry.attempt,retry_at:new Date(retry.retryAt).toISOString()}));
+        await save(retry.savePatch);
+        return json({ok:true,waiting:true,retry_at:retry.retryAt});
       }
       const message=e instanceof Error?e.message:'הייבוא נעצר';
       if(c.phase==='developer_discovering'){await save({status:'failed',error:message});return json({ok:true,failed:true});}

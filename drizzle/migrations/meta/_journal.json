@@ -1737,6 +1737,13 @@
       "when": 1795040205778,
       "tag": "0247_fix_demo_publication_guard_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 248,
+      "version": "7",
+      "when": 1795189699125,
+      "tag": "0248_automatic_broker_rate_limit_retries",
+      "breakpoints": true
     }
   ]
 }

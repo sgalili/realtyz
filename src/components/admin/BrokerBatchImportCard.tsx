@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { Upload, Pause, Play, Loader2, RotateCcw, ScanSearch, Building2, UserRound } from 'lucide-react';
+import { Upload, Pause, Play, Loader2, ScanSearch, Building2, UserRound } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ImportQuantityInput } from './ImportQuantityInput';
@@ -68,7 +68,7 @@ export function BrokerBatchImportCard() {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { if (!current || current.status === 'completed') return; const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, [current?.status]);
 
-  const action = async (kind: 'start' | 'start_urls' | 'start_auto_developers' | 'pause' | 'resume' | 'reset_cooldown') => {
+  const action = async (kind: 'start' | 'start_urls' | 'start_auto_developers' | 'pause' | 'resume') => {
     setBusy(true); setError(''); setNotice('');
     try {
       const urls = links.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
@@ -82,7 +82,7 @@ export function BrokerBatchImportCard() {
       if (error) { const details = error instanceof FunctionsHttpError ? await error.context.json().catch(() => null) : null; throw new Error(details?.error ?? 'הבקשה נכשלה'); }
       if (data?.error) throw new Error(data.error);
       await qc.invalidateQueries({ queryKey: ['admin-broker-import-jobs'] });
-      if (kind !== 'pause' && kind !== 'resume' && kind !== 'reset_cooldown') setOpen(false);
+      if (kind !== 'pause' && kind !== 'resume') setOpen(false);
       if (kind === 'start_auto_developers') setNotice(`איתור אוטומטי של עד ${targetDevelopers} יזמים התחיל`);
       if (kind === 'start_urls') {
         setLinks('');
@@ -123,7 +123,7 @@ export function BrokerBatchImportCard() {
       refresh: () => qc.invalidateQueries({ queryKey: ['admin-broker-import-jobs'] }),
     });
   }, [current?.id, current?.status, qc]);
-  const waitingForAutomaticRetry = autonomousDeveloper && waitSeconds > 0 && (checkpoint?.waitReason === 'rate_limit' || checkpoint?.waitReason === DEVELOPER_TRANSIENT_RETRY);
+  const waitingForAutomaticRetry = waitSeconds > 0 && (checkpoint?.waitReason === 'rate_limit' || checkpoint?.waitReason === DEVELOPER_TRANSIENT_RETRY);
   const remaining = checkpoint?.brokers?.slice(checkpoint.brokerIndex ?? 0).reduce((total, broker) => total + broker.listing_urls.length, 0);
   const estimate = current?.step_average_ms && remaining ? Math.ceil(Number(current.step_average_ms) * remaining / 60000) : null;
   const stalled = current?.status === 'running' && !waitingForAutomaticRetry && !(current.lease_until && Date.parse(current.lease_until) > Date.now()) && Date.now() - Date.parse(current.updated_at) > 120_000;
@@ -147,11 +147,11 @@ export function BrokerBatchImportCard() {
       {current.status === 'completed' && <ImportSummary checkpoint={checkpoint} job={current} />}
       {expectedWarnings.map(result => <p key={result.developer_id} className="text-base font-medium text-warning">ב{result.company_name} נמצאו {result.projects} פרויקטים מתוך {result.expected_projects} צפויים. לא הומצאו פרויקטים חסרים.</p>)}
       {scanInfo && <p className="text-base text-muted-foreground">{scanInfo}</p>}
-      {current.status !== 'completed' && waitSeconds > 0 && <p aria-live="polite" className="text-base font-medium text-muted-foreground">{checkpoint?.waitReason === 'rate_limit' ? autonomousDeveloper ? 'מגבלת בקשות (429) · ניסיון חוזר אוטומטי' : 'מגבלת בקשות (429) · הייבוא מושהה · המשך ידני יתאפשר' : checkpoint?.waitReason === DEVELOPER_TRANSIENT_RETRY ? 'תקלה זמנית בחיבור · ניסיון חוזר אוטומטי' : 'השהיית בטיחות בין סריקות למניעת עומס…'} · בעוד {waitSeconds} שניות</p>}
+      {current.status !== 'completed' && waitSeconds > 0 && <p aria-live="polite" className="text-base font-medium text-muted-foreground">{checkpoint?.waitReason === 'rate_limit' ? 'מגבלת בקשות (429) · ניסיון חוזר אוטומטי' : checkpoint?.waitReason === DEVELOPER_TRANSIENT_RETRY ? 'תקלה זמנית בחיבור · ניסיון חוזר אוטומטי' : 'השהיית בטיחות בין סריקות למניעת עומס…'} · בעוד {waitSeconds} שניות</p>}
       <div className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 text-base text-muted-foreground">{current.status === 'running' && !stalled ? (estimate ? `זמן משוער שנותר: כ־${estimate} דקות` : current.step_average_ms ? `כ־${Math.round(Number(current.step_average_ms) / 1000)} שניות לכל שלב · זמן כולל יוצג לאחר איתור מתווכים` : 'זמן משוער: יופיע לאחר השלמת שלב ראשון') : current.status === 'completed' && current.brokers_done < (checkpoint?.totalBrokerUrls ?? current.target_brokers) ? 'הסריקה הסתיימה עם פחות מתווכים מהיעד' : ''}{checkpoint?.brokers?.length ? ` · מתווך ${(checkpoint.brokerIndex ?? 0) + 1}, מודעה ${(checkpoint.listingIndex ?? 0) + 1}` : ''}</span><div className="flex shrink-0 flex-row items-center gap-2">{!autonomousDeveloper && ['running', 'paused', 'failed'].includes(current.status) && <Button variant="outline" className="h-11 shrink-0 px-3 text-base" disabled={busy || (checkpoint?.waitReason === 'rate_limit' && waitSeconds > 0 && current.status !== 'running')} onClick={() => void action(current.status === 'running' && !stalled ? 'pause' : 'resume')}>{current.status === 'running' && !stalled ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}{current.status === 'running' && !stalled ? 'עצירה' : 'המשך'}</Button>}</div></div>
       {current.status === 'paused' && current.lease_until && Date.parse(current.lease_until) > Date.now() && <p className="text-base text-muted-foreground">הפעולה שכבר התחילה תסתיים ותישמר; לא תתחיל פעולה נוספת.</p>}
       {stalled && <p role="alert" className="text-base font-medium text-destructive">שגיאת חיבור ל־Bright Data - אנא בדוק את המפתחות או נסה שוב</p>}
-      {current.error && <div className="flex flex-wrap items-center gap-3"><p role="alert" className="text-base font-medium text-destructive">{current.error}</p>{!autonomousDeveloper && checkpoint?.waitReason === 'rate_limit' && ['paused', 'failed'].includes(current.status) && <Button variant="outline" className="text-base" disabled={busy || Boolean(current.lease_until && Date.parse(current.lease_until) > now)} onClick={() => { if (window.confirm('לאפס את השהיית 429 ולנקות את השגיאה? ההתקדמות והמטמון יישמרו. האיפוס אינו מסיר מגבלה אצל Bright Data; המשך מוקדם עלול להיתקל שוב ב־429.')) void action('reset_cooldown'); }}><RotateCcw className="h-5 w-5" />איפוס השהיה וניקוי שגיאה</Button>}</div>}
+      {current.error && <p role="alert" className="text-base font-medium text-destructive">{current.error}</p>}
     </div>}
     {error && <p role="alert" className="text-base text-destructive">{error}</p>}
     <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" className="max-h-[85dvh] max-w-lg overflow-y-auto"><DialogHeader><DialogTitle className="text-2xl">איתור וייבוא</DialogTitle></DialogHeader>

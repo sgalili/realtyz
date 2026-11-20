@@ -1,5 +1,9 @@
 # Roadmap
 
+## Final broker import updates November 20
+- [x] Automatically resume broker imports after an adapted 429 delay, including background wake-up.
+- [x] Remove original Yad2 source links from Super Admin import history.
+
 ## Super Admin demo role switcher November 18
 - [x] Added a dedicated Super Admin section "תצוגות דמו" with a role switcher: quick-select dropdown plus six role cards that enter the matching public demo immediately, and a new-tab link on the canonical domain.
 - [x] 12 focused tests, TypeScript and signed-in browser checks passed: dropdown jumped to /demo/developer and a card button to /demo/broker, with no page errors. Demo pages stay view-only mock data.
