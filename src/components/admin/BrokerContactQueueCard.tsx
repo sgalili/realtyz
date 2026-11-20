@@ -333,17 +333,26 @@ export function ImportHistory() {
 }
 
 /** Silently imported accounts awaiting their first successful invitation. */
+export function usePendingInvitations() {
+  return useQuery({ queryKey: ['broker-contact-queue'], queryFn: () => invoke<{ brokers: ContactBroker[] }>('admin-broker-contact', { action: 'list' }), refetchOnWindowFocus: true, refetchInterval: 30000 });
+}
+
 function PendingInvitations() {
-  const q = useQuery({ queryKey: ['broker-contact-queue'], queryFn: () => invoke<{ brokers: ContactBroker[] }>('admin-broker-contact', { action: 'list' }), refetchOnWindowFocus: true, refetchInterval: 30000 });
-  const brokers = q.data?.brokers ?? [];
-  const pending = brokers.length;
-  const devIds = brokers.filter(b => b.is_developer).map(b => b.user_id);
+  const q = usePendingInvitations();
+  const all = q.data?.brokers ?? [];
+  const [group, setGroup] = useState<RecipientGroup>('marketing');
+  const devIds = all.filter(b => b.is_developer).map(b => b.user_id);
   const marketing = useQuery({ queryKey: ['marketing-contacts', devIds.join(',')], enabled: devIds.length > 0, queryFn: async () => {
     const { data, error } = await supabase.rpc('admin_marketing_contacts', { _owners: devIds });
     if (error) throw error; return new Map((data ?? []).map(r => [r.owner_id, r as MarketingContact]));
   } });
+  const groupOf = (b: ContactBroker) => recipientGroup({ recipient_kind: b.is_developer ? 'developer' : 'broker' }, marketing.data?.get(b.user_id)?.company_name);
+  const count = (g: RecipientGroup) => all.filter(b => groupOf(b) === g).length;
+  const brokers = all.filter(b => groupOf(b) === group);
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-xl font-bold"><UserRoundSearch className="h-5 w-5 text-primary" />ממתינים להזמנה ראשונה</h3>{pending > 0 && <Badge variant="secondary" className="text-sm">{pending} ממתינים</Badge>}</div>
+    <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList className="grid w-full grid-cols-3">
+      <TabsTrigger value="marketing" className="px-1">חברות שיווק ({count('marketing')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({count('developer')})</TabsTrigger><TabsTrigger value="broker" className="px-1">מתווכים ({count('broker')})</TabsTrigger>
+    </TabsList></Tabs>
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} marketing={marketing.data?.get(b.user_id)} />)}</ul>}
   </div>;

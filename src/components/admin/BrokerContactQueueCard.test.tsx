@@ -31,6 +31,7 @@ function setup(deleteStatus = 'deleted') {
 
 it('deletes only the exact account after explicit permanent-deletion confirmation', async () => {
   setup();
+  fireEvent.mouseDown(await screen.findByRole('tab', { name: /^מתווכים/ }));
   fireEvent.click(await screen.findByRole('button', { name: 'מחיקת החשבון של Doli Idelson' }));
   expect(state.invoke).not.toHaveBeenCalledWith('super-admin-delete-users', expect.anything());
   fireEvent.click(screen.getByRole('button', { name: 'מחיקה לצמיתות' }));
@@ -39,6 +40,7 @@ it('deletes only the exact account after explicit permanent-deletion confirmatio
 
 it('does not report deletion when the protected endpoint refuses it', async () => {
   setup('protected_super_admin');
+  fireEvent.mouseDown(await screen.findByRole('tab', { name: /^מתווכים/ }));
   fireEvent.click(await screen.findByRole('button', { name: 'מחיקת החשבון של Doli Idelson' }));
   fireEvent.click(screen.getByRole('button', { name: 'מחיקה לצמיתות' }));
   await waitFor(() => expect(state.invoke).toHaveBeenCalledWith('super-admin-delete-users', { body: { user_ids: [account.user_id] } }));
@@ -91,4 +93,10 @@ it('lists a developer invitation sent to a marketing company only under the mark
   expect(await screen.findByText('שיווקא')).toBeTruthy();
   fireEvent.mouseDown(screen.getByRole('tab', { name: 'יזמים' }));
   await waitFor(() => expect(screen.queryByText('אלמוגים')).toBeNull());
+});
+
+it('lists a broker awaiting invitation only under the brokers sub-tab', async () => {
+  setup();
+  expect(await screen.findByRole('tab', { name: 'מתווכים (1)' })).toBeTruthy();
+  expect(screen.queryByText('Doli Idelson')).toBeNull();
 });
