@@ -1,5 +1,9 @@
 # Roadmap
 
+## Import workspace tabs November 20
+- [x] Keep a collapsed import status above three sticky campaign/chat-style tabs: pending invitations, import history and send history.
+- [x] Show only the selected tab's content, preserve view restoration and verify mobile scrolling and transitions.
+
 ## Multi-select visibility November 20
 - [x] Show project and apartment selection marks only while general multi-select mode is active, and clear bulk actions on cancellation.
 

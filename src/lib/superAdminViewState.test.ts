@@ -4,6 +4,12 @@ import { adminHistoryFromParams, adminSectionFromParams, readSuperAdminViewState
 describe('Super Admin view restoration', () => {
   beforeEach(() => sessionStorage.clear());
 
+  it('defaults to pending invitations and restores an explicit pending selection', () => {
+    expect(adminHistoryFromParams(null)).toBe('pending');
+    saveSuperAdminViewState({ section: 'import', history: 'pending' });
+    expect(adminHistoryFromParams(null)).toBe('pending');
+  });
+
   it('restores the last section and history tab when URL parameters are absent', () => {
     saveSuperAdminViewState({ section: 'import', history: 'sends' });
     expect(adminSectionFromParams(null)).toBe('import');

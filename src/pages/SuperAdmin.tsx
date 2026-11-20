@@ -17,8 +17,7 @@ import { ShieldAlert, Bot, ExternalLink, PlugZap, AlertTriangle, RefreshCw, Chec
 import { FinanceTab } from '@/components/admin/FinanceTab';
 import { GrowPaymentSettings } from '@/components/admin/GrowPaymentSettings';
 import { BrokerUpgradeRequestsCard } from '@/components/admin/BrokerUpgradeRequestsCard';
-import { BrokerBatchImportCard } from '@/components/admin/BrokerBatchImportCard';
-import { BrokerContactQueueCard } from '@/components/admin/BrokerContactQueueCard';
+import { BrokerImportWorkspace } from '@/components/admin/BrokerImportWorkspace';
 import { SuperAdminDeleteUsersCard } from '@/components/admin/SuperAdminDeleteUsersCard';
 import { SuperAdminUsersTable } from '@/components/admin/SuperAdminUsersTable';
 import { BrokerEmailBatchCard } from '@/components/admin/BrokerEmailInvitations';
@@ -162,12 +161,7 @@ const SuperAdmin = () => {
       {section === 'rita-chats' && <RitaChatsManager />}
       {section === 'qr' && <DynamicQrManager />}
 
-      {section === 'import' && (
-        <div className="space-y-4">
-          <BrokerBatchImportCard />
-          <BrokerContactQueueCard />
-        </div>
-      )}
+      {section === 'import' && <BrokerImportWorkspace />}
 
       {section === 'deletion' && (
         <div className="space-y-4">

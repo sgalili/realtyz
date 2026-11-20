@@ -15,13 +15,13 @@ import { InvitationAttachmentPicker } from './InvitationAttachmentPicker';
 import { BrokerEmailConsentButton } from './BrokerEmailInvitations';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { returnState } from '@/lib/returnNav';
 import { invitationHistoryKey, threadInvitationHistory } from '@/lib/invitationHistory';
-import { adminHistoryFromParams, readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
+import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
 import { RotateFirstTwoPhotosAction } from './RotateFirstTwoPhotosAction';
 import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 
@@ -328,10 +328,7 @@ export function ImportHistory() {
 }
 
 /** Silently imported accounts awaiting their first successful invitation. */
-export function BrokerContactQueueCard() {
-  const [params, setParams] = useSearchParams();
-  const historyTab = adminHistoryFromParams(params.get('history'));
-  useEffect(() => saveSuperAdminViewState({ history: historyTab }), [historyTab]);
+function PendingInvitations() {
   const q = useQuery({ queryKey: ['broker-contact-queue'], queryFn: () => invoke<{ brokers: ContactBroker[] }>('admin-broker-contact', { action: 'list' }), refetchOnWindowFocus: true, refetchInterval: 30000 });
   const brokers = q.data?.brokers ?? [];
   const pending = brokers.length;
@@ -340,14 +337,17 @@ export function BrokerContactQueueCard() {
     const { data, error } = await supabase.rpc('admin_marketing_contacts', { _owners: devIds });
     if (error) throw error; return new Map((data ?? []).map(r => [r.owner_id, r as MarketingContact]));
   } });
-  return <section dir="rtl" className="space-y-4 py-5 text-right">
+  return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-xl font-bold"><UserRoundSearch className="h-5 w-5 text-primary" />ממתינים להזמנה ראשונה</h3>{pending > 0 && <Badge variant="secondary" className="text-sm">{pending} ממתינים</Badge>}</div>
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} marketing={marketing.data?.get(b.user_id)} />)}</ul>}
-    <Tabs value={historyTab} onValueChange={value => { const history = value === 'sends' ? 'sends' : 'imports'; saveSuperAdminViewState({ history }); setParams(current => { const next = new URLSearchParams(current); next.set('history', history); return next; }, { replace: true }); }} dir="rtl" className="pt-2">
-      <TabsList><TabsTrigger value="imports">היסטוריית יבוא</TabsTrigger><TabsTrigger value="sends">היסטוריית שליחות</TabsTrigger></TabsList>
-      <TabsContent value="sends"><SendHistory /></TabsContent>
-      <TabsContent value="imports"><ImportHistory /></TabsContent>
-    </Tabs>
+  </div>;
+}
+
+export type BrokerContactView = 'pending' | 'imports' | 'sends';
+
+export function BrokerContactQueueCard({ view = 'pending' }: { view?: BrokerContactView }) {
+  return <section dir="rtl" className="py-5 text-right">
+    {view === 'pending' ? <PendingInvitations /> : view === 'imports' ? <ImportHistory /> : <SendHistory />}
   </section>;
 }

@@ -1,7 +1,7 @@
 import { resolveAdminSection, type AdminSection } from './superAdminSections';
 
 const STORAGE_KEY = 'toraff-super-admin-view';
-export type AdminHistoryTab = 'imports' | 'sends';
+export type AdminHistoryTab = 'pending' | 'imports' | 'sends';
 export type SuperAdminViewState = {
   section?: AdminSection;
   history?: AdminHistoryTab;
@@ -30,6 +30,7 @@ export function adminSectionFromParams(value: string | null): AdminSection {
 }
 
 export function adminHistoryFromParams(value: string | null): AdminHistoryTab {
-  if (value === 'imports' || value === 'sends') return value;
-  return readSuperAdminViewState().history === 'sends' ? 'sends' : 'imports';
+  if (value === 'pending' || value === 'imports' || value === 'sends') return value;
+  const saved = readSuperAdminViewState().history;
+  return saved === 'imports' || saved === 'sends' ? saved : 'pending';
 }

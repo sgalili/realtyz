@@ -55,7 +55,7 @@ function setupHistory(contactRow: Record<string, unknown> | null) {
     return Promise.resolve({ data: { items: [] }, error: null });
   });
   state.rpc.mockResolvedValue({ data: contactRow ? [contactRow] : [], error: null });
-  render(<MemoryRouter initialEntries={['/?history=sends']}><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><BrokerContactQueueCard /></QueryClientProvider></MemoryRouter>);
+  render(<MemoryRouter initialEntries={['/?history=sends']}><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><BrokerContactQueueCard view="sends" /></QueryClientProvider></MemoryRouter>);
 }
 
 it('shows marketing company, contact, contact phone and a quick-dial button when they are set', async () => {
