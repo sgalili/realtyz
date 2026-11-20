@@ -305,21 +305,24 @@ Deno.serve(async req => {
         if(licenses.length){const {data,error}=await admin.from('profiles').select('broker_license_number').in('broker_license_number',licenses);if(error)throw error;for(const r of data??[])if(r.broker_license_number)savedLicenses.add(String(r.broker_license_number).trim());}
         if(cardPhones.length){const {data,error}=await admin.from('profiles').select('phone').in('phone',cardPhones);if(error)throw error;for(const r of data??[])if(r.phone)savedPhones.add(r.phone);}
         const eligible:Record<string,any>[]=[];
+        const decisions:Record<string,any>[]=[];
+        const decide=(r:Record<string,any>,reason:string)=>decisions.push({office:r.publisher?.office_name??r.owner_name??null,url:r.source_url,name:r.publisher?.broker_name??null,license:r.publisher?.broker_license_number??null,phone:Boolean(r.owner_phone),count:r.active_listing_count??null,reason});
         for(const r of fresh){
           const key=agencyRegistryKey(r);
-          if(key && known.has(key)){c.registrySkips=(c.registrySkips??0)+1;continue;}
+          if(key && known.has(key)){c.registrySkips=(c.registrySkips??0)+1;decide(r,'checked_last_7_days');continue;}
           const lic=String(r.publisher?.broker_license_number??'').trim();
           if((lic&&savedLicenses.has(lic))||(r.owner_phone&&savedPhones.has(r.owner_phone))){
             c.skippedExisting=[...(c.skippedExisting??[]),{kind:'broker',key:lic||r.owner_phone,name:r.publisher?.broker_name??r.owner_name??null}].slice(-500);
-            await recordCheck(r,'checked','already_saved');if(key)known.add(key);continue;
+            await recordCheck(r,'checked','already_saved');if(key)known.add(key);decide(r,'duplicate_existing_broker');continue;
           }
           if(!agencyVolumeAllowed(r,job.min_listings,job.max_listings)){
             await recordCheck(r,'disqualified','summary_volume');if(key)known.add(key);
-            c.volumeSkips=(c.volumeSkips??0)+1;continue;
+            c.volumeSkips=(c.volumeSkips??0)+1;decide(r,'below_min_listings');continue;
           }
+          decide(r,r.publisher?.broker_license_number&&r.publisher?.broker_name?'eligible_complete_card':'eligible_needs_office_page');
           eligible.push(r);
         }
-        console.log('[broker-import-filter]',JSON.stringify({job_id:job.id,fresh:fresh.length,eligible:eligible.length,min:job.min_listings,max:job.max_listings,volume_rejected:fresh.filter(r=>!agencyVolumeAllowed(r,job.min_listings,job.max_listings)).map(r=>r.active_listing_count??null).slice(0,20)}));
+        console.log('[broker-import-filter]',JSON.stringify({job_id:job.id,fresh:fresh.length,eligible:eligible.length,min:job.min_listings,max:job.max_listings,volume_rejected:fresh.filter(r=>!agencyVolumeAllowed(r,job.min_listings,job.max_listings)).map(r=>r.active_listing_count??null).slice(0,20),decisions:decisions.slice(0,20)}));
         c.rows=[...c.rows,...compactDirectoryRows(eligible)];
         c.enriched=c.enriched??0;
         const needsDetail=(r:Record<string,any>)=>agencyRegistryKey(r) && (!r.publisher?.broker_license_number || !r.publisher?.broker_name || !(r.listing_urls?.length));
@@ -353,6 +356,9 @@ Deno.serve(async req => {
           const eligible=c.source==='urls'?rows:rows.filter(r=>agencyVolumeAllowed(r,job.min_listings,job.max_listings));
           await recordCheck({...card,active_listing_count:rows.find(r=>r.active_listing_count!=null)?.active_listing_count??card.active_listing_count},eligible.length?'checked':'disqualified',eligible.length?'detail_checked':'detail_volume_or_empty');
           console.log('[broker-import-office]',JSON.stringify({job_id:job.id,url,rows:rows.length,eligible:eligible.length,parsed:rows.slice(0,3).map(r=>({name:r.publisher?.broker_name??r.owner_name??null,license:r.publisher?.broker_license_number??null,phone:Boolean(r.owner_phone),count:r.active_listing_count??null,links:r.listing_urls?.length??0}))}));
+          if(!rows.length)console.warn('[broker-import-office-reject]',JSON.stringify({job_id:job.id,url,reason:'no_rows_parsed'}));
+          else if(!eligible.length)console.warn('[broker-import-office-reject]',JSON.stringify({job_id:job.id,url,reason:'below_min_listings',count:rows.find(r=>r.active_listing_count!=null)?.active_listing_count??null,min:job.min_listings}));
+          else if(!collectBrokers(eligible,job.min_listings,job.max_listings).length)console.warn('[broker-import-office-reject]',JSON.stringify({job_id:job.id,url,reason:'missing_identity_or_links',parsed:eligible.slice(0,3).map(r=>({name:Boolean(r.publisher?.broker_name),license:Boolean(r.publisher?.broker_license_number),kind:r.publisher?.publisher_kind??null,links:r.listing_urls?.length??0}))}));
           c.rows=[...c.rows.filter((r:Record<string,any>)=>r.source_url!==url),...eligible];
           c.enrichUrls.shift(); c.enriched=(c.enriched??0)+1;
         }
