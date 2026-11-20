@@ -13,7 +13,7 @@ const Body = z.object({
   email: z.string().email().optional(),
   password: z.string().min(8).max(128).optional(),
   full_name: z.string().min(1).max(200).optional(),
-  phone_e164: z.string().min(8).max(20).optional(),       // for WhatsApp invite (e.g. 9725XXXXXXXX)
+  phone_e164: z.string().min(8).max(20).nullish(),       // for WhatsApp invite (e.g. 9725XXXXXXXX)
   broker_license_number: z.string().regex(/^[1-9][0-9]{3,9}$/).optional(),
   approve_broker: z.boolean().default(false),
   user_type: z.enum(["broker", "developer", "property_owner", "property_seeker", "affiliate"]).default("broker"),

@@ -3,7 +3,7 @@ import { z } from 'npm:zod@3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { collectBrokers, mergeBrokers, flushFoundBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
-import { readWorkerResponse, ImportAvailabilityError, ProviderTimeoutError } from '../_shared/brightDataDiagnostics.ts';
+import { readWorkerResponse, ImportAvailabilityError, ProviderTimeoutError, WorkerResponseError } from '../_shared/brightDataDiagnostics.ts';
 import { agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck, agencyDirectoryQuery, agencyDirectoryUrl, isAgencyProfileUrl, AGENCY_DIRECTORY_MAX_NODES } from '../_shared/yad2Agencies.ts';
 import { ProviderRateLimitError, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
 import { IMPORT_QUEUE_GAP_MS, canRetryDeveloperPage } from '../_shared/importScanPolicy.ts';
@@ -136,7 +136,7 @@ Deno.serve(async req => {
       delete c.waitUntil;delete c.waitReason;delete c.waitScope;
       try {
         const result=await call(name,body);
-        if(autonomousDeveloper()){c.rateRetries=0;c.transientRetries=0;}
+        c.rateRetries=0;c.transientRetries=0;
         c.discoveryRetries=0;
         return result;
       } finally {if(instant){delete c.nextRequestAt;}else c.nextRequestAt=Date.now()+IMPORT_QUEUE_GAP_MS;}
@@ -417,7 +417,7 @@ Deno.serve(async req => {
             if(profiles.length>=1){c.skippedExisting=[...(c.skippedExisting??[]),{kind:'broker',key:b.phone,name:b.full_name??b.office_name??null}];c.brokerIndex++;c.phase='validating';await save({skipped:job.skipped+1});return json({ok:true});}
             brokerId=profiles[0].id;
           } else {
-            const d=await call('super-admin-create-user',{full_name:b.full_name,phone_e164:b.phone,...(b.email?{email:b.email}:{}),broker_license_number:b.license_number,approve_broker:true,import_job_id:job.id});
+            const d=await call('super-admin-create-user',{full_name:b.full_name,...(b.phone?{phone_e164:b.phone}:{}),...(b.email?{email:b.email}:{}),broker_license_number:b.license_number,approve_broker:true,import_job_id:job.id});
             if(!d.user_id)throw new Error('יצירת המתווך נכשלה');brokerId=d.user_id;
           }
           if(b.office_name) {
@@ -480,6 +480,22 @@ Deno.serve(async req => {
       if(e instanceof ProviderRateLimitError) {
         const retry=scheduleImportRateLimitRetry(c,e.retryAfterMs);
         console.warn('[import-rate-auto-retry]',JSON.stringify({job_id:job.id,phase:c.phase,scope:retry.waitScope,attempt:retry.attempt,retry_at:new Date(retry.retryAt).toISOString()}));
+        await save(retry.savePatch);
+        return json({ok:true,waiting:true,retry_at:retry.retryAt});
+      }
+      // A broker the account worker permanently rejects (4xx) is skipped with its real reason; the scan continues.
+      if(e instanceof WorkerResponseError && e.status>=400 && e.status<500 && ['creating','validating'].includes(c.phase) && c.brokers?.[c.brokerIndex]) {
+        const b=c.brokers[c.brokerIndex];
+        console.warn('[broker-import-broker-rejected]',JSON.stringify({job_id:job.id,phase:c.phase,broker_index:c.brokerIndex,status:e.status,reason:e.message.slice(0,500)}));
+        c.failedBrokers=[...(c.failedBrokers??[]),{name:b.full_name??b.office_name??null,license:b.license_number??null,reason:e.message.slice(0,300)}];
+        c.brokerIndex++;c.phase='validating';c.listingIndex=0;delete c.brokerId;delete c.brokerListingsDone;delete c.liveUrls;
+        await save({skipped:job.skipped+1,error:null});
+        return json({ok:true,skipped:true});
+      }
+      // Transient worker/network failures in broker phases retry automatically with backoff (bounded), never a manual pause.
+      if(!autonomousDeveloper() && !String(c.phase??'').startsWith('developer_') && !(e instanceof WorkerResponseError && e.status<500) && (c.rateRetries??0)<8) {
+        const retry=scheduleImportRateLimitRetry(c,0);
+        console.warn('[broker-import-transient-auto-retry]',JSON.stringify({job_id:job.id,phase:c.phase,attempt:retry.attempt,error:e instanceof Error?e.message.slice(0,300):String(e),retry_at:new Date(retry.retryAt).toISOString()}));
         await save(retry.savePatch);
         return json({ok:true,waiting:true,retry_at:retry.retryAt});
       }

@@ -68,6 +68,11 @@ export function providerErrorMessage(status: number | undefined, timedOut = fals
 }
 
 // Injected transport makes delayed/error responses testable without paid provider calls.
+/** An internal worker answered with an explicit error; carries its real status/detail, never relabelled as a provider failure. */
+export class WorkerResponseError extends Error {
+  constructor(message: string, readonly status: number) { super(message); this.name = 'WorkerResponseError'; }
+}
+
 export async function readWorkerResponse(url: string, init: RequestInit, transport: typeof fetch = fetch) {
   const started = Date.now();
   let status: number | undefined;
@@ -88,7 +93,10 @@ export async function readWorkerResponse(url: string, init: RequestInit, transpo
       throw new ProviderRateLimitError(Math.max(retryAfterMs(response.headers.get('retry-after')), Number(data?.retry_after_ms) || 0));
     }
     if (!response.ok || data?.error || data?.ok === false || data?.success === false) {
-      throw new Error(String(data?.detail ?? data?.error ?? `HTTP ${status}`));
+      const raw = data?.detail ?? data?.error ?? `HTTP ${status}`;
+      const detail = typeof raw === 'string' ? raw : JSON.stringify(raw);
+      if (status && status >= 400 && status < 500 && ![401, 403, 408].includes(status)) throw new WorkerResponseError(detail, status);
+      throw new Error(detail);
     }
     if (!data || typeof data !== 'object') throw new Error('Invalid worker response');
     return data;
@@ -96,6 +104,7 @@ export async function readWorkerResponse(url: string, init: RequestInit, transpo
     logProviderFailure({ operation: 'broker_worker', url, status, payload, error, elapsedMs: Date.now() - started });
     if (error instanceof ProviderRateLimitError) throw error;
     if (error instanceof ImportAvailabilityError) throw error;
+    if (error instanceof WorkerResponseError) throw error;
     const timedOut = /timeout|abort|timed out/i.test(describeError(error));
     if (timedOut || status === 502 || status === 503 || status === 504) throw new ProviderTimeoutError(providerErrorMessage(status, timedOut), status);
     throw new Error(providerErrorMessage(status, timedOut));

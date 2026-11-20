@@ -88,3 +88,15 @@ describe('slow provider pages', () => {
     await expect(readSlow('https://x.test', {}, t)).rejects.toBeInstanceOf(SlowError);
   });
 });
+
+import { readWorkerResponse as readWorker400, WorkerResponseError as WorkerErr400 } from '../../supabase/functions/_shared/brightDataDiagnostics';
+describe('internal worker validation errors', () => {
+  it('surfaces the real 400 detail instead of a Bright Data label', async () => {
+    const transport = (async () => new Response(JSON.stringify({ error: { fieldErrors: { phone_e164: ['Expected string, received null'] } } }), { status: 400 })) as typeof fetch;
+    const err = await readWorker400('https://x/functions/v1/super-admin-create-user', { method: 'POST' }, transport).catch(e => e);
+    expect(err).toBeInstanceOf(WorkerErr400);
+    expect(err.status).toBe(400);
+    expect(err.message).toContain('phone_e164');
+    expect(err.message).not.toContain('Bright Data');
+  });
+});

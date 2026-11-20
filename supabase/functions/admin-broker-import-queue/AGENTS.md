@@ -18,3 +18,5 @@
 
 - Automatic developer discovery reads only leased canonical Yad2 developer-directory pages, then reuses the normal per-profile queue and project cap. Normalized company names are an identity fallback after source/project ownership, selecting the oldest existing account. Why: autonomous discovery without duplicate developer workspaces.
 - Directory scans and pasted-link jobs keep an append-only broker list and save each newly found broker as a draft immediately (resumePhase returns to the same discovery checkpoint); offices are filtered only by the minimum ad count, while the maximum caps saved ads per broker. Why: paused scans keep every found broker and large offices are not discarded.
+
+- Internal worker 4xx replies (e.g. account validation) surface their real detail, skip only that broker with a logged reason and continue; transient worker/network failures auto-retry with bounded backoff instead of pausing. Why: one bad record or blip must not stall a scan or be mislabelled as a Bright Data failure.
