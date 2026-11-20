@@ -138,7 +138,7 @@ function OfficeNameField({ b }: { b: ContactBroker }) {
     <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="ביטול" onClick={() => { setValue(b.office_name ?? ''); setEditing(false); }}><X className="h-4 w-4" /></Button>
   </span>;
   return <span className="flex min-w-0 shrink items-center gap-1.5">
-    {b.is_developer ? <DeveloperLogo name={b.office_name} logoUrl={b.office_logo_url} className="h-7 w-7" /> : b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-7 w-7 shrink-0 rounded-md border border-border/60 object-contain" />}
+    {b.is_developer ? <DeveloperLogo name={b.office_name} logoUrl={b.office_logo_url} className="h-7 w-7" /> : b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-7 w-7 shrink-0 rounded-md object-contain" />}
     <button type="button" disabled={!!b.first_login_at} onClick={() => setEditing(true)} aria-label="עריכת שם משרד התיווך" className={`min-w-0 truncate text-sm font-bold underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.office_name ? 'text-foreground' : 'text-primary'}`}>{b.office_name || 'הוסף משרד תיווך'}</button>
     <span aria-hidden className="text-muted-foreground">·</span>
   </span>;
@@ -282,7 +282,7 @@ function SendHistory() {
             {isBroker ? (i.avatar_url ? <img src={i.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" /> : <span className="h-10 w-10 shrink-0" />) : <DeveloperLogo name={i.full_name} logoUrl={i.developer_logo_url ?? null} className="h-10 w-10" />}
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex min-w-0 items-center gap-1"><p className="truncate text-base font-bold">{i.full_name || 'ללא שם'}</p><HistoryPhoneField userId={i.user_id} name={i.full_name} phone={i.phone ?? null} /></div>
-              {isBroker ? i.office_name && <p className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">{i.office_logo_url && <img src={i.office_logo_url} alt={`לוגו ${i.office_name}`} className="h-7 w-7 shrink-0 rounded-md border border-border/60 object-contain" />}<span className="truncate">{i.office_name}</span></p>
+              {isBroker ? i.office_name && <p className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">{i.office_logo_url && <img src={i.office_logo_url} alt={`לוגו ${i.office_name}`} className="h-7 w-7 shrink-0 rounded-md object-contain" />}<span className="truncate">{i.office_name}</span></p>
                 : <MarketingContactLine ownerId={i.user_id} devName={i.full_name} contact={contact} avatarUrl={i.avatar_url} />}
               {statusLine}
             </div>

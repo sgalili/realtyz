@@ -1809,7 +1809,7 @@ export function ResultTable({
                     if (!pub) return <span className="text-muted-foreground">—</span>;
                     return (
                       <span className="inline-flex max-w-[11rem] items-center gap-1.5">
-                        {pub.logo ? <PublicIdentityLink userId={pub.officeUserId} office><img src={pub.logo} alt="" loading="lazy" className="h-6 w-6 shrink-0 rounded-md border border-border/60 bg-background object-contain" /></PublicIdentityLink> : null}
+                        {pub.logo ? <PublicIdentityLink userId={pub.officeUserId} office><img src={pub.logo} alt="" loading="lazy" className="h-6 w-6 shrink-0 rounded-md bg-background object-contain" /></PublicIdentityLink> : null}
                         <span className="flex min-w-0 flex-col leading-tight">
                           <span className="truncate text-sm" title={pub.name}><PublicIdentityLink userId={pub.officeUserId} office>{pub.name}</PublicIdentityLink></span>
                           {pub.userName && pub.userName !== pub.name ? <span className="truncate text-[11px] text-muted-foreground" title={pub.userName}><PublicIdentityLink userId={pub.userId}>{pub.userName}</PublicIdentityLink></span> : null}
