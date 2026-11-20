@@ -166,6 +166,12 @@ Deno.serve(async req => {
         if(!d.ok||!Array.isArray(d.urls))throw new Error('עמוד רשימת היזמים לא החזיר מבנה תקין');
         c.directoryVisited=[...(c.directoryVisited??[]),url];
         const known=new Set(c.developerUrls);
+        // Skip developers already imported before (same Yad2 page), so discovery keeps looking for new ones only.
+        const norm=(u:string)=>String(u).split('?')[0].replace(/\/$/,'');
+        const fresh=(d.urls as string[]).filter(u=>!known.has(u));
+        if(fresh.length){const {data:had,error:hadError}=await admin.from('developers').select('source_url').in('source_url',[...new Set(fresh.flatMap(u=>[u,norm(u)]))]);if(hadError)throw hadError;
+          for(const row of had??[])if(row.source_url){known.add(row.source_url);known.add(norm(row.source_url));}
+          for(const u of fresh)if(known.has(norm(u))&&!c.developerUrls.includes(u))known.add(u);}
         for(const candidate of d.urls){if(c.developerUrls.length>=c.targetDevelopers)break;if(!known.has(candidate)){c.developerUrls.push(candidate);known.add(candidate);}}
         c.directoryUrl=d.next_url??null;c.totalDeveloperUrls=c.developerUrls.length;
         await save();return json({ok:true});
@@ -224,6 +230,14 @@ Deno.serve(async req => {
         else if(normalized.length===1)matches=normalized;
         else if(normalized.length>1)throw new Error('נמצאו חשבונות יזם כפולים קיימים; יש לאחד אותם לפני המשך הייבוא');
         const existing=matches?.[0];
+        if(existing){
+          // Already imported earlier: never import the same developer twice.
+          c.skippedExisting=[...(c.skippedExisting??[]),{kind:'developer',name:existing.company_name??companyName}];
+          await admin.rpc('finish_developer_import_identity',{_key:identityKey,_token:identityToken,_developer:existing.id,_workspace:existing.workspace_owner_id});
+          c.developerIndex=(c.developerIndex??0)+1;delete c.developerWork;
+          c.phase=c.developerUrls[c.developerIndex]?'developer_scanning':c.enrichUrls?.length?'enriching':c.brokers?.length?'validating':'completed';
+          await save({skipped:job.skipped+1,...(c.phase==='completed'?{status:'completed'}:{})});return json({ok:true,skipped:true});
+        }
         let accountId=existing?.workspace_owner_id as string|undefined;
         if(!accountId) {
           const d=await call('super-admin-create-user',{full_name:companyName,...(work.developer.phone?{phone_e164:work.developer.phone}:{}),user_type:'developer',import_job_id:job.id,import_source_url:work.url,initial_balance_agorot:2500});
@@ -330,7 +344,16 @@ Deno.serve(async req => {
           c.rows=[...c.rows.filter((r:Record<string,any>)=>r.source_url!==url),...eligible];
           c.enrichUrls.shift(); c.enriched=(c.enriched??0)+1;
         }
-        c.brokers=collectBrokers(c.rows,job.min_listings,job.max_listings).slice(0,job.target_brokers);
+        {
+          // Skip brokers that already exist (same phone) so only new brokers are imported.
+          const all=collectBrokers(c.rows,job.min_listings,job.max_listings);
+          const phones=[...new Set(all.map((b:Record<string,any>)=>b.phone).filter(Boolean))];
+          const had=new Set<string>();
+          for(let i=0;i<phones.length;i+=200){const {data,error}=await admin.from('profiles').select('phone').in('phone',phones.slice(i,i+200));if(error)throw error;for(const r of data??[])if(r.phone)had.add(r.phone);}
+          const seen=new Set((c.skippedExisting??[]).map((x:Record<string,any>)=>x.key));
+          for(const b of all)if(b.phone&&had.has(b.phone)&&!seen.has(b.phone)){c.skippedExisting=[...(c.skippedExisting??[]),{kind:'broker',key:b.phone,name:b.full_name??b.office_name??null}];seen.add(b.phone);}
+          c.brokers=all.filter((b:Record<string,any>)=>!(b.phone&&had.has(b.phone))).slice(0,job.target_brokers);
+        }
         if(c.brokers.length>=job.target_brokers){c.phase='validating';delete c.rows;delete c.enrichUrls;}
         else if(!c.enrichUrls.length){
           advanceSearchPoint(c);
@@ -366,7 +389,8 @@ Deno.serve(async req => {
           let brokerId:string;
           if(profiles?.length) {
             const {data:onboarding}=await admin.from('admin_broker_onboarding').select('user_id,first_login_at').eq('user_id',profiles[0].id).maybeSingle();
-            if(profiles.length!==1 || !onboarding || onboarding.first_login_at){c.brokerIndex++;c.phase='validating';await save({skipped:job.skipped+1});return json({ok:true});}
+            // Any broker that already exists was imported before: skip, never re-import.
+            if(profiles.length>=1){c.skippedExisting=[...(c.skippedExisting??[]),{kind:'broker',key:b.phone,name:b.full_name??b.office_name??null}];c.brokerIndex++;c.phase='validating';await save({skipped:job.skipped+1});return json({ok:true});}
             brokerId=profiles[0].id;
           } else {
             const d=await call('super-admin-create-user',{full_name:b.full_name,phone_e164:b.phone,...(b.email?{email:b.email}:{}),broker_license_number:b.license_number,approve_broker:true,import_job_id:job.id});

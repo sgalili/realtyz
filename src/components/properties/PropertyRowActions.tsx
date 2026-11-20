@@ -48,7 +48,6 @@ export function PropertyRowActions({
   const live = sourceYad2Url(r);
   return (
     <div className="inline-flex items-center gap-1.5">
-      {live ? <Yad2AdButton url={live} /> : null}
       <Button size="icon" variant="ghost" title="צור קמפיין לנכס" aria-label="צור קמפיין לנכס" disabled={importing}
         onClick={(e) => { e.stopPropagation(); onCampaign(r); }} className="h-8 w-8">
         {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Megaphone className="h-3.5 w-3.5" />}
@@ -139,13 +138,6 @@ export function OwnerListingActions({ listingId, onOpenNewPage }: { listingId: s
             <Handshake className={`h-4 w-4 ${affiliateActive ? 'text-success' : ''}`} /> {affiliateActive ? 'שיווק שותפים פעיל' : 'הגדר שיווק שותפים'}
           </DropdownMenuItem>
           {onOpenNewPage ? <DropdownMenuItem className="gap-2 text-sm" onSelect={onOpenNewPage}><ExternalLink className="h-4 w-4" /> פתיחה בעמוד חדש</DropdownMenuItem> : null}
-          {live ? (
-            <DropdownMenuItem asChild className="gap-2 text-sm">
-              <a href={live} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                <Yad2Icon className="h-4 w-4" /> פתח ביד2
-              </a>
-            </DropdownMenuItem>
-          ) : null}
           <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/properties/${listingId}`, { state: { ...returnState(), returnTo: window.location.pathname + window.location.search, openEdit: true } })}>
             <Pencil className="h-4 w-4" /> עריכת הנכס
           </DropdownMenuItem>

@@ -144,7 +144,7 @@ export function BrokerBatchImportCard() {
     {current && <div role="status" className="space-y-3 rounded-xl border border-border/70 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex items-center gap-2 text-lg font-semibold">{current.status === 'running' && !stalled && <Loader2 className="h-5 w-5 animate-spin" />}{current.status === 'paused' ? 'מושהה · ' : ''}{stages[current.stage] ?? current.stage}</span><span className="text-base text-muted-foreground">{linkJob ? `${entitiesDone}/${current.target_brokers} קישורים` : `${current.brokers_done}/${current.target_brokers} מתווכים`} · {current.listings_done} טיוטות{(current.developers_done ?? 0) > 0 ? ` · ${current.developers_done} יזמים · ${current.projects_done} פרויקטים · ${current.units_done} יחידות` : ''}{current.skipped > 0 ? ` · ${current.skipped} דולגו` : ''}</span></div>
       <Progress className="h-3" value={current.status === 'completed' ? 100 : Math.min(99, (entitiesDone + (developerStage && checkpoint?.developerWork ? (checkpoint.developerWork.visitedUrls?.length ?? 0) / Math.max(1, (checkpoint.developerWork.visitedUrls?.length ?? 0) + (checkpoint.developerWork.pendingUrls?.length ?? 0) + 1) : 0)) / Math.max(1, current.target_brokers) * 100)} />
-      {current.status === 'completed' && <p className="text-base font-medium">סיכום: יובאו {current.brokers_done} מתווכים ו־{current.listings_done} נכסים כטיוטות{current.developers_done > 0 ? `; ${current.developers_done} יזמים, ${current.projects_done} פרויקטים ו־${current.units_done} יחידות מפורטות סונכרנו ל״הפרויקטים שלי״` : ''}{current.skipped > 0 ? ` · ${current.skipped} דולגו` : ''}</p>}
+      {current.status === 'completed' && <ImportSummary checkpoint={checkpoint} job={current} />}
       {expectedWarnings.map(result => <p key={result.developer_id} className="text-base font-medium text-warning">ב{result.company_name} נמצאו {result.projects} פרויקטים מתוך {result.expected_projects} צפויים. לא הומצאו פרויקטים חסרים.</p>)}
       {scanInfo && <p className="text-base text-muted-foreground">{scanInfo}</p>}
       {current.status !== 'completed' && waitSeconds > 0 && <p aria-live="polite" className="text-base font-medium text-muted-foreground">{checkpoint?.waitReason === 'rate_limit' ? autonomousDeveloper ? 'מגבלת בקשות (429) · ניסיון חוזר אוטומטי' : 'מגבלת בקשות (429) · הייבוא מושהה · המשך ידני יתאפשר' : checkpoint?.waitReason === DEVELOPER_TRANSIENT_RETRY ? 'תקלה זמנית בחיבור · ניסיון חוזר אוטומטי' : 'השהיית בטיחות בין סריקות למניעת עומס…'} · בעוד {waitSeconds} שניות</p>}
@@ -172,4 +172,19 @@ export function BrokerBatchImportCard() {
       </div>
     </DialogContent></Dialog>
   </section>;
+}
+
+// Completion summary: names only what this run actually imported, and only for the requested entity type.
+function ImportSummary({ checkpoint, job }: { checkpoint: any; job: any }) {
+  const wantsDevelopers = Boolean(checkpoint?.autoDevelopers || (checkpoint?.totalDeveloperUrls ?? 0) > 0);
+  const wantsBrokers = checkpoint?.source !== 'urls' || (checkpoint?.totalBrokerUrls ?? 0) > 0;
+  const developers = ((checkpoint?.developerResults ?? []) as any[]).filter(r => r.status !== 'failed' && r.company_name);
+  const brokers = ((checkpoint?.brokerResults ?? []) as any[]).filter(r => r.full_name || r.office_name);
+  const skipped = ((checkpoint?.skippedExisting ?? []) as any[]).filter(x => (x.kind === 'developer' ? wantsDevelopers : wantsBrokers));
+  const names = (list: string[]) => list.join('، ');
+  return <div className="space-y-1 text-base">
+    {wantsDevelopers && <p className="font-medium">{developers.length ? `יובאו ${developers.length} יזמים: ${names(developers.map(r => `${r.company_name} (${r.projects} פרויקטים, ${r.units} דירות)`))}` : 'לא יובאו יזמים חדשים בתהליך זה'}</p>}
+    {wantsBrokers && <p className="font-medium">{brokers.length ? `יובאו ${brokers.length} מתווכים: ${names(brokers.map(r => r.full_name ? `${r.full_name}${r.office_name ? ` (${r.office_name})` : ''}` : r.office_name))} · ${job.listings_done} נכסים כטיוטות` : 'לא יובאו מתווכים חדשים בתהליך זה'}</p>}
+    {skipped.length > 0 && <p className="text-muted-foreground">דולגו כי כבר קיימים במערכת: {names(skipped.map(x => x.name).filter(Boolean))}</p>}
+  </div>;
 }

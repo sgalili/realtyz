@@ -1404,7 +1404,7 @@ export default function PropertyDetail() {
 
             {/* Only a real ad page gets the Yad2 mark; the liveness probe hides
                 it once the ad is confirmed gone. */}
-            {yad2Url && liveYad2Status !== 'gone' && (
+            {false && yad2Url && liveYad2Status !== 'gone' && (
               <a href={yad2Url} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה החיה ביד2" title="צפייה במודעה החיה ביד2" className="inline-flex items-center transition-opacity hover:opacity-80">
                 <Yad2Icon className="h-6 w-6" />
               </a>

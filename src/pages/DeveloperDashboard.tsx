@@ -187,7 +187,7 @@ function DeveloperDashboardContent() {
     <Button size="icon-sm" variant="ghost" aria-label={`יצירת קמפיין ${p.name}`} title="יצירת קמפיין" onClick={() => navigate(`/campaigns?tab=create&listing=${encodeURIComponent(`project:${p.id}`)}&fresh=1`)}><Megaphone /></Button>
     <Button size="icon-sm" variant="ghost" aria-label={`הגדרת עמלות ${p.name}`} title="עמלות ומגבלות" onClick={() => openPricing(p)}><Settings2 /></Button>
     <Button size="icon-sm" variant="ghost" aria-label="עריכת פרויקט" title="עריכת פרויקט" onClick={() => { setEditing(p); setMode('manual'); }}><Pencil /></Button>
-    {p.source_url && <Button asChild size="icon-sm" variant="ghost"><a href={p.source_url} target="_blank" rel="noopener noreferrer" aria-label="עמוד הפרויקט ביד2" title="עמוד הפרויקט ביד2"><ExternalLink /></a></Button>}
+
     <Button size="icon-sm" variant="ghost" className="text-destructive" disabled={remove.isPending} title="מחיקת פרויקט" aria-label="מחיקת פרויקט" onClick={() => { if (confirm('למחוק את הפרויקט?')) remove.mutate(p.id); }}><Trash2 /></Button>
   </div>;
   const meta = (p: DeveloperProject) => { const h = savedProjectHierarchy(p); return [h.buildings.length ? `${h.buildings.length} בניינים` : '', h.apartments.length ? `${h.apartments.length} סוגי יחידות` : '', p.available_units ? `${p.available_units} זמינות` : ''].filter(Boolean); };

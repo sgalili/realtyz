@@ -10,6 +10,8 @@ import PropertyGallerySlider from '@/components/public/PropertyGallerySlider';
 import { savedProjectHierarchy } from '@/lib/developerProjectBoard';
 import { sourceRecord, type ProjectUnit } from '../../../supabase/functions/_shared/projectHierarchy';
 import type { DeveloperProject } from '@/lib/developerProjectForm';
+import StandardPropertyCard from '@/components/public/StandardPropertyCard';
+import type { PublicCard } from '@/pages/PublicListingsBoard';
 
 const labelValue = (value: unknown): string => {
   if (value == null) return '';
@@ -22,17 +24,19 @@ const timelineLabel = (value: unknown) => {
   const row = sourceRecord(value);
   return [labelValue(row.label ?? row.title ?? row.name ?? row.text), labelValue(row.date), labelValue(row.status)].filter(Boolean).join(' · ');
 };
-const unitSourceUrl = (unit: ProjectUnit) => { const url = (unit as { source_url?: unknown }).source_url ?? sourceRecord(unit.source_details).url; return typeof url === 'string' && /^https?:\/\//.test(url) ? url : ''; };
 const unitTitle = (unit: ProjectUnit) => [labelValue(unit.type), unit.rooms != null ? `${unit.rooms} חדרים` : '', unit.size_sqm != null ? `${unit.size_sqm} מ״ר` : '', unit.floor != null ? `קומה ${unit.floor}` : ''].filter(Boolean).join(' · ') || `יחידה ${unit.source_unit_id}`;
+const unitCard = (unit: ProjectUnit, project: DeveloperProject): PublicCard => {
+  const floor = unit.floor != null && /^-?\d+$/.test(String(unit.floor)) ? Number(unit.floor) : null;
+  return { id: `${project.id}:${unit.building_id ?? ''}:${unit.source_unit_id}`, slug: null, title: [project.name, unitTitle(unit)].filter(Boolean).join(' · '), city: (project as { city?: string | null }).city ?? null, neighborhood: null, street: project.address ?? '', deal_type: 'sale', rooms: unit.rooms, sqm: unit.size_sqm, floor, total_floors: null, price: unit.price, description: labelValue(unit.description) || null, photos: unit.images ?? [], contact_options: null, property_type: labelValue(unit.type) || null };
+};
 function UnitDetails({ units, project, onPublish, onPost }: { units: ProjectUnit[]; project: DeveloperProject; onPublish?: (unit: ProjectUnit) => void; onPost?: (unit: ProjectUnit) => void }) {
   const [opened, setOpened] = useState<ProjectUnit | null>(null);
   const extra = opened ? Object.entries(sourceRecord(opened.source_details)).filter(([key, value]) => !['url', 'specifications'].includes(key) && labelValue(value) && labelValue(value).length < 400) : [];
-  const url = opened ? unitSourceUrl(opened) : '';
-  return <div className="grid min-w-0 gap-2">
-    {units.map(unit => <button type="button" key={`${unit.building_id}:${unit.source_unit_id}`} onClick={() => setOpened(unit)} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border bg-card p-3 text-start text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-      <span>{unitTitle(unit)}</span>
-      {unit.price != null && unit.price > 0 && <strong className="whitespace-nowrap text-success">₪{unit.price.toLocaleString('he-IL')}</strong>}
-    </button>)}
+  // Same card and grid as the homepage board, so project apartments look exactly like board properties.
+  return <div className="min-w-0">
+    <div className="property-card-grid">
+    {units.map(unit => <StandardPropertyCard key={`${unit.building_id}:${unit.source_unit_id}`} card={unitCard(unit, project)} onOpen={() => setOpened(unit)} onFavorite={() => undefined} showContact={false} showOwnerMenu={false} menu={<span />} />)}
+    </div>
     <Dialog open={!!opened} onOpenChange={open => { if (!open) setOpened(null); }}>
       <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader><DialogTitle>{opened ? unitTitle(opened) : ''}</DialogTitle></DialogHeader>
@@ -44,7 +48,6 @@ function UnitDetails({ units, project, onPublish, onPost }: { units: ProjectUnit
           {opened.images.length > 0 && <PropertyGallerySlider photos={opened.images} alt="תמונות היחידה" />}
           <DeveloperCommissionBadges project={project} unit={opened} />
           <div className="flex flex-wrap gap-2">
-            {url ? <Button asChild variant="outline"><a href={url} target="_blank" rel="noreferrer">צפייה במודעה המקורית ביד 2</a></Button> : <span className="text-sm text-muted-foreground">אין קישור ישיר למודעה במקור</span>}
             {onPublish && <Button variant="outline" disabled={projectCommissionErrors(project, opened).length > 0} onClick={() => onPublish(opened)}>פרסום היחידה בלוח</Button>}
             {onPost && <Button variant="outline" onClick={() => onPost(opened)}>יצירת קמפיין ליחידה</Button>}
           </div>
