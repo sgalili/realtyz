@@ -370,7 +370,8 @@ export function developerProjectImportRow(old: Record<string, any> | undefined, 
   const merged = mergeSource(old, fresh) as Record<string, any>;
   const manual = sourceRecord(sourceRecord(old?.source_details).manual);
   const overrides = sourceRecord(manual.project_overrides);
-  return { ...merged, ...overrides, commission_config: old?.commission_config ?? {}, source_details: { ...sourceRecord(merged.source_details), manual: { ...sourceRecord(sourceRecord(merged.source_details).manual), ...manual } } };
+  // Mixed batches (existing + new rows) make PostgREST send id=null for rows missing it, so always supply one.
+  return { ...merged, ...overrides, id: old?.id ?? crypto.randomUUID(), commission_config: old?.commission_config ?? {}, source_details: { ...sourceRecord(merged.source_details), manual: { ...sourceRecord(sourceRecord(merged.source_details).manual), ...manual } } };
 }
 
 export function detailedUnitCount(project: Record<string, any>) {

@@ -79,10 +79,11 @@ export async function commitExternalEntity(admin: Admin, job: any, body: any) {
   if (prior) return { ok: true, replay: true, result: prior };
   if (!pending && existing.some(d => d.source_url === url || normalizeDeveloperName(d.company_name) === normalizeDeveloperName(company))) return { ok: true, skipped: true, reason: 'already_imported' };
   const identityKey = normalizeDeveloperName(company);
-  const identityToken = crypto.randomUUID();
+  // Reuse the lease token across partial page reads of the same developer; a new token per page made our own lease look busy.
+  const identityToken = pending?.identity_token ?? crypto.randomUUID();
   const { data: identity, error: claimError } = await admin.rpc('claim_developer_import_identity', { _key: identityKey, _token: identityToken });
   if (claimError) throw claimError;
-  if (identity?.busy) throw new Error('developer_identity_busy');
+  if (identity?.busy) { const e: any = new Error('developer_identity_busy'); e.status = 409; throw e; }
   let owner = pending?.owner;
   let developerId = pending?.developer_id;
   if (!owner || !developerId) {
@@ -93,7 +94,7 @@ export async function commitExternalEntity(admin: Admin, job: any, body: any) {
     if (de) throw de;
     if (!developer?.id) throw new Error('developer_not_saved');
     developerId = developer.id;
-    c.externalPendingDeveloper={source_url:url,owner,developer_id:developerId};
+    c.externalPendingDeveloper={source_url:url,owner,developer_id:developerId,identity_token:identityToken};
     const {error:pe}=await admin.from('broker_import_jobs').update({checkpoint:c}).eq('id',job.id).eq('lease_token',job.lease_token);if(pe)throw pe;
   }
   const savedProjects=await readAllRows((from,to)=>admin.from('developer_projects').select('*').eq('developer_id',developerId).order('id').range(from,to));
