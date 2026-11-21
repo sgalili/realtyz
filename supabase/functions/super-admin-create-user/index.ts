@@ -69,7 +69,8 @@ Deno.serve(async (req) => {
       });
     }
     const { full_name, phone_e164, broker_license_number, initial_balance_agorot, user_type, approve_broker, action, import_job_id, import_source_url } = parsed.data;
-    const registry = requiresLicenseVerification(user_type) && broker_license_number ? await checkAdminBrokerRegistry(broker_license_number, full_name ?? '') : null;
+    // Bulk imports store the license as-is; registry verification happens at the broker's first sign-in.
+    const registry = requiresLicenseVerification(user_type) && broker_license_number && !(import_job_id && action !== 'check_registry') ? await checkAdminBrokerRegistry(broker_license_number, full_name ?? '') : null;
     if (action === 'check_registry') return new Response(JSON.stringify(registry ?? {valid:false,reason:'invalid_license'}),{headers:{...corsHeaders,'Content-Type':'application/json'}});
     if (requiresLicenseVerification(user_type) && (!broker_license_number || (!registry?.valid && !approve_broker))) return new Response(JSON.stringify({error:'נדרש אימות רישיון או אישור מפורש של מנהל'}),{status:400,headers:corsHeaders});
     const normalizedPhone = normalizeIsraeliPhone(phone_e164);

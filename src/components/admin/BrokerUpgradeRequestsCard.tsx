@@ -53,7 +53,7 @@ export function BrokerUpgradeRequestsCard() {
   if (isError) return <p role="alert" className="text-destructive">לא ניתן לטעון בקשות שדרוג למתווך</p>;
   if (isLoading || !hasNewAdminItems(data.length)) return null;
   return <Card dir="rtl">
-    <CardHeader><CardTitle className="text-right">בקשות שדרוג למתווך מורשה ({data.length})</CardTitle></CardHeader>
+    <CardHeader><CardTitle className="text-right">בקשות שדרוג למתווך מורשה ({data.length})</CardTitle><GraceDaysSetting /></CardHeader>
     <CardContent className="space-y-3">
       {isLoading ? <p className="text-muted-foreground">טוען…</p> : data.length === 0 ? <p className="text-muted-foreground">אין בקשות ממתינות.</p> : (data as Row[]).map(r => (
         <div key={r.id} className="space-y-2 rounded-md border border-border p-3 text-right">
@@ -71,4 +71,23 @@ export function BrokerUpgradeRequestsCard() {
       ))}
     </CardContent>
   </Card>;
+}
+
+/** Super Admin: days a pre-created broker account may stay unverified before access is suspended. */
+function GraceDaysSetting() {
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ['broker-license-grace-days'], queryFn: async () => {
+    const { data, error } = await supabase.from('broker_license_grace_settings').select('grace_days').maybeSingle(); if (error) throw error; return data?.grace_days ?? 14; } });
+  const [value, setValue] = useState<string>('');
+  const save = async () => {
+    const { error } = await supabase.rpc('set_broker_license_grace_days', { _days: Number(value) });
+    if (error) toast.error('לא נשמר: יש להזין 1–180 ימים'); else { toast.success('נשמר'); setValue(''); qc.invalidateQueries({ queryKey: ['broker-license-grace-days'] }); }
+  };
+  return (
+    <div className="flex items-center justify-end gap-2 text-sm">
+      <span>ימי חסד לאימות רישיון בחשבונות שיובאו:</span>
+      <input dir="ltr" inputMode="numeric" className="w-16 rounded border bg-background px-2 py-1" placeholder={String(data ?? 14)} value={value} onChange={e => setValue(e.target.value.replace(/\D/g, '').slice(0, 3))} />
+      <Button size="sm" variant="outline" disabled={!value} onClick={save}>שמירה</Button>
+    </div>
+  );
 }

@@ -143,6 +143,10 @@ export type Database = {
           invitation_link_token: string
           invitation_message_id: string | null
           invited_at: string | null
+          license_blocked_at: string | null
+          license_grace_ends_at: string | null
+          license_grace_started_at: string | null
+          license_verified_at: string | null
           user_id: string
         }
         Insert: {
@@ -166,6 +170,10 @@ export type Database = {
           invitation_link_token?: string
           invitation_message_id?: string | null
           invited_at?: string | null
+          license_blocked_at?: string | null
+          license_grace_ends_at?: string | null
+          license_grace_started_at?: string | null
+          license_verified_at?: string | null
           user_id: string
         }
         Update: {
@@ -189,6 +197,10 @@ export type Database = {
           invitation_link_token?: string
           invitation_message_id?: string | null
           invited_at?: string | null
+          license_blocked_at?: string | null
+          license_grace_ends_at?: string | null
+          license_grace_started_at?: string | null
+          license_verified_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1544,6 +1556,27 @@ export type Database = {
         Update: {
           body?: string
           gender?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      broker_license_grace_settings: {
+        Row: {
+          grace_days: number
+          id: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          grace_days?: number
+          id?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          grace_days?: number
+          id?: boolean
           updated_at?: string
           updated_by?: string | null
         }
@@ -11880,6 +11913,11 @@ export type Database = {
           user_id: string
         }[]
       }
+      imported_broker_license_state: { Args: never; Returns: Json }
+      imported_broker_license_verified: {
+        Args: { _uid: string }
+        Returns: boolean
+      }
       in_current_workspace: { Args: { _row_owner: string }; Returns: boolean }
       inbox_favorite_target_access: {
         Args: { _kind: string; _target: string; _workspace: string }
@@ -12169,6 +12207,10 @@ export type Database = {
         Args: { _certificate_path: string; _details?: Json; _license: string }
         Returns: Json
       }
+      request_imported_license_review: {
+        Args: { _license: string }
+        Returns: Json
+      }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
       resolve_custom_qr_destination: {
         Args: { code_id: string }
@@ -12218,6 +12260,10 @@ export type Database = {
       }
       select_signup_user_type: { Args: { _type: string }; Returns: Json }
       set_active_workspace: { Args: { _owner: string }; Returns: undefined }
+      set_broker_license_grace_days: {
+        Args: { _days: number }
+        Returns: number
+      }
       set_card_auto_recharge: {
         Args: { _amount: number; _enabled: boolean; _id: string }
         Returns: undefined

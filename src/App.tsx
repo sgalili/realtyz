@@ -1,3 +1,4 @@
+import { ImportedLicenseGate } from '@/components/onboarding/ImportedLicenseGate';
 import * as React from 'react';
 import { InventoryComingSoonHost } from '@/components/InventoryCollection';
 import { CreditRateSync } from "@/hooks/useCreditRate";
@@ -501,7 +502,7 @@ const App = () => (
             <ReferralCapture />
             <WorkspaceSelectorModal />
             <PostSignupWelcome />
-            <AdminBrokerFirstEntry><WorkspaceScope>
+            <AdminBrokerFirstEntry><ImportedLicenseGate><WorkspaceScope>
             <div className="app-route-pages">
             <PendingMessageResume />
             <Routes>
@@ -623,7 +624,7 @@ const App = () => (
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
             </div>
-            </WorkspaceScope></AdminBrokerFirstEntry>
+            </WorkspaceScope></ImportedLicenseGate></AdminBrokerFirstEntry>
             </Suspense>
             <AppFooter />
             <FaqHost />

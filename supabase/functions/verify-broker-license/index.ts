@@ -72,7 +72,10 @@ Deno.serve(async req => {
       const admin = createClient(url, key);
       const { data: sms } = await admin.from('broker_sms_verifications').select('phone_number').eq('user_id', userId).maybeSingle();
       const { data: authAccount } = await admin.auth.admin.getUserById(userId);
-      if (!sms || !authAccount.user?.phone_confirmed_at || sms.phone_number !== String(authAccount.user.phone ?? '').replace(/\D/g, '')) return reply({ valid: false, error: 'sms_required', message: 'יש להשלים אימות SMS לפני אימות הרישיון' }, 403);
+      // Pre-created (silent) accounts are entered with an SMS code to the saved phone, which proves the same ownership.
+      const { data: imported } = await admin.from('admin_broker_onboarding').select('user_id').eq('user_id', userId).not('first_login_at', 'is', null).or('import_source.is.null,import_source.neq.developer_import').maybeSingle();
+      const smsOk = Boolean(authAccount.user?.phone_confirmed_at) && (imported ? true : Boolean(sms) && sms!.phone_number === String(authAccount.user?.phone ?? '').replace(/\D/g, ''));
+      if (!smsOk) return reply({ valid: false, error: 'sms_required', message: 'יש להשלים אימות SMS לפני אימות הרישיון' }, 403);
       const { data: profile } = await admin.from('profiles').select('full_name').eq('id', userId).maybeSingle();
       const { data: previous } = await admin.from('broker_license_verifications').select('account_name_before_verification').eq('user_id', userId).maybeSingle();
       const accountName = previous?.account_name_before_verification ?? profile?.full_name ?? '';
@@ -90,6 +93,7 @@ Deno.serve(async req => {
       const { data: saved, error: cityError } = await admin.from('profiles').update({ full_name: displayName, locked_broker_name: displayName, city: city || null, locked_broker_city: city }).eq('id', userId).eq('broker_license_number', licenseNumber).select('id,full_name,city,broker_license_number,locked_broker_name,locked_broker_city,phone,gender').single();
       if (cityError) throw new Error('registry_city_not_saved');
       profileResult = saved;
+      if (imported) await admin.from('admin_broker_onboarding').update({ license_verified_at: new Date().toISOString(), license_blocked_at: null }).eq('user_id', userId);
       // Activation remains server-owned: existing approved brokers stay active;
       // new accounts auto-approve only with matching certificate and pre-registry identity.
       const { data: roles } = await admin.from('user_roles').select('role').eq('user_id', userId);
