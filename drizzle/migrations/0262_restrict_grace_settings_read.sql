@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS grace_settings_read ON public.broker_license_grace_settings;
+CREATE POLICY grace_settings_read ON public.broker_license_grace_settings FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'super_admin'::public.app_role));
