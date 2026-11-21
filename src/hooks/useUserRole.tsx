@@ -23,6 +23,8 @@ export type AppRole =
 
 export const userRolesQueryKey = (userId: string | undefined) => ['user-roles', userId] as const;
 
+let lastSyncedRoleUser: string | null = null;
+
 export function useUserRole() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -37,15 +39,19 @@ export function useUserRole() {
       if (error) throw error;
       return (data ?? []) as AppRole[];
     },
-    staleTime: 0,
-    refetchOnMount: 'always',
+    // Many cards mount this hook at once; a short stale window stops each mount from refetching
+    // and re-notifying every other observer (seconds of lag on view switches). Server checks stay authoritative.
+    staleTime: 10_000,
+    refetchOnMount: true,
     refetchOnWindowFocus: true,
     refetchInterval: 30_000,
   });
 
   // Force re-sync of role data whenever the user id changes (e.g. after login).
+  // Once per signed-in user (not per mounted component, which made card lists refetch N times).
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && lastSyncedRoleUser !== user.id) {
+      lastSyncedRoleUser = user.id;
       queryClient.invalidateQueries({ queryKey: ['user-roles', user.id] });
     }
   }, [user?.id, queryClient]);
