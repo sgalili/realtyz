@@ -302,6 +302,25 @@ function SendHistory() {
 
 type ImportItem = { id: string; kind: 'developer' | 'broker'; name: string; logo_url: string | null; avatar_url?: string | null; workspace_owner_id?: string | null; public_user_id?: string | null; agency_imported: boolean; agency_name?: string | null; projects: number; imported_at: string; status?: string; error?: string | null };
 
+/** Row identity shown inside the name cell: saved office/company logo first, then the profile photo. No placeholder when neither exists. */
+function ImportIdentityImage({ item }: { item: ImportItem }) {
+  if (item.kind === 'developer' && item.logo_url) return <DeveloperLogo name={item.name} logoUrl={item.logo_url} className="h-8 w-8" />;
+  if (item.logo_url) return <img src={item.logo_url} alt={`לוגו ${item.name || ''}`} className="h-8 w-8 shrink-0 rounded-md object-contain" />;
+  if (item.avatar_url) return <img src={item.avatar_url} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />;
+  return null;
+}
+
+/** Properties/projects count. While the import is still running the number sits centered inside a spinning loader ring. */
+function ImportCount({ item }: { item: ImportItem }) {
+  const running = !!item.status && item.status !== 'completed' && item.status !== 'failed';
+  const label = item.kind === 'developer' ? 'פרויקטים' : 'נכסים';
+  if (running) return <span role="img" aria-label={`${label} נטענים · ${item.projects}`} className="relative inline-grid h-9 w-9 place-items-center">
+    <span aria-hidden="true" className="absolute inset-0 animate-spin rounded-full border-2 border-primary/25 border-t-primary" />
+    <span className="text-sm font-bold tabular-nums">{item.projects}</span>
+  </span>;
+  return <span className={`text-sm font-bold tabular-nums ${item.status === 'failed' ? 'text-destructive' : ''}`} title={item.status === 'failed' ? (item.error ?? undefined) : undefined}>{item.projects}</span>;
+}
+
 export function ImportHistory() {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -332,13 +351,11 @@ export function ImportHistory() {
   if (q.isError) return <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p>;
   if (!items.length) return <div>{kindTabs}<p className="text-base text-muted-foreground">אין יבואים בלשונית זו.</p></div>;
   return <div>{kindTabs}<div className="overflow-x-auto rounded-xl border border-border/70">
-    <table className="w-full min-w-[440px] text-right text-sm">
-      <thead className="bg-muted/50 text-muted-foreground"><tr><th className="p-2 font-semibold">לוגו</th><th className="p-2 font-semibold">שם</th><th className="p-2 font-semibold">{kind === 'developer' ? 'פרויקטים' : 'נכסים'}</th><th className="p-2 font-semibold">סטטוס</th><th className="p-2 font-semibold">תאריך</th><th className="p-2"><span className="sr-only">מחיקת רשומה</span></th></tr></thead>
+    <table className="w-full min-w-[380px] text-right text-sm">
+      <thead className="bg-muted/50 text-muted-foreground"><tr><th className="p-2 font-semibold">שם</th><th className="p-2 font-semibold">{kind === 'developer' ? 'פרויקטים' : 'נכסים'}</th><th className="p-2 font-semibold">תאריך</th><th className="p-2"><span className="sr-only">מחיקת רשומה</span></th></tr></thead>
       <tbody className="divide-y divide-border/70">{items.map(i => <tr key={`${i.kind}-${i.id}`}>
-        <td className="p-2">{i.kind === 'developer' ? <DeveloperLogo name={i.name} logoUrl={i.logo_url} className="h-8 w-8" /> : i.logo_url ? <img src={i.logo_url} alt="לוגו שיובא" className="h-8 w-8 rounded-md object-contain" /> : <X className="h-4 w-4 text-muted-foreground" aria-label="חסר" />}</td>
-        <td className="p-2"><Button variant="ghost" className="h-auto justify-start gap-2 p-0 text-right font-bold whitespace-normal" disabled={!i.workspace_owner_id || opening !== null} aria-label={`פתיחת ${i.kind === 'developer' ? 'הפרויקטים' : 'הנכסים'} של ${i.name}`} onClick={() => void openInventory(i)}>{i.avatar_url && <img src={i.avatar_url} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />}<span>{i.name || 'ללא שם'}</span>{opening === i.id && <Loader2 className="h-4 w-4 animate-spin" />}</Button></td>
-        <td className="p-2">{i.projects}</td>
-        <td className="p-2 whitespace-nowrap" title={i.error ?? undefined}>{i.status === 'failed' ? <span className="text-destructive">נכשל</span> : i.status === 'completed' || !i.status ? 'הושלם' : 'בתהליך'}</td>
+        <td className="p-2"><Button variant="ghost" className="h-auto justify-start gap-2 p-0 text-right font-bold whitespace-normal" disabled={!i.workspace_owner_id || opening !== null} aria-label={`פתיחת ${i.kind === 'developer' ? 'הפרויקטים' : 'הנכסים'} של ${i.name}`} onClick={() => void openInventory(i)}><ImportIdentityImage item={i} /><span>{i.name || 'ללא שם'}</span>{opening === i.id && <Loader2 className="h-4 w-4 animate-spin" />}</Button></td>
+        <td className="p-2"><ImportCount item={i} /></td>
         <td className="p-2 whitespace-nowrap">{new Date(i.imported_at).toLocaleDateString('he-IL')}</td>
         <td className="p-2"><Button variant="ghost" size="icon" className="text-destructive" title="מחיקת רשומה מההיסטוריה" aria-label={`מחיקת רשומת היבוא של ${i.name}`} onClick={() => setDeleting(i)}><Trash2 className="h-4 w-4" /></Button></td>
       </tr>)}</tbody>
