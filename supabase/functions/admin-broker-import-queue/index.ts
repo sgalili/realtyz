@@ -3,16 +3,16 @@ import { z } from 'npm:zod@3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { collectBrokers, mergeBrokers, flushFoundBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
-import { readWorkerResponse, ImportAvailabilityError, ProviderTimeoutError, WorkerResponseError } from '../_shared/brightDataDiagnostics.ts';
+import { readWorkerResponse, ImportAvailabilityError, ProviderTimeoutError, WorkerResponseError, ProviderAccountError, PROVIDER_ACCOUNT_ERROR } from '../_shared/brightDataDiagnostics.ts';
 import { agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck, agencyDirectoryQuery, agencyDirectoryUrl, isAgencyProfileUrl, AGENCY_DIRECTORY_MAX_NODES } from '../_shared/yad2Agencies.ts';
-import { ProviderRateLimitError, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
+import { ProviderRateLimitError, rateCooldownRemaining, adaptPaceGap, MAX_PACE_GAP_MS } from '../_shared/brightDataThrottle.ts';
 import { IMPORT_QUEUE_GAP_MS, canRetryDeveloperPage } from '../_shared/importScanPolicy.ts';
 import { developerImportUrl, developerProjectImportRow, developerQueuePhaseAfterPage, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, type DeveloperQueueWork } from '../_shared/yad2DeveloperImport.ts';
 import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY, developerRetryDeadline } from '../_shared/developerImportRetry.ts';
 import { readAllRows } from '../_shared/readAllRows.ts';
 import { matchingDevelopers, normalizeDeveloperName } from '../_shared/developerIdentity.ts';
 import { DEVELOPER_DIRECTORY_URL } from '../_shared/yad2DeveloperDirectory.ts';
-import { scheduleImportRateLimitRetry } from '../_shared/importRateLimitRetry.ts';
+import { scheduleImportRateLimitRetry, scheduleImportTransientRetry, MAX_TRANSIENT_IMPORT_RETRIES } from '../_shared/importRateLimitRetry.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
@@ -123,12 +123,15 @@ Deno.serve(async req => {
       // Cache reads never reach this function; each live chunk has its own lease.
       // Pasted-link imports run in instant mode: no safety gap between requests (429 handling still applies).
       const instant=c.source==='urls';
-      const wait=instant?0:Math.max(0,Number(c.nextRequestAt??0)-Date.now());
+      // Instant (pasted-link) jobs have no base gap, but still slow down after a 429 via the adaptive gap.
+      const floor=instant?0:IMPORT_QUEUE_GAP_MS;
+      const gap=Math.max(floor,Number(c.paceGapMs??floor));
+      const wait=gap>0?Math.max(0,Number(c.nextRequestAt??0)-Date.now()):0;
       if(wait>0) {
         c.waitUntil=Date.now()+wait;c.waitReason='throttle';
         await admin.from('broker_import_jobs').update({checkpoint:c,updated_at:new Date().toISOString()}).eq('id',job.id).eq('lease_token',job.lease_token);
         // Only the small queue gap is held here; the transport already serializes provider calls.
-        await new Promise(resolve=>setTimeout(resolve,Math.min(wait,IMPORT_QUEUE_GAP_MS)));
+        await new Promise(resolve=>setTimeout(resolve,Math.min(wait,MAX_PACE_GAP_MS)));
         await save();return null;
       }
       const {data:state}=await admin.from('broker_import_jobs').select('status,lease_token').eq('id',job.id).single();
@@ -138,8 +141,9 @@ Deno.serve(async req => {
         const result=await call(name,body);
         c.rateRetries=0;c.transientRetries=0;
         c.discoveryRetries=0;
+        c.paceGapMs=adaptPaceGap(c.paceGapMs,'success',floor);
         return result;
-      } finally {if(instant){delete c.nextRequestAt;}else c.nextRequestAt=Date.now()+IMPORT_QUEUE_GAP_MS;}
+      } finally {const g=Math.max(floor,Number(c.paceGapMs??floor));if(g>0)c.nextRequestAt=Date.now()+g;else delete c.nextRequestAt;}
     };
     try {
       if(c.waitReason==='rate_limit' || c.waitReason===DEVELOPER_TRANSIENT_RETRY) {
@@ -478,8 +482,11 @@ Deno.serve(async req => {
         return json({ok:true,skipped:true});
       }
       if(e instanceof ProviderRateLimitError) {
+        // Bounded wait (15s → 2 min, Retry-After capped at 3 min) and a wider gap before the next request.
+        c.paceGapMs=adaptPaceGap(c.paceGapMs,'rate_limit',c.source==='urls'?0:IMPORT_QUEUE_GAP_MS);
+        c.rateLimitHits=(c.rateLimitHits??0)+1;
         const retry=scheduleImportRateLimitRetry(c,e.retryAfterMs);
-        console.warn('[import-rate-auto-retry]',JSON.stringify({job_id:job.id,phase:c.phase,scope:retry.waitScope,attempt:retry.attempt,retry_at:new Date(retry.retryAt).toISOString()}));
+        console.warn('[import-rate-auto-retry]',JSON.stringify({job_id:job.id,phase:c.phase,scope:retry.waitScope,attempt:retry.attempt,total_429:c.rateLimitHits,provider_retry_after_ms:e.retryAfterMs||null,wait_ms:retry.retryAt-Date.now(),next_gap_ms:c.paceGapMs,broker_index:c.brokerIndex??null,listing_index:c.listingIndex??null,retry_at:new Date(retry.retryAt).toISOString()}));
         await save(retry.savePatch);
         return json({ok:true,waiting:true,retry_at:retry.retryAt});
       }
@@ -493,14 +500,14 @@ Deno.serve(async req => {
         return json({ok:true,skipped:true});
       }
       // Bright Data account suspended/billing: permanent, stop at once with a clear reason instead of retrying for many minutes.
-      if(/client_10020|account is suspended|מושעה|חשבון Bright Data לא פעיל|brightdata_account_suspended/i.test(e instanceof Error?e.message:String(e))) {
+      if(e instanceof ProviderAccountError || PROVIDER_ACCOUNT_ERROR.test(e instanceof Error?e.message:String(e))) {
         console.error('[broker-import-provider-suspended]',JSON.stringify({job_id:job.id,phase:c.phase}));
         await save({status:'paused',error:'חשבון Bright Data מושעה (חיוב לא פעיל). ההתקדמות נשמרה; יש להפעיל מחדש את החשבון ואז ללחוץ המשך.'});
         return json({ok:true,paused:true,reason:'provider_suspended'});
       }
       // Transient worker/network failures in broker phases retry automatically with backoff (bounded), never a manual pause.
-      if(!autonomousDeveloper() && !String(c.phase??'').startsWith('developer_') && !(e instanceof WorkerResponseError && e.status<500) && (c.rateRetries??0)<8) {
-        const retry=scheduleImportRateLimitRetry(c,0);
+      if(!autonomousDeveloper() && !String(c.phase??'').startsWith('developer_') && !(e instanceof WorkerResponseError && e.status<500) && (c.transientRetries??0)<MAX_TRANSIENT_IMPORT_RETRIES) {
+        const retry=scheduleImportTransientRetry(c);
         console.warn('[broker-import-transient-auto-retry]',JSON.stringify({job_id:job.id,phase:c.phase,attempt:retry.attempt,error:e instanceof Error?e.message.slice(0,300):String(e),retry_at:new Date(retry.retryAt).toISOString()}));
         await save(retry.savePatch);
         return json({ok:true,waiting:true,retry_at:retry.retryAt});

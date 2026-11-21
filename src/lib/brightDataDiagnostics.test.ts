@@ -99,4 +99,9 @@ describe('internal worker validation errors', () => {
     expect(err.message).toContain('phone_e164');
     expect(err.message).not.toContain('Bright Data');
   });
+
+  it('stops at once on a suspended provider account instead of hiding it behind a generic retryable error', async () => {
+    const transport = vi.fn(async () => new Response(JSON.stringify({ error: 'scrape_failed', detail: 'שירות ייבוא יד2 מושעה עקב חשבון Bright Data לא פעיל' }), { status: 200 }));
+    await expect(readWorkerResponse('https://worker.test/import', {}, transport as typeof fetch)).rejects.toMatchObject({ name: 'ProviderAccountError' });
+  });
 });

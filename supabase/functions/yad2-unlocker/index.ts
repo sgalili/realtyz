@@ -180,6 +180,7 @@ async function brightDataRequest(
     logProviderFailure({ operation: 'rest', url, status: result.status, upstreamStatus: result.bdHeaders['x-brd-status-code'], payload: result.body, error: zoneModeError(result.bdHeaders) ?? 'HTTP/empty upstream response', elapsedMs: Date.now() - started });
   }
   if(result.status===429||result.bdHeaders['x-brd-status-code']==='429') {
+    console.warn('[bright-data-429]',JSON.stringify({transport:'web_unlocker',zone:BD_ZONE,url,http_status:result.status,upstream_status:result.bdHeaders['x-brd-status-code']??null,retry_after:result.bdHeaders['retry-after']??null,err_code:result.bdHeaders['x-brd-err-code']??null,err_msg:result.bdHeaders['x-brd-err-msg']??null,elapsed_ms:Date.now()-started}));
     providerRateLimit=new ProviderRateLimitError(retryAfterMs(result.bdHeaders['retry-after']??null));
     throw providerRateLimit;
   }
@@ -1636,7 +1637,7 @@ async function scrapingBrowserHarvest(
 
     console.log(`[yad2-unlocker] scraping-browser: goto ${pageUrl}`);
     const navigation = await trackScraping('yad2_extraction', 'browser_navigation', pageUrl, () => paceProvider(()=>page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: hopTimeoutMs() })), (response: any) => ({ status: response?.status?.() }));
-    if(navigation?.status()===429){providerRateLimit=new ProviderRateLimitError(retryAfterMs(navigation.headers()['retry-after']??null));throw providerRateLimit;}
+    if(navigation?.status()===429){console.warn('[bright-data-429]',JSON.stringify({transport:'browser_api',url:pageUrl,retry_after:navigation.headers()['retry-after']??null}));providerRateLimit=new ProviderRateLimitError(retryAfterMs(navigation.headers()['retry-after']??null));throw providerRateLimit;}
     if (navigation?.status() >= 400) logProviderFailure({ operation: 'browser_navigation', url: pageUrl, status: navigation.status(), payload: await navigation.text().catch(() => ''), elapsedMs: 0 });
     if (/captcha|bot manager|access denied/i.test(await page.title())) throw new Error("Yad2 requires browser verification; manual entry remains available");
     await page
@@ -1679,7 +1680,7 @@ async function scrapingBrowserHarvest(
           });
           return { status: r.status, body: await r.text() };
         }, f)), (value: any) => ({ status: value.status, bytes: new TextEncoder().encode(value.body).length }));
-        if(fetched.status===429){providerRateLimit=new ProviderRateLimitError();throw providerRateLimit;}
+        if(fetched.status===429){console.warn('[bright-data-429]',JSON.stringify({transport:'browser_api_fetch',status:429}));providerRateLimit=new ProviderRateLimitError();throw providerRateLimit;}
         const body: string = fetched.body;
         console.log(
           `[yad2-unlocker] scraping-browser: in-page fetch ${f} bytes=${body?.length ?? 0} preview=${JSON.stringify((body ?? "").slice(0, 200))}`,

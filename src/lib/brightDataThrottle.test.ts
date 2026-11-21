@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createProviderPacer, PROVIDER_GAP_MS, rateBackoffMs, retryAfterMs, rateCooldownRemaining } from '../../supabase/functions/_shared/brightDataThrottle';
+import { adaptPaceGap, createProviderPacer, PROVIDER_GAP_MS, rateBackoffMs, retryAfterMs, rateCooldownRemaining } from '../../supabase/functions/_shared/brightDataThrottle';
 
 describe('Bright Data throttling',()=>{
   it('serializes requests with a 12-second gap within the requested 10–15 seconds',async()=>{
@@ -14,17 +14,25 @@ describe('Bright Data throttling',()=>{
     await expect(paced(async()=>{throw new Error('429');})).rejects.toThrow('429');
     expect(await paced(async()=>time)).toBe(12000);
   });
-  it('starts cooldown at five minutes and extends repeated manual rate failures',()=>{
-    expect([1,2,3,4,5].map(n=>rateBackoffMs(n))).toEqual([300000,600000,1200000,2400000,3600000]);
+  it('keeps 429 waits short: 15s growing to a 2-minute ceiling',()=>{
+    expect([1,2,3,4,5,9].map(n=>rateBackoffMs(n))).toEqual([15000,30000,60000,90000,120000,120000]);
   });
-  it('never retries before the provider Retry-After deadline',()=>{
-    expect(rateBackoffMs(1,retryAfterMs('900'))).toBe(900000);
+  it('honors a short provider Retry-After but caps a long one at 3 minutes',()=>{
+    expect(rateBackoffMs(1,retryAfterMs('45'))).toBe(45000);
+    expect(rateBackoffMs(1,retryAfterMs('900'))).toBe(180000);
     expect(retryAfterMs('Thu, 01 Jan 1970 00:01:00 GMT',0)).toBe(60000);
   });
-  it('blocks resume until the full five-minute cooldown expires',()=>{
-    const c={waitReason:'rate_limit',waitUntil:301000};
-    expect(rateCooldownRemaining(c,1000)).toBe(300000);
-    expect(rateCooldownRemaining(c,300999)).toBe(1);
-    expect(rateCooldownRemaining(c,301000)).toBe(0);
+  it('reads the remaining cooldown from the saved deadline, so a refresh never resets it',()=>{
+    const c={waitReason:'rate_limit',waitUntil:16000};
+    expect(rateCooldownRemaining(c,1000)).toBe(15000);
+    expect(rateCooldownRemaining(c,15999)).toBe(1);
+    expect(rateCooldownRemaining(c,16000)).toBe(0);
+  });
+  it('widens the gap between requests after a 429 and eases back after successes',()=>{
+    expect(adaptPaceGap(1000,'rate_limit',1000)).toBe(3000);
+    expect(adaptPaceGap(10000,'rate_limit',1000)).toBe(15000);
+    expect(adaptPaceGap(10000,'success',1000)).toBe(8000);
+    expect(adaptPaceGap(1000,'success',1000)).toBe(1000);
+    expect(adaptPaceGap(undefined,'success',0)).toBe(0);
   });
 });

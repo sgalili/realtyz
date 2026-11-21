@@ -1779,6 +1779,13 @@
       "when": 1795194010380,
       "tag": "0253_invitation_attachments_admin_update",
       "breakpoints": true
+    },
+    {
+      "idx": 254,
+      "version": "7",
+      "when": 1795266038401,
+      "tag": "0254_migration",
+      "breakpoints": true
     }
   ]
 }

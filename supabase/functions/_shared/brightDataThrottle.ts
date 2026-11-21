@@ -1,5 +1,11 @@
 export const PROVIDER_GAP_MS = 12_000;
-export const MIN_RATE_COOLDOWN_MS = 300_000;
+// 429 waits stay short and bounded: 15s → 2 min; a provider Retry-After is honoured only up to 3 min.
+export const MIN_RATE_COOLDOWN_MS = 15_000;
+export const MAX_RATE_COOLDOWN_MS = 120_000;
+export const MAX_PROVIDER_RETRY_AFTER_MS = 180_000;
+const RATE_STEPS_MS = [15_000, 30_000, 60_000, 90_000, 120_000];
+// Adaptive queue gap between provider requests: grows after a 429, decays back after successes.
+export const MAX_PACE_GAP_MS = 15_000;
 
 export class ProviderRateLimitError extends Error {
   constructor(public retryAfterMs = 0) { super('Bright Data HTTP 429'); this.name = 'ProviderRateLimitError'; }
@@ -12,7 +18,14 @@ export function retryAfterMs(value: string | null, now = Date.now()): number {
 }
 
 export function rateBackoffMs(attempt: number, providerDelay = 0): number {
-  return Math.max(Math.min(3_600_000, MIN_RATE_COOLDOWN_MS * 2 ** Math.max(0, attempt - 1)), providerDelay);
+  const base = RATE_STEPS_MS[Math.min(RATE_STEPS_MS.length - 1, Math.max(0, Math.trunc(attempt) - 1))];
+  return Math.max(base, Math.min(MAX_PROVIDER_RETRY_AFTER_MS, Math.max(0, providerDelay || 0)));
+}
+
+export function adaptPaceGap(current: unknown, event: 'rate_limit' | 'success', floor: number): number {
+  const gap = Math.max(floor, Number(current) || 0);
+  if (event === 'rate_limit') return Math.min(MAX_PACE_GAP_MS, Math.max(3_000, gap * 2));
+  return gap <= floor ? floor : Math.max(floor, Math.round(gap * 0.8));
 }
 
 export function rateCooldownRemaining(checkpoint: {waitReason?: unknown; waitUntil?: unknown}, now = Date.now()): number {

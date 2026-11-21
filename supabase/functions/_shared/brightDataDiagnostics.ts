@@ -73,6 +73,12 @@ export class WorkerResponseError extends Error {
   constructor(message: string, readonly status: number) { super(message); this.name = 'WorkerResponseError'; }
 }
 
+/** Provider account/billing problem (e.g. client_10020 suspended): permanent until fixed by a person, never retried. */
+export const PROVIDER_ACCOUNT_ERROR = /client_10020|account is suspended|מושעה|חשבון Bright Data לא פעיל|brightdata_account_suspended/i;
+export class ProviderAccountError extends Error {
+  constructor(message: string) { super(message); this.name = 'ProviderAccountError'; }
+}
+
 export async function readWorkerResponse(url: string, init: RequestInit, transport: typeof fetch = fetch) {
   const started = Date.now();
   let status: number | undefined;
@@ -90,11 +96,13 @@ export async function readWorkerResponse(url: string, init: RequestInit, transpo
       throw new ImportAvailabilityError(String(data.detail ?? data.error), data.error, typeof data.retry_at === 'string' ? data.retry_at : null);
     }
     if (status === 429 || data?.error === 'brightdata_rate_limited' || data?.bd_trace?.some((entry: { bd_status?: number }) => entry.bd_status === 429)) {
+      console.warn('[bright-data-429]', JSON.stringify({ worker: url.split('/').pop(), http_status: status, retry_after: response.headers.get('retry-after'), retry_after_ms: data?.retry_after_ms ?? null, error: data?.error ?? null, bd_trace: Array.isArray(data?.bd_trace) ? data.bd_trace.slice(-5) : null, elapsed_ms: Date.now() - started }));
       throw new ProviderRateLimitError(Math.max(retryAfterMs(response.headers.get('retry-after')), Number(data?.retry_after_ms) || 0));
     }
     if (!response.ok || data?.error || data?.ok === false || data?.success === false) {
       const raw = data?.detail ?? data?.error ?? `HTTP ${status}`;
       const detail = typeof raw === 'string' ? raw : JSON.stringify(raw);
+      if (PROVIDER_ACCOUNT_ERROR.test(detail) || PROVIDER_ACCOUNT_ERROR.test(String(data?.error ?? ''))) throw new ProviderAccountError(detail);
       if (status && status >= 400 && status < 500 && ![401, 403, 408].includes(status)) throw new WorkerResponseError(detail, status);
       throw new Error(detail);
     }
@@ -105,6 +113,7 @@ export async function readWorkerResponse(url: string, init: RequestInit, transpo
     if (error instanceof ProviderRateLimitError) throw error;
     if (error instanceof ImportAvailabilityError) throw error;
     if (error instanceof WorkerResponseError) throw error;
+    if (error instanceof ProviderAccountError) throw error;
     const timedOut = /timeout|abort|timed out/i.test(describeError(error));
     if (timedOut || status === 502 || status === 503 || status === 504) throw new ProviderTimeoutError(providerErrorMessage(status, timedOut), status);
     throw new Error(providerErrorMessage(status, timedOut));

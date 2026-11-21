@@ -10,7 +10,7 @@ export function autonomousDeveloperCheckpoint(checkpoint: Record<string, any> | 
 
 /** Short, bounded exponential delays for timeouts and temporary gateway failures. */
 export function transientRetryBackoffMs(attempt: number): number {
-  const delays = [5_000, 15_000, 30_000, 60_000, 120_000, 300_000];
+  const delays = [5_000, 15_000, 30_000, 60_000, 120_000];
   return delays[Math.min(delays.length - 1, Math.max(0, Math.trunc(attempt) - 1))];
 }
 
