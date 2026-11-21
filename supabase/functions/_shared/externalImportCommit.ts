@@ -47,7 +47,15 @@ export async function commitExternalEntity(admin: Admin, job: any, body: any) {
   if (body.action === 'broker') {
     const url = agencyUrl(body.url);
     if (!url) throw new Error('invalid_source_url');
-    const brokers = collectBrokers(parseAgencyProfile(cheerio.load(body.html), url, job.max_listings).results, job.min_listings, job.max_listings);
+    // Yad2 office feeds show five ads per page: ask the Worker for the next pages until the per-broker maximum is reachable.
+    const first = parseAgencyProfile(cheerio.load(body.html), url, job.max_listings);
+    const extra = Array.isArray(body.more_html) ? body.more_html.filter((h: unknown) => typeof h === 'string').slice(0, 9) : [];
+    if (first.results[0]?.publisher?.broker_license_number && !Array.isArray(body.more_html) && (first.results[0]?.listing_urls?.length ?? 0) < job.max_listings && Number(first.total_pages) > 1) {
+      const pages = Math.min(Number(first.total_pages), 10, Math.ceil(job.max_listings / 5));
+      if (pages > 1) return { ok: true, need_pages: Array.from({ length: pages - 1 }, (_, i) => { const u = new URL(url); u.searchParams.set('page', String(i + 2)); return u.href; }) };
+    }
+    const rows = first.results.map((r: any, i: number) => i ? r : { ...r, listing_urls: [...new Set([...(r.listing_urls ?? []), ...extra.flatMap((h: string) => parseAgencyProfile(cheerio.load(h), url, job.max_listings).results[0]?.listing_urls ?? [])])] });
+    const brokers = collectBrokers(rows, job.min_listings, job.max_listings);
     const b = brokers[0];
     if (!b) return { ok: true, skipped: true, reason: 'missing_identity_or_below_minimum' };
     const prior = (c.brokerResults ?? []).find((r: any) => r.source_url === url);

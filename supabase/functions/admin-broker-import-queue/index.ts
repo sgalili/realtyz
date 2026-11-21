@@ -15,8 +15,8 @@ import { DEVELOPER_DIRECTORY_URL } from '../_shared/yad2DeveloperDirectory.ts';
 import { scheduleImportRateLimitRetry, scheduleImportTransientRetry, MAX_TRANSIENT_IMPORT_RETRIES } from '../_shared/importRateLimitRetry.ts';
 
 const schema = z.discriminatedUnion('action', [
-  z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
-  z.object({action:z.literal('start_urls'),urls:z.array(z.string().max(500)).min(1).max(100),max_listings:z.number().int().min(1).max(10).optional(),expected_projects:z.number().int().min(1).max(100).optional(),max_projects:z.number().int().min(1).max(100).optional()}).strict(),
+  z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(50)}).strict(),
+  z.object({action:z.literal('start_urls'),urls:z.array(z.string().max(500)).min(1).max(100),max_listings:z.number().int().min(1).max(50).optional(),expected_projects:z.number().int().min(1).max(100).optional(),max_projects:z.number().int().min(1).max(100).optional()}).strict(),
   z.object({action:z.literal('start_auto_developers'),target_developers:z.number().int().min(1).max(100),max_projects:z.number().int().min(1).max(100)}).strict(),
   z.object({action:z.enum(['pause','resume','reset_cooldown','step']),job_id:z.string().uuid()}).strict(),
 ]);
@@ -355,7 +355,7 @@ Deno.serve(async req => {
           }
           // Directory offices are read through their profile payload: exact license identity and up to ten own ads.
           const profile=c.source==='urls' || isAgencyProfileUrl(url);
-          const perLink=c.source==='urls'?job.max_listings:10;
+          const perLink=job.max_listings;
           const rows=await cached(admin,'item_detail',profile?`agency-profile:v2:${perLink}:${url}`:`agency:v2:${url}`,c,async()=>{
             const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url,preview_only:true,...(profile?{agency_profile:true,max_listings:perLink}:{}),limit:60,pages:1,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
             if(!d)throw new DelayStepFinished();

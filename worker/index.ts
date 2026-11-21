@@ -116,7 +116,8 @@ export async function startImportWorker() {
           if(entity.kind==='broker') {
             const html=await readSource(entity.url);
             let saved:any;
-            try {saved=await api({action:'broker',...scope,url:entity.url,html});}
+            try {saved=await api({action:'broker',...scope,url:entity.url,html});
+              if(Array.isArray(saved.need_pages)){const more_html:string[]=[];for(const page of saved.need_pages.slice(0,9)){try{more_html.push(await readSource(page));}catch(e){if((e as WorkerError).status===407)throw e;break;}}saved=await api({action:'broker',...scope,url:entity.url,html,more_html});}}
             catch(e){if([400,409,422].includes((e as WorkerError).status)&&!/(lease|job_not_running)/.test((e as Error).message)){c.workerProcessed.push(entity.url);counts.skipped++;console.log(JSON.stringify({event:'broker_rejected',url:entity.url,error:(e as Error).message}));await progress();continue;}throw e;}
             if(saved.skipped){counts.skipped++;console.log(JSON.stringify({event:'entity_skipped',url:entity.url,reason:saved.reason}));}
             else{c.workerEnrichment.push(saved.broker);counts.brokers_done=Math.max(counts.brokers_done,saved.brokerResults?.length??c.brokerResults?.length??counts.brokers_done+1);}

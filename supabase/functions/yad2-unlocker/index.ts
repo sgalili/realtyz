@@ -2252,17 +2252,18 @@ Deno.serve(async (req) => {
       requestDeadline = startedAt + IMPORT_DISCOVERY_BUDGET_MS;
       const html = await unlock(inputUrl, {maxAttempts:1});
       const $page = cheerio.load(html);
-      const parsed = body?.agency_profile===true && isAgencyProfileUrl(inputUrl) ? parseAgencyProfile($page,inputUrl,Math.min(10,Math.max(1,Number(body?.max_listings)||10))) : parseAgencies($page,inputUrl);
+      const parsed = body?.agency_profile===true && isAgencyProfileUrl(inputUrl) ? parseAgencyProfile($page,inputUrl,Math.min(50,Math.max(1,Number(body?.max_listings)||10))) : parseAgencies($page,inputUrl);
       // Office feeds show five ads per page; read one more page when needed to reach the listing cap.
       if (body?.agency_profile===true) {
-        const max=Math.min(10,Math.max(1,Number(body?.max_listings)||10));
+        const max=Math.min(50,Math.max(1,Number(body?.max_listings)||10));
         const first=(parsed as any).results?.[0];
-        if (first?.publisher?.broker_license_number && (first.listing_urls?.length??0)<max && Number((parsed as any).total_pages)>1) {
+        const lastPage=Math.min(Number((parsed as any).total_pages)||1,10);
+        for (let page=2; first?.publisher?.broker_license_number && (first.listing_urls?.length??0)<max && page<=lastPage && Date.now()<requestDeadline-15000; page++) {
           try {
-            const pageUrl=new URL(inputUrl);pageUrl.searchParams.set('page','2');
+            const pageUrl=new URL(inputUrl);pageUrl.searchParams.set('page',String(page));
             const more=parseAgencyProfile(cheerio.load(await unlock(pageUrl.href,{maxAttempts:1})),inputUrl,max).results[0];
             first.listing_urls=[...new Set([...(first.listing_urls??[]),...(more?.listing_urls??[])])].slice(0,max);
-          } catch (e) { console.warn('[yad2-unlocker] agency feed page 2 skipped', String((e as Error)?.message ?? e).slice(0,200)); }
+          } catch (e) { console.warn('[yad2-unlocker] agency feed page skipped', page, String((e as Error)?.message ?? e).slice(0,200)); break; }
         }
       }
       // Profile pages hide the phone behind a "show phone" button: click it in the managed browser.

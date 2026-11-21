@@ -2,7 +2,7 @@ import { batchPhone, batchListingUrls } from './brokerBatchImport.ts';
 
 export type DiscoveredBroker = { full_name: string; phone: string | null; email?: string; license_number: string; office_name?: string; agency_description?: string; imported_bio?: string; listing_urls: string[] };
 export function validImportParameters(target: number, min: number, max: number) {
-  return [target, min, max].every(Number.isInteger) && target >= 1 && target <= 100 && min >= 1 && max <= 10 && max >= min;
+  return [target, min, max].every(Number.isInteger) && target >= 1 && target <= 100 && min >= 1 && max <= 50 && max >= min;
 }
 export function collectBrokers(rows: Record<string, any>[], min: number, max: number): DiscoveredBroker[] {
   const grouped = new Map<string, DiscoveredBroker>();

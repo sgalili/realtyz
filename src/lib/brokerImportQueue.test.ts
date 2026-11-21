@@ -3,7 +3,7 @@ import { collectBrokers, nextImportPoint, validImportParameters, freshImportChec
 import { readWorkerResponse } from '../../supabase/functions/_shared/brightDataDiagnostics';
 describe('broker discovery and resume',()=>{
   const rows=Array.from({length:5},(_,i)=>({source_url:`https://www.yad2.co.il/realestate/item/a${i}`,owner_phone:'0521234567',publisher:{publisher_kind:'broker',broker_name:'טל זנו',broker_license_number:'12345'}}));
-  it('accepts target brokers and 3–10 active property bounds',()=>{expect(validImportParameters(25,3,10)).toBe(true);expect(validImportParameters(25,10,3)).toBe(false);expect(validImportParameters(1,3,11)).toBe(false);});
+  it('accepts a per-broker maximum up to 50',()=>{expect(validImportParameters(25,3,10)).toBe(true);expect(validImportParameters(25,3,50)).toBe(true);expect(validImportParameters(25,10,3)).toBe(false);expect(validImportParameters(1,3,51)).toBe(false);});
   it('requires the minimum and clips to the requested maximum',()=>{expect(collectBrokers(rows,3,4)[0].listing_urls).toHaveLength(4);expect(collectBrokers(rows.slice(0,2),3,4)).toHaveLength(0);});
   it('does not invent a missing license or phone',()=>{expect(collectBrokers([{...rows[0],owner_phone:null}],1,10)[0].phone).toBeNull();expect(collectBrokers([{...rows[0],publisher:{publisher_kind:'broker'}}],1,10)).toHaveLength(0);});
   it('preserves a source agency description without overwriting an existing imported value',()=>{

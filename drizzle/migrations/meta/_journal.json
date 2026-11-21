@@ -1828,6 +1828,13 @@
       "when": 1795290030313,
       "tag": "0260_imported_license_pending_role",
       "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1795294621452,
+      "tag": "0261_broker_import_max_listings_50",
+      "breakpoints": true
     }
   ]
 }

@@ -967,6 +967,18 @@ async function startImportWorker() {
             let saved2;
             try {
               saved2 = await api({ action: "broker", ...scope, url: entity.url, html });
+              if (Array.isArray(saved2.need_pages)) {
+                const more_html = [];
+                for (const page of saved2.need_pages.slice(0, 9)) {
+                  try {
+                    more_html.push(await readSource(page));
+                  } catch (e) {
+                    if (e.status === 407) throw e;
+                    break;
+                  }
+                }
+                saved2 = await api({ action: "broker", ...scope, url: entity.url, html, more_html });
+              }
             } catch (e) {
               if ([400, 409, 422].includes(e.status) && !/(lease|job_not_running)/.test(e.message)) {
                 c.workerProcessed.push(entity.url);
