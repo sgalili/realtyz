@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     // Bulk imports store the license as-is; registry verification happens at the broker's first sign-in.
     const registry = requiresLicenseVerification(user_type) && broker_license_number && !(import_job_id && action !== 'check_registry') ? await checkAdminBrokerRegistry(broker_license_number, full_name ?? '') : null;
     if (action === 'check_registry') return new Response(JSON.stringify(registry ?? {valid:false,reason:'invalid_license'}),{headers:{...corsHeaders,'Content-Type':'application/json'}});
-    if (requiresLicenseVerification(user_type) && (!broker_license_number || (!registry?.valid && !approve_broker))) return new Response(JSON.stringify({error:'נדרש אימות רישיון או אישור מפורש של מנהל'}),{status:400,headers:corsHeaders});
+    if (requiresLicenseVerification(user_type) && (!broker_license_number || (!import_job_id && !registry?.valid && !approve_broker))) return new Response(JSON.stringify({error:'נדרש אימות רישיון או אישור מפורש של מנהל'}),{status:400,headers:corsHeaders});
     const normalizedPhone = normalizeIsraeliPhone(phone_e164);
 
     // Queued imports may lack a mobile. Brokers remain pending contact; developers need no license or phone.
