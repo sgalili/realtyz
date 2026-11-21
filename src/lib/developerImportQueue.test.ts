@@ -21,11 +21,12 @@ describe('background developer page queue', () => {
     expect(merged[0].apartments).toHaveLength(1);
   });
 
-  it('backs off individual failures and respects longer provider 429 delays', () => {
-    expect(developerRetryDelay(1)).toBe(15_000);
-    expect(developerRetryDelay(2)).toBe(30_000);
-    expect(developerRetryDelay(1, 450_000, true)).toBe(450_000);
-    expect(developerRetryDelay(1, 0, true)).toBe(300_000);
+  it('keeps developer page retries short and bounded', () => {
+    expect(developerRetryDelay(1)).toBe(5_000);
+    expect(developerRetryDelay(9)).toBe(120_000);
+    expect(developerRetryDelay(1, 0, true)).toBe(15_000);
+    expect(developerRetryDelay(9, 0, true)).toBe(120_000);
+    expect(developerRetryDelay(1, 450_000, true)).toBe(180_000);
   });
 
   it('redacts credentials and URLs from persisted page errors', () => {

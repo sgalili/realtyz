@@ -75,7 +75,7 @@ async function fetchDeveloperPage(url: string, attempt: number, parentProject?: 
       return { status: response.status, html: await response.text(), retryAfterMs: retryAfterMs(response.headers.get('retry-after')), brdErr: `${response.headers.get('x-brd-err-code') ?? ''} ${response.headers.get('x-brd-error') ?? ''}` };
     }, value => ({ status: value.status, bytes: new TextEncoder().encode(value.html).length }));
     if (/client_10020|account is suspended/i.test(result.brdErr)) throw new Error('provider_account_suspended');
-    if (result.status === 429) throw new ProviderRateLimitError(result.retryAfterMs);
+    if (result.status === 429) { console.warn('[bright-data-429]', JSON.stringify({ transport: 'web_unlocker', zone, url, attempt, retry_after_ms: result.retryAfterMs || null, brd: result.brdErr.trim() || null })); throw new ProviderRateLimitError(result.retryAfterMs); }
     if (result.status >= 400) throw new Error(`provider_${result.status}`);
     if (!result.html.trim()) throw new Error('empty_response');
     if (/captcha|access denied|verify you are human/i.test(result.html) && !/__NEXT_DATA__|projectName/.test(result.html)) throw new Error('source_blocked');

@@ -1,10 +1,12 @@
 import { mergeProject } from '../_shared/yad2DeveloperImport.ts';
+import { rateBackoffMs } from '../_shared/brightDataThrottle.ts';
+import { transientRetryBackoffMs } from '../_shared/developerImportRetry.ts';
 
 export const MAX_PAGE_ATTEMPTS = 5;
 
 export function developerRetryDelay(attempt: number, providerDelay = 0, rateLimited = false) {
-  const exponential = Math.min(15 * 60_000, 15_000 * 2 ** Math.max(0, attempt - 1));
-  return Math.max(exponential, providerDelay, rateLimited ? 300_000 : 0);
+  // Same bounded waits as the broker queue: 429 15s→2min (Retry-After capped at 3min), other failures ≤2min.
+  return rateLimited ? rateBackoffMs(attempt, providerDelay) : transientRetryBackoffMs(attempt);
 }
 
 export function mergeProjectPage(base: any[], fresh: any[]) {
