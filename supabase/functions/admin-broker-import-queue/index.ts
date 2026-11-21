@@ -432,11 +432,12 @@ Deno.serve(async req => {
           // Hidden-phone brokers: the license is the identity. An existing account or approval with this license means already imported.
           const lic=String(b.license_number??'').trim();
           if(!profiles?.length && lic) {
-            const [{data:byProfile,error:pe},{data:byApproval,error:ae}]=await Promise.all([
+            const [{data:byProfile,error:pe},{data:byApproval,error:ae},{data:byImport,error:ie}]=await Promise.all([
               admin.from('profiles').select('id').eq('broker_license_number',lic).limit(1),
               admin.from('admin_approved_broker_licenses').select('user_id').eq('license_number',lic).limit(1),
-            ]);if(pe)throw pe;if(ae)throw ae;
-            if(byProfile?.length||byApproval?.length){
+              admin.from('admin_broker_onboarding').select('user_id').eq('imported_license_number',lic).limit(1),
+            ]);if(pe)throw pe;if(ae)throw ae;if(ie)throw ie;
+            if(byProfile?.length||byApproval?.length||byImport?.length){
               console.log('[broker-import-skip-existing]',JSON.stringify({job_id:job.id,broker_index:c.brokerIndex,license:lic,reason:byProfile?.length?'license_on_existing_profile':'license_already_approved'}));
               c.skippedExisting=[...(c.skippedExisting??[]),{kind:'broker',key:lic,name:b.full_name??b.office_name??null}];c.brokerIndex++;c.phase='validating';c.transientRetries=0;await save({skipped:job.skipped+1,error:null});return json({ok:true,skipped:true});
             }

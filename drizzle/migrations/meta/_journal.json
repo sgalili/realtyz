@@ -1821,6 +1821,13 @@
       "when": 1795289957418,
       "tag": "0259_imported_license_store_unverified",
       "breakpoints": true
+    },
+    {
+      "idx": 260,
+      "version": "7",
+      "when": 1795290030313,
+      "tag": "0260_imported_license_pending_role",
+      "breakpoints": true
     }
   ]
 }
