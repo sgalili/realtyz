@@ -8,7 +8,7 @@ const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('known'),...scope,kind:z.enum(['broker','developer']),url:z.string().url().max(500),license:z.string().regex(/^[1-9][0-9]{3,9}$/).optional()}).strict(),
   z.object({action:z.literal('broker'),...scope,url:z.string().url().max(500),html:z.string().max(8000000)}).strict(),
   z.object({action:z.literal('listing'),...scope,url:z.string().url().max(500),html:z.string().max(8000000),broker_id:z.string().uuid()}).strict(),
-  z.object({action:z.literal('developer'),...scope,url:z.string().url().max(500),developer:z.record(z.unknown()),projects:z.array(z.record(z.unknown())).max(100),units:z.number().int().min(0).max(100000).optional()}).strict(),
+  z.object({action:z.literal('developer'),...scope,url:z.string().url().max(500),developer:z.record(z.unknown()),projects:z.array(z.record(z.unknown())).max(100),partial:z.boolean().optional(),units:z.number().int().min(0).max(100000).optional()}).strict(),
   z.object({ action: z.literal('claim'), worker_id: z.string().trim().min(1).max(100) }).strict(),
   z.object({
     action: z.literal('progress'), worker_id: z.string().trim().min(1).max(100),

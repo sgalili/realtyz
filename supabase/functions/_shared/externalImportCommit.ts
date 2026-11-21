@@ -57,7 +57,7 @@ export async function commitExternalEntity(admin: Admin, job: any, body: any) {
       const { error } = await admin.from('white_label_settings').upsert({ user_id: brokerId, agency_name: b.office_name, brokerage_name: b.office_name, ...(b.agency_description ? { agency_description: b.agency_description } : {}) }, { onConflict: 'user_id' });
       if (error) throw error;
     }
-    const results = [...(c.brokerResults ?? []), { broker_id: brokerId, full_name: b.full_name, office_name: b.office_name, source_url: url, license_number: b.license_number }];
+    const results = [...(c.brokerResults ?? []), { broker_id: brokerId, full_name: b.full_name, office_name: b.office_name, source_url: url, license_number: b.license_number, listing_urls:b.listing_urls }];
     const { error } = await admin.from('broker_import_jobs').update({ checkpoint: { ...c, brokerResults: results, brokerId }, updated_at: new Date().toISOString() }).eq('id', job.id).eq('lease_token', job.lease_token);
     if (error) throw error;
     return { ok: true, broker: { ...b, broker_id: brokerId }, brokerResults: results };
@@ -99,6 +99,8 @@ export async function commitExternalEntity(admin: Admin, job: any, body: any) {
   const { error: finishError } = await admin.rpc('finish_developer_import_identity', { _key: identityKey, _token: identityToken, _developer: developerId, _workspace: owner });
   if (finishError) throw finishError;
   const result = { developer_id: developerId, company_name: company, source_url: url, projects: projects.length, units: projects.reduce((n:number,p:any)=>n+detailedUnitCount(p),0), status: 'completed' };
+  // Preserve the original developer and saved private hierarchy between recursive page reads.
+  if(body.partial) return {ok:true,partial:true,pending:c.externalPendingDeveloper,result:{...result,status:'running'}};
   const results = [...(c.developerResults ?? []), result];
   delete c.externalPendingDeveloper;
   const { error } = await admin.from('broker_import_jobs').update({ checkpoint: { ...c, developerResults: results }, updated_at: new Date().toISOString() }).eq('id', job.id).eq('lease_token', job.lease_token);

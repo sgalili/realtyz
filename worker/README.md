@@ -1,33 +1,68 @@
-# TORAFF Railway import worker
+# TORAFF — Worker לייבוא מיד 2
 
-This folder is an external **background process**, not a web/backend server in the Lovable preview. It runs on Railway's existing TORAFF deployment using Node 20+. Bright Data requests and recursive discovery run here; Cloud receives only short queue operations and authorized identity/inventory saves. Existing pure Yad2 parsers are imported from the repository rather than reimplemented.
+תהליך Node.js 22 ומעלה, עצמאי וללא שרת HTTP. ניתן להעלות **רק את תיקיית worker**: `index.js` כולל את הפרסרים המשותפים; אין צורך בקבצי האתר להרצה. המקור לעריכה הוא `index.ts`.
 
-## Required Railway environment variables
+## משתני סביבה — אותם שמות ב־Railway וב־Render
 
-| Name | Value |
+| משתנה | ערך / משמעות |
 |---|---|
-| `IMPORT_WORKER_ENABLED` | `true` |
-| `TORAFF_IMPORT_API_URL` | Full HTTPS URL of the deployed `external-import-worker` Cloud function, including `/functions/v1/external-import-worker`; use the project's Cloud function origin, not the website URL. |
-| `IMPORT_WORKER_SHARED_SECRET` | Exact same generated value copied from the Lovable secure form. Never the Cloud service-role key. |
-| `BRIGHT_DATA_API_KEY` | Bright Data REST API token with access to the Web Unlocker zone. |
-| `BRIGHTDATA_UNLOCKER_ZONE` | Exact existing **Web Unlocker** zone name from Bright Data. A Browser API zone is not interchangeable. |
-| `IMPORT_WORKER_ID` | Optional unique instance label, e.g. `railway-toraff-1`. |
+| `IMPORT_WORKER_ENABLED` | תחילה `false`, לאחר הגדרה `true` |
+| `TORAFF_IMPORT_API_URL` | כתובת HTTPS של פונקציית Cloud הקיימת `external-import-worker`, המסתיימת ב־`/functions/v1/external-import-worker`; לא כתובת האתר |
+| `IMPORT_WORKER_SHARED_SECRET` | הסוד הייעודי הקיים, זהה לערך המאובטח ב־Cloud |
+| `BRIGHT_DATA_API_KEY` | אסימון REST של Bright Data עם גישה ל־Web Unlocker |
+| `BRIGHTDATA_UNLOCKER_ZONE` | השם המדויק של אזור **Web Unlocker**; אזור Browser API אינו מתאים |
+| `IMPORT_WORKER_ID` | מזהה ייחודי לכל מופע, למשל `toraff-worker-1` |
+| `WORKER_CONCURRENCY` | עד 4 קריאות מקור במקביל כברירת מחדל; ניתן לבחור 1–5 |
+| `WORKER_REQUEST_INTERVAL_MS` | מרווח התחלות קריאה משותף: `1000` אלפיות שנייה כברירת מחדל |
+| `WORKER_SOURCE_TIMEOUT_MS` | הגבלת קריאת מקור: `45000` אלפיות שנייה; טווח 10000–120000 |
+| `WORKER_POLL_INTERVAL_MS` | בדיקת תור פנוי: `5000` אלפיות שנייה |
 
-No browser credentials, database password, Cloud service-role key, Browser API WebSocket endpoint or `PORT` is needed by this process. These are worker environment variables; entering secrets in Lovable does not set Railway's environment.
+**אין להוסיף `SUPABASE_SERVICE_ROLE_KEY`, סיסמת מסד נתונים או מפתח לדפדפן.** מפתח ההרשאות הרחב אינו זמין ב־Lovable Cloud ואינו יוצא ממנו. במקום `SUPABASE_URL` וגישה ישירה לטבלאות, ה־Worker משתמש בכתובת ובסוד הייעודיים לעיל. הממשק המוגן תופס ומעדכן את אותו תור ב־Cloud ובודק הרשאות, זהות ומרחב עבודה בכל שמירה. הגדרת סודות ב־Cloud אינה מגדירה אותם אוטומטית ב־Railway.
 
-## Install and run from repository root
+## הרצה מקומית
+
+1. התקינו Node.js 22 ומעלה.
+2. בתוך תיקיית `worker`, העתיקו `.env.example` אל `.env` ומלאו את ארבעת ערכי החיבור.
+3. הריצו:
 
 ```bash
-npm --prefix worker install
-npm --prefix worker start
+npm install --omit=dev
+npm start
 ```
 
-Railway must deploy this full repository because the worker imports shared source files. For a **separate background worker service** using the same repository: leave Root Directory at repository root, set Build Command `npm --prefix worker install`, Start Command `npm --prefix worker start`, and disable any HTTP healthcheck for that background service.
+4. שנו `IMPORT_WORKER_ENABLED=true` רק כשמוכנים. כשהערך `false`, ההרצה מסתיימת בלי פניות לספק או לתור.
 
-Do not replace an existing Production web service's start command with a background process. To keep the existing TORAFF Node service, install worker dependencies in its build, then import `worker/register.ts` once from that service's startup using its TypeScript loader (or import and call `startImportWorker()` once). Its existing HTTP server and PORT stay unchanged. Deployment configuration/source of that existing Railway service must be checked before adding this startup hook; this repository does not establish its current entrypoint. `register.ts` reports worker configuration errors without shutting down the existing web service.
+## Railway / Render — בלי להשבית את האתר
 
-Jobs are claimed one at a time, heartbeat every 30 seconds, with 180-second fenced leases. Polling is in Railway (5 seconds when idle), not database cron or a browser scanner. Native source reads have a 120-second abort limit and at least a one-second gap. Retry deadlines/checkpoints live in Cloud, backoff is bounded at three minutes and eight failures end visibly. Stop signals finish/save the current safe checkpoint and release the job. Permanent credential/billing errors fail immediately. Existing accounts are checked before profile enrichment when source/license is known, and again before creation. Imported items remain private.
+1. צרו **Background Worker נפרד**, מאותו מאגר קוד או מתיקיית `worker` בלבד.
+2. בחרו Node.js 22 ומעלה ו־Root Directory: `worker` (אם העליתם את כל המאגר).
+3. Build Command: `npm install --omit=dev`.
+4. Start Command: `npm start`.
+5. הוסיפו את המשתנים מהטבלה, הפעילו מופע אחד, וללא בדיקת HTTP/PORT.
+6. העלו, בדקו שההגדרות נקלטו ואז הפעילו את ה־Worker.
 
-## Verification before enabling Production
+**אל תחליפו את Start Command של שירות TORAFF הפעיל ב־Production.** אם חייבים להריץ באותו תהליך Node קיים, הוסיפו פעם אחת לכניסה הקיימת, בלי להסיר את שרת האתר:
 
-Run `npm --prefix worker test`. Deploy with `IMPORT_WORKER_ENABLED=false`, configure all variables, then enable only after the machine endpoint accepts the shared credential. Start one small import and check the queued→running→completed progression, source logs, saved drafts and final counts. No paid Bright Data reads or real imports were run while preparing this folder.
+```js
+import { startImportWorker } from './worker/index.js';
+void startImportWorker().catch(error => console.error('Worker startup failed:', error.message));
+```
+
+יש להתאים את נתיב הייבוא למיקום הכניסה הקיימת ולהתקין את תלויות `worker`. לא שונתה כאן פקודת השירות הקיים, כי קוד הכניסה והגדרות Railway שלו אינם זמינים בפרויקט זה.
+
+## התקדמות, מניעת כפילויות וטיפול בשגיאות
+
+- משימת Super Admin נכתבת ל־`broker_import_jobs`: מצב `running` ושלב `queued` פירושם ממתינה לתפיסה. ה־Worker תופס משימה אטומית אחת, עם lease ל־180 שניות ו־heartbeat כל 30 שניות. הדפדפן רק מציג התקדמות.
+- קריאות מקור מקביליות; שמירות ועדכוני התקדמות סדרתיים. מתווכים נשמרים תחילה, רשימת נכסיהם נשמרת להשלמה מקבילית בהמשך. פרטי יזם/פרויקטים/דירות נשמרים כטיוטות אחרי כל עמוד מזוהה, ללא המתנה לסיום כל היזם. שמירת תמונות וקבצים נשארת במנגנון Cloud הקיים.
+- בדיקה מוקדמת לפי מקור ורישיון כאשר ידועים, ובדיקת זהות/טלפון/שם חברה לפני יצירת חשבון. קישור חדש שלא ניתן לקשר לישות קיימת דורש קריאת זהות ראשונית; לא מבטיחים אפס קריאות כשאין מזהה ידוע מראש.
+- כל שמירה היא פרטית: אין פרסום, שליחת הזמנות, העברת בעלות או אישור רישיון אוטומטי.
+- `429` גורר עצירת התחלות קריאה והמתנה שמורה בתור; backoff של 15/30/60/120 שניות, ועד 180 שניות אם הספק דורש זאת. עד 8 כישלונות; אין איפוס עקב רענון מסך. הצלחות של קריאות אחרות נשמרות לפני שחרור המשימה.
+- בהשעיית חשבון (`client_10020`/407) המשימה נכשלת עם סיבה ברורה והתהליך מפסיק לקחת משימות; לאחר הפעלת החשבון יש להפעיל מחדש את ה־Worker ולחדש את המשימה.
+- עצירת התהליך שומרת את ההתקדמות שכבר הושלמה ומשחררת את המשימה. קריסה חוזרת מאותה נקודת שמירה; קריאת מקור שלא הגיעה לשמירה עשויה לחזור, אך אינה יוצרת טיוטה כפולה.
+- לוגים כוללים כתובת מקור, Zone, שיטת חיבור, סטטוס וסיבת כישלון; אינם כוללים אסימונים.
+
+## בדיקות ועדכון קוד
+
+במאגר המלא: `npm --prefix worker install`, ואז `npm --prefix worker test`. אחרי שינוי מקור או פרסר משותף הריצו `npm --prefix worker run bundle` ושמרו גם את `worker/index.js` המעודכן. זהו קובץ ההרצה העצמאי.
+
+לפני שימוש חי: בדקו משימה קטנה, את המעבר מ־queued ל־completed ואת הטיוטות והמונים במסך Super Admin. ההכנה והבדיקות המקומיות אינן הוכחת פריסה ב־Railway או סריקה בתשלום; אלה דורשות את הגדרות השירות וחשבון Bright Data פעיל.

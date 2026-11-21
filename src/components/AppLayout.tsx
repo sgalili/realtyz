@@ -421,6 +421,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         return { rows: data ?? [], total: count ?? 0, page: 0 };
       },
       initialPageParam: 0,
+      getNextPageParam: () => undefined,
       staleTime: 5 * 60 * 1000,
     });
   }, [queryClient, isDemoMode]);

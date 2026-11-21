@@ -1,11 +1,12 @@
 # Roadmap
 
 ## External import worker November 21
+- [x] Make worker standalone with four paced source channels, durable retries and incremental private saves; 15 Node tests, developer save and isolated queue tests passed; protected Cloud endpoint deployed and lease refusal verified.
 - [x] Prepare a runnable Railway TORAFF worker folder and document exact environment variables.
 - [x] Queue Super Admin broker/developer requests without browser scan loops.
 - [x] Add protected external-worker claiming/progress and disable legacy dispatch for external jobs.
 - [x] Verify polling, authorization and persisted progress with browser, unit and scratch database tests.
-- [ ] Connect and verify the external worker deployment (awaiting existing TORAFF Railway Start Command, deployment access and environment variables there; no paid live import run).
+- [ ] Connect and verify the external worker deployment (awaiting Railway/Render deployment access and environment variables; same-process integration additionally needs the existing TORAFF entrypoint; no paid live import run).
 
 ## Developer and broker card refinements November 20
 - [x] Swap the developer hero back and add buttons into their requested positions.

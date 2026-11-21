@@ -2,3 +2,5 @@
 - Railway owns native Bright Data discovery and recursive page reads; the app only enqueues/polls, while fenced machine actions reuse existing private inventory savers and server license checks. Why: long scans must not run in browsers or short-lived Cloud requests.
 - Never use a Cloud service-role key outside Cloud or expose the import shared secret to the browser; Railway uses the dedicated machine endpoint. Why: a worker credential must not grant arbitrary database access.
 - Preserve the existing Production web process when enabling this background worker; no HTTP server is provided here. Why: replacing the web start command with a queue consumer would take the existing service offline.
+- Ship index.js as the standalone Node runtime bundle of the canonical source parsers; rebuild it after source changes. Why: worker-only deployments run without the app repository while parser behavior stays shared.
+- Parallelize paced source reads only; serialize machine saves/checkpoints within each job and drain successful sibling saves before retry. Why: concurrent checkpoint replacement must never lose a found entity or draft.

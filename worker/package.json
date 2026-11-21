@@ -2,7 +2,19 @@
   "name": "toraff-import-worker",
   "private": true,
   "type": "module",
-  "scripts": { "start": "tsx index.ts", "test": "tsx --test *.test.ts" },
-  "engines": { "node": ">=20" },
-  "dependencies": { "cheerio": "1.0.0", "tsx": "^4.20.0" }
+  "scripts": {
+    "start": "node --env-file-if-exists=.env index.js",
+    "test": "tsx --test *.test.ts",
+    "bundle": "esbuild index.ts --bundle --platform=node --format=esm --packages=external --outfile=index.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "cheerio": "1.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "tsx": "^4.20.0"
+  }
 }
