@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
     const code = typeof err.code === 'string' ? err.code : null;
     const known = KNOWN_REJECTIONS[message];
     console.error("super-admin-create-user error", JSON.stringify({ code, message, details: err.details ?? null, hint: err.hint ?? null, permanent: Boolean(known) }));
-    if (known) return new Response(JSON.stringify({ ok: false, error: message, code: message, detail: known.detail }), {
+    if (known) return new Response(JSON.stringify({ ok: false, error: known.detail, code: message, detail: known.detail }), {
       status: known.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
     return new Response(JSON.stringify({ error: message, code }), {

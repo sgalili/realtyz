@@ -309,7 +309,7 @@ Deno.serve(async req => {
         const licenses=[...new Set(fresh.map(r=>String(r.publisher?.broker_license_number??'').trim()).filter(Boolean))];
         const cardPhones=[...new Set(fresh.map(r=>r.owner_phone).filter(Boolean))];
         const savedLicenses=new Set<string>(),savedPhones=new Set<string>();
-        if(licenses.length){const {data,error}=await admin.from('profiles').select('broker_license_number').in('broker_license_number',licenses);if(error)throw error;for(const r of data??[])if(r.broker_license_number)savedLicenses.add(String(r.broker_license_number).trim());}
+        if(licenses.length){const [{data,error},{data:ap,error:ae}]=await Promise.all([admin.from('profiles').select('broker_license_number').in('broker_license_number',licenses),admin.from('admin_approved_broker_licenses').select('license_number').in('license_number',licenses)]);if(error)throw error;if(ae)throw ae;for(const r of data??[])if(r.broker_license_number)savedLicenses.add(String(r.broker_license_number).trim());for(const r of ap??[])if(r.license_number)savedLicenses.add(String(r.license_number).trim());}
         if(cardPhones.length){const {data,error}=await admin.from('profiles').select('phone').in('phone',cardPhones);if(error)throw error;for(const r of data??[])if(r.phone)savedPhones.add(r.phone);}
         const eligible:Record<string,any>[]=[];
         const decisions:Record<string,any>[]=[];
