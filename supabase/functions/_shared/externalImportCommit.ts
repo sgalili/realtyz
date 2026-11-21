@@ -22,12 +22,13 @@ export async function knownExternalEntity(admin: Admin, kind: string, url: strin
     return Boolean(data?.length);
   }
   if (license) {
-    const [{ data: profiles, error: pe }, { data: approved, error: ae }] = await Promise.all([
+    const [{ data: profiles, error: pe }, { data: approved, error: ae }, { data: imported, error: ie }] = await Promise.all([
       admin.from('profiles').select('id').eq('broker_license_number', license).limit(1),
       admin.from('admin_approved_broker_licenses').select('user_id').eq('license_number', license).limit(1),
+      admin.from('admin_broker_onboarding').select('user_id').eq('imported_license_number', license).limit(1),
     ]);
-    if (pe || ae) throw pe ?? ae;
-    if (profiles?.length || approved?.length) return true;
+    if (pe || ae || ie) throw pe ?? ae ?? ie;
+    if (profiles?.length || approved?.length || imported?.length) return true;
   }
   // One indexed JSON containment lookup instead of reading every historical job.
   const { data: jobs, error: je } = await admin.from('broker_import_jobs').select('id').contains('checkpoint', { brokerResults: [{ source_url: url }] }).limit(1);

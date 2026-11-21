@@ -139,6 +139,7 @@ export type Database = {
           first_invitation_channel: string | null
           first_login_at: string | null
           import_source: string | null
+          imported_license_number: string | null
           invitation_clicked_at: string | null
           invitation_link_token: string
           invitation_message_id: string | null
@@ -166,6 +167,7 @@ export type Database = {
           first_invitation_channel?: string | null
           first_login_at?: string | null
           import_source?: string | null
+          imported_license_number?: string | null
           invitation_clicked_at?: string | null
           invitation_link_token?: string
           invitation_message_id?: string | null
@@ -193,6 +195,7 @@ export type Database = {
           first_invitation_channel?: string | null
           first_login_at?: string | null
           import_source?: string | null
+          imported_license_number?: string | null
           invitation_clicked_at?: string | null
           invitation_link_token?: string
           invitation_message_id?: string | null
