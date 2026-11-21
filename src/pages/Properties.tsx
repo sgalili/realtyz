@@ -1,5 +1,5 @@
 import { missingListingDetails, listingPublicationState, PUBLICATION_STATE_LABELS } from '@/lib/listingCompleteness';
-import { ImportHistoryBack } from '@/components/admin/ImportHistoryBack';
+import { SelectedListingsActions } from '@/components/properties/SelectedListingsActions';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { Table } from '@/components/ui/table';
@@ -87,7 +87,6 @@ import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
 import { AffiliateShareCell, AffiliateTierPrices } from '@/components/properties/AffiliateShareCell';
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
-import { SortDropdown } from '@/components/ui/sort-dropdown';
 import type { ListingSortValue } from '@/lib/listingSortOptions';
 import { useAppMode } from '@/hooks/useAppMode';
 import { useAffiliateConfigs } from '@/hooks/useAffiliate';
@@ -588,6 +587,16 @@ export default function Properties() {
     if (!open) setFiltersOpen(false);
     if (open) window.requestAnimationFrame(() => searchInputRef.current?.focus({ preventScroll: true }));
   };
+  // The magnifier lives in the blue page hero; it toggles this row through window events.
+  useEffect(() => {
+    const onToggle = () => setSearchOpen(current => { const next = !current; if (!next) setFiltersOpen(false); else window.requestAnimationFrame(() => searchInputRef.current?.focus({ preventScroll: true })); return next; });
+    const onRequest = () => window.dispatchEvent(new CustomEvent('properties:search-state', { detail: { open: searchOpenRef.current } }));
+    window.addEventListener('properties:toggle-search', onToggle);
+    window.addEventListener('properties:request-search-state', onRequest);
+    return () => { window.removeEventListener('properties:toggle-search', onToggle); window.removeEventListener('properties:request-search-state', onRequest); };
+  }, []);
+  const searchOpenRef = useRef(searchOpen);
+  useEffect(() => { searchOpenRef.current = searchOpen; window.dispatchEvent(new CustomEvent('properties:search-state', { detail: { open: searchOpen } })); }, [searchOpen]);
   const inventorySuggestions = useInventorySuggestions(q, activeWorkspaceId);
   const suggestions = inventorySuggestions.data ?? [];
   useEffect(() => { setSuggestionIndex(-1); }, [q]);
@@ -731,6 +740,7 @@ export default function Properties() {
     },
   });
   const unconfiguredIds = unconfiguredQuery.data ?? [];
+  const liveListingIds = useMemo(() => results.filter(row => { const raw = (row.raw ?? {}) as Record<string, unknown>; return !!row.localId && raw.is_published === true && raw.affiliate_enabled !== false && (raw.status == null || raw.status === 'live'); }).map(row => row.localId as string), [results]);
 
   const toggleSelectedListing = useCallback((id: string) => {
     setSelectedListingIds((current) => {
@@ -917,18 +927,9 @@ export default function Properties() {
     <div data-testid={testId} className="flex shrink-0 items-center justify-end gap-0" style={{ marginInlineEnd: "-5px" }}>
 
 
-            <SortDropdown value={sortBy} onChange={setSortBy} />
-
-            {multiSelectMode && selectedListingIds.size > 0 ? (
-              <div className="flex items-center gap-2">
-                <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
-                {activeWorkspaceId && <BulkClosingCommission ids={Array.from(selectedListingIds)} workspaceId={activeWorkspaceId} />}
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="מחיקת הנבחרים" aria-label="מחיקת הנבחרים" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" /></Button>
-              </div>
+            {multiSelectMode && selectedListingIds.size > 0 && activeWorkspaceId ? (
+              <SelectedListingsActions ids={Array.from(selectedListingIds)} liveIds={liveListingIds} unconfiguredIds={unconfiguredIds} workspaceId={activeWorkspaceId} onPublished={markPublished} onDelete={() => setDeleteTargetIds(Array.from(selectedListingIds))} onCommissionSaved={() => void unconfiguredQuery.refetch()} />
             ) : null}
-
-            {/* Transaction type: הכל / להשכרה / למכירה — same toolbar row,
-                between the results-count pill and the view toggle. */}
           <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
     </div>
   );
@@ -948,38 +949,14 @@ export default function Properties() {
 
         {/* Row 1 — [magnify][search field, collapsed by default] ⇢ [sort][select][count][view] */}
         <div data-testid="property-filter-row" className="flex flex-nowrap items-center gap-1">
-            <ImportHistoryBack />
             <div className="order-first shrink-0">
               <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="order-1 h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-              aria-label={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
-              title={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
-              aria-expanded={searchOpen}
-              aria-controls="inventory-search-row"
-              onClick={() => toggleSearchOpen(!searchOpen)}
-            >
-              <span className="relative inline-flex h-[19px] w-[19px]"><SearchIcon className={`absolute inset-0 !h-[19px] !w-[19px] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "opacity-0 scale-50 rotate-90" : "opacity-100 scale-100 rotate-0"}`} /><span aria-hidden className={`absolute inset-0 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "opacity-100 scale-100" : "opacity-0 scale-50"}`}><SearchIcon className="absolute inset-0 !h-[19px] !w-[19px]" /><X className="absolute -end-1 -top-1 !h-[10px] !w-[10px] rounded-full bg-background" strokeWidth={3} /></span></span>
-            </Button>
-            {/* Counter pill — always visible right after the magnify: total records
-                by default, replaced by the selected count while selecting. */}
-            <Button type="button" variant="ghost"
-              className={`order-2 h-8 shrink-0 overflow-hidden rounded-none px-0 text-[12px] font-normal text-primary tabular-nums hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 transition-[opacity,max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "pointer-events-none max-w-0 opacity-0" : "max-w-[120px] opacity-100"}`} tabIndex={searchOpen ? -1 : undefined}
-              aria-expanded={searchOpen} aria-controls="inventory-search-row"
-              title={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
-              onClick={() => toggleSearchOpen(!searchOpen)}>
-              {multiSelectMode && selectedListingIds.size > 0
-                ? `${selectedListingIds.size} נבחרו`
-                : (() => {
-                    const total = totalListingsCount ?? sortedResults.length;
-                    return `${total > 999 ? `${(total / 1000).toFixed(2).replace(/\.?0+$/, '')}k` : total} נכסים`;
-                  })()}
-            </Button>
-        <div id="inventory-search-row" className="order-3 min-w-0 flex-1">
+            {/* Commissions shortcut: every saved property still missing commissions. */}
+            {!searchOpen && activeWorkspaceId && unconfiguredIds.length > 0 && <div className="order-2 flex min-w-0 flex-1 justify-center">
+              <BulkClosingCommission ids={unconfiguredIds} workspaceId={activeWorkspaceId} onSaved={() => void unconfiguredQuery.refetch()} trigger={open => <Button type="button" variant="outline" size="sm" className="h-8 whitespace-nowrap border border-border bg-background px-3 text-xs font-medium text-foreground hover:bg-muted" onClick={open}>{`הגדר עמלות ל-${unconfiguredIds.length} נכסים ופרסם עכשיו`}</Button>} />
+            </div>}
+        <div id="inventory-search-row" className={`order-3 min-w-0 ${searchOpen ? 'flex-1' : 'w-0 flex-none overflow-hidden'}`}>
           <div className={`relative z-50 min-w-0 origin-right transition-[opacity,transform] duration-300 ease-in-out motion-reduce:transition-none ${searchOpen ? 'opacity-100 scale-x-100' : 'pointer-events-none invisible opacity-0 scale-x-0'}`} aria-hidden={!searchOpen}>
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
           <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background">
@@ -1164,7 +1141,6 @@ export default function Properties() {
         </div>
         <Yad2ImportStatus banner />
         {activeWorkspaceId && importPromptKey && importJob.imported.length > 0 && <BulkClosingCommission key={importPromptKey} ids={importJob.imported} workspaceId={activeWorkspaceId} autoOpenKey={importPromptKey} trigger={() => null} onSaved={() => void unconfiguredQuery.refetch()} />}
-        {activeWorkspaceId && unconfiguredIds.length > 0 && <BulkClosingCommission ids={unconfiguredIds} workspaceId={activeWorkspaceId} onSaved={() => void unconfiguredQuery.refetch()} trigger={open => <div role="status" className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-warning/50 bg-warning/10 p-3 text-sm"><span className="font-medium">{unconfiguredIds.length} נכסים ללא עמלות סגירה ותמחור לידים</span><Button size="sm" className="shrink-0" onClick={open}>הגדרת עמלות</Button></div>} />}
 
         {/* The source and deal toggles sit below the field and appear only while search is open. */}
         {/* Search-open row: options aligned to the field edge, tools at row end. */}

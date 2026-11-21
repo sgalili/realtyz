@@ -66,6 +66,21 @@ const SOURCE_LABELS_HE: Record<string, string> = {
   manual: "ידני",
 };
 
+/** Magnifier for My Properties: toggles the page's search row via window events. */
+function PropertiesHeroSearchButton() {
+  const [open, setOpen] = React.useState(false);
+  React.useEffect(() => {
+    const onState = (event: Event) => setOpen(!!(event as CustomEvent<{ open?: boolean }>).detail?.open);
+    window.addEventListener('properties:search-state', onState);
+    window.dispatchEvent(new Event('properties:request-search-state'));
+    return () => window.removeEventListener('properties:search-state', onState);
+  }, []);
+  return <div className="relative">
+    <Button size="icon" variant="ghost" aria-label={open ? 'סגירת חיפוש' : 'חיפוש נכסים'} title={open ? 'סגירת חיפוש' : 'חיפוש נכסים'} aria-expanded={open} aria-controls="inventory-search-row" className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => window.dispatchEvent(new Event('properties:toggle-search'))}><Search className="!h-5 !w-5" /></Button>
+    {open && <X aria-hidden className="pointer-events-none absolute end-0 top-0 !h-3 !w-3 text-primary-foreground" strokeWidth={3} />}
+  </div>;
+}
+
 function usePropertyHeroSuffix(pathname: string): string {
   const { connected } = useHomelyConnection();
   const match = pathname.match(/^\/properties\/([^/]+)/);
@@ -368,6 +383,7 @@ export function PageHero() {
             <Button size="icon" variant="ghost" aria-label="חיפוש פרויקטים" title="חיפוש פרויקטים" aria-expanded={searchParams.get('search') === '1'} aria-controls="developer-project-search" className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => setSearchParams(current => { const next = new URLSearchParams(current); next.set('search', '1'); return next; }, { replace: true })}><Search className="!h-5 !w-5" /></Button>
             {searchParams.get('search') === '1' && <Button size="icon" variant="ghost" aria-label="סגירת חיפוש פרויקטים" title="סגירת חיפוש" className="absolute -end-1 -top-1 h-5 w-5 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => setSearchParams(current => { const next = new URLSearchParams(current); next.delete('search'); return next; }, { replace: true })}><X className="!h-3 !w-3" /></Button>}
           </div>}
+          {access.properties && location.pathname === '/properties' && <PropertiesHeroSearchButton />}
           {location.pathname.startsWith('/wallet') && <UsagePriceListButton />}
           {(location.pathname === '/affiliate' || location.pathname.startsWith('/affiliate-network')) && <AffiliateProgramHelp />}
           {false && isMyAdsPage && (

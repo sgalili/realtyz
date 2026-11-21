@@ -90,7 +90,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
                         {(card.photos?.length ?? 0) > 1 && <span aria-label={`${card.photos!.length} תמונות`} className="absolute right-0.5 top-0.5 rounded bg-foreground/70 px-1 text-[9px] font-semibold leading-tight text-background">{card.photos!.length}</span>}
                         {localId && <span title="שלי" aria-label="שלי" className="absolute bottom-0 right-0 inline-flex h-4 w-4 items-center justify-center rounded-br rounded-tl bg-white/80 text-success"><BadgeCheck className="h-3 w-3" aria-hidden="true" /></span>}
                       </div>
-                    ) : id === 'address' ? <div className="w-72 min-w-0 max-w-[18rem] sm:w-96 sm:max-w-[24rem]"><PublicCardSummary card={card} showCommissions={false} showBroker={false} dense /></div>
+                    ) : id === 'address' ? <div className="w-32 min-w-0 max-w-[8rem] whitespace-normal break-words sm:w-72 sm:max-w-[18rem] lg:w-96 lg:max-w-[24rem]"><PublicCardSummary card={card} showCommissions={false} showBroker={false} dense /></div>
                     : id === 'price' ? <span className="text-[17px] font-bold">{shekel(card.price)}{card.deal_type === 'rent' && card.price ? <span className="ms-1 text-xs font-normal"> / לחודש</span> : null}</span>
                     : id === 'commissions' ? (localId ? <PropertyCommissionIcons table listingId={localId} raw={{}} /> : null)
                     : id === 'rooms' ? card.rooms || ''

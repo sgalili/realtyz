@@ -67,7 +67,7 @@ const feeText = (row: PromotionRow, k: string, raw: string): string => {
   if (k === 't4' && row.affiliate_tier4_type === 'percent') return commissionOfferFromPrice(Number(row.asking_price) || 0, value);
   return `₪${value.toLocaleString('he-IL')}`;
 };
-export function QuickPublicPromotion({ ids, onPublished, compact = false, statusLive, fallback }: { ids: string[]; onPublished: (ids: string[], live?: boolean) => void; compact?: boolean; statusLive?: boolean; fallback?: ReactNode }) {
+export function QuickPublicPromotion({ ids, onPublished, compact = false, bare = false, statusLive, fallback }: { ids: string[]; onPublished: (ids: string[], live?: boolean) => void; compact?: boolean; /** Borderless icon-only trigger (multi-select toolbar). */ bare?: boolean; statusLive?: boolean; fallback?: ReactNode }) {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const { roles, loading: rolesLoading } = useUserRole();
   const scopeRef = useRef(activeWorkspaceId);
@@ -181,8 +181,8 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
     {compact && statusLive !== undefined ? (
       <PublishStatusGlobe live={statusLive} busy={busy} actionable={!statusLive} onClick={(event) => { event.stopPropagation(); void prepare(); }} />
     ) : (
-      <Button variant="outline" size={compact ? 'icon' : 'sm'} className={compact ? 'h-8 w-8 text-primary' : 'gap-1.5 whitespace-normal'} disabled={busy} title={bulk ? 'פרסום נכסים נבחרים' : 'פרסום בלוח הציבורי'} aria-label={bulk ? 'פרסום נכסים נבחרים' : 'פרסום בלוח הציבורי'} onClick={(event) => { event.stopPropagation(); void prepare(); }}>
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4 shrink-0" />}{!compact && (bulk ? 'פרסום נכסים נבחרים' : 'פרסום בלוח הציבורי')}
+      <Button variant={bare ? 'ghost' : 'outline'} size={compact || bare ? 'icon' : 'sm'} className={bare ? 'h-8 w-8 border-0 text-primary hover:bg-transparent' : compact ? 'h-8 w-8 text-primary' : 'gap-1.5 whitespace-normal'} disabled={busy} title={bulk ? 'פרסום נכסים נבחרים' : 'פרסום בלוח הציבורי'} aria-label={bulk ? 'פרסום נכסים נבחרים' : 'פרסום בלוח הציבורי'} onClick={(event) => { event.stopPropagation(); void prepare(); }}>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4 shrink-0" />}{!compact && !bare && (bulk ? 'פרסום נכסים נבחרים' : 'פרסום בלוח הציבורי')}
       </Button>
     )}
     <Dialog open={open} onOpenChange={(value) => { if (!busy) setOpen(value); }}>
