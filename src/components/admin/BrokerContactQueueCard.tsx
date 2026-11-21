@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck, ChevronDown, Phone } from 'lucide-react';
+import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck, ShieldX, ChevronDown, Phone } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
 import { MarketingContactLine, type MarketingContact } from './MarketingContactLine';
@@ -191,7 +191,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
   return <li className="space-y-2 rounded-xl border border-border/70 p-3 sm:p-4">
     <div className="flex items-center gap-1">
       <div className="flex min-w-0 flex-1 items-center gap-1">
-        {b.license_verified && <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-label="אומת מול המאגר הממשלתי" />}
+        {b.license_verified ? <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-label="אומת מול המאגר הממשלתי" /> : !b.is_developer && <ShieldX className="h-4 w-4 shrink-0 text-destructive" role="img" aria-label="הרישיון לא אומת מול המאגר הממשלתי"><title>הרישיון לא אומת מול המאגר הממשלתי</title></ShieldX>}
         <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
           {b.is_developer ? <DeveloperLogo name={b.full_name} logoUrl={b.office_logo_url} className="h-9 w-9" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
           <span className="truncate text-base font-bold sm:text-lg">{b.full_name || 'ללא שם'}</span>
@@ -324,18 +324,19 @@ export function ImportHistory() {
   const q = useQuery({ queryKey: ['broker-import-history'], queryFn: () => invoke<{ items: ImportItem[] }>('admin-broker-contact', { action: 'imports' }) });
   const [kind, setKind] = useState<'broker' | 'developer'>('broker');
   const allImports = q.data?.items ?? [];
-  const items = allImports.filter(i => i.kind === kind);
-  const kindTabs = <Tabs value={kind} onValueChange={v => setKind(v as 'broker' | 'developer')} dir="rtl" className="mb-3"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="broker">מתווכים ({allImports.filter(i => i.kind === 'broker').length})</TabsTrigger><TabsTrigger value="developer">יזמים ({allImports.filter(i => i.kind === 'developer').length})</TabsTrigger></TabsList></Tabs>;
+  // Rows whose account was removed have no workspace and render grayed out: list them last and leave them out of tab counts.
+  const isRemoved = (i: ImportItem) => !i.workspace_owner_id;
+  const items = allImports.filter(i => i.kind === kind).sort((a, b) => Number(isRemoved(a)) - Number(isRemoved(b)));
+  const kindTabs = <Tabs value={kind} onValueChange={v => setKind(v as 'broker' | 'developer')} dir="rtl" className="mb-3"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="broker">מתווכים ({allImports.filter(i => i.kind === 'broker' && !isRemoved(i)).length})</TabsTrigger><TabsTrigger value="developer">יזמים ({allImports.filter(i => i.kind === 'developer' && !isRemoved(i)).length})</TabsTrigger></TabsList></Tabs>;
   if (q.isLoading) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
   if (q.isError) return <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p>;
   if (!items.length) return <div>{kindTabs}<p className="text-base text-muted-foreground">אין יבואים בלשונית זו.</p></div>;
   return <div>{kindTabs}<div className="overflow-x-auto rounded-xl border border-border/70">
-    <table className="w-full min-w-[520px] text-right text-sm">
-      <thead className="bg-muted/50 text-muted-foreground"><tr><th className="p-2 font-semibold">לוגו</th><th className="p-2 font-semibold">שם</th><th className="p-2 font-semibold">סוג</th><th className="p-2 font-semibold">{'פרויקטים/נכסים'}</th><th className="p-2 font-semibold">סטטוס</th><th className="p-2 font-semibold">תאריך</th><th className="p-2"><span className="sr-only">מחיקת רשומה</span></th></tr></thead>
+    <table className="w-full min-w-[440px] text-right text-sm">
+      <thead className="bg-muted/50 text-muted-foreground"><tr><th className="p-2 font-semibold">לוגו</th><th className="p-2 font-semibold">שם</th><th className="p-2 font-semibold">{'פרויקטים/נכסים'}</th><th className="p-2 font-semibold">סטטוס</th><th className="p-2 font-semibold">תאריך</th><th className="p-2"><span className="sr-only">מחיקת רשומה</span></th></tr></thead>
       <tbody className="divide-y divide-border/70">{items.map(i => <tr key={`${i.kind}-${i.id}`}>
         <td className="p-2">{i.kind === 'developer' ? <DeveloperLogo name={i.name} logoUrl={i.logo_url} className="h-8 w-8" /> : i.logo_url ? <img src={i.logo_url} alt="לוגו שיובא" className="h-8 w-8 rounded-md object-contain" /> : <X className="h-4 w-4 text-muted-foreground" aria-label="חסר" />}</td>
         <td className="p-2"><Button variant="ghost" className="h-auto justify-start gap-2 p-0 text-right font-bold whitespace-normal" disabled={!i.workspace_owner_id || opening !== null} aria-label={`פתיחת ${i.kind === 'developer' ? 'הפרויקטים' : 'הנכסים'} של ${i.name}`} onClick={() => void openInventory(i)}>{i.avatar_url && <img src={i.avatar_url} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />}<span>{i.name || 'ללא שם'}</span>{opening === i.id && <Loader2 className="h-4 w-4 animate-spin" />}</Button></td>
-        <td className="p-2">{i.kind === 'developer' ? 'יזם' : 'מתווך'}</td>
         <td className="p-2">{i.projects}</td>
         <td className="p-2 whitespace-nowrap" title={i.error ?? undefined}>{i.status === 'failed' ? <span className="text-destructive">נכשל</span> : i.status === 'completed' || !i.status ? 'הושלם' : 'בתהליך'}</td>
         <td className="p-2 whitespace-nowrap">{new Date(i.imported_at).toLocaleDateString('he-IL')}</td>

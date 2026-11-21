@@ -31,6 +31,6 @@ export function adminSectionFromParams(value: string | null): AdminSection {
 
 export function adminHistoryFromParams(value: string | null): AdminHistoryTab {
   if (value === 'pending' || value === 'imports' || value === 'sends') return value;
-  const saved = readSuperAdminViewState().history;
-  return saved === 'imports' || saved === 'sends' ? saved : 'pending';
+  // Entering the import screen without an explicit tab always opens ממתינים.
+  return 'pending';
 }

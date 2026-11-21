@@ -10,10 +10,10 @@ describe('Super Admin view restoration', () => {
     expect(adminHistoryFromParams(null)).toBe('pending');
   });
 
-  it('restores the last section and history tab when URL parameters are absent', () => {
+  it('restores the last section and opens the pending tab when URL parameters are absent', () => {
     saveSuperAdminViewState({ section: 'import', history: 'sends' });
     expect(adminSectionFromParams(null)).toBe('import');
-    expect(adminHistoryFromParams(null)).toBe('sends');
+    expect(adminHistoryFromParams(null)).toBe('pending');
   });
 
   it('restores the exact open send card without losing the section', () => {
