@@ -1807,6 +1807,13 @@
       "when": 1795285939833,
       "tag": "0257_imported_broker_license_grace",
       "breakpoints": true
+    },
+    {
+      "idx": 258,
+      "version": "7",
+      "when": 1795289647475,
+      "tag": "0258_import_jobs_checkpoint_index",
+      "breakpoints": true
     }
   ]
 }

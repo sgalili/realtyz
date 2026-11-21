@@ -1065,6 +1065,7 @@ async function startImportWorker() {
       const e = error;
       if (e.status === 409 && /lease|job_not_running/.test(e.message)) return;
       c.transientRetries = Math.max(c.transientRetries ?? 0, job.checkpoint?.transientRetries ?? 0) + 1;
+      c.lastError = { message: String(e.message ?? "").slice(0, 500), status: e.status ?? null, at: (/* @__PURE__ */ new Date()).toISOString(), stage };
       const permanent = [400, 401, 403, 407, 413, 422].includes(e.status);
       if (permanent || c.transientRetries >= 8) {
         await progress("failed", true, e.message);

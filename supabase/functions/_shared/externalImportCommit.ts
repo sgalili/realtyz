@@ -29,8 +29,10 @@ export async function knownExternalEntity(admin: Admin, kind: string, url: strin
     if (pe || ae) throw pe ?? ae;
     if (profiles?.length || approved?.length) return true;
   }
-  const jobs = await readAllRows((from, to) => admin.from('broker_import_jobs').select('checkpoint').order('id').range(from, to));
-  return jobs.some(j => (j.checkpoint?.brokerResults ?? []).some((r: any) => r.source_url === url));
+  // One indexed JSON containment lookup instead of reading every historical job.
+  const { data: jobs, error: je } = await admin.from('broker_import_jobs').select('id').contains('checkpoint', { brokerResults: [{ source_url: url }] }).limit(1);
+  if (je) throw je;
+  return Boolean(jobs?.length);
 }
 
 export async function commitExternalEntity(admin: Admin, job: any, body: any) {

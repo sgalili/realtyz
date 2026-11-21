@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS broker_import_jobs_checkpoint_gin ON public.broker_import_jobs USING gin (checkpoint jsonb_path_ops);
