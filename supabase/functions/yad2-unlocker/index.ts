@@ -2225,6 +2225,21 @@ Deno.serve(async (req) => {
     if (parsedUrl.protocol !== "https:" || !/(^|\.)yad2\.co\.il$/i.test(parsedUrl.hostname) || parsedUrl.username || parsedUrl.password) {
       return json({ error: "invalid_yad2_url" }, 400);
     }
+    // External Railway worker already read this page; only parse and save here, never call Bright Data.
+    if (typeof body?.external_html === 'string') {
+      if (token !== SERVICE_KEY || body.external_html.length > 8_000_000 || !/^\/realestate\/item\/[a-zA-Z0-9]+$/.test(parsedUrl.pathname)) return json({error:'forbidden'},403);
+      const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+      const {data:job}=await admin.from('broker_import_jobs').select('checkpoint,status,lease_token,lease_until').eq('id',body.admin_import_job_id).maybeSingle();
+      if (!job || job.status !== 'running' || job.checkpoint?.execution !== 'external' || job.lease_token !== body.admin_import_lease_token || Date.parse(job.lease_until ?? '') <= Date.now() || !(job.checkpoint?.brokerResults ?? []).some((r:any)=>r.broker_id===userId)) return json({error:'forbidden'},403);
+      const row = parseItem(body.external_html,inputUrl);
+      if (!row) return json({error:'listing_unavailable'},422);
+      const rejection = residentialImportRejection(row as any);
+      if (rejection) return json({error:'non_residential_listing',reason:rejection},422);
+      const {data:existing}=await admin.from('listings').select('id').eq('workspace_owner_id',userId).eq('source','yad2').eq('external_id',row.external_id).limit(1).maybeSingle();
+      if (existing) return json({success:true,listing_id:existing.id,replay:true});
+      const saved = await saveListing(admin,userId,row);
+      return json({success:true,listing_id:saved.id});
+    }
     // Short links are fetched through the same managed transport, never raw HEAD.
     if (agencyUrl(inputUrl)) {
       // Directory reads are only for the current leased Super Admin import.

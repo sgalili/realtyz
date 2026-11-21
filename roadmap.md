@@ -1,10 +1,11 @@
 # Roadmap
 
 ## External import worker November 21
-- [ ] Queue Super Admin broker/developer requests without browser scan loops.
-- [ ] Add protected external-worker claiming/progress and disable legacy dispatch for external jobs.
-- [ ] Verify polling, authorization and persisted progress.
-- [ ] Connect and verify the external worker deployment (requires the user's worker service).
+- [x] Prepare a runnable Railway TORAFF worker folder and document exact environment variables.
+- [x] Queue Super Admin broker/developer requests without browser scan loops.
+- [x] Add protected external-worker claiming/progress and disable legacy dispatch for external jobs.
+- [x] Verify polling, authorization and persisted progress with browser, unit and scratch database tests.
+- [ ] Connect and verify the external worker deployment (awaiting existing TORAFF Railway Start Command, deployment access and environment variables there; no paid live import run).
 
 ## Developer and broker card refinements November 20
 - [x] Swap the developer hero back and add buttons into their requested positions.
