@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BRIGHT_DATA_TIMEOUT_MS, BROKER_WORKER_CALL_TIMEOUT_MS, readWorkerResponse, logProviderFailure, logUnlockerRequest, logUnlockerResponse } from '../../supabase/functions/_shared/brightDataDiagnostics';
+import { WorkerServerError, WorkerResponseError, BRIGHT_DATA_TIMEOUT_MS, BROKER_WORKER_CALL_TIMEOUT_MS, readWorkerResponse, logProviderFailure, logUnlockerRequest, logUnlockerResponse } from '../../supabase/functions/_shared/brightDataDiagnostics';
 
 beforeEach(() => {
   // jsdom's older AbortSignal lacks timeout; match the deployed runtime's API.
@@ -103,5 +103,20 @@ describe('internal worker validation errors', () => {
   it('stops at once on a suspended provider account instead of hiding it behind a generic retryable error', async () => {
     const transport = vi.fn(async () => new Response(JSON.stringify({ error: 'scrape_failed', detail: 'שירות ייבוא יד2 מושעה עקב חשבון Bright Data לא פעיל' }), { status: 200 }));
     await expect(readWorkerResponse('https://worker.test/import', {}, transport as typeof fetch)).rejects.toMatchObject({ name: 'ProviderAccountError' });
+  });
+  it('keeps an internal worker 500 reason instead of relabelling it as a Bright Data failure', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const transport = vi.fn(async () => new Response(JSON.stringify({ error: 'db exploded' }), { status: 500 }));
+    const err = await readWorkerResponse('https://x.test/functions/v1/super-admin-create-user', {}, transport as typeof fetch).catch(e => e);
+    expect(err).toBeInstanceOf(WorkerServerError);
+    expect(err.message).toBe('super-admin-create-user (HTTP 500): db exploded');
+    expect(err.message).not.toContain('Bright Data');
+  });
+  it('treats an already-approved license (409) as a permanent per-broker rejection', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const transport = vi.fn(async () => new Response(JSON.stringify({ ok: false, error: 'license_already_approved_for_another_account' }), { status: 409 }));
+    const err = await readWorkerResponse('https://x.test/functions/v1/super-admin-create-user', {}, transport as typeof fetch).catch(e => e);
+    expect(err).toBeInstanceOf(WorkerResponseError);
+    expect(err.status).toBe(409);
   });
 });

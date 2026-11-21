@@ -72,6 +72,10 @@ export function providerErrorMessage(status: number | undefined, timedOut = fals
 export class WorkerResponseError extends Error {
   constructor(message: string, readonly status: number) { super(message); this.name = 'WorkerResponseError'; }
 }
+/** An internal worker crashed (HTTP 500) with a real reason; still retryable, but never labelled as a Bright Data failure. */
+export class WorkerServerError extends Error {
+  constructor(message: string, readonly status: number) { super(message); this.name = 'WorkerServerError'; }
+}
 
 /** Provider account/billing problem (e.g. client_10020 suspended): permanent until fixed by a person, never retried. */
 export const PROVIDER_ACCOUNT_ERROR = /client_10020|account is suspended|מושעה|חשבון Bright Data לא פעיל|brightdata_account_suspended/i;
@@ -104,6 +108,7 @@ export async function readWorkerResponse(url: string, init: RequestInit, transpo
       const detail = typeof raw === 'string' ? raw : JSON.stringify(raw);
       if (PROVIDER_ACCOUNT_ERROR.test(detail) || PROVIDER_ACCOUNT_ERROR.test(String(data?.error ?? ''))) throw new ProviderAccountError(detail);
       if (status && status >= 400 && status < 500 && ![401, 403, 408].includes(status)) throw new WorkerResponseError(detail, status);
+      if (status === 500) throw new WorkerServerError(`${url.split('/').pop()} (HTTP 500): ${detail}`.slice(0, 500), status);
       throw new Error(detail);
     }
     if (!data || typeof data !== 'object') throw new Error('Invalid worker response');
@@ -113,6 +118,7 @@ export async function readWorkerResponse(url: string, init: RequestInit, transpo
     if (error instanceof ProviderRateLimitError) throw error;
     if (error instanceof ImportAvailabilityError) throw error;
     if (error instanceof WorkerResponseError) throw error;
+    if (error instanceof WorkerServerError) throw error;
     if (error instanceof ProviderAccountError) throw error;
     const timedOut = /timeout|abort|timed out/i.test(describeError(error));
     if (timedOut || status === 502 || status === 503 || status === 504) throw new ProviderTimeoutError(providerErrorMessage(status, timedOut), status);

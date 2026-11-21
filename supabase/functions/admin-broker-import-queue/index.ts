@@ -89,6 +89,9 @@ Deno.serve(async req => {
       const cooldown=rateCooldownRemaining(existing.checkpoint as Record<string,unknown>);
       if(cooldown>0)return json({error:`השהיית בטיחות לאחר 429. ניתן להמשיך בעוד ${Math.ceil(cooldown/1000)} שניות.`},429);
       const scoped=createClient(Deno.env.get('SUPABASE_URL')??'',Deno.env.get('SUPABASE_ANON_KEY')??'',{global:{headers:{Authorization:req.headers.get('Authorization')??''}}});
+      // A manual resume after exhausted retries starts a fresh bounded retry series instead of pausing on the next blip.
+      const cp=(existing.checkpoint??{}) as Record<string,unknown>;
+      if(Number(cp.transientRetries??0)>0){const {error:re}=await admin.from('broker_import_jobs').update({checkpoint:{...cp,transientRetries:0}}).eq('id',input.job_id).neq('status','running');if(re)throw re;}
       const {error}=await scoped.rpc('control_broker_import_job',{_id:input.job_id,_action:'resume'}); if(error) throw error;
       return json({ok:true});
     }
@@ -375,7 +378,18 @@ Deno.serve(async req => {
           for(let i=0;i<phones.length;i+=200){const {data,error}=await admin.from('profiles').select('phone').in('phone',phones.slice(i,i+200));if(error)throw error;for(const r of data??[])if(r.phone)had.add(r.phone);}
           const seen=new Set((c.skippedExisting??[]).map((x:Record<string,any>)=>x.key));
           for(const b of all)if(b.phone&&had.has(b.phone)&&!seen.has(b.phone)){c.skippedExisting=[...(c.skippedExisting??[]),{kind:'broker',key:b.phone,name:b.full_name??b.office_name??null}];seen.add(b.phone);}
-          c.brokers=mergeBrokers(c.brokers,all.filter((b:Record<string,any>)=>!(b.phone&&had.has(b.phone))),job.target_brokers);
+          const lics=[...new Set(all.map((b:Record<string,any>)=>String(b.license_number??'').trim()).filter(Boolean))];
+          const hadLic=new Set<string>();
+          for(let i=0;i<lics.length;i+=200){
+            const part=lics.slice(i,i+200);
+            const [{data:pr,error:pe},{data:ap,error:ae}]=await Promise.all([admin.from('profiles').select('broker_license_number').in('broker_license_number',part),admin.from('admin_approved_broker_licenses').select('license_number').in('license_number',part)]);
+            if(pe)throw pe;if(ae)throw ae;
+            for(const r of pr??[])if(r.broker_license_number)hadLic.add(String(r.broker_license_number).trim());
+            for(const r of ap??[])if(r.license_number)hadLic.add(String(r.license_number).trim());
+          }
+          const existsByLic=(b:Record<string,any>)=>hadLic.has(String(b.license_number??'').trim());
+          for(const b of all){const k=String(b.license_number??'').trim();if(k&&hadLic.has(k)&&!(b.phone&&had.has(b.phone))&&!seen.has(k)){c.skippedExisting=[...(c.skippedExisting??[]),{kind:'broker',key:k,name:b.full_name??b.office_name??null}];seen.add(k);}}
+          c.brokers=mergeBrokers(c.brokers,all.filter((b:Record<string,any>)=>!(b.phone&&had.has(b.phone))&&!existsByLic(b)),job.target_brokers);
         }
         if(c.brokers.length>=job.target_brokers){c.phase='validating';delete c.rows;delete c.enrichUrls;}
         else {
@@ -414,6 +428,18 @@ Deno.serve(async req => {
           await save();
         } else if(c.phase==='creating') {
           const {data:profiles,error}=b.phone?await admin.from('profiles').select('id').eq('phone',b.phone).limit(2):{data:[],error:null};if(error)throw error;
+          // Hidden-phone brokers: the license is the identity. An existing account or approval with this license means already imported.
+          const lic=String(b.license_number??'').trim();
+          if(!profiles?.length && lic) {
+            const [{data:byProfile,error:pe},{data:byApproval,error:ae}]=await Promise.all([
+              admin.from('profiles').select('id').eq('broker_license_number',lic).limit(1),
+              admin.from('admin_approved_broker_licenses').select('user_id').eq('license_number',lic).limit(1),
+            ]);if(pe)throw pe;if(ae)throw ae;
+            if(byProfile?.length||byApproval?.length){
+              console.log('[broker-import-skip-existing]',JSON.stringify({job_id:job.id,broker_index:c.brokerIndex,license:lic,reason:byProfile?.length?'license_on_existing_profile':'license_already_approved'}));
+              c.skippedExisting=[...(c.skippedExisting??[]),{kind:'broker',key:lic,name:b.full_name??b.office_name??null}];c.brokerIndex++;c.phase='validating';c.transientRetries=0;await save({skipped:job.skipped+1,error:null});return json({ok:true,skipped:true});
+            }
+          }
           let brokerId:string;
           if(profiles?.length) {
             const {data:onboarding}=await admin.from('admin_broker_onboarding').select('user_id,first_login_at').eq('user_id',profiles[0].id).maybeSingle();
@@ -421,7 +447,13 @@ Deno.serve(async req => {
             if(profiles.length>=1){c.skippedExisting=[...(c.skippedExisting??[]),{kind:'broker',key:b.phone,name:b.full_name??b.office_name??null}];c.brokerIndex++;c.phase='validating';await save({skipped:job.skipped+1});return json({ok:true});}
             brokerId=profiles[0].id;
           } else {
-            const d=await call('super-admin-create-user',{full_name:b.full_name,...(b.phone?{phone_e164:b.phone}:{}),...(b.email?{email:b.email}:{}),broker_license_number:b.license_number,approve_broker:true,import_job_id:job.id});
+            let d:Record<string,any>;
+            try{d=await call('super-admin-create-user',{full_name:b.full_name,...(b.phone?{phone_e164:b.phone}:{}),...(b.email?{email:b.email}:{}),broker_license_number:b.license_number,approve_broker:true,import_job_id:job.id});}
+            catch(err){
+              // This step calls our own account function, not Bright Data: log the exact worker, status and reason.
+              console.error('[broker-import-create-failed]',JSON.stringify({job_id:job.id,broker_index:c.brokerIndex,license:lic||null,has_phone:Boolean(b.phone),worker:'super-admin-create-user',provider:'none (internal account creation, no Bright Data request)',error_type:err instanceof Error?err.name:typeof err,status:(err as {status?:number})?.status??null,reason:err instanceof Error?err.message.slice(0,500):String(err),attempt:(c.transientRetries??0)+1,max_attempts:MAX_TRANSIENT_IMPORT_RETRIES}));
+              throw err;
+            }
             if(!d.user_id)throw new Error('יצירת המתווך נכשלה');brokerId=d.user_id;
           }
           if(b.office_name) {
@@ -513,6 +545,7 @@ Deno.serve(async req => {
         return json({ok:true,waiting:true,retry_at:retry.retryAt});
       }
       const message=e instanceof Error?e.message:'הייבוא נעצר';
+      if((c.transientRetries??0)>=MAX_TRANSIENT_IMPORT_RETRIES)console.error('[broker-import-retries-exhausted]',JSON.stringify({job_id:job.id,phase:c.phase,attempts:c.transientRetries,error:message.slice(0,500)}));
       if(c.phase==='developer_discovering'){await save({status:'failed',error:message});return json({ok:true,failed:true});}
       // Batch links: a permanent failure on one developer link is logged per item and the loop continues with the next link.
       if(String(c.phase??'').startsWith('developer_') && Array.isArray(c.developerUrls)) {

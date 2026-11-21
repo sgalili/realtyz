@@ -32,6 +32,13 @@ const normalizeIsraeliPhone = (value?: string): string | null => {
   return null;
 };
 
+/** Permanent account-setup rejections: answered as 4xx so batch imports skip the broker instead of retrying. */
+const KNOWN_REJECTIONS: Record<string, { status: number; detail: string }> = {
+  license_already_approved_for_another_account: { status: 409, detail: 'מספר הרישיון כבר משויך לחשבון קיים' },
+  invalid_pending_broker: { status: 409, detail: 'החשבון אינו חשבון ממתין שנוצר בייבוא' },
+  forbidden: { status: 403, detail: 'אין הרשאה' },
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -176,8 +183,16 @@ Deno.serve(async (req) => {
       silent: true,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
-    console.error("super-admin-create-user error", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "unknown" }), {
+    // Database errors are plain objects (not Error instances); keep their real code/message instead of "unknown".
+    const err = (e ?? {}) as { message?: unknown; code?: unknown; details?: unknown; hint?: unknown };
+    const message = typeof err.message === 'string' && err.message ? err.message : String(e ?? 'unknown');
+    const code = typeof err.code === 'string' ? err.code : null;
+    const known = KNOWN_REJECTIONS[message];
+    console.error("super-admin-create-user error", JSON.stringify({ code, message, details: err.details ?? null, hint: err.hint ?? null, permanent: Boolean(known) }));
+    if (known) return new Response(JSON.stringify({ ok: false, error: message, code: message, detail: known.detail }), {
+      status: known.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+    return new Response(JSON.stringify({ error: message, code }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
