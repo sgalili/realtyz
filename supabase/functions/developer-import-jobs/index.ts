@@ -72,8 +72,9 @@ async function fetchDeveloperPage(url: string, attempt: number, parentProject?: 
         body: JSON.stringify(rotatingUnlockerPayload(zone, url, attempt)),
         signal: AbortSignal.timeout(40_000),
       });
-      return { status: response.status, html: await response.text(), retryAfterMs: retryAfterMs(response.headers.get('retry-after')) };
+      return { status: response.status, html: await response.text(), retryAfterMs: retryAfterMs(response.headers.get('retry-after')), brdErr: `${response.headers.get('x-brd-err-code') ?? ''} ${response.headers.get('x-brd-error') ?? ''}` };
     }, value => ({ status: value.status, bytes: new TextEncoder().encode(value.html).length }));
+    if (/client_10020|account is suspended/i.test(result.brdErr)) throw new Error('provider_account_suspended');
     if (result.status === 429) throw new ProviderRateLimitError(result.retryAfterMs);
     if (result.status >= 400) throw new Error(`provider_${result.status}`);
     if (!result.html.trim()) throw new Error('empty_response');
@@ -205,7 +206,7 @@ async function stepImport(body: Record<string, unknown>) {
     return json({ ok: true, stage: 'project', projects: projects.length });
   } catch (error) {
     const rateLimited = error instanceof ProviderRateLimitError;
-    const permanent = page.attempts >= MAX_PAGE_ATTEMPTS || safeImportError(error) === 'not_configured';
+    const permanent = page.attempts >= MAX_PAGE_ATTEMPTS || ['not_configured', 'provider_account_suspended'].includes(safeImportError(error));
     const delay = developerRetryDelay(page.attempts, error instanceof ProviderRateLimitError ? error.retryAfterMs : 0, rateLimited);
     const next = new Date(Date.now() + (permanent ? 0 : delay)).toISOString();
     const message = safeImportError(error);
