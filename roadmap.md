@@ -1,5 +1,11 @@
 # Roadmap
 
+## External import worker November 21
+- [ ] Queue Super Admin broker/developer requests without browser scan loops.
+- [ ] Add protected external-worker claiming/progress and disable legacy dispatch for external jobs.
+- [ ] Verify polling, authorization and persisted progress.
+- [ ] Connect and verify the external worker deployment (requires the user's worker service).
+
 ## Developer and broker card refinements November 20
 - [x] Swap the developer hero back and add buttons into their requested positions.
 - [x] Remove per-account photo reordering, swap delete/invitation actions and use a trash icon.

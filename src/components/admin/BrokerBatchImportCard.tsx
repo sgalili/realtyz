@@ -15,7 +15,7 @@ import { validImportParameters } from '../../../supabase/functions/_shared/broke
 import { agencyUrl } from '../../../supabase/functions/_shared/yad2Agencies';
 import { developerImportUrl } from '@/lib/developerImportUrl';
 import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY } from '../../../supabase/functions/_shared/developerImportRetry';
-import { startContinuousImportRunner } from '@/lib/continuousImportRunner';
+import { importJobPollInterval, importJobTargetKind } from '@/lib/importJobMonitoring';
 import { refreshImportedInventory } from '@/lib/refreshImportedInventory';
 
 const LINKS_KEY = 'toraff-broker-import-links';
@@ -25,6 +25,7 @@ const validLink = (value: string) => /^https:\/\//i.test(value) && Boolean(agenc
 const separateLinks = (value: string) => value.replace(/[ \t]+(?=https?:\/\/)/gi, '\n').replace(/\n{2,}/g, '\n');
 
 const stages: Record<string, string> = {
+  queued: 'ממתין ל־Worker חיצוני',
   scanning: 'סריקה ב־Bright Data', enriching: 'איסוף פרטי מתווכים', validating: 'בדיקת מודעות פעילות',
   creating: 'אימות רישיון ויצירת מתווך', importing: 'ייבוא טיוטות', developer_discovering: 'איתור יזמים ביד2', developer_scanning: 'קריאת עמודי יזם ופרויקטים',
   developer_creating: 'יצירת חשבון יזם פעיל ללא הודעות', developer_saving: 'שמירת פרויקטים ויחידות', completed: 'הייבוא הסתיים',
@@ -60,7 +61,8 @@ export function BrokerBatchImportCard() {
       if (error) throw error;
       return data;
     },
-    refetchInterval: query => query.state.data?.some(job => job.status === 'running' || (job.lease_until && Date.parse(job.lease_until) > Date.now())) ? 4000 : false,
+    refetchInterval: query => importJobPollInterval(query.state.data),
+    refetchIntervalInBackground: false,
   });
   const current = jobs?.[0];
   const [statusExpanded, setStatusExpanded] = useState(false);
@@ -96,7 +98,7 @@ export function BrokerBatchImportCard() {
   };
 
   const checkpoint = current?.checkpoint as {
-    waitUntil?: number; waitReason?: string; rateRetries?: number; transientRetries?: number; brokers?: { listing_urls: string[] }[];
+    execution?: string; autoDevelopers?: boolean; workerId?: string; workerHeartbeatAt?: string; waitUntil?: number; waitReason?: string; rateRetries?: number; transientRetries?: number; brokers?: { listing_urls: string[] }[];
     brokerIndex?: number; listingIndex?: number; page?: number; deal?: string; source?: string; rows?: unknown[];
     enriched?: number; enrichUrls?: string[]; cacheHits?: number; liveFetches?: number; timeoutSkips?: number;
     developerUrls?: string[]; developerIndex?: number; expectedProjects?: number; totalDeveloperUrls?: number; totalBrokerUrls?: number;
@@ -105,32 +107,11 @@ export function BrokerBatchImportCard() {
   } | undefined;
   const waitSeconds = Math.max(0, Math.ceil(((checkpoint?.waitUntil ?? 0) - now) / 1000));
   const autonomousDeveloper = autonomousDeveloperCheckpoint(checkpoint);
-  useEffect(() => {
-    if (!current || current.status !== 'running') return;
-    const jobId = current.id;
-    return startContinuousImportRunner({
-      initialDelay: Math.max(0, (checkpoint?.waitUntil ?? 0) - Date.now()),
-      step: async () => {
-        // The step keeps running on the server; the screen waits at most 10 seconds and then just checks progress again.
-        let data: { error?: string; failed?: boolean; paused?: boolean; done?: boolean; retry_in_ms?: number; retry_at?: number } | null = null;
-        try {
-          const res = await supabase.functions.invoke('admin-broker-import-queue', { body: { action: 'step', job_id: jobId }, signal: AbortSignal.timeout(10_000) });
-          if (res.error || res.data?.error) throw res.error ?? new Error(res.data.error);
-          data = res.data;
-        } catch (e) {
-          const ctx = (e as { context?: { name?: string; message?: string } })?.context;
-          if (e instanceof Error && /abort|timeout/i.test(`${e.name} ${e.message} ${ctx?.name ?? ''} ${ctx?.message ?? ''}`)) return { done: false, retry_in_ms: 5000 };
-          throw e;
-        }
-        return { done: data?.failed === true || data?.paused === true || data?.done === true, retry_in_ms: data?.retry_in_ms ?? (data?.retry_at ? Math.max(0, data.retry_at - Date.now()) : undefined) };
-      },
-      refresh: () => qc.invalidateQueries({ queryKey: ['admin-broker-import-jobs'] }),
-    });
-  }, [current?.id, current?.status, qc]);
   const waitingForAutomaticRetry = waitSeconds > 0 && (checkpoint?.waitReason === 'rate_limit' || checkpoint?.waitReason === DEVELOPER_TRANSIENT_RETRY);
   const remaining = checkpoint?.brokers?.slice(checkpoint.brokerIndex ?? 0).reduce((total, broker) => total + broker.listing_urls.length, 0);
   const estimate = current?.step_average_ms && remaining ? Math.ceil(Number(current.step_average_ms) * remaining / 60000) : null;
-  const stalled = current?.status === 'running' && !waitingForAutomaticRetry && !(current.lease_until && Date.parse(current.lease_until) > Date.now()) && Date.now() - Date.parse(current.updated_at) > 120_000;
+  const externalWorker = checkpoint?.execution === 'external';
+  const stalled = current?.status === 'running' && current.stage !== 'queued' && !waitingForAutomaticRetry && !(current.lease_until && Date.parse(current.lease_until) > Date.now()) && now - Date.parse(current.updated_at) > 120_000;
   const developerStage = current?.stage?.startsWith('developer_');
   const scanInfo = developerStage
     ? [`יזם ${(checkpoint?.developerIndex ?? 0) + 1} מתוך ${checkpoint?.totalDeveloperUrls ?? checkpoint?.developerUrls?.length ?? 1}`, checkpoint?.developerWork?.developer?.company_name, `${checkpoint?.developerWork?.visitedUrls?.length ?? 0} עמודים נקראו`, `${checkpoint?.developerWork?.projects?.length ?? 0} פרויקטים נמצאו`, checkpoint?.developerWork?.pendingUrls?.length ? `${checkpoint.developerWork.pendingUrls.length} עמודי פרויקט ממתינים` : null].filter(Boolean).join(' · ')
@@ -145,14 +126,14 @@ export function BrokerBatchImportCard() {
     window.addEventListener('admin-broker-import:new', openNewImport);
     return () => window.removeEventListener('admin-broker-import:new', openNewImport);
   }, [busy, autonomousDeveloper, current?.status]);
-  const linkJob = checkpoint?.source === 'urls';
+  const targetKind = importJobTargetKind(checkpoint);
   const entitiesDone = (current?.brokers_done ?? 0) + (current?.developers_done ?? 0);
   const expectedWarnings = checkpoint?.developerResults?.filter(result => result.projects < result.expected_projects) ?? [];
 
   return <section dir="rtl" className="space-y-4 border-b border-border py-5 text-right">
     {notice && <p className="text-base text-muted-foreground">{notice}</p>}
     <div role="status" className="space-y-3 rounded-xl border border-border/70 p-4">
-      {current ? <button type="button" aria-label={statusExpanded ? 'כיווץ פרטי הייבוא' : 'הרחבת פרטי הייבוא'} aria-expanded={statusExpanded} aria-controls="import-status-details" className="flex w-full flex-wrap items-center justify-between gap-2 text-right" onClick={() => setStatusExpanded(value => !value)}><span className="flex items-center gap-2 text-lg font-semibold"><ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${statusExpanded ? 'rotate-180' : ''}`} />{current.status === 'running' && !stalled && <Loader2 className="h-5 w-5 animate-spin" />}{current.status === 'paused' ? 'מושהה · ' : ''}{stages[current.stage] ?? current.stage}</span><span className="text-base text-muted-foreground">{linkJob ? `${entitiesDone}/${current.target_brokers} קישורים` : `${current.brokers_done}/${current.target_brokers} מתווכים`} · {current.listings_done} טיוטות{(current.developers_done ?? 0) > 0 ? ` · ${current.developers_done} יזמים · ${current.projects_done} פרויקטים · ${current.units_done} יחידות` : ''}{current.skipped > 0 ? ` · ${current.skipped} דולגו` : ''}</span></button> : <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-lg font-semibold"><ScanSearch className="h-5 w-5 text-muted-foreground" />סטטוס ייבוא</span><span className="text-base text-muted-foreground">אין ייבוא פעיל</span></div>}
+      {current ? <button type="button" aria-label={statusExpanded ? 'כיווץ פרטי הייבוא' : 'הרחבת פרטי הייבוא'} aria-expanded={statusExpanded} aria-controls="import-status-details" className="flex w-full flex-wrap items-center justify-between gap-2 text-right" onClick={() => setStatusExpanded(value => !value)}><span className="flex items-center gap-2 text-lg font-semibold"><ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${statusExpanded ? 'rotate-180' : ''}`} />{current.status === 'running' && !stalled && <Loader2 className="h-5 w-5 animate-spin" />}{current.status === 'paused' ? 'מושהה · ' : ''}{stages[current.stage] ?? current.stage}</span><span className="text-base text-muted-foreground">{targetKind === 'developers' ? `${current.developers_done ?? 0}/${current.target_brokers} יזמים` : targetKind === 'links' ? `${entitiesDone}/${current.target_brokers} קישורים` : `${current.brokers_done}/${current.target_brokers} מתווכים`} · {current.listings_done} טיוטות{(current.developers_done ?? 0) > 0 ? ` · ${current.developers_done} יזמים · ${current.projects_done} פרויקטים · ${current.units_done} יחידות` : ''}{current.skipped > 0 ? ` · ${current.skipped} דולגו` : ''}</span></button> : <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-lg font-semibold"><ScanSearch className="h-5 w-5 text-muted-foreground" />סטטוס ייבוא</span><span className="text-base text-muted-foreground">אין ייבוא פעיל</span></div>}
       {current && statusExpanded && <div id="import-status-details" className="space-y-3">
       <Progress className="h-3" value={current.status === 'completed' ? 100 : Math.min(99, (entitiesDone + (developerStage && checkpoint?.developerWork ? (checkpoint.developerWork.visitedUrls?.length ?? 0) / Math.max(1, (checkpoint.developerWork.visitedUrls?.length ?? 0) + (checkpoint.developerWork.pendingUrls?.length ?? 0) + 1) : 0)) / Math.max(1, current.target_brokers) * 100)} />
       {current.status === 'completed' && <ImportSummary checkpoint={checkpoint} job={current} />}
@@ -160,9 +141,9 @@ export function BrokerBatchImportCard() {
       {scanInfo && <p className="text-base text-muted-foreground">{scanInfo}</p>}
       {current.status !== 'completed' && waitSeconds > 0 && <p aria-live="polite" className="text-base font-medium text-muted-foreground">{checkpoint?.waitReason === 'rate_limit' ? `מגבלת בקשות (429) · ניסיון חוזר אוטומטי ${checkpoint?.rateRetries ?? 1}` : checkpoint?.waitReason === DEVELOPER_TRANSIENT_RETRY ? `תקלה זמנית בחיבור · ניסיון חוזר אוטומטי ${checkpoint?.transientRetries ?? 1}` : 'השהיית בטיחות בין סריקות למניעת עומס…'} · בעוד {waitSeconds} שניות</p>}
       {current.status === 'running' && waitSeconds === 0 && (checkpoint?.waitReason === 'rate_limit' || checkpoint?.waitReason === DEVELOPER_TRANSIENT_RETRY) && <p aria-live="polite" className="text-base font-medium text-muted-foreground">זמן ההמתנה הסתיים · ממשיך כעת…</p>}
-      <div className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 text-base text-muted-foreground">{current.status === 'running' && !stalled ? (estimate ? `זמן משוער שנותר: כ־${estimate} דקות` : current.step_average_ms ? `כ־${Math.round(Number(current.step_average_ms) / 1000)} שניות לכל שלב · זמן כולל יוצג לאחר איתור מתווכים` : 'זמן משוער: יופיע לאחר השלמת שלב ראשון') : current.status === 'completed' && current.brokers_done < (checkpoint?.totalBrokerUrls ?? current.target_brokers) ? 'הסריקה הסתיימה עם פחות מתווכים מהיעד' : ''}{checkpoint?.brokers?.length ? ` · מתווך ${(checkpoint.brokerIndex ?? 0) + 1}, מודעה ${(checkpoint.listingIndex ?? 0) + 1}` : ''}</span><div className="flex shrink-0 flex-row items-center gap-2">{!autonomousDeveloper && ['running', 'paused', 'failed'].includes(current.status) && <Button variant="outline" className="h-11 shrink-0 px-3 text-base" disabled={busy || (checkpoint?.waitReason === 'rate_limit' && waitSeconds > 0 && current.status !== 'running')} onClick={() => void action(current.status === 'running' && !stalled ? 'pause' : 'resume')}>{current.status === 'running' && !stalled ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}{current.status === 'running' && !stalled ? 'עצירה' : 'המשך'}</Button>}</div></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 text-base text-muted-foreground">{current.status === 'running' && !stalled ? (estimate ? `זמן משוער שנותר: כ־${estimate} דקות` : current.step_average_ms ? `כ־${Math.round(Number(current.step_average_ms) / 1000)} שניות לכל שלב · זמן כולל יוצג לאחר איתור מתווכים` : 'זמן משוער: יופיע לאחר השלמת שלב ראשון') : current.status === 'completed' && targetKind === 'brokers' && current.brokers_done < (checkpoint?.totalBrokerUrls ?? current.target_brokers) ? 'הסריקה הסתיימה עם פחות מתווכים מהיעד' : ''}{checkpoint?.brokers?.length ? ` · מתווך ${(checkpoint.brokerIndex ?? 0) + 1}, מודעה ${(checkpoint.listingIndex ?? 0) + 1}` : ''}</span><div className="flex shrink-0 flex-row items-center gap-2">{!autonomousDeveloper && ['running', 'paused', 'failed'].includes(current.status) && <Button variant="outline" className="h-11 shrink-0 px-3 text-base" disabled={busy || (checkpoint?.waitReason === 'rate_limit' && waitSeconds > 0 && current.status !== 'running')} onClick={() => void action(current.status === 'running' ? 'pause' : 'resume')}>{current.status === 'running' ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}{current.status === 'running' ? 'עצירה' : 'המשך'}</Button>}</div></div>
       {current.status === 'paused' && current.lease_until && Date.parse(current.lease_until) > Date.now() && <p className="text-base text-muted-foreground">הפעולה שכבר התחילה תסתיים ותישמר; לא תתחיל פעולה נוספת.</p>}
-      {stalled && <p role="alert" className="text-base font-medium text-destructive">שגיאת חיבור ל־Bright Data - אנא בדוק את המפתחות או נסה שוב</p>}
+      {stalled && <p role="alert" className="text-base font-medium text-destructive">{externalWorker ? 'לא התקבל עדכון מה־Worker החיצוני. ההתקדמות נשמרה; המשימה ממתינה לחיבור מחדש.' : 'לא התקבל עדכון מהסריקה. ההתקדמות נשמרה.'}</p>}
       {current.error && <p role="alert" className="text-base font-medium text-destructive">{current.error}</p>}
       </div>}
     </div>

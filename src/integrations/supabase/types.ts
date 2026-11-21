@@ -10829,6 +10829,39 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_external_import_job: {
+        Args: { _worker: string }
+        Returns: {
+          brokers_done: number
+          checkpoint: Json
+          created_at: string
+          created_by: string
+          developers_done: number
+          error: string | null
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          listings_done: number
+          max_listings: number
+          min_listings: number
+          projects_done: number
+          skipped: number
+          stage: string
+          status: string
+          step_average_ms: number | null
+          step_started_at: string
+          target_brokers: number
+          units_done: number
+          updated_at: string
+          workspace_owner_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "broker_import_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_fb_group_post_slot: {
         Args: { _group: string; _limit: number; _owner: string }
         Returns: boolean
@@ -12118,6 +12151,20 @@ export type Database = {
         Returns: undefined
       }
       remove_my_broker_license: { Args: never; Returns: Json }
+      report_external_import_job: {
+        Args: {
+          _checkpoint: Json
+          _counts: Json
+          _error: string
+          _id: string
+          _release: boolean
+          _stage: string
+          _status: string
+          _token: string
+          _worker: string
+        }
+        Returns: Json
+      }
       request_broker_license_review: {
         Args: { _certificate_path: string; _details?: Json; _license: string }
         Returns: Json

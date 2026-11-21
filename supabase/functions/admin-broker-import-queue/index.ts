@@ -54,13 +54,13 @@ Deno.serve(async req => {
   try {
     if(input.action==='start') {
       if(caller.kind!=='user' || input.max_listings<input.min_listings) return json({error:'טווח נכסים לא תקין'},400);
-      const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:input.target_brokers,_min:input.min_listings,_max:input.max_listings,_checkpoint:freshImportCheckpoint()});
+      const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:input.target_brokers,_min:input.min_listings,_max:input.max_listings,_checkpoint:{...freshImportCheckpoint(),execution:'external',requestType:'brokers'}});
       if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
       return json({job_id:data});
     }
     if(input.action==='start_auto_developers') {
       if(caller.kind!=='user') return json({error:'forbidden'},403);
-      const checkpoint={...freshImportCheckpoint(),source:'urls',autoDevelopers:true,phase:'developer_discovering',directoryUrl:DEVELOPER_DIRECTORY_URL,directoryVisited:[],developerUrls:[],developerIndex:0,developerResults:[],expectedProjects:input.max_projects,maxProjects:input.max_projects,totalBrokerUrls:0,totalDeveloperUrls:input.target_developers,targetDevelopers:input.target_developers,enriched:0};
+      const checkpoint={...freshImportCheckpoint(),execution:'external',requestType:'developers',source:'urls',autoDevelopers:true,phase:'developer_discovering',directoryUrl:DEVELOPER_DIRECTORY_URL,directoryVisited:[],developerUrls:[],developerIndex:0,developerResults:[],expectedProjects:input.max_projects,maxProjects:input.max_projects,totalBrokerUrls:0,totalDeveloperUrls:input.target_developers,targetDevelopers:input.target_developers,enriched:0};
       const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:input.target_developers,_min:1,_max:10,_checkpoint:checkpoint});
       if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
       return json({job_id:data,accepted:input.target_developers,developers:input.target_developers,automatic:true});
@@ -71,7 +71,7 @@ Deno.serve(async req => {
       const brokerUrls=[...new Set(input.urls.filter(u=>!developerImportUrl(u.trim())).map(u=>agencyUrl(u.trim())).filter((u):u is string=>Boolean(u)))];
       const accepted=developerUrls.length+brokerUrls.length;
       if(!accepted) return json({error:'לא נמצאו קישורי משרד/מתווך או יזם תקינים של יד2'},400);
-      const checkpoint={...freshImportCheckpoint(),source:'urls',phase:developerUrls.length?'developer_scanning':'enriching',enrichUrls:brokerUrls,developerUrls,developerIndex:0,developerResults:[],expectedProjects:input.expected_projects??1,maxProjects:input.max_projects??null,totalBrokerUrls:brokerUrls.length,totalDeveloperUrls:developerUrls.length,enriched:0,invalidUrls:input.urls.length-accepted};
+      const checkpoint={...freshImportCheckpoint(),execution:'external',requestType:developerUrls.length?(brokerUrls.length?'mixed':'developers'):'brokers',source:'urls',phase:developerUrls.length?'developer_scanning':'enriching',enrichUrls:brokerUrls,developerUrls,developerIndex:0,developerResults:[],expectedProjects:input.expected_projects??1,maxProjects:input.max_projects??null,totalBrokerUrls:brokerUrls.length,totalDeveloperUrls:developerUrls.length,enriched:0,invalidUrls:input.urls.length-accepted};
       const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:accepted,_min:1,_max:input.max_listings??10,_checkpoint:checkpoint});
       if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
       return json({job_id:data,accepted,developers:developerUrls.length,brokers:brokerUrls.length,rejected:input.urls.length-accepted});
@@ -95,6 +95,7 @@ Deno.serve(async req => {
       const {error}=await scoped.rpc('control_broker_import_job',{_id:input.job_id,_action:'resume'}); if(error) throw error;
       return json({ok:true});
     }
+    if(existing.checkpoint?.execution==='external') return json({error:'external_worker_only'},409);
     const {data:claimed,error:claimError}=await admin.rpc('claim_broker_import_step',{_id:input.job_id}); if(claimError) throw claimError;
     const job=claimed?.[0]; if(!job) return json({ok:true,idle:true,done:existing.status!=='running',retry_in_ms:Math.max(1000,(Date.parse(existing.lease_until??'')||0)-Date.now())});
     const c=job.checkpoint as Record<string,any>; const started=Date.now();
