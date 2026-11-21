@@ -25,10 +25,13 @@ type Row = { card: PublicCard; result: UnifiedResult };
 const shekel = (n?: number | null) => (n ? `₪${Number(n).toLocaleString('he-IL')}` : '');
 
 /** /properties table: same columns, headers, rows and expansion as the homepage board, plus management tools. */
-export default function ManagedBoardTable({ results, toCard, selectionMode, selectedIds, onToggleSelected, onSetSelected, favoriteIds, onFavorite, onPublished }: {
+export default function ManagedBoardTable({ results, toCard, selectionMode, selectedIds, onToggleSelected, onSetSelected, favoriteIds, onFavorite, onPublished, commissionPick, onToggleCommissionPick }: {
   results: UnifiedResult[];
   toCard: (r: UnifiedResult) => PublicCard;
   selectionMode: boolean;
+  /** Commission-assignment picking: the publish column becomes checkboxes for these candidates. */
+  commissionPick?: { candidates: Set<string>; picked: Set<string> } | null;
+  onToggleCommissionPick?: (id: string) => void;
   selectedIds: Set<string>;
   onToggleSelected: (id: string) => void;
   onSetSelected?: (ids: Set<string>) => void;
@@ -83,7 +86,8 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
                 <tr key={result.key} data-row-id={result.key} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   {selectionMode && <td className="p-2" onClick={e => e.stopPropagation()}>{localId ? <Checkbox checked={selectedIds.has(localId)} onCheckedChange={() => onToggleSelected(localId)} aria-label="בחירת נכס" /> : null}</td>}
                   {visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
-                    {id === 'publish' ? <div onClick={e => e.stopPropagation()}><QuickPublicPromotion ids={localId ? [localId] : []} compact statusLive={live} onPublished={onPublished} fallback={<PublishStatusGlobe live={live} />} /></div>
+                    {id === 'publish' && commissionPick && localId && commissionPick.candidates.has(localId) ? <div className="flex justify-center" onClick={e => e.stopPropagation()}><Checkbox checked={commissionPick.picked.has(localId)} onCheckedChange={() => onToggleCommissionPick?.(localId)} aria-label="הכללה בהגדרת העמלות" /></div>
+                    : id === 'publish' ? <div onClick={e => e.stopPropagation()}><QuickPublicPromotion ids={localId ? [localId] : []} compact statusLive={live} onPublished={onPublished} fallback={<PublishStatusGlobe live={live} />} /></div>
                     : id === 'photo' ? (
                       <div className="relative w-12">
                         {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" loading="lazy" /> : <div className="h-12 w-12 rounded bg-muted" />}

@@ -15,12 +15,14 @@ import { DEFAULT_IMPORT_RULE, importBatchDealTypes, importCommissionPayload, can
 
 type Row = { id: string; deal_type: string | null; asking_price: number | null };
 
-export function BulkClosingCommission({ ids, workspaceId, autoOpenKey, trigger, onSaved, overwriteOption = false, publishAfterSave = false }: {
+export function BulkClosingCommission({ ids, workspaceId, autoOpenKey, trigger, onSaved, overwriteOption = false, publishAfterSave = false, onPickInTable }: {
   ids: string[]; workspaceId: string; autoOpenKey?: string | null; trigger?: (open: () => void) => React.ReactNode; onSaved?: () => void;
   /** Offer a checkbox that also targets workspace properties whose commissions are already set. */
   overwriteOption?: boolean;
   /** Publish the saved properties, show a summary, then go home with a celebration. */
   publishAfterSave?: boolean;
+  /** Close the window and let the user untick properties in the table's publish column. */
+  onPickInTable?: () => void;
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -30,6 +32,7 @@ export function BulkClosingCommission({ ids, workspaceId, autoOpenKey, trigger, 
   const [summary, setSummary] = useState<{ saved: number; published: number } | null>(null);
   const [rule, setRule] = useState<ImportCommissionRule>({ ...DEFAULT_IMPORT_RULE });
   const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(false);
   const version = useRef(0);
   useEffect(() => () => { version.current++; }, [workspaceId]);
   const autoOpened = useRef<string | null>(null);
@@ -38,8 +41,10 @@ export function BulkClosingCommission({ ids, workspaceId, autoOpenKey, trigger, 
     const run = ++version.current;
     let query = supabase.from('listings').select('id,deal_type,asking_price').eq('workspace_owner_id', workspaceId);
     query = all ? query.is('canonical_duplicate_of', null).limit(1000) : query.in('id', ids);
+    setLoading(true);
     const { data, error } = await query;
     if (run !== version.current) return;
+    setLoading(false);
     if (error || (!all && data?.length !== ids.length)) { toast.error('לא ניתן לטעון את הנכסים במשרד'); setOpen(false); return; }
     setRows(data ?? []);
   };
@@ -82,10 +87,11 @@ export function BulkClosingCommission({ ids, workspaceId, autoOpenKey, trigger, 
     else toast.success(`העמלות נשמרו ב-${rows.length} נכסים`);
   };
   const finish = () => { setSummary(null); navigate('/'); window.setTimeout(() => celebrateFromTop(7000), 150); };
-  const extra = overwriteOption ? <div className="flex items-start gap-2 rounded-lg border border-border p-3"><Checkbox id="commission-overwrite" checked={overwrite} disabled={saving} onCheckedChange={next => toggleOverwrite(next === true)} className="mt-1 shrink-0" /><Label htmlFor="commission-overwrite" className="text-sm font-medium leading-relaxed">החל גם על נכסים שכבר הוגדרו להם עמלות</Label></div> : null;
+  const pick = onPickInTable && !overwrite ? <Button type="button" variant="link" className="h-auto justify-start p-0 text-sm" disabled={saving} onClick={() => { setOpen(false); onPickInTable(); }}>בחירת הנכסים בטבלה</Button> : null;
+  const extra = overwriteOption ? <>{pick}<div className="flex items-start gap-2 rounded-lg border border-border p-3"><Checkbox id="commission-overwrite" checked={overwrite} disabled={saving} onCheckedChange={next => toggleOverwrite(next === true)} className="mt-1 shrink-0" /><Label htmlFor="commission-overwrite" className="text-sm font-medium leading-relaxed">החל גם על נכסים שכבר הוגדרו להם עמלות</Label></div></> : pick;
   return <>
     {trigger ? trigger(() => void show()) : <Button variant="ghost" size="icon" title="הגדרת עמלות לנבחרים" aria-label="הגדרת עמלות לנבחרים" onClick={() => void show()}><Settings2 className="h-4 w-4" /></Button>}
-    <ImportCommissionDialog closingOnly open={open} onOpenChange={setOpen} count={rows.length} types={types} rule={rule} onRuleChange={setRule} saving={saving} onApply={accepted => void apply(accepted)} prices={averagePricesByDealType(rows)} extra={extra} />
+    <ImportCommissionDialog closingOnly open={open} onOpenChange={setOpen} count={loading && !rows.length ? ids.length : rows.length} types={types} rule={rule} onRuleChange={setRule} saving={saving} onApply={accepted => void apply(accepted)} prices={averagePricesByDealType(rows)} extra={extra} />
     <AlertDialog open={!!summary} onOpenChange={next => { if (!next) finish(); }}>
       <AlertDialogContent dir="rtl" className="w-[calc(100%-2rem)] rounded-lg">
         <AlertDialogHeader><AlertDialogTitle>סיכום פרסום</AlertDialogTitle><AlertDialogDescription className="text-start text-base leading-relaxed">העמלות נשמרו ב־{summary?.saved ?? 0} נכסים{summary && summary.published > 0 ? ` ו־${summary.published} נכסים פורסמו בלוח.` : '. לא פורסמו נכסים חדשים.'}</AlertDialogDescription></AlertDialogHeader>
