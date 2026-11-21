@@ -15,7 +15,7 @@ function setup(entry = '/') {
 it('starts with pending invitations below the status and exactly three tabs in the requested order', () => {
   setup();
   expect(screen.getByText('סטטוס הייבוא')).toBeTruthy();
-  expect(screen.getAllByRole('tab').map(tab => tab.textContent)).toEqual(['ממתינים להזמנה', 'היסטוריית ייבוא', 'היסטוריית שליחות']);
+  expect(screen.getAllByRole('tab').map(tab => tab.textContent)).toEqual(['ממתינים (0)', 'היסטוריית ייבוא', 'היסטוריית שליחות']);
   expect(screen.getByTestId('active-import-view').textContent).toBe('pending');
 });
 
@@ -25,7 +25,7 @@ it('shows only the selected content and supports returning to pending invitation
   fireEvent.mouseDown(screen.getByRole('tab', { name: 'היסטוריית ייבוא' }));
   await waitFor(() => expect(screen.getByTestId('active-import-view').textContent).toBe('imports'));
   expect(screen.queryByText('sends')).toBeNull();
-  fireEvent.mouseDown(screen.getByRole('tab', { name: 'ממתינים להזמנה' }));
+  fireEvent.mouseDown(screen.getByRole('tab', { name: /^ממתינים/ }));
   await waitFor(() => expect(screen.getByTestId('active-import-view').textContent).toBe('pending'));
   expect(screen.queryByText('imports')).toBeNull();
 });

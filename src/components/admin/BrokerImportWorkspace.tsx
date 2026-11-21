@@ -30,7 +30,7 @@ export function BrokerImportWorkspace() {
           peek above and beside the tabs. */}
       <div data-import-tabs className="sticky -top-[20px] z-20 -mx-[15px] bg-background px-[15px] pb-2 pt-[28px]">
         <TabsList className="grid w-full min-w-0 grid-cols-3">
-          <TabsTrigger value="pending" className="px-1 text-base">ממתינים להזמנה{pendingCount ? ` (${pendingCount})` : ''}</TabsTrigger>
+          <TabsTrigger value="pending" className="px-1 text-base">ממתינים ({pendingCount ?? 0})</TabsTrigger>
           <TabsTrigger value="imports" className="px-1 text-base">היסטוריית ייבוא</TabsTrigger>
           <TabsTrigger value="sends" className="px-1 text-base">היסטוריית שליחות</TabsTrigger>
         </TabsList>

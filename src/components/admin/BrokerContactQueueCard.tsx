@@ -263,7 +263,8 @@ function SendHistory() {
     const { data, error } = await supabase.rpc('admin_marketing_contacts', { _owners: ownerIds });
     if (error) throw error; return new Map((data ?? []).map(r => [r.owner_id, r as MarketingContact]));
   } });
-  const [group, setGroup] = useState<RecipientGroup>('marketing');
+  const [group, setGroup] = useState<RecipientGroup>('broker');
+  const sendCount = (g: RecipientGroup) => items.filter(i => recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) === g).length;
   const shown = items.filter(i => recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) === group);
   const [openKey, setOpenKey] = useState<string | null>(() => readSuperAdminViewState().openSendKey ?? null);
   const toggleOpen = (key: string) => {
@@ -273,7 +274,7 @@ function SendHistory() {
   };
   return <div className="space-y-3">
     <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList className="grid w-full grid-cols-3">
-      <TabsTrigger value="marketing" className="px-1">חברות שיווק נדל"ן</TabsTrigger><TabsTrigger value="broker" className="px-1">מתווכים</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים</TabsTrigger>
+      <TabsTrigger value="broker" className="px-1">מתווכים ({sendCount('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({sendCount('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({sendCount('marketing')})</TabsTrigger>
     </TabsList></Tabs>
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : shown.length === 0 ? <p className="text-base text-muted-foreground">אין שליחות בלשונית זו.</p> :
       <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{shown.map(i => { const key = invitationHistoryKey(i); const isOpen = openKey === key; const contact = contacts.data?.get(i.user_id); return <li key={key}>
@@ -322,8 +323,9 @@ export function ImportHistory() {
   };
   const q = useQuery({ queryKey: ['broker-import-history'], queryFn: () => invoke<{ items: ImportItem[] }>('admin-broker-contact', { action: 'imports' }) });
   const [kind, setKind] = useState<'broker' | 'developer'>('broker');
-  const items = (q.data?.items ?? []).filter(i => i.kind === kind);
-  const kindTabs = <Tabs value={kind} onValueChange={v => setKind(v as 'broker' | 'developer')} dir="rtl" className="mb-3"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="broker">מתווכים</TabsTrigger><TabsTrigger value="developer">יזמים</TabsTrigger></TabsList></Tabs>;
+  const allImports = q.data?.items ?? [];
+  const items = allImports.filter(i => i.kind === kind);
+  const kindTabs = <Tabs value={kind} onValueChange={v => setKind(v as 'broker' | 'developer')} dir="rtl" className="mb-3"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="broker">מתווכים ({allImports.filter(i => i.kind === 'broker').length})</TabsTrigger><TabsTrigger value="developer">יזמים ({allImports.filter(i => i.kind === 'developer').length})</TabsTrigger></TabsList></Tabs>;
   if (q.isLoading) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
   if (q.isError) return <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p>;
   if (!items.length) return <div>{kindTabs}<p className="text-base text-muted-foreground">אין יבואים בלשונית זו.</p></div>;
@@ -352,7 +354,7 @@ export function usePendingInvitations() {
 function PendingInvitations() {
   const q = usePendingInvitations();
   const all = q.data?.brokers ?? [];
-  const [group, setGroup] = useState<RecipientGroup>('marketing');
+  const [group, setGroup] = useState<RecipientGroup>('broker');
   const devIds = all.filter(b => b.is_developer).map(b => b.user_id);
   const marketing = useQuery({ queryKey: ['marketing-contacts', devIds.join(',')], enabled: devIds.length > 0, queryFn: async () => {
     const { data, error } = await supabase.rpc('admin_marketing_contacts', { _owners: devIds });
@@ -363,7 +365,7 @@ function PendingInvitations() {
   const brokers = all.filter(b => groupOf(b) === group);
   return <div className="space-y-4">
     <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList className="grid w-full grid-cols-3">
-      <TabsTrigger value="marketing" className="px-1">חברות שיווק ({count('marketing')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({count('developer')})</TabsTrigger><TabsTrigger value="broker" className="px-1">מתווכים ({count('broker')})</TabsTrigger>
+      <TabsTrigger value="broker" className="px-1">מתווכים ({count('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({count('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({count('marketing')})</TabsTrigger>
     </TabsList></Tabs>
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} marketing={marketing.data?.get(b.user_id)} />)}</ul>}

@@ -18,20 +18,20 @@ function setup() {
 }
 it('switches to the exact inventory owner on identity click', async () => {
   setup();
-  fireEvent.mouseDown(await screen.findByRole('tab', { name: 'יזמים' }));
+  fireEvent.mouseDown(await screen.findByRole('tab', { name: /^יזמים/ }));
   fireEvent.click(await screen.findByRole('button', { name: 'פתיחת הפרויקטים של Owner' }));
   await waitFor(() => expect(state.switchWorkspace).toHaveBeenCalledWith('owner-id'));
 });
 it('does not expose the original Yad2 source link in import history', async () => {
   setup();
-  fireEvent.mouseDown(await screen.findByRole('tab', { name: 'יזמים' }));
+  fireEvent.mouseDown(await screen.findByRole('tab', { name: /^יזמים/ }));
   await screen.findByRole('button', { name: 'פתיחת הפרויקטים של Owner' });
   expect(screen.queryByRole('link', { name: 'פתיחת עמוד המקור ביד 2' })).not.toBeInTheDocument();
   expect(screen.queryByRole('columnheader', { name: 'מקור' })).not.toBeInTheDocument();
 });
 it('deletes only the selected log record after explicit confirmation', async () => {
   setup();
-  fireEvent.mouseDown(await screen.findByRole('tab', { name: 'יזמים' }));
+  fireEvent.mouseDown(await screen.findByRole('tab', { name: /^יזמים/ }));
   fireEvent.click(await screen.findByRole('button', { name: 'מחיקת רשומת היבוא של Owner' }));
   expect(state.invoke).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByRole('button', { name: /^מחיקה$/ }));

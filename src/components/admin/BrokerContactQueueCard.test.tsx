@@ -62,6 +62,7 @@ function setupHistory(contactRow: Record<string, unknown> | null) {
 
 it('shows marketing company, contact, contact phone and a quick-dial button when they are set', async () => {
   setupHistory({ owner_id: devId, company_id: 'c1', company_name: 'שיווקא', contact_name: 'מורן', contact_phone: '972509999999', contact_gender: 'male' });
+  fireEvent.mouseDown(await screen.findByRole('tab', { name: /^חברות שיווק/ }));
   expect(await screen.findByText('שיווקא')).toBeTruthy();
   expect(screen.getByText('מורן')).toBeTruthy();
   expect(screen.getByText('050-9999999')).toBeTruthy();
@@ -71,7 +72,7 @@ it('shows marketing company, contact, contact phone and a quick-dial button when
 
 it('hides every marketing detail when the contact person was never defined', async () => {
   setupHistory({ owner_id: devId, company_id: null, company_name: null, contact_name: null, contact_phone: null, contact_gender: null });
-  fireEvent.mouseDown(await screen.findByRole('tab', { name: 'יזמים' }));
+  fireEvent.mouseDown(await screen.findByRole('tab', { name: /^יזמים/ }));
   expect(await screen.findByText('אלמוגים')).toBeTruthy();
   expect(screen.queryByText('שיווקא')).toBeNull();
   expect(screen.queryByText('מורן')).toBeNull();
@@ -81,20 +82,23 @@ it('hides every marketing detail when the contact person was never defined', asy
 
 it('shows the developer logo, not a personal photo, on a developer send-history card', async () => {
   setupHistory(null);
-  fireEvent.mouseDown(await screen.findByRole('tab', { name: 'יזמים' }));
+  fireEvent.mouseDown(await screen.findByRole('tab', { name: /^יזמים/ }));
   expect(await screen.findByRole('img', { name: /^לוגו / })).toBeTruthy();
   expect(screen.getByText('הוסף איש קשר')).toBeTruthy();
 });
 
 it('lists a developer invitation sent to a marketing company only under the marketing tab', async () => {
   setupHistory({ owner_id: devId, company_id: 'c1', company_name: 'שיווקא', contact_name: 'מורן', contact_phone: '972509999999', contact_gender: 'male' });
+  fireEvent.mouseDown(await screen.findByRole('tab', { name: /^חברות שיווק/ }));
   expect(await screen.findByText('שיווקא')).toBeTruthy();
-  fireEvent.mouseDown(screen.getByRole('tab', { name: 'יזמים' }));
+  fireEvent.mouseDown(screen.getByRole('tab', { name: /^יזמים/ }));
   await waitFor(() => expect(screen.queryByText('אלמוגים')).toBeNull());
 });
 
 it('lists a broker awaiting invitation only under the brokers sub-tab', async () => {
   setup();
   expect(await screen.findByRole('tab', { name: 'מתווכים (1)' })).toBeTruthy();
-  expect(screen.queryByText('Doli Idelson')).toBeNull();
+  expect(await screen.findByText('Doli Idelson')).toBeTruthy();
+  fireEvent.mouseDown(screen.getByRole('tab', { name: /^חברות שיווק/ }));
+  await waitFor(() => expect(screen.queryByText('Doli Idelson')).toBeNull());
 });
