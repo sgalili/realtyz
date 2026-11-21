@@ -943,7 +943,7 @@ export default function Properties() {
       <BrokerOnboardingCue key={activeWorkspaceId} workspaceId={activeWorkspaceId} />
 
       {/* Compact unified control bar */}
-      <div className="relative z-40 !mt-0 shrink-0">
+      <div className="relative z-40 !mt-0 !mb-[-1px] shrink-0">
 
 
 
@@ -953,8 +953,8 @@ export default function Properties() {
               <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
             </div>
             {/* Commissions shortcut: every saved property still missing commissions. */}
-            {!searchOpen && activeWorkspaceId && unconfiguredIds.length > 0 && <div className="order-2 flex min-w-0 flex-1 justify-center">
-              <BulkClosingCommission ids={unconfiguredIds} workspaceId={activeWorkspaceId} onSaved={() => void unconfiguredQuery.refetch()} trigger={open => <Button type="button" variant="outline" size="sm" className="h-8 whitespace-nowrap border border-border bg-background px-3 text-xs font-medium text-foreground hover:bg-muted" onClick={open}>{`הגדר עמלות ל-${unconfiguredIds.length} נכסים ופרסם עכשיו`}</Button>} />
+            {!searchOpen && activeWorkspaceId && unconfiguredIds.length > 0 && <div className="order-2 flex min-w-0 flex-1 px-1">
+              <BulkClosingCommission ids={unconfiguredIds} workspaceId={activeWorkspaceId} overwriteOption publishAfterSave onSaved={() => void unconfiguredQuery.refetch()} trigger={open => <Button type="button" variant="outline" className="h-11 w-full min-w-0 whitespace-nowrap border border-border bg-background px-3 text-[15px] font-bold text-foreground hover:bg-muted" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); open(); }}>{`הגדר עמלות ל-${unconfiguredIds.length} נכסים ופרסם עכשיו`}</Button>} />
             </div>}
         <div id="inventory-search-row" className={`order-3 min-w-0 ${searchOpen ? 'flex-1' : 'w-0 flex-none overflow-hidden'}`}>
           <div className={`relative z-50 min-w-0 origin-right transition-[opacity,transform] duration-300 ease-in-out motion-reduce:transition-none ${searchOpen ? 'opacity-100 scale-x-100' : 'pointer-events-none invisible opacity-0 scale-x-0'}`} aria-hidden={!searchOpen}>

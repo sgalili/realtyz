@@ -36,3 +36,18 @@ export function celebrate(durationMs = 2200): void {
     /* confetti is purely decorative */
   }
 }
+
+/** Natural 7-second shower: pieces burst from the top edge and fall to the bottom until all are gone. */
+export function celebrateFromTop(totalMs = 7000): void {
+  try {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const fall = 3200; // emission stops early so the last pieces finish falling by totalMs
+    const end = Date.now() + Math.max(500, totalMs - fall);
+    const ticks = Math.round(fall / 16.7 * 1.1);
+    const shoot = () => {
+      confetti({ particleCount: 14, angle: 270, spread: 140, startVelocity: 12, gravity: 0.9, drift: (Math.random() - 0.5) * 1.2, decay: 0.94, scalar: 1.05, ticks, origin: { x: Math.random(), y: -0.05 }, colors: BRAND_COLORS, zIndex: 99999 });
+      if (Date.now() < end) setTimeout(shoot, 120);
+    };
+    shoot();
+  } catch { /* decorative */ }
+}

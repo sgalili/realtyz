@@ -1,3 +1,4 @@
+import type React from 'react';
 import { useEffect, useState } from 'react';
 import { ClipboardList, Loader2, Phone, Trophy, Zap } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
@@ -15,13 +16,15 @@ import { LeadPopularityNote } from '@/components/public/LeadPopularityNote';
 import BrokerageTermsContent from '@/components/public/BrokerageTermsContent';
 import Terms from '@/pages/Terms';
 
-export function ImportCommissionDialog({ open, onOpenChange, count, types, rule, onRuleChange, onApply, saving, closingOnly = false, prices }: {
+export function ImportCommissionDialog({ open, onOpenChange, count, types, rule, onRuleChange, onApply, saving, closingOnly = false, prices, extra }: {
   open: boolean; onOpenChange: (open: boolean) => void; count: number; types: ImportDealType[];
   rule: ImportCommissionRule; onRuleChange: (rule: ImportCommissionRule) => void;
   onApply: (accepted: boolean) => void; saving: boolean;
   closingOnly?: boolean;
   /** Average base price per deal type (asking price / one month's rent), used to show shekel amounts. */
   prices?: Partial<Record<ImportDealType, number>>;
+  /** Optional control rendered above the terms consent (e.g. overwrite existing commissions). */
+  extra?: React.ReactNode;
 }) {
   const [mode, setMode] = useState<ImportDealType>('sale');
   const [accepted, setAccepted] = useState(false);
@@ -54,6 +57,7 @@ export function ImportCommissionDialog({ open, onOpenChange, count, types, rule,
           <p className="text-sm leading-relaxed text-muted-foreground">{selected === 'sale' ? 'עמלת הסגירה תחושב לפי מחיר הנכס המפורסם ותשולם לאחר סגירת העסקה.' : 'עמלת הסגירה תחושב מתוך שכר דירה של חודש אחד ותשולם לאחר חתימת הסכם השכירות.'}</p>
         </div></ClosingRewardCard>
         <div className="space-y-4">{LEAD_REWARD_TYPES.map(({ tier, label }) => <LeadRewardCard key={tier} tier={tier} label={label} value={String(rule[tier] ?? '')} disabled={saving} onChange={value => num(tier, value)} />)}</div>
+        {extra}
         <div className="flex items-start gap-2"><Checkbox id="import-commission-terms" checked={accepted} disabled={saving} onCheckedChange={next => setAccepted(next === true)} className="mt-1 shrink-0" /><div className="text-sm leading-relaxed"><Label htmlFor="import-commission-terms" className="font-normal">אני מאשר/ת שקראתי והסכמתי לתקנון ולתנאי התיווך, ומתחייב/ת לשלם את העמלות בהתאם לתנאים המוסכמים.</Label><div className="flex flex-wrap gap-3"><Button type="button" variant="link" className="h-auto p-0" onClick={() => setLegal('terms')}>תקנון</Button><Button type="button" variant="link" className="h-auto p-0" onClick={() => setLegal('brokerage')}>תנאי התיווך</Button></div></div></div>
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between"><Button variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>ביטול</Button><Button disabled={!valid || saving} onClick={() => { if (valid) onApply(accepted); }}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}אישור והחלה</Button></DialogFooter>
       </DialogContent>
