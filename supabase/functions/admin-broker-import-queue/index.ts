@@ -492,6 +492,12 @@ Deno.serve(async req => {
         await save({skipped:job.skipped+1,error:null});
         return json({ok:true,skipped:true});
       }
+      // Bright Data account suspended/billing: permanent, stop at once with a clear reason instead of retrying for many minutes.
+      if(/client_10020|account is suspended|מושעה|חשבון Bright Data לא פעיל|brightdata_account_suspended/i.test(e instanceof Error?e.message:String(e))) {
+        console.error('[broker-import-provider-suspended]',JSON.stringify({job_id:job.id,phase:c.phase}));
+        await save({status:'paused',error:'חשבון Bright Data מושעה (חיוב לא פעיל). ההתקדמות נשמרה; יש להפעיל מחדש את החשבון ואז ללחוץ המשך.'});
+        return json({ok:true,paused:true,reason:'provider_suspended'});
+      }
       // Transient worker/network failures in broker phases retry automatically with backoff (bounded), never a manual pause.
       if(!autonomousDeveloper() && !String(c.phase??'').startsWith('developer_') && !(e instanceof WorkerResponseError && e.status<500) && (c.rateRetries??0)<8) {
         const retry=scheduleImportRateLimitRetry(c,0);
