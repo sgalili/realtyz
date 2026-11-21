@@ -1,5 +1,9 @@
 # Roadmap
 
+## Properties bulk action toolbar November 21
+- [x] Move selected-property bulk actions to a dedicated row below the multi-select controls.
+- [x] Use a borderless Globe publish action and keep the photo-rotation spinner active until every selected update settles.
+
 ## External import worker November 21
 - [x] Make worker standalone with four paced source channels, durable retries and incremental private saves; 15 Node tests, developer save and isolated queue tests passed; protected Cloud endpoint deployed and lease refusal verified.
 - [x] Prepare a runnable Railway TORAFF worker folder and document exact environment variables.

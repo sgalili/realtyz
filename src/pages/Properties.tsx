@@ -930,12 +930,7 @@ export default function Properties() {
 
   const renderToolsRow = (testId: string) => (
     <div data-testid={testId} className="flex shrink-0 items-center justify-end gap-0" style={{ marginInlineEnd: "-5px" }}>
-
-
-            {multiSelectMode && selectedListingIds.size > 0 && activeWorkspaceId ? (
-              <SelectedListingsActions ids={Array.from(selectedListingIds)} liveIds={liveListingIds} unconfiguredIds={unconfiguredIds} workspaceId={activeWorkspaceId} onPublished={markPublished} onDelete={() => setDeleteTargetIds(Array.from(selectedListingIds))} onCommissionSaved={() => void unconfiguredQuery.refetch()} />
-            ) : null}
-          <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
+      <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
     </div>
   );
 
@@ -1145,6 +1140,11 @@ export default function Properties() {
           {!searchOpen && renderToolsRow("property-tools-row")}
         </div>
         </div>
+        {multiSelectMode && selectedListingIds.size > 0 && activeWorkspaceId ? (
+          <div data-testid="selected-listings-actions-row" className="flex shrink-0 items-center justify-start pt-1">
+            <SelectedListingsActions ids={Array.from(selectedListingIds)} liveIds={liveListingIds} unconfiguredIds={unconfiguredIds} workspaceId={activeWorkspaceId} onPublished={markPublished} onDelete={() => setDeleteTargetIds(Array.from(selectedListingIds))} onCommissionSaved={() => void unconfiguredQuery.refetch()} />
+          </div>
+        ) : null}
         <Yad2ImportStatus banner />
         {activeWorkspaceId && importPromptKey && importJob.imported.length > 0 && <BulkClosingCommission key={importPromptKey} ids={importJob.imported} workspaceId={activeWorkspaceId} autoOpenKey={importPromptKey} trigger={() => null} onSaved={() => void unconfiguredQuery.refetch()} />}
 

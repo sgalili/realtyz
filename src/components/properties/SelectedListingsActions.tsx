@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Images, Loader2, Megaphone, Pause, Trash2 } from 'lucide-react';
+import { Globe, Images, Loader2, Pause, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ export function SelectedListingsActions({ ids, liveIds, unconfiguredIds, workspa
   const missing = ids.filter(id => unconfiguredIds.includes(id));
   const live = ids.filter(id => liveIds.includes(id));
   const canRotate = !demoLoading && canRotateFirstTwoPhotos(isSuperAdmin, isDemoMode || !!demoType);
+  const rotationRunning = useRef(false);
 
   const pause = async () => {
     setBusy('pause');
@@ -42,28 +43,40 @@ export function SelectedListingsActions({ ids, liveIds, unconfiguredIds, workspa
     finally { setBusy(null); }
   };
   const rotate = async () => {
+    if (rotationRunning.current || busy !== null) return;
     if (!window.confirm(`להזיז את 2 התמונות הראשונות לסוף ב־${ids.length} הנכסים שנבחרו? יעודכנו רק נכסים עם יותר משתי תמונות.`)) return;
+    rotationRunning.current = true;
     setBusy('photos');
     const total: PhotoRotationResult = { listings: 0, projects: 0, apartments: 0, total: 0 };
     let failed = 0;
-    for (const id of ids) {
-      const { data, error } = await supabase.rpc('admin_rotate_first_two_photos', { _scope: 'listing', _listing_id: id });
-      if (error) { failed++; continue; }
-      const r = data as PhotoRotationResult;
-      total.listings += r.listings; total.projects += r.projects; total.apartments += r.apartments; total.total += r.total;
+    try {
+      for (const id of ids) {
+        try {
+          const { data, error } = await supabase.rpc('admin_rotate_first_two_photos', { _scope: 'listing', _listing_id: id });
+          if (error) { failed++; continue; }
+          const r = data as PhotoRotationResult;
+          total.listings += r.listings; total.projects += r.projects; total.apartments += r.apartments; total.total += r.total;
+        } catch {
+          failed++;
+        }
+      }
+      toast[failed ? 'warning' : 'success'](failed ? `${photoRotationSummary(total)} · ${failed} נכסים לא עודכנו` : photoRotationSummary(total));
+      void Promise.all(['properties-search', 'property-detail', 'listings', 'public-listings'].map(key => qc.invalidateQueries({ queryKey: [key] })));
+    } finally {
+      rotationRunning.current = false;
+      setBusy(null);
     }
-    setBusy(null);
-    toast[failed ? 'warning' : 'success'](failed ? `${photoRotationSummary(total)} · ${failed} נכסים לא עודכנו` : photoRotationSummary(total));
-    void Promise.all(['properties-search', 'property-detail', 'listings', 'public-listings'].map(key => qc.invalidateQueries({ queryKey: [key] })));
   };
 
   return <div className="flex items-center gap-0.5">
     <Button size="icon" variant="ghost" className={`${bare} text-destructive hover:text-destructive`} title="מחיקה של הנבחרים" aria-label="מחיקה של הנבחרים" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
     {missing.length > 0
-      ? <BulkClosingCommission ids={missing} workspaceId={workspaceId} onSaved={onCommissionSaved} trigger={open => <Button size="icon" variant="ghost" className={`${bare} text-primary`} title="פרסם בלוח" aria-label="פרסם בלוח" onClick={open}><Megaphone className="h-4 w-4 text-[hsl(var(--brand-red))]" /></Button>} />
+      ? <BulkClosingCommission ids={missing} workspaceId={workspaceId} onSaved={onCommissionSaved} trigger={open => <Button size="icon" variant="ghost" className={`${bare} text-primary`} title="פרסם בלוח" aria-label="פרסם בלוח" onClick={open}><Globe className="h-4 w-4" /></Button>} />
       : <QuickPublicPromotion ids={ids} bare onPublished={onPublished} />}
     {live.length > 0 && <Button size="icon" variant="ghost" className={`${bare} text-muted-foreground`} disabled={busy !== null} title="הפסק פרסום" aria-label="הפסק פרסום" onClick={() => setPauseOpen(true)}>{busy === 'pause' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />}</Button>}
-    {canRotate && <Button size="icon" variant="ghost" className={`${bare} text-muted-foreground`} disabled={busy !== null} title="הזז 2 תמונות ראשונות לסוף" aria-label="הזז 2 תמונות ראשונות לסוף" onClick={() => void rotate()}>{busy === 'photos' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />}</Button>}
+    {canRotate && (busy === 'photos'
+      ? <span role="status" aria-live="polite" aria-label="מזיז 2 תמונות ראשונות לסוף" title="מזיז 2 תמונות ראשונות לסוף" className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /></span>
+      : <Button size="icon" variant="ghost" className={`${bare} text-muted-foreground`} disabled={busy !== null} title="הזז 2 תמונות ראשונות לסוף" aria-label="הזז 2 תמונות ראשונות לסוף" onClick={() => void rotate()}><Images className="h-4 w-4" /></Button>)}
     <PauseDistributionDialog open={pauseOpen} busy={busy === 'pause'} onOpenChange={setPauseOpen} onConfirm={() => void pause()} />
   </div>;
 }
