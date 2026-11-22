@@ -1,5 +1,16 @@
 # Roadmap
 
+## Stop bulk WhatsApp tracing November 22
+- [x] Stopped the requesting Super Admin's 50 active discovery jobs and fenced their leases; a fresh Cloud read confirms zero pending/running/retry jobs. Completed contacts and import queues were not changed.
+- [x] Added account-owned broker_whatsapp_batches and protected start/status/cancel actions. The bulk button stays clickable throughout enqueue/source processing, restores running state on return, and cancels only its exact batch; locked insert guards reject late enqueue and cancelled leases reject late results.
+- [x] Deployed Cloud action and migrations; authenticated running-button click/cancel/readback passed using a queue-free operation (no broker tracing restarted). Database tests verify real-job cancellation, late-result/enqueue refusal, idempotence and preservation of contacts/completed jobs/imports. UI test verifies stop during an in-flight page request.
+
+## WhatsApp whole-flow check November 22
+- [x] Read single/bulk discovery, both editors, queue mapping/card, official invitation UI/backend/target helper, worker/transport and all effective claim/heartbeat/recovery/finish functions. Portal/health WhatsApp fields are independent and do not consume discovered broker contacts; no unrelated settings or sent history changed.
+- [x] Preserve shared contact cache on both enqueue paths and update it immediately after manual save even if refetch fails. Production extraction now checks the saved source token and exact primary sticky-contact section; hidden/unrelated actions are excluded. Future finish locks/readbacks the actual stored number and terminalizes conflicts without overwriting it or falsely completing.
+- [x] 54 focused tests plus isolated database lease, concurrency and cancellation checks passed. Strict extraction still finds one valid mobile in the previously fetched real HTML, and authenticated UI retains the saved WhatsApp after stop with zero runtime errors. No messages sent, login changes or repeated paid source checks. Official Meta approval/delivery and all external worker deployment settings remain unverified.
+- [ ] Deploy the updated worker-whatsapp serialized-payload guard to Railway; deployment access is unavailable. Cloud extraction/save/cancellation are deployed and do not need that worker update; the new local oversized-payload handling is code/unit-tested only.
+
 ## WhatsApp extraction and broker card November 22
 - [x] One real Bright Data read returned 200 with an explicit WhatsApp anchor in the primary agency contact section under a sticky aside; the old parser removed that entire aside. Retain only this observed primary contact section, continue rejecting unrelated/hidden/ambiguous contacts, and log extraction counts/reasons without phone values. Existing contact-to-queue mapping was correct.
 - [x] Status now returns the broker/workspace-matched persisted WhatsApp contact, so the slot refreshes even after unmounted completion; manual saves invalidate this read too. Email icon moved after its text, broker trash moved to the drafts row at the far edge, and number text increased 14/16px to 16/18px without changing developer layout.

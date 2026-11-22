@@ -24,6 +24,15 @@ it('reads a completed persisted WhatsApp contact into its own slot even without 
   expect(await screen.findByRole('button', { name: 'עריכת וואטסאפ של Broker' })).toHaveTextContent('050-3333333');
   expect(screen.queryByRole('button', { name: 'הוספת וואטסאפ של Broker' })).toBeNull();
 });
+it('keeps the persisted contact visible while repeating discovery with a stale queue prop', async () => {
+  state.invoke.mockImplementation((_fn,{body}) => Promise.resolve({data:body.action==='enqueue' ? {job:{id:'next-job',status:'pending',attempts:0}} : {job:{id:'job',status:'completed',attempts:1},contact:{whatsapp_phone:'972503333333'}},error:null}));
+  const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
+  render(<QueryClientProvider client={client}><BrokerWhatsAppContact brokerId="broker-id" name="Broker" phone={null}/></QueryClientProvider>);
+  expect(await screen.findByRole('button',{name:'עריכת וואטסאפ של Broker'})).toHaveTextContent('050-3333333');
+  fireEvent.click(screen.getByRole('button',{name:'גילוי WhatsApp של Broker'}));
+  await waitFor(()=>expect(client.getQueryData<{job:{id:string}}>(['broker-whatsapp-job','broker-id'])?.job.id).toBe('next-job'));
+  expect(screen.getByRole('button',{name:'עריכת וואטסאפ של Broker'})).toHaveTextContent('050-3333333');
+});
 it('blocks another job while discovery is running', async () => {
   setup('running');
   await waitFor(() => expect(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' })).toBeDisabled());

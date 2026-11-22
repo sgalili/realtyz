@@ -36,7 +36,7 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
   // Read the persisted contact even when completion happened while this card was unmounted.
   const savedPhone = status.data?.contact !== undefined ? status.data.contact?.whatsapp_phone : phone;
   const enqueue = useMutation({ mutationFn: (target: string) => invoke({ action: 'enqueue', broker_id: target }),
-    onSuccess: (data, target) => { if(currentBroker.current!==target)return; qc.setQueryData(['broker-whatsapp-job', target], data); setTracking(true); },
+    onSuccess: (data, target) => { if(currentBroker.current!==target)return; qc.setQueryData<{ job: Job | null; contact?: { whatsapp_phone: string } | null }>(['broker-whatsapp-job', target], previous => ({ ...previous, ...data })); setTracking(true); },
     onError: (e: Error, target) => { if(currentBroker.current!==target)return; starting.current=false;setTracking(false);toast.error(e.message); } });
   useEffect(() => { setTracking(activeStates.includes(qc.getQueryData<{job:Job|null}>(['broker-whatsapp-job',brokerId])?.job?.status??'')); starting.current=false;setSendOpen(false); }, [brokerId,qc]);
   useEffect(() => {
@@ -46,7 +46,7 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
     if (job && !activeStates.includes(job.status)) {
       starting.current=false;setTracking(false);
       if (job.status === 'completed') void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] });
-      else if(job.status==='failed')toast.error(job.last_error||labels.failed);
+      else if(job.status==='failed' && job.last_error!=='user_cancelled')toast.error(job.last_error === 'whatsapp_contact_changed_requires_review' ? 'המספר במקור שונה ממספר WhatsApp השמור. המספר השמור לא שונה; נדרשת בדיקה ידנית.' : job.last_error||labels.failed);
       else if(job.status==='not_found')toast.info(labels.not_found);
     }
   }, [job?.status, tracking, status.error, brokerId, qc]);

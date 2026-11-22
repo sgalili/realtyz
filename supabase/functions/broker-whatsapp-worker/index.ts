@@ -8,7 +8,10 @@ const scope = { worker_id: z.string().min(1).max(100), job_id: z.string().uuid()
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('enqueue'), broker_id: z.string().uuid() }).strict(),
   z.object({ action: z.literal('status'), broker_id: z.string().uuid() }).strict(),
-  z.object({ action: z.literal('enqueue_missing'), after: z.string().uuid().optional() }).strict(),
+  z.object({ action: z.literal('batch_status') }).strict(),
+  z.object({ action: z.literal('start_batch') }).strict(),
+  z.object({ action: z.literal('cancel_batch'), batch_id: z.string().uuid() }).strict(),
+  z.object({ action: z.literal('enqueue_missing'), batch_id: z.string().uuid(), after: z.string().uuid().optional() }).strict(),
   z.object({ action: z.literal('save_contact'), broker_id: z.string().uuid(), phone: z.string().min(5).max(25) }).strict(),
   z.object({ action: z.literal('heartbeat'), ...scope }).strict(),
   z.object({ action: z.literal('claim'), worker_id: scope.worker_id }).strict(),
@@ -31,14 +34,38 @@ Deno.serve(async req => {
   const parsed = schema.safeParse(await Promise.resolve().then(() => JSON.parse(raw)).catch(() => null));
   if (!parsed.success) return json({ error: 'invalid_input' }, 400);
   const input = parsed.data;
-  const userAction = ['enqueue', 'status', 'enqueue_missing', 'save_contact'].includes(input.action);
+  const userAction = ['enqueue', 'status', 'enqueue_missing', 'save_contact', 'batch_status', 'start_batch', 'cancel_batch'].includes(input.action);
   if ((machine && userAction) || (!machine && !userAction)) return json({ error: 'forbidden_action' }, 403);
   try {
     if (userAction || input.action==='claim') {
       const {error}=await admin.rpc('recover_broker_whatsapp_jobs');
       if(error)throw error;
     }
-    const enqueue=async(brokerId:string)=> {
+    if (input.action === 'batch_status' || input.action === 'start_batch' || input.action === 'cancel_batch') {
+      if (caller?.kind !== 'user') return json({error:'forbidden'},403);
+      if (input.action === 'cancel_batch') {
+        const {data,error}=await admin.rpc('cancel_broker_whatsapp_batch',{_id:input.batch_id,_creator:caller.userId});
+        if(error)throw error;
+        return json({ok:true,cancelled:data});
+      }
+      const {data:latest,error}=await admin.from('broker_whatsapp_batches').select('id,status,enqueue_finished').eq('created_by',caller.userId).order('created_at',{ascending:false}).limit(1).maybeSingle();
+      if(error)throw error;
+      let batch=latest;
+      if(batch?.status==='running' && batch.enqueue_finished) {
+        const {count,error:ce}=await admin.from('broker_whatsapp_jobs').select('id',{count:'exact',head:true}).eq('batch_id',batch.id).in('status',['pending','running','retry']);
+        if(ce)throw ce;
+        if(count===0) {
+          const {data:finished,error:fe}=await admin.from('broker_whatsapp_batches').update({status:'completed',updated_at:new Date().toISOString()}).eq('id',batch.id).eq('status','running').select('id,status,enqueue_finished').maybeSingle();
+          if(fe)throw fe;
+          batch=finished??{...batch,status:'completed'};
+        }
+      }
+      if(input.action==='batch_status' || batch?.status==='running')return json({batch});
+      const {data:started,error:se}=await admin.from('broker_whatsapp_batches').insert({created_by:caller.userId}).select('id,status,enqueue_finished').single();
+      if(se)throw se;
+      return json({batch:started});
+    }
+    const enqueue=async(brokerId:string,batchId?:string)=> {
       if(caller?.kind!=='user')throw Object.assign(new Error('forbidden'),{code:'42501'});
       const { data: onboarding, error: oe } = await admin.from('admin_broker_onboarding').select('imported_license_number').eq('user_id', brokerId).not('import_source', 'is', null).maybeSingle();
       const { data: demo, error: de } = await admin.from('demo_view_accounts').select('user_id').eq('user_id', brokerId).maybeSingle();
@@ -54,7 +81,7 @@ Deno.serve(async req => {
       if (error) throw error;
       const listing = listings?.find(l => /^https:\/\/www\.yad2\.co\.il\/realestate\/item\/[a-zA-Z0-9]+(?:\?.*)?$/.test(l.source_url ?? ''));
       if (!listing?.source_url) throw Object.assign(new Error('אין מודעת יד2 שמורה ומזוהה עם המתווך'), { code: 'no_source' });
-      const { data: job, error: insertError } = await admin.from('broker_whatsapp_jobs').insert({ broker_id: brokerId, workspace_owner_id: brokerId, listing_id: listing.id, source_url: listing.source_url, created_by: caller.userId }).select('id,status').single();
+      const { data: job, error: insertError } = await admin.from('broker_whatsapp_jobs').insert({ broker_id: brokerId, workspace_owner_id: brokerId, listing_id: listing.id, source_url: listing.source_url, created_by: caller.userId, batch_id: batchId ?? null }).select('id,status').single();
       if (insertError?.code === '23505') {
         const {data: concurrent, error: concurrentError} = await activeJob();
         if(concurrentError)throw concurrentError;
@@ -72,6 +99,11 @@ Deno.serve(async req => {
     }
     if (input.action === 'enqueue') return json(await enqueue(input.broker_id));
     if (input.action === 'enqueue_missing') {
+      if(caller?.kind!=='user')return json({error:'forbidden'},403);
+      const {data:batch,error:be}=await admin.from('broker_whatsapp_batches').select('id,status').eq('id',input.batch_id).eq('created_by',caller.userId).maybeSingle();
+      if(be)throw be;
+      if(!batch)return json({error:'forbidden_batch'},403);
+      if(batch.status!=='running')return json({results:[],next:null,stopped:true});
       let query = admin.from('admin_broker_onboarding').select('user_id').not('import_source','is',null).order('user_id').limit(20);
       if (input.after) query = query.gt('user_id',input.after);
       const {data: rows,error} = await query;
@@ -81,10 +113,15 @@ Deno.serve(async req => {
         const {data: contact,error: ce}=await admin.from('broker_whatsapp_contacts').select('broker_id').eq('broker_id',row.user_id).maybeSingle();
         if(ce)throw ce;
         if(contact){results.push({broker_id:row.user_id,status:'already_set'});continue;}
-        try {await enqueue(row.user_id);results.push({broker_id:row.user_id,status:'queued'});}
-        catch(reason){results.push({broker_id:row.user_id,status:'skipped',error:(reason as Error).message});}
+        try {await enqueue(row.user_id,input.batch_id);results.push({broker_id:row.user_id,status:'queued'});}
+        catch(reason){if((reason as Error).message.includes('whatsapp_batch_stopped'))return json({results,next:null,stopped:true});results.push({broker_id:row.user_id,status:'skipped',error:(reason as Error).message});}
       }
-      return json({results,next:rows?.length===20?rows[rows.length-1]?.user_id:null});
+      const next=rows?.length===20?rows[rows.length-1]?.user_id:null;
+      if(!next) {
+        const {error:fe}=await admin.from('broker_whatsapp_batches').update({enqueue_finished:true,updated_at:new Date().toISOString()}).eq('id',input.batch_id).eq('created_by',caller.userId).eq('status','running');
+        if(fe)throw fe;
+      }
+      return json({results,next});
     }
     if (input.action === 'save_contact') {
       if(caller?.kind!=='user')return json({error:'forbidden'},403);
@@ -111,18 +148,18 @@ Deno.serve(async req => {
       return json({ job: data?.[0] ?? null });
     }
     if (input.action === 'result' || input.action === 'failure') {
-      const { data: job, error: je } = await admin.from('broker_whatsapp_jobs').select('attempts').eq('id', input.job_id).single();
+      const { data: job, error: je } = await admin.from('broker_whatsapp_jobs').select('attempts,source_url').eq('id', input.job_id).single();
       if (je) throw je;
       if(input.action==='result') {
-        const telephone=discoverBrokerTelephone(input.html);
+        const telephone=discoverBrokerTelephone(input.html, job.source_url);
         const {error}=await admin.from('broker_whatsapp_jobs').update({discovered_phone:telephone}).eq('id',input.job_id).eq('status','running').eq('lease_token',input.lease_token).eq('worker_id',input.worker_id).gt('lease_until',new Date().toISOString());
         if(error)throw error;
       }
-      const extraction = input.action === 'result' ? inspectBrokerWhatsApp(input.html) : null;
+      const extraction = input.action === 'result' ? inspectBrokerWhatsApp(input.html, job.source_url) : null;
       const contact = extraction?.contact;
       const { data, error } = await admin.rpc('finish_broker_whatsapp_discovery', { _id: input.job_id, _token: input.lease_token, _worker: input.worker_id, _phone: contact?.phone ?? null, _error: input.action === 'failure' ? input.error : null, _retry_seconds: input.action === 'failure' ? brokerWhatsAppRetry(input.status, job.attempts, input.retry_after) : 0 });
       if (error) throw error;
-      if (extraction) console.log('[broker-whatsapp-extraction]', { job_id: input.job_id, main_count: extraction.mainCount, candidates: extraction.candidates, reason: extraction.reason, saved: !!contact });
+      if (extraction) console.log('[broker-whatsapp-extraction]', { job_id: input.job_id, main_count: extraction.mainCount, candidates: extraction.candidates, reason: extraction.reason, saved: !!contact && data?.ok === true });
       return json({ ...data, extraction: extraction ? { main_count: extraction.mainCount, candidates: extraction.candidates, reason: extraction.reason } : undefined });
     }
     return json({ error: 'unsupported_action' }, 400);

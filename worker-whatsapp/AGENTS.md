@@ -1,6 +1,7 @@
 # Broker WhatsApp execution
 - This independent Node service claims only broker WhatsApp jobs through a dedicated machine credential; it never writes import jobs or holds database credentials. Why: isolate discovery failures and prevent import interference.
 - Source pages come only from Cloud-authorized saved broker listings; Cloud validates extracted contact evidence and preserves the primary phone. Why: avoid unrelated contact attribution.
-- Cloud extraction keeps only the observed primary agency contact section inside listing sidebars; status reads the persisted contact independently of job tracking. Why: retain genuine source actions without borrowing related contacts or showing stale card data.
+- Cloud extraction verifies the saved listing token and keeps only its observed primary sticky agency contact section; shared card/editor cache preserves and immediately updates persisted contacts. Why: no unrelated contacts or stale numbers during repeat discovery and manual saves.
 - This service only discovers contacts; it has no messaging action. Card invitations remain human-approved through the official Meta flow. Why: discovery must not contact people automatically.
 - Renew the fenced discovery lease during source work; Cloud recovers stale queues without expiring a progressing bulk backlog. Telephone discoveries are suggestions only. Why: prevent blocked jobs and silent login changes.
+- Bulk runs use caller-owned batch IDs and locked cancellation/insert guards; contacts and settled jobs are immutable during stop, and queued job state restores the stop control. Why: stop future work without late saves or cancelling unrelated imports.

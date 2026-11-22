@@ -16,7 +16,7 @@ async function call(fn: string, body: Record<string, unknown>) {
     const detail = error instanceof FunctionsHttpError ? await error.context.json().catch(() => null) : null;
     throw new Error(detail?.error ?? error.message);
   }
-  return data as { job?: Job | null; phone?: string };
+  return data as { job?: Job | null; phone?: string; contact?: { whatsapp_phone: string } | null };
 }
 
 /** Telephone discovery only suggests a value; the existing authorized save confirms any login change. */
@@ -32,12 +32,16 @@ export function BrokerNumberEditor({ brokerId, name, phone, kind }: { brokerId: 
     refetchInterval: query => ['pending', 'running', 'retry'].includes(query.state.data?.job?.status ?? '') ? 4000 : false });
   const job = status.data?.job;
   const discover = useMutation({ mutationFn: () => call('broker-whatsapp-worker', { action: 'enqueue', broker_id: brokerId }),
-    onSuccess: data => { processed.current = null; qc.setQueryData(['broker-whatsapp-job', brokerId], data); setTracking(true); },
+    onSuccess: data => { processed.current = null; qc.setQueryData<{ job?: Job | null; contact?: { whatsapp_phone: string } | null }>(['broker-whatsapp-job', brokerId], previous => ({ ...previous, ...data })); setTracking(true); },
     onError: (error: Error) => toast.error(error.message) });
   const save = useMutation({ mutationFn: () => kind === 'phone'
     ? call('admin-broker-contact', { action: 'save', user_id: brokerId, phone: value.trim() })
     : call('broker-whatsapp-worker', { action: 'save_contact', broker_id: brokerId, phone: value.trim() }),
-    onSuccess: () => { toast.success('המספר נשמר'); setOpen(false); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-whatsapp-job', brokerId] }); },
+    onSuccess: data => {
+      const savedPhone = data.phone;
+      if (kind === 'whatsapp' && savedPhone) qc.setQueryData<{ job?: Job | null; contact?: { whatsapp_phone: string } | null }>(['broker-whatsapp-job', brokerId], previous => ({ ...previous, contact: { whatsapp_phone: savedPhone } }));
+      toast.success('המספר נשמר'); setOpen(false); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-whatsapp-job', brokerId] });
+    },
     onError: (error: Error) => toast.error(error.message) });
   useEffect(() => {
     if (!tracking || !job || ['pending', 'running', 'retry'].includes(job.status) || processed.current === job.id) return;

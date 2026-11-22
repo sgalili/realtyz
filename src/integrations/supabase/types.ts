@@ -1788,6 +1788,41 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_whatsapp_batches: {
+        Row: {
+          created_at: string
+          created_by: string
+          enqueue_finished: boolean
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          enqueue_finished?: boolean
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          enqueue_finished?: boolean
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_whatsapp_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_whatsapp_contacts: {
         Row: {
           broker_id: string
@@ -1833,6 +1868,7 @@ export type Database = {
       broker_whatsapp_jobs: {
         Row: {
           attempts: number
+          batch_id: string | null
           broker_id: string
           consent_at: string | null
           created_at: string
@@ -1854,6 +1890,7 @@ export type Database = {
         }
         Insert: {
           attempts?: number
+          batch_id?: string | null
           broker_id: string
           consent_at?: string | null
           created_at?: string
@@ -1875,6 +1912,7 @@ export type Database = {
         }
         Update: {
           attempts?: number
+          batch_id?: string | null
           broker_id?: string
           consent_at?: string | null
           created_at?: string
@@ -1895,6 +1933,13 @@ export type Database = {
           workspace_owner_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "broker_whatsapp_jobs_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "broker_whatsapp_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "broker_whatsapp_jobs_broker_id_fkey"
             columns: ["broker_id"]
@@ -10879,6 +10924,10 @@ export type Database = {
         Args: { _workspace_owner_id?: string }
         Returns: boolean
       }
+      cancel_broker_whatsapp_batch: {
+        Args: { _creator: string; _id: string }
+        Returns: number
+      }
       cancel_future_listing_posts: {
         Args: { _listing_id: string }
         Returns: number
@@ -10977,6 +11026,7 @@ export type Database = {
         Args: { _worker: string }
         Returns: {
           attempts: number
+          batch_id: string | null
           broker_id: string
           consent_at: string | null
           created_at: string

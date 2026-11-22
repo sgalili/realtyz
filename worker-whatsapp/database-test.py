@@ -23,9 +23,19 @@ CREATE TABLE public.listings(id uuid PRIMARY KEY,user_id uuid,workspace_owner_id
 CREATE TABLE public.broker_import_jobs(id uuid PRIMARY KEY,counter integer);
 """
     run(psql, input=fixture, text=True, stdout=subprocess.DEVNULL)
-    for file in ['0263_broker_whatsapp_discovery_queue.sql', '0264_broker_whatsapp_expired_lease_recovery.sql', '0265_broker_whatsapp_discovery_only.sql', '0268_broker_wa_stale_recovery_and_phone_suggestion.sql', '0269_broker_wa_preserve_live_bulk_backlog.sql']:
+    for file in ['0263_broker_whatsapp_discovery_queue.sql', '0264_broker_whatsapp_expired_lease_recovery.sql', '0265_broker_whatsapp_discovery_only.sql', '0268_broker_wa_stale_recovery_and_phone_suggestion.sql', '0269_broker_wa_preserve_live_bulk_backlog.sql', '0270_broker_whatsapp_contact_completion.sql', '0271_broker_whatsapp_bulk_stop.sql']:
         run(psql + ['-f',str(root/'drizzle/migrations'/file)], stdout=subprocess.DEVNULL)
     run(psql + ['-f',str(root/'tests/database/broker-whatsapp-worker.sql')])
+    run(psql + ['-f',str(root/'tests/database/broker-whatsapp-conflict-fixture.sql')],stdout=subprocess.DEVNULL)
+    # Wait until a concurrent manual writer holds the row, before discovery saves the old value.
+    writer=subprocess.Popen(psql+['-At'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,text=True)
+    writer.stdin.write("BEGIN;\nUPDATE public.broker_whatsapp_contacts SET whatsapp_phone='972503333333',whatsapp_link='https://wa.me/972503333333' WHERE broker_id='00000000-0000-0000-0000-000000000004';\nSELECT 'row_locked';\nSELECT pg_sleep(1);\nCOMMIT;\n")
+    writer.stdin.close()
+    while writer.stdout.readline().strip()!='row_locked':
+        if writer.poll() is not None: raise RuntimeError('Manual writer did not acquire contact lock')
+    run(psql + ['-f',str(root/'tests/database/broker-whatsapp-conflict.sql')])
+    writer.wait(timeout=5)
+    run(psql + ['-f',str(root/'tests/database/broker-whatsapp-bulk-stop.sql')])
 finally:
     if cluster.exists():
         subprocess.run(as_user + [binary('pg_ctl'),'-D',str(cluster),'-m','immediate','stop'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)

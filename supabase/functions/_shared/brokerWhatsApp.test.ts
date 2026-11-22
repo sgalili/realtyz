@@ -5,6 +5,18 @@ mock.module('npm:cheerio@1.0.0-rc.12', () => cheerio);
 const { brokerWhatsAppAction, brokerWhatsAppRetry, discoverBrokerWhatsApp, discoverBrokerTelephone, normalizeBrokerWhatsApp, inspectBrokerWhatsApp } = await import('./brokerWhatsApp');
 
 describe('source-backed broker WhatsApp', () => {
+  const source = 'https://www.yad2.co.il/realestate/item/abc123';
+  const scopedPage = (content: string, token='abc123') => `<script id="__NEXT_DATA__">${JSON.stringify({props:{pageProps:{token}}})}</script><main><a href="https://wa.me/972509999999">Unrelated</a><aside class="stickyContentBox"><div class="forsaleAgencyContactSectionBox">${content}</div></aside></main>`;
+  it('production reads only the identified primary contact of the saved listing', () => {
+    const html = scopedPage('<a href="https://wa.me/972502222222">WhatsApp</a><a href="tel:0503333333">Call</a>');
+    expect(discoverBrokerWhatsApp(html, source)?.phone).toBe('972502222222');
+    expect(discoverBrokerTelephone(html, source)).toBe('972503333333');
+  });
+  it('rejects a different listing identity or a contact outside the primary scope', () => {
+    expect(inspectBrokerWhatsApp(scopedPage('<a href="https://wa.me/972502222222">WhatsApp</a>','other'), source).reason).toBe('source_identity_mismatch');
+    expect(discoverBrokerWhatsApp(scopedPage('No contact'), source)).toBeNull();
+    expect(discoverBrokerTelephone(scopedPage('<a style="display: none" href="tel:0503333333">Hidden</a>'), source)).toBeNull();
+  });
   it('extracts the observed primary agency contact inside the listing sticky aside', () => {
     const html = '<main><div class="contentBox"><aside class="stickyContentBox"><div class="stickyContent"><div class="floatingCard"><div class="forsale-agency-contact-section-module-scss-module__x__forsaleAgencyContactSectionBox"><div class="forsale-agency-contact-section-module-scss-module__x__whatsappButtonBox"><a href="https://api.whatsapp.com/send?phone=+972502222222&amp;text=hello">WhatsApp</a></div><a href="tel:0502222222">Call</a></div></div></div></aside></div></main>';
     expect(discoverBrokerWhatsApp(html)).toEqual({ phone: '972502222222', link: 'https://wa.me/972502222222' });

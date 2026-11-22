@@ -19,6 +19,12 @@ test('machine calls use the dedicated shared-secret header and exact worker id',
   assert.equal(request.headers.Authorization,undefined);
   assert.deepEqual(JSON.parse(request.body),{action:'claim',worker_id:'wa-test'});
 });
+test('oversized escaped source reports a terminal failure without sending an oversized result', async () => {
+  const requests=[];
+  const api=createCloudApi({api:'https://example.test/worker',secret:'test-only',id:'wa-test'},async(_url,options)=>{requests.push(JSON.parse(options.body));return {ok:true,json:async()=>({ok:true})};});
+  await processJob({id:'job',lease_token:'lease',status:'running',source_url:'https://www.yad2.co.il/realestate/item/abc123'}, {api,source:async()=> '"'.repeat(2200000)});
+  assert.deepEqual(requests,[{action:'failure',job_id:'job',lease_token:'lease',status:413,error:'discovery_payload_too_large',retry_after:0,worker_id:'wa-test'}]);
+});
 test('accepts the existing Cloud Bright Data token name without weakening required credentials', () => {
   const env={TORAFF_BROKER_WA_API_URL:'https://example.test/worker',BROKER_WA_WORKER_SHARED_SECRET:'test-only',BRIGHTDATA_API_TOKEN:'provider-test',BRIGHTDATA_UNLOCKER_ZONE:'test'};
   assert.equal(configuration(env).token,'provider-test');

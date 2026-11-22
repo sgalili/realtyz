@@ -5,7 +5,10 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export function createCloudApi(config, fetcher = fetch) {
   return async body => {
-    const response = await fetcher(config.api, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-broker-wa-worker-secret': config.secret }, body: JSON.stringify({ ...body, worker_id: config.id }), signal: AbortSignal.timeout(60000) });
+    const payload = JSON.stringify({ ...body, worker_id: config.id });
+    // The Cloud limit covers escaped JSON, not only the source's raw bytes.
+    if (payload.length > 4200000) throw Object.assign(new Error('discovery_payload_too_large'), { status: 413, code: 'discovery_payload_too_large' });
+    const response = await fetcher(config.api, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-broker-wa-worker-secret': config.secret }, body: payload, signal: AbortSignal.timeout(60000) });
     const result = await response.json();
     if (!response.ok) throw Object.assign(new Error(result.error ?? `cloud_http_${response.status}`), { status: response.status });
     return result;
@@ -34,7 +37,12 @@ export async function processJob(job, { api, source }) {
     return;
   }
   // A failed commit is not a source error: leave its lease to expire instead of overwriting a successful save.
-  await api({ action: 'result', ...scope, html });
+  try { await api({ action: 'result', ...scope, html }); }
+  catch (error) {
+    // Only a locally rejected payload is known not to have committed. Never retry an ambiguous save.
+    if (error.code !== 'discovery_payload_too_large') throw error;
+    await api({ action: 'failure', ...scope, status: 413, error: error.message, retry_after: 0 });
+  }
   } finally {clearInterval(heartbeat);}
 }
 
