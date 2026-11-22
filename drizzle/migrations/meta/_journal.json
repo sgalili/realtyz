@@ -1863,6 +1863,20 @@
       "when": 1795310846821,
       "tag": "0265_broker_whatsapp_discovery_only",
       "breakpoints": true
+    },
+    {
+      "idx": 266,
+      "version": "7",
+      "when": 1795312653851,
+      "tag": "0266_import_auto_continue",
+      "breakpoints": true
+    },
+    {
+      "idx": 267,
+      "version": "7",
+      "when": 1795313017161,
+      "tag": "0267_import_legacy_worker_recovery",
+      "breakpoints": true
     }
   ]
 }

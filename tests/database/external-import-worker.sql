@@ -19,7 +19,7 @@ BEGIN
  BEGIN PERFORM public.report_external_import_job(j.id,j.lease_token,'test-worker','{}','{"listings_done":26}','importing','running',NULL,false); RAISE EXCEPTION 'Regressing counter accepted'; EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'counter_regression' THEN RAISE; END IF; END;
  BEGIN PERFORM public.report_external_import_job(j.id,gen_random_uuid(),'test-worker','{}','{}','importing','running',NULL,false); RAISE EXCEPTION 'Wrong worker token accepted'; EXCEPTION WHEN serialization_failure THEN NULL; END;
  BEGIN PERFORM public.report_external_import_job(j.id,j.lease_token,'test-worker','{"transientRetries":8}','{}','importing','running',NULL,false); RAISE EXCEPTION 'Ninth retry allowed'; EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'retry_limit_reached' THEN RAISE; END IF; END;
- UPDATE public.broker_import_jobs SET status='paused' WHERE id=j.id;
+ UPDATE public.broker_import_jobs SET status='paused',checkpoint=checkpoint||'{"pauseReason":"user"}' WHERE id=j.id;
  r:=public.report_external_import_job(j.id,j.lease_token,'test-worker','{}','{"listings_done":28}','importing','running',NULL,false);
  IF r->>'status'<>'paused' OR NOT (r->>'stop')::boolean THEN RAISE EXCEPTION 'Worker overrode admin pause'; END IF;
 END $$;

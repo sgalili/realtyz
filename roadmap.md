@@ -1,5 +1,11 @@
 # Roadmap
 
+## Automatic import failure continuation November 22
+- [x] Replace item-error job stops with three URL-local attempts, persisted failed-source records and automatic cursor advance across broker/developer/draft paths.
+- [x] Recover error-paused and lease-stalled jobs automatically while respecting explicit user pauses and fatal authorization/provider failures; deployed 0266/0267 and reactivated the exact failed live job without changing its 39 saved drafts.
+- [x] Update progress presentation, rebuild the standalone worker and verify retry/skip/recovery: 41 focused tests and isolated database checks passed; authenticated mobile readback shows running state and the failed source consumed. Live worker heartbeat resumed and drafts increased from 39 to 42 after exact-source recovery.
+- [ ] Deploy the updated standalone Railway import worker bundle; deployment access is unavailable here. The existing live worker is running and saving again through Cloud compatibility recovery; its new bundle deployment is not verified.
+
 ## Active import count rings November 22
 - [x] Match the count ring to the exact broker/developer currently importing inventory, not inherited history status.
 - [x] Share progress polling and transfer the ring between items while preserving saved counts; no Worker or schema changes.

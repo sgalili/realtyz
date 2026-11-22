@@ -3,16 +3,17 @@ import { z } from 'npm:zod@3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { collectBrokers, mergeBrokers, flushFoundBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
-import { readWorkerResponse, ImportAvailabilityError, ProviderTimeoutError, WorkerResponseError, ProviderAccountError, PROVIDER_ACCOUNT_ERROR } from '../_shared/brightDataDiagnostics.ts';
+import { readWorkerResponse, ImportAvailabilityError, WorkerResponseError, ProviderAccountError } from '../_shared/brightDataDiagnostics.ts';
 import { agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck, agencyDirectoryQuery, agencyDirectoryUrl, isAgencyProfileUrl, AGENCY_DIRECTORY_MAX_NODES } from '../_shared/yad2Agencies.ts';
 import { ProviderRateLimitError, rateCooldownRemaining, adaptPaceGap, MAX_PACE_GAP_MS } from '../_shared/brightDataThrottle.ts';
-import { IMPORT_QUEUE_GAP_MS, canRetryDeveloperPage } from '../_shared/importScanPolicy.ts';
+import { IMPORT_QUEUE_GAP_MS } from '../_shared/importScanPolicy.ts';
 import { developerImportUrl, developerProjectImportRow, developerQueuePhaseAfterPage, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, type DeveloperQueueWork } from '../_shared/yad2DeveloperImport.ts';
-import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY, developerRetryDeadline } from '../_shared/developerImportRetry.ts';
+import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY } from '../_shared/developerImportRetry.ts';
 import { readAllRows } from '../_shared/readAllRows.ts';
 import { matchingDevelopers, normalizeDeveloperName } from '../_shared/developerIdentity.ts';
 import { DEVELOPER_DIRECTORY_URL } from '../_shared/yad2DeveloperDirectory.ts';
-import { scheduleImportRateLimitRetry, scheduleImportTransientRetry, MAX_TRANSIENT_IMPORT_RETRIES } from '../_shared/importRateLimitRetry.ts';
+import { scheduleImportRateLimitRetry, scheduleImportTransientRetry } from '../_shared/importRateLimitRetry.ts';
+import { fatalImportFailure, finishFailedImportItem, recordImportItemFailure, IMPORT_ITEM_ATTEMPTS } from '../_shared/importItemFailure.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(50)}).strict(),
@@ -98,7 +99,7 @@ Deno.serve(async req => {
     if(existing.checkpoint?.execution==='external') return json({error:'external_worker_only'},409);
     const {data:claimed,error:claimError}=await admin.rpc('claim_broker_import_step',{_id:input.job_id}); if(claimError) throw claimError;
     const job=claimed?.[0]; if(!job) return json({ok:true,idle:true,done:existing.status!=='running',retry_in_ms:Math.max(1000,(Date.parse(existing.lease_until??'')||0)-Date.now())});
-    const c=job.checkpoint as Record<string,any>; const started=Date.now();
+    const c=job.checkpoint as Record<string,any>; c.autoContinue=true; const started=Date.now();
     const autonomousDeveloper=()=>autonomousDeveloperCheckpoint(c);
     const criteriaKey=`volume:v2:${job.min_listings}`;
     const recentKeys=async(rows:Record<string,any>[])=>{
@@ -142,6 +143,7 @@ Deno.serve(async req => {
       if(state?.status!=='running'||state.lease_token!==job.lease_token)throw new Error('הייבוא הושהה לפני הבקשה הבאה');
       delete c.waitUntil;delete c.waitReason;delete c.waitScope;
       try {
+        c.activeRequest={url:(body as {url?:string}).url??null,name};
         const result=await call(name,body);
         c.rateRetries=0;c.transientRetries=0;
         c.discoveryRetries=0;
@@ -453,7 +455,7 @@ Deno.serve(async req => {
             try{d=await call('super-admin-create-user',{full_name:b.full_name,...(b.phone?{phone_e164:b.phone}:{}),...(b.email?{email:b.email}:{}),broker_license_number:b.license_number,approve_broker:true,import_job_id:job.id});}
             catch(err){
               // This step calls our own account function, not Bright Data: log the exact worker, status and reason.
-              console.error('[broker-import-create-failed]',JSON.stringify({job_id:job.id,broker_index:c.brokerIndex,license:lic||null,has_phone:Boolean(b.phone),worker:'super-admin-create-user',provider:'none (internal account creation, no Bright Data request)',error_type:err instanceof Error?err.name:typeof err,status:(err as {status?:number})?.status??null,reason:err instanceof Error?err.message.slice(0,500):String(err),attempt:(c.transientRetries??0)+1,max_attempts:MAX_TRANSIENT_IMPORT_RETRIES}));
+              console.error('[broker-import-create-failed]',JSON.stringify({job_id:job.id,broker_index:c.brokerIndex,license:lic||null,has_phone:Boolean(b.phone),worker:'super-admin-create-user',provider:'none (internal account creation, no Bright Data request)',error_type:err instanceof Error?err.name:typeof err,status:(err as {status?:number})?.status??null,reason:err instanceof Error?err.message.slice(0,500):String(err),attempt:(c.transientRetries??0)+1,max_attempts:IMPORT_ITEM_ATTEMPTS}));
               throw err;
             }
             if(!d.user_id)throw new Error('יצירת המתווך נכשלה');brokerId=d.user_id;
@@ -491,77 +493,44 @@ Deno.serve(async req => {
           return json({ok:true,skipped:true});
         }
       }
-      if(e instanceof ProviderTimeoutError && autonomousDeveloper() && canRetryDeveloperPage((c.transientRetries??0)+1)) {
-        c.transientRetries=(c.transientRetries??0)+1;
-        c.waitScope='developer';c.waitReason=DEVELOPER_TRANSIENT_RETRY;
-        c.waitUntil=developerRetryDeadline(DEVELOPER_TRANSIENT_RETRY,c.transientRetries);
-        console.warn('[developer-import-auto-retry]',JSON.stringify({job_id:job.id,phase:c.phase,attempt:c.transientRetries,status:e.status??null,retry_at:new Date(c.waitUntil).toISOString()}));
-        await save({status:'running',error:null});
-        return json({ok:true,waiting:true,retry_at:c.waitUntil});
+      const message=e instanceof Error?e.message:String(e);
+      const status=(e as {status?:number}).status;
+      if(e instanceof ProviderAccountError || fatalImportFailure(status,message)) {
+        c.terminalReason='authorization_or_provider_configuration';
+        c.lastError={message:message.slice(0,500),status:status??null,at:new Date().toISOString(),stage:c.phase};
+        await save({status:'failed',error:message});return json({ok:false,failed:true});
       }
-      if(e instanceof ProviderTimeoutError && ['scanning','enriching'].includes(c.phase)) {
-        c.discoveryRetries=(c.discoveryRetries??0)+1;
-        if(canRetryDeveloperPage(c.discoveryRetries)) {
-          await save({error:null});return json({ok:true,retrying:true,retry_in_ms:IMPORT_QUEUE_GAP_MS});
+      const url=c.activeRequest?.url??`phase:${c.phase}:broker:${c.brokerIndex??0}:listing:${c.listingIndex??0}`;
+      const failure=recordImportItemFailure(c,url,message,status);
+      if(failure.retry) {
+        if(e instanceof ProviderRateLimitError) {
+          c.paceGapMs=adaptPaceGap(c.paceGapMs,'rate_limit',c.source==='urls'?0:IMPORT_QUEUE_GAP_MS);
+          c.rateLimitHits=(c.rateLimitHits??0)+1;
+          c.rateRetries=failure.attempt-1;
+          const retry=scheduleImportRateLimitRetry(c,e.retryAfterMs);await save(retry.savePatch);
+          return json({ok:true,waiting:true,retry_at:retry.retryAt});
         }
-        // Never declare an unreadable directory page empty/completed.
-        if(c.phase==='scanning') {
-          c.discoveryRetries=0;
-          await save({status:'paused',error:'עמוד האיתור ביד2 לא הגיב לאחר שלושה ניסיונות. ההתקדמות נשמרה; ניתן להמשיך מאותה נקודה.'});
-          return json({ok:true,paused:true});
-        }
-        console.warn('[broker-import-timeout-skip]',JSON.stringify({job_id:job.id,phase:c.phase,page:c.page,status:e.status??null,url:c.phase==='enriching'?c.enrichUrls?.[0]:null}));
-        c.discoveryRetries=0;c.timeoutSkips=(c.timeoutSkips??0)+1;skipRestrictedImport(c);
-        await save({error:null,...(c.phase==='completed'?{status:'completed'}:{})});
-        return json({ok:true,skipped:true});
-      }
-      if(e instanceof ProviderRateLimitError) {
-        // Bounded wait (15s → 2 min, Retry-After capped at 3 min) and a wider gap before the next request.
-        c.paceGapMs=adaptPaceGap(c.paceGapMs,'rate_limit',c.source==='urls'?0:IMPORT_QUEUE_GAP_MS);
-        c.rateLimitHits=(c.rateLimitHits??0)+1;
-        const retry=scheduleImportRateLimitRetry(c,e.retryAfterMs);
-        console.warn('[import-rate-auto-retry]',JSON.stringify({job_id:job.id,phase:c.phase,scope:retry.waitScope,attempt:retry.attempt,total_429:c.rateLimitHits,provider_retry_after_ms:e.retryAfterMs||null,wait_ms:retry.retryAt-Date.now(),next_gap_ms:c.paceGapMs,broker_index:c.brokerIndex??null,listing_index:c.listingIndex??null,retry_at:new Date(retry.retryAt).toISOString()}));
-        await save(retry.savePatch);
+        c.transientRetries=failure.attempt-1;
+        const retry=scheduleImportTransientRetry(c);await save(retry.savePatch);
         return json({ok:true,waiting:true,retry_at:retry.retryAt});
       }
-      // A broker the account worker permanently rejects (4xx) is skipped with its real reason; the scan continues.
-      if(e instanceof WorkerResponseError && e.status>=400 && e.status<500 && ['creating','validating'].includes(c.phase) && c.brokers?.[c.brokerIndex]) {
-        const b=c.brokers[c.brokerIndex];
-        console.warn('[broker-import-broker-rejected]',JSON.stringify({job_id:job.id,phase:c.phase,broker_index:c.brokerIndex,status:e.status,reason:e.message.slice(0,500)}));
-        c.failedBrokers=[...(c.failedBrokers??[]),{name:b.full_name??b.office_name??null,license:b.license_number??null,reason:e.message.slice(0,300)}];
-        c.brokerIndex++;c.phase='validating';c.listingIndex=0;delete c.brokerId;delete c.brokerListingsDone;delete c.liveUrls;
-        await save({skipped:job.skipped+1,error:null});
-        return json({ok:true,skipped:true});
-      }
-      // Bright Data account suspended/billing: permanent, stop at once with a clear reason instead of retrying for many minutes.
-      if(e instanceof ProviderAccountError || PROVIDER_ACCOUNT_ERROR.test(e instanceof Error?e.message:String(e))) {
-        console.error('[broker-import-provider-suspended]',JSON.stringify({job_id:job.id,phase:c.phase}));
-        await save({status:'paused',error:'חשבון Bright Data מושעה (חיוב לא פעיל). ההתקדמות נשמרה; יש להפעיל מחדש את החשבון ואז ללחוץ המשך.'});
-        return json({ok:true,paused:true,reason:'provider_suspended'});
-      }
-      // Transient worker/network failures in broker phases retry automatically with backoff (bounded), never a manual pause.
-      if(!autonomousDeveloper() && !String(c.phase??'').startsWith('developer_') && !(e instanceof WorkerResponseError && e.status<500) && (c.transientRetries??0)<MAX_TRANSIENT_IMPORT_RETRIES) {
-        const retry=scheduleImportTransientRetry(c);
-        console.warn('[broker-import-transient-auto-retry]',JSON.stringify({job_id:job.id,phase:c.phase,attempt:retry.attempt,error:e instanceof Error?e.message.slice(0,300):String(e),retry_at:new Date(retry.retryAt).toISOString()}));
-        await save(retry.savePatch);
-        return json({ok:true,waiting:true,retry_at:retry.retryAt});
-      }
-      const message=e instanceof Error?e.message:'הייבוא נעצר';
-      if((c.transientRetries??0)>=MAX_TRANSIENT_IMPORT_RETRIES)console.error('[broker-import-retries-exhausted]',JSON.stringify({job_id:job.id,phase:c.phase,attempts:c.transientRetries,error:message.slice(0,500)}));
-      if(c.phase==='developer_discovering'){await save({status:'failed',error:message});return json({ok:true,failed:true});}
-      // Batch links: a permanent failure on one developer link is logged per item and the loop continues with the next link.
-      if(String(c.phase??'').startsWith('developer_') && Array.isArray(c.developerUrls)) {
-        const url=c.developerUrls[c.developerIndex??0];
-        c.developerResults=[...(c.developerResults??[]),{source_url:url,status:'failed',error:message,company_name:c.developerWork?.developer?.company_name??null,developer_id:c.developerWork?.developerId??null,account_id:c.developerWork?.accountId??null,projects:0,units:0}];
+      // Consume exactly one failed source; never mark it as successfully read or saved.
+      if(c.phase==='scanning') {c.directoryQueue=(c.directoryQueue??[]).slice(1);c.directoryVisited=(c.directoryVisited??0)+1;advanceSearchPoint(c);}
+      else if(c.phase==='enriching'||c.phase==='importing') {skipRestrictedImport(c);}
+      else if(c.phase==='creating'||c.phase==='validating') {c.brokerIndex=(c.brokerIndex??0)+1;c.phase='validating';c.listingIndex=0;delete c.brokerId;delete c.brokerListingsDone;delete c.liveUrls;}
+      else if(c.phase==='developer_discovering') {c.directoryUrl=null;c.phase='developer_scanning';}
+      else if(c.phase==='developer_scanning'&&c.developerWork?.pendingUrls?.includes(url)) {
+        c.developerWork.pendingUrls=c.developerWork.pendingUrls.filter((u:string)=>u!==url);
+        c.phase=developerQueuePhaseAfterPage(c.developerWork);
+      } else if(String(c.phase).startsWith('developer_')) {
+        c.developerResults=[...(c.developerResults??[]),{source_url:c.developerUrls?.[c.developerIndex??0],status:'failed',error:message,projects:0,units:0}];
         c.developerIndex=(c.developerIndex??0)+1;delete c.developerWork;
-        c.phase=c.developerUrls[c.developerIndex]?'developer_scanning':c.enrichUrls?.length?'enriching':c.brokers?.length?'validating':'completed';
-        const ok=(c.developerResults as Record<string,any>[]).filter(r=>r.status!=='failed');
-        if(c.phase!=='completed'){await save({error:null});return json({ok:true,item_failed:true});}
-        await save(ok.length||c.brokers?.length?{status:'completed',error:null}:{status:'failed',error:message});
-        return json({ok:true,item_failed:true});
-      }
-      await save({status:autonomousDeveloper()?'failed':'paused',error:message});
-      return json({ok:false,...(autonomousDeveloper()?{failed:true}:{paused:true})});
+        c.phase=c.developerUrls?.[c.developerIndex]?'developer_scanning':c.enrichUrls?.length?'enriching':c.brokers?.length?'validating':'completed';
+      } else {await save({status:'failed',error:message});return json({ok:false,failed:true});}
+      finishFailedImportItem(c);
+      console.error('[import-item-failed-continue]',JSON.stringify({job_id:job.id,...c.lastFailedSource,next_phase:c.phase}));
+      await save({status:c.phase==='completed'?'completed':'running',skipped:job.skipped+1,error:null});
+      return json({ok:true,item_failed:true,continued:c.phase!=='completed'});
     }
   } catch(e) {return json({error:e instanceof Error?e.message:'הבקשה נכשלה'},400);}
 });

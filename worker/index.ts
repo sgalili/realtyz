@@ -3,12 +3,13 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { configuration, retryDelay } from './policy.ts';
 import { delay, RequestGate, readAndCommit } from './concurrency.ts';
+import { advanceExternalFailedSource, fatalImportFailure, finishFailedImportItem, recordImportItemFailure } from '../supabase/functions/_shared/importItemFailure.ts';
 import { parseAgencies, agencyDirectoryUrl, agencyVolumeAllowed } from '../supabase/functions/_shared/yad2Agencies.ts';
 import { parseDeveloperDirectory, DEVELOPER_DIRECTORY_URL } from '../supabase/functions/_shared/yad2DeveloperDirectory.ts';
 import { readPage, newDeveloperQueueWork, mergeDeveloperQueuePage, detailedUnitCount } from '../supabase/functions/_shared/yad2DeveloperImport.ts';
 
 type Job = any;
-class WorkerError extends Error { constructor(message: string, public status = 500, public retryAfterMs = 0) { super(message); } }
+class WorkerError extends Error { constructor(message: string, public status = 500, public retryAfterMs = 0, public sourceUrl?: string) { super(message); } }
 
 /** A background process only: no HTTP server and no browser/service-role credentials. */
 export async function startImportWorker() {
@@ -20,15 +21,17 @@ export async function startImportWorker() {
   process.once('SIGINT', stop);
   let providerSuspended = false;
   const api = async (body: any) => {
-    const response = await fetch(config.api, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-import-worker-secret': config.secret }, body: JSON.stringify({ ...body, worker_id: config.id }), signal: AbortSignal.timeout(150000) });
+    let response: Response;
+    try {response = await fetch(config.api, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-import-worker-secret': config.secret }, body: JSON.stringify({ ...body, worker_id: config.id }), signal: AbortSignal.timeout(150000) });}
+    catch(error){throw new WorkerError(`Cloud ${(error as Error).name}`, (error as Error).name==='TimeoutError'?504:503,0,body.url);}
     const result = await response.json().catch(() => ({})) as any;
-    if (!response.ok) throw new WorkerError(result.error ?? `cloud_http_${response.status}`,response.status);
+    if (!response.ok) throw new WorkerError(result.error ?? `cloud_http_${response.status}`,response.status,0,body.url);
     return result;
   };
   const gate = new RequestGate(config.interval);
   const readSource = async (url: string) => {
     const target = new URL(url);
-    if (target.protocol !== 'https:' || !/(^|\.)yad2\.co\.il$/.test(target.hostname) || target.username || target.password) throw new WorkerError('invalid_source_url',400);
+    if (target.protocol !== 'https:' || !/(^|\.)yad2\.co\.il$/.test(target.hostname) || target.username || target.password) throw new WorkerError('invalid_source_url',400,0,url);
     await gate.enter();
     if (stopping) throw new WorkerError('Worker stopping', 503);
     if (providerSuspended) throw new WorkerError('Bright Data account suspended',407);
@@ -37,7 +40,7 @@ export async function startImportWorker() {
     catch(error){
       const reason=(error as Error).name;
       console.error(JSON.stringify({event:'source_connection_error',url,zone:config.zone,transport:'Web Unlocker REST',reason,timeout_ms:config.timeout}));
-      throw new WorkerError(`Bright Data ${reason} at ${url}`,reason==='TimeoutError'?504:503);
+      throw new WorkerError(`Bright Data ${reason} at ${url}`,reason==='TimeoutError'?504:503,0,url);
     }
     const html = await response.text();
     const providerError = `${response.headers.get('x-brd-err-code') ?? ''} ${response.headers.get('x-brd-error') ?? ''}`.trim();
@@ -48,15 +51,17 @@ export async function startImportWorker() {
       const retry = /^\d+$/.test(header) ? Number(header)*1000 : Math.max(0,Date.parse(header)-Date.now());
       const retryMs = Number.isFinite(retry) ? Math.min(180000,retry) : 0;
       if(response.status===429)gate.defer(Math.max(15000,retryMs));
-      throw new WorkerError(`Bright Data ${response.status}: ${(providerError || html.slice(0,300)).split(config.token).join('[redacted]')}`,response.status===200?502:response.status,retryMs);
+      throw new WorkerError(`Bright Data ${response.status}: ${(providerError || html.slice(0,300)).split(config.token).join('[redacted]')}`,response.status===200?502:response.status,retryMs,url);
     }
-    if (!html.trim()) throw new WorkerError('Bright Data returned an empty page',502);
-    if (html.length>8000000) throw new WorkerError('Source page exceeds safe size limit',413);
+    if (!html.trim()) throw new WorkerError('Bright Data returned an empty page',502,0,url);
+    if (html.length>8000000) throw new WorkerError('Source page exceeds safe size limit',413,0,url);
     return html;
   };
 
   const runJob = async (job: Job) => {
     const c = structuredClone(job.checkpoint);
+    c.autoContinue = true;
+    c.workerFailurePolicy = 'url-local-v1';
     const counts:any = Object.fromEntries(['brokers_done','developers_done','listings_done','projects_done','units_done','skipped'].map(k=>[k,job[k]??0]));
     const scope = {job_id:job.id,lease_token:job.lease_token};
     let lost = false;
@@ -72,7 +77,7 @@ export async function startImportWorker() {
       if(r.stop)lost=true;
     };
     const alive = () => { if(lost)throw new WorkerError('stale_worker_lease',409); };
-    const successful = () => { c.transientRetries=0;c.lastSuccessfulActionAt=new Date().toISOString();c.waitUntil=null;c.waitReason=null; };
+    const successful = (url?: string) => { if(url&&c.itemRetries)delete c.itemRetries[url];c.transientRetries=0;c.lastSuccessfulActionAt=new Date().toISOString();c.waitUntil=null;c.waitReason=null; };
     try {
       c.workerFrontier ??= c.autoDevelopers?[DEVELOPER_DIRECTORY_URL]:c.source==='urls'?[]:[agencyDirectoryUrl(c.directoryQuery??'')];
       c.workerVisited ??=[];
@@ -99,12 +104,11 @@ export async function startImportWorker() {
           if(!urls.length){c.workerEnrichedIds.push(broker.broker_id);c.activeBroker=null;c.workerListingDoneUrls=null;c.workerListingIndex=0;await progress();continue;}
           await readAndCommit(urls,readSource,async(url,html)=>{
             alive();let saved:any;
-            try { saved=await api({action:'listing',...scope,url,html,broker_id:broker.broker_id}); }
-            catch(e) {if((e as WorkerError).status===422){counts.skipped++;c.workerListingDoneUrls.push(url);await progress();return;}throw e;}
-            if(!saved.listing_id)throw new WorkerError('Listing was not saved');
+            saved=await api({action:'listing',...scope,url,html,broker_id:broker.broker_id});
+            if(!saved.listing_id)throw new WorkerError('Listing was not saved',500,0,url);
             c.savedListingIds??=[];
             if(!c.savedListingIds.includes(saved.listing_id)){c.savedListingIds.push(saved.listing_id);counts.listings_done=Math.max(counts.listings_done,c.savedListingIds.length);}
-            c.workerListingDoneUrls.push(url);successful();await progress();
+            c.workerListingDoneUrls.push(url);successful(url);await progress();
           });continue;
         }
         if(counts.brokers_done+counts.developers_done>=job.target_brokers){stage='completed';await progress('completed',true);break;}
@@ -117,11 +121,11 @@ export async function startImportWorker() {
             const html=await readSource(entity.url);
             let saved:any;
             try {saved=await api({action:'broker',...scope,url:entity.url,html});
-              if(Array.isArray(saved.need_pages)){const more_html:string[]=[];for(const page of saved.need_pages.slice(0,9)){try{more_html.push(await readSource(page));}catch(e){if((e as WorkerError).status===407)throw e;break;}}saved=await api({action:'broker',...scope,url:entity.url,html,more_html});}}
-            catch(e){if([400,409,422].includes((e as WorkerError).status)&&!/(lease|job_not_running)/.test((e as Error).message)){c.workerProcessed.push(entity.url);counts.skipped++;console.log(JSON.stringify({event:'broker_rejected',url:entity.url,error:(e as Error).message}));await progress();continue;}throw e;}
+              if(Array.isArray(saved.need_pages)){c.workerBrokerPageUrls=saved.need_pages.slice(0,9);const more_html:string[]=[];for(const page of c.workerBrokerPageUrls){if(!c.workerBrokerFailedPages?.includes(page))more_html.push(await readSource(page));}saved=await api({action:'broker',...scope,url:entity.url,html,more_html});}}
+            catch(e){if([400,409,422].includes((e as WorkerError).status)&&!/(lease|job_not_running)/.test((e as Error).message)){recordImportItemFailure(c,entity.url,(e as Error).message,(e as WorkerError).status);finishFailedImportItem(c);c.workerProcessed.push(entity.url);counts.skipped++;console.log(JSON.stringify({event:'broker_rejected',url:entity.url,error:(e as Error).message}));await progress();continue;}throw e;}
             if(saved.skipped){counts.skipped++;console.log(JSON.stringify({event:'entity_skipped',url:entity.url,reason:saved.reason}));}
             else{c.workerEnrichment.push(saved.broker);counts.brokers_done=Math.max(counts.brokers_done,saved.brokerResults?.length??c.brokerResults?.length??counts.brokers_done+1);}
-            c.workerProcessed.push(entity.url);successful();await progress();continue;
+            c.workerProcessed.push(entity.url);c.workerBrokerPageUrls=null;c.workerBrokerFailedPages=null;successful(entity.url);await progress();continue;
           }
           c.workerDeveloper ??= newDeveloperQueueWork(entity.url,c.expectedProjects??1,c.maxProjects??undefined);
           const work=c.workerDeveloper;
@@ -132,8 +136,8 @@ export async function startImportWorker() {
             const urls=work.developer.company_name&&(!work.maxProjects||cappedInventory)?candidates:candidates.slice(0,1);
             await readAndCommit(urls,readSource,async(url,html)=>{
               alive();if(c.workerProcessed.includes(entity.url))return;
-              const page=readPage(html,url,work.inventoryParents?.[url]);
-              mergeDeveloperQueuePage(work,{source_url:url,...page});
+              try {const page=readPage(html,url,work.inventoryParents?.[url]);mergeDeveloperQueuePage(work,{source_url:url,...page});}
+              catch(error){throw new WorkerError((error as Error).message,422,0,url);}
               if(work.developer.company_name) {
                 const saved=await api({action:'developer',...scope,url:entity.url,developer:work.developer,projects:work.projects,partial:true});
                 if(saved.skipped){work.pendingUrls=[];c.workerProcessed.push(entity.url);counts.skipped++;}
@@ -145,7 +149,7 @@ export async function startImportWorker() {
                   c.workerDeveloperSaved={projects:saved.result.projects,units:saved.result.units};
                 }
               }
-              successful();await progress();
+              successful(url);await progress();
             });
             if(c.workerProcessed.includes(entity.url)){c.workerDeveloper=null;c.workerDeveloperSaved=null;}
             continue;
@@ -154,7 +158,7 @@ export async function startImportWorker() {
           const saved=await api({action:'developer',...scope,url:entity.url,developer:work.developer,projects:work.projects,units:work.projects.reduce((n:number,p:any)=>n+detailedUnitCount(p),0)});
           if(saved.skipped)counts.skipped++;
           else {counts.developers_done=saved.developerResults?.length??counts.developers_done+1;counts.projects_done+=Math.max(0,(saved.result?.projects??0)-(c.workerDeveloperSaved?.projects??0));counts.units_done+=Math.max(0,(saved.result?.units??0)-(c.workerDeveloperSaved?.units??0));}
-          c.workerProcessed.push(entity.url);c.workerDeveloper=null;c.workerDeveloperSaved=null;delete c.externalPendingDeveloper;successful();await progress();continue;
+          c.workerProcessed.push(entity.url);c.workerDeveloper=null;c.workerDeveloperSaved=null;delete c.externalPendingDeveloper;successful(entity.url);await progress();continue;
         }
         if(counts.brokers_done+counts.developers_done>=job.target_brokers||!c.workerFrontier.length){stage='completed';await progress('completed',true);break;}
         stage=c.autoDevelopers?'developer_discovering':'scanning';
@@ -166,21 +170,41 @@ export async function startImportWorker() {
           const next=[(parsed as any).next_url,...((parsed as any).children??[]).map((q:string)=>agencyDirectoryUrl(q))].filter(Boolean);
           for(const u of next)if(!c.workerVisited.includes(u)&&!c.workerFrontier.includes(u))c.workerFrontier.push(u);
           if(c.workerVisited.length>=600)c.workerFrontier=[];
-          successful();await progress();
+          successful(url);await progress();
         });
       }
       if(stopping&&!lost)await progress('running',true);
     } catch(error) {
       const e=error as WorkerError;
       if(e.status===409&&/lease|job_not_running/.test(e.message))return;
-      // Successful sibling saves must not reset a repeatedly failing page's retry budget.
-      c.transientRetries=Math.max(c.transientRetries??0,job.checkpoint?.transientRetries??0)+1;
-      // Persist the newest failure on the job so the admin card shows it without Railway logs.
-      c.lastError={message:String(e.message??'').slice(0,500),status:e.status??null,at:new Date().toISOString(),stage};
-      const permanent=[400,401,403,407,413,422].includes(e.status);
-      if(permanent||c.transientRetries>=8){await progress('failed',true,e.message);}
-      else {c.waitUntil=Date.now()+retryDelay(c.transientRetries,e.retryAfterMs);c.waitReason=e.status===429?'rate_limit':'transient_retry';await progress('running',true);}
-      console.error(JSON.stringify({event:'job_error',job_id:job.id,status:e.status,attempt:c.transientRetries,error:e.message,wait_until:c.waitUntil??null}));
+      if(stopping){await progress('running',true);return;}
+      c.phase=stage;
+      if(fatalImportFailure(e.status,e.message)) {
+        c.lastError={message:e.message,status:e.status,at:new Date().toISOString(),stage};
+        c.terminalReason='authorization_or_provider_configuration';
+        await progress('failed',true,e.message);
+      } else if(e.sourceUrl) {
+        const failure=recordImportItemFailure(c,e.sourceUrl,e.message,e.status);
+        if(failure.retry) {
+          // A finite provider cooldown is automatic, never a manual pause.
+          c.transientRetries=Math.max(Number(c.transientRetries??0),failure.attempt);c.rateRetries=e.status===429?failure.attempt:0;
+          c.waitUntil=Date.now()+retryDelay(failure.attempt,e.retryAfterMs);c.waitReason=e.status===429?'rate_limit':'transient_retry';
+          await progress('running',true);
+        } else if(advanceExternalFailedSource(c,e.sourceUrl)) {
+          finishFailedImportItem(c);counts.skipped++;
+          await progress('running',true);
+        } else {
+          // Never guess a cursor or discard a save whose acknowledgement was lost.
+          c.waitUntil=Date.now()+retryDelay(1);c.waitReason='transient_retry';
+          await progress('running',true);
+        }
+      } else {
+        // Orchestrator/gateway loss leaves the fenced checkpoint reclaimable, not paused.
+        c.lastError={message:e.message,status:e.status??null,at:new Date().toISOString(),stage};
+        c.waitUntil=Date.now()+retryDelay(1);c.waitReason='transient_retry';
+        await progress('running',true);
+      }
+      console.error(JSON.stringify({event:'job_error',job_id:job.id,url:e.sourceUrl??null,status:e.status,attempt:c.itemRetries?.[e.sourceUrl??'']??c.lastFailedSource?.attempts??null,error:e.message,wait_until:c.waitUntil??null}));
     } finally {clearInterval(heartbeat);}
   };
   console.log('TORAFF import worker started');

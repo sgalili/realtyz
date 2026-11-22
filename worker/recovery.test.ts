@@ -28,16 +28,21 @@ test('existing entity is skipped before any paid source read',async()=>{
   });
   assert.equal(reads,0);assert.equal(final.counts.skipped,1);assert.equal(final.counts.brokers_done,0);
 });
-test('eighth failure is terminal and does not restart the retry countdown',async()=>{
+test('an exhausted source is skipped and the next broker continues without a resume',async()=>{
   let claims=0;let final:any;
+  let checkpoint:any={source:'urls',itemRetries:{'https://www.yad2.co.il/realestate/agency/1234':2},enrichUrls:['https://www.yad2.co.il/realestate/agency/1234','https://www.yad2.co.il/realestate/agency/5678']};
+  let skipped:any;
   await withFetch(async(body,source)=>{
-    if(source)return new Response('Temporary provider failure',{status:503});
-    if(body.action==='claim'){claims++;return {job:{id:'j',lease_token:'l',target_brokers:1,checkpoint:{source:'urls',transientRetries:7,enrichUrls:['https://www.yad2.co.il/realestate/agency/1234']}}};}
+    if(source)throw new DOMException('Timed out','TimeoutError');
+    if(body.action==='claim'){claims++;return {job:{id:'j',lease_token:'l',target_brokers:2,skipped:skipped?1:0,checkpoint}};}
+    if(body.action==='known'&&body.url.endsWith('5678'))return {known:true};
     if(body.action==='known')return {known:false};
-    if(body.action==='progress'){if(body.status==='failed'){final=body;process.emit('SIGTERM');}return {stop:false};}
+    if(body.action==='progress'){checkpoint=body.checkpoint;if(body.checkpoint.failedSourceVersion===1)skipped=body;if(body.status==='completed'){final=body;process.emit('SIGTERM');}return {stop:false};}
     throw new Error('Unexpected action');
   });
-  assert.equal(claims,1);assert.equal(final.checkpoint.transientRetries,8);assert.equal(final.status,'failed');
+  assert.equal(claims,2);assert.equal(skipped.checkpoint.lastFailedSource.attempts,3);assert.equal(final.status,'completed');
+  assert.deepEqual(final.checkpoint.workerProcessed,['https://www.yad2.co.il/realestate/agency/1234','https://www.yad2.co.il/realestate/agency/5678']);
+  assert.equal(final.counts.skipped,2);assert.equal(final.counts.brokers_done,0);
 });
 test('account suspension fails the job and stops claiming more jobs',async()=>{
   let claims=0;let final:any;

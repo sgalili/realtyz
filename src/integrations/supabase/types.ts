@@ -12081,6 +12081,10 @@ export type Database = {
           id: string
         }[]
       }
+      import_job_auto_recoverable: {
+        Args: { _checkpoint: Json; _status: string }
+        Returns: boolean
+      }
       imported_account_inventory_counts: {
         Args: { owner_ids: string[] }
         Returns: {

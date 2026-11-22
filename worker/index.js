@@ -1,9 +1,9 @@
-// index.ts
+// worker/index.ts
 import * as cheerio from "cheerio";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 
-// policy.ts
+// worker/policy.ts
 function retryDelay(attempt, retryAfterMs = 0) {
   return Math.min(18e4, Math.max(Math.min(12e4, 15e3 * 2 ** Math.max(0, attempt - 1)), retryAfterMs));
 }
@@ -30,7 +30,7 @@ function configuration(env) {
   };
 }
 
-// concurrency.ts
+// worker/concurrency.ts
 var delay = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
 var RequestGate = class {
   constructor(interval, now = Date.now, wait = delay) {
@@ -74,7 +74,61 @@ async function readAndCommit(items, read, commit) {
   if (failures.length) throw failures[0].reason;
 }
 
-// ../supabase/functions/_shared/brokerBatchImport.ts
+// supabase/functions/_shared/importItemFailure.ts
+var IMPORT_ITEM_ATTEMPTS = 3;
+function fatalImportFailure(status, message) {
+  return [401, 403, 407].includes(status ?? 0) || /client_10020|account.*suspend|billing.*inactive|invalid.*(api.?key|zone)/i.test(message);
+}
+function recordImportItemFailure(c, url, message, status, now = Date.now()) {
+  c.autoContinue = true;
+  c.itemRetries ??= {};
+  const attempt = Number(c.itemRetries[url] ?? 0) + 1;
+  c.itemRetries[url] = attempt;
+  c.lastError = { url, message: message.slice(0, 500), status: status ?? null, at: new Date(now).toISOString(), stage: c.phase };
+  const retryable = status === void 0 || status === 408 || status === 409 || status === 429 || status >= 500;
+  return { attempt, retry: retryable && attempt < IMPORT_ITEM_ATTEMPTS };
+}
+function finishFailedImportItem(c) {
+  const url = c.lastError.url;
+  const failure = { ...c.lastError, attempts: c.itemRetries[url] };
+  c.failedSources = [...c.failedSources ?? [], failure].slice(-500);
+  c.lastFailedSource = failure;
+  c.failedSourceVersion = Number(c.failedSourceVersion ?? 0) + 1;
+  delete c.itemRetries[url];
+  c.transientRetries = 0;
+  c.rateRetries = 0;
+  c.waitUntil = null;
+  c.waitReason = null;
+  c.waitScope = null;
+}
+function advanceExternalFailedSource(c, url) {
+  if (c.activeBroker?.listing_urls?.includes(url)) {
+    c.workerListingDoneUrls = [.../* @__PURE__ */ new Set([...c.workerListingDoneUrls ?? [], url])];
+    return true;
+  }
+  if (c.workerDeveloper?.pendingUrls?.includes(url)) {
+    c.workerDeveloper.pendingUrls = c.workerDeveloper.pendingUrls.filter((u) => u !== url);
+    return true;
+  }
+  if (c.workerBrokerPageUrls?.includes(url)) {
+    c.workerBrokerFailedPages = [.../* @__PURE__ */ new Set([...c.workerBrokerFailedPages ?? [], url])];
+    return true;
+  }
+  if (c.workerFrontier?.includes(url)) {
+    c.workerFrontier = c.workerFrontier.filter((u) => u !== url);
+    return true;
+  }
+  const entity = c.workerEntities?.find((e) => e.url === url);
+  if (!entity || c.workerProcessed?.includes(url)) return false;
+  c.workerProcessed = [...c.workerProcessed ?? [], url];
+  if (entity.kind === "developer") {
+    c.workerDeveloper = null;
+    c.workerDeveloperSaved = null;
+  }
+  return true;
+}
+
+// supabase/functions/_shared/brokerBatchImport.ts
 function batchPhone(v) {
   const d = String(v ?? "").replace(/\D/g, "");
   if (/^05\d{8}$/.test(d)) return `972${d.slice(1)}`;
@@ -93,7 +147,7 @@ function batchListingUrls(urls) {
   return [...out].slice(0, 10);
 }
 
-// ../supabase/functions/_shared/yad2Agencies.ts
+// supabase/functions/_shared/yad2Agencies.ts
 var AGENCIES_URL = "https://www.yad2.co.il/realestate/agencies";
 var AGENCY_REGISTRY_TTL_MS = 7 * 864e5;
 function agencyListingCount(value) {
@@ -277,7 +331,7 @@ function parseAgencies($, sourceUrl2) {
   return { results, next_url: nextUrl };
 }
 
-// ../supabase/functions/_shared/projectHierarchy.ts
+// supabase/functions/_shared/projectHierarchy.ts
 var sourceRecord = (value) => value && typeof value === "object" && !Array.isArray(value) ? value : {};
 var string = (value) => typeof value === "string" || typeof value === "number" ? String(value) : null;
 var first = (row, keys) => keys.map((key) => row[key]).find((value) => value != null && value !== "");
@@ -404,7 +458,7 @@ function savedProjectHierarchy(project) {
   return { buildings: grouped, apartments: [...units.values()], unassigned: [...units.values()].filter((unit) => !unit.building_id) };
 }
 
-// ../supabase/functions/_shared/yad2DeveloperImport.ts
+// supabase/functions/_shared/yad2DeveloperImport.ts
 var record = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 var text = (v) => typeof v === "string" || typeof v === "number" ? String(v).trim() || null : null;
 var pick = (o, keys) => keys.map((k) => text(k.split(".").reduce((v, key) => record(v) ? v[key] : void 0, o))).find(Boolean) ?? null;
@@ -783,7 +837,7 @@ function detailedUnitCount(project) {
   return savedProjectHierarchy(project).apartments.length;
 }
 
-// ../supabase/functions/_shared/yad2DeveloperDirectory.ts
+// supabase/functions/_shared/yad2DeveloperDirectory.ts
 var DEVELOPER_DIRECTORY_URL = "https://www.yad2.co.il/yad1/developers";
 function developerDirectoryUrl(value) {
   try {
@@ -806,12 +860,13 @@ function parseDeveloperDirectory(html, pageUrl) {
   return { urls, next_url: next ? developerDirectoryUrl(`${DEVELOPER_DIRECTORY_URL}?page=${next}`) : null };
 }
 
-// index.ts
+// worker/index.ts
 var WorkerError = class extends Error {
-  constructor(message, status = 500, retryAfterMs = 0) {
+  constructor(message, status = 500, retryAfterMs = 0, sourceUrl2) {
     super(message);
     this.status = status;
     this.retryAfterMs = retryAfterMs;
+    this.sourceUrl = sourceUrl2;
   }
 };
 async function startImportWorker() {
@@ -825,15 +880,20 @@ async function startImportWorker() {
   process.once("SIGINT", stop);
   let providerSuspended = false;
   const api = async (body) => {
-    const response = await fetch(config.api, { method: "POST", headers: { "Content-Type": "application/json", "x-import-worker-secret": config.secret }, body: JSON.stringify({ ...body, worker_id: config.id }), signal: AbortSignal.timeout(15e4) });
+    let response;
+    try {
+      response = await fetch(config.api, { method: "POST", headers: { "Content-Type": "application/json", "x-import-worker-secret": config.secret }, body: JSON.stringify({ ...body, worker_id: config.id }), signal: AbortSignal.timeout(15e4) });
+    } catch (error) {
+      throw new WorkerError(`Cloud ${error.name}`, error.name === "TimeoutError" ? 504 : 503, 0, body.url);
+    }
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) throw new WorkerError(result.error ?? `cloud_http_${response.status}`, response.status);
+    if (!response.ok) throw new WorkerError(result.error ?? `cloud_http_${response.status}`, response.status, 0, body.url);
     return result;
   };
   const gate = new RequestGate(config.interval);
   const readSource = async (url) => {
     const target = new URL(url);
-    if (target.protocol !== "https:" || !/(^|\.)yad2\.co\.il$/.test(target.hostname) || target.username || target.password) throw new WorkerError("invalid_source_url", 400);
+    if (target.protocol !== "https:" || !/(^|\.)yad2\.co\.il$/.test(target.hostname) || target.username || target.password) throw new WorkerError("invalid_source_url", 400, 0, url);
     await gate.enter();
     if (stopping) throw new WorkerError("Worker stopping", 503);
     if (providerSuspended) throw new WorkerError("Bright Data account suspended", 407);
@@ -843,7 +903,7 @@ async function startImportWorker() {
     } catch (error) {
       const reason = error.name;
       console.error(JSON.stringify({ event: "source_connection_error", url, zone: config.zone, transport: "Web Unlocker REST", reason, timeout_ms: config.timeout }));
-      throw new WorkerError(`Bright Data ${reason} at ${url}`, reason === "TimeoutError" ? 504 : 503);
+      throw new WorkerError(`Bright Data ${reason} at ${url}`, reason === "TimeoutError" ? 504 : 503, 0, url);
     }
     const html = await response.text();
     const providerError = `${response.headers.get("x-brd-err-code") ?? ""} ${response.headers.get("x-brd-error") ?? ""}`.trim();
@@ -857,14 +917,16 @@ async function startImportWorker() {
       const retry = /^\d+$/.test(header) ? Number(header) * 1e3 : Math.max(0, Date.parse(header) - Date.now());
       const retryMs = Number.isFinite(retry) ? Math.min(18e4, retry) : 0;
       if (response.status === 429) gate.defer(Math.max(15e3, retryMs));
-      throw new WorkerError(`Bright Data ${response.status}: ${(providerError || html.slice(0, 300)).split(config.token).join("[redacted]")}`, response.status === 200 ? 502 : response.status, retryMs);
+      throw new WorkerError(`Bright Data ${response.status}: ${(providerError || html.slice(0, 300)).split(config.token).join("[redacted]")}`, response.status === 200 ? 502 : response.status, retryMs, url);
     }
-    if (!html.trim()) throw new WorkerError("Bright Data returned an empty page", 502);
-    if (html.length > 8e6) throw new WorkerError("Source page exceeds safe size limit", 413);
+    if (!html.trim()) throw new WorkerError("Bright Data returned an empty page", 502, 0, url);
+    if (html.length > 8e6) throw new WorkerError("Source page exceeds safe size limit", 413, 0, url);
     return html;
   };
   const runJob = async (job) => {
     const c = structuredClone(job.checkpoint);
+    c.autoContinue = true;
+    c.workerFailurePolicy = "url-local-v1";
     const counts = Object.fromEntries(["brokers_done", "developers_done", "listings_done", "projects_done", "units_done", "skipped"].map((k) => [k, job[k] ?? 0]));
     const scope = { job_id: job.id, lease_token: job.lease_token };
     let lost = false;
@@ -886,7 +948,8 @@ async function startImportWorker() {
     const alive = () => {
       if (lost) throw new WorkerError("stale_worker_lease", 409);
     };
-    const successful = () => {
+    const successful = (url) => {
+      if (url && c.itemRetries) delete c.itemRetries[url];
       c.transientRetries = 0;
       c.lastSuccessfulActionAt = (/* @__PURE__ */ new Date()).toISOString();
       c.waitUntil = null;
@@ -924,25 +987,15 @@ async function startImportWorker() {
           await readAndCommit(urls, readSource, async (url, html) => {
             alive();
             let saved;
-            try {
-              saved = await api({ action: "listing", ...scope, url, html, broker_id: broker.broker_id });
-            } catch (e) {
-              if (e.status === 422) {
-                counts.skipped++;
-                c.workerListingDoneUrls.push(url);
-                await progress();
-                return;
-              }
-              throw e;
-            }
-            if (!saved.listing_id) throw new WorkerError("Listing was not saved");
+            saved = await api({ action: "listing", ...scope, url, html, broker_id: broker.broker_id });
+            if (!saved.listing_id) throw new WorkerError("Listing was not saved", 500, 0, url);
             c.savedListingIds ??= [];
             if (!c.savedListingIds.includes(saved.listing_id)) {
               c.savedListingIds.push(saved.listing_id);
               counts.listings_done = Math.max(counts.listings_done, c.savedListingIds.length);
             }
             c.workerListingDoneUrls.push(url);
-            successful();
+            successful(url);
             await progress();
           });
           continue;
@@ -968,19 +1021,17 @@ async function startImportWorker() {
             try {
               saved2 = await api({ action: "broker", ...scope, url: entity.url, html });
               if (Array.isArray(saved2.need_pages)) {
+                c.workerBrokerPageUrls = saved2.need_pages.slice(0, 9);
                 const more_html = [];
-                for (const page of saved2.need_pages.slice(0, 9)) {
-                  try {
-                    more_html.push(await readSource(page));
-                  } catch (e) {
-                    if (e.status === 407) throw e;
-                    break;
-                  }
+                for (const page of c.workerBrokerPageUrls) {
+                  if (!c.workerBrokerFailedPages?.includes(page)) more_html.push(await readSource(page));
                 }
                 saved2 = await api({ action: "broker", ...scope, url: entity.url, html, more_html });
               }
             } catch (e) {
               if ([400, 409, 422].includes(e.status) && !/(lease|job_not_running)/.test(e.message)) {
+                recordImportItemFailure(c, entity.url, e.message, e.status);
+                finishFailedImportItem(c);
                 c.workerProcessed.push(entity.url);
                 counts.skipped++;
                 console.log(JSON.stringify({ event: "broker_rejected", url: entity.url, error: e.message }));
@@ -997,7 +1048,9 @@ async function startImportWorker() {
               counts.brokers_done = Math.max(counts.brokers_done, saved2.brokerResults?.length ?? c.brokerResults?.length ?? counts.brokers_done + 1);
             }
             c.workerProcessed.push(entity.url);
-            successful();
+            c.workerBrokerPageUrls = null;
+            c.workerBrokerFailedPages = null;
+            successful(entity.url);
             await progress();
             continue;
           }
@@ -1010,8 +1063,12 @@ async function startImportWorker() {
             await readAndCommit(urls, readSource, async (url, html) => {
               alive();
               if (c.workerProcessed.includes(entity.url)) return;
-              const page = readPage(html, url, work.inventoryParents?.[url]);
-              mergeDeveloperQueuePage(work, { source_url: url, ...page });
+              try {
+                const page = readPage(html, url, work.inventoryParents?.[url]);
+                mergeDeveloperQueuePage(work, { source_url: url, ...page });
+              } catch (error) {
+                throw new WorkerError(error.message, 422, 0, url);
+              }
               if (work.developer.company_name) {
                 const saved2 = await api({ action: "developer", ...scope, url: entity.url, developer: work.developer, projects: work.projects, partial: true });
                 if (saved2.skipped) {
@@ -1027,7 +1084,7 @@ async function startImportWorker() {
                   c.workerDeveloperSaved = { projects: saved2.result.projects, units: saved2.result.units };
                 }
               }
-              successful();
+              successful(url);
               await progress();
             });
             if (c.workerProcessed.includes(entity.url)) {
@@ -1048,7 +1105,7 @@ async function startImportWorker() {
           c.workerDeveloper = null;
           c.workerDeveloperSaved = null;
           delete c.externalPendingDeveloper;
-          successful();
+          successful(entity.url);
           await progress();
           continue;
         }
@@ -1068,7 +1125,7 @@ async function startImportWorker() {
           const next = [parsed.next_url, ...(parsed.children ?? []).map((q) => agencyDirectoryUrl(q))].filter(Boolean);
           for (const u of next) if (!c.workerVisited.includes(u) && !c.workerFrontier.includes(u)) c.workerFrontier.push(u);
           if (c.workerVisited.length >= 600) c.workerFrontier = [];
-          successful();
+          successful(url);
           await progress();
         });
       }
@@ -1076,17 +1133,39 @@ async function startImportWorker() {
     } catch (error) {
       const e = error;
       if (e.status === 409 && /lease|job_not_running/.test(e.message)) return;
-      c.transientRetries = Math.max(c.transientRetries ?? 0, job.checkpoint?.transientRetries ?? 0) + 1;
-      c.lastError = { message: String(e.message ?? "").slice(0, 500), status: e.status ?? null, at: (/* @__PURE__ */ new Date()).toISOString(), stage };
-      const permanent = [400, 401, 403, 407, 413, 422].includes(e.status);
-      if (permanent || c.transientRetries >= 8) {
+      if (stopping) {
+        await progress("running", true);
+        return;
+      }
+      c.phase = stage;
+      if (fatalImportFailure(e.status, e.message)) {
+        c.lastError = { message: e.message, status: e.status, at: (/* @__PURE__ */ new Date()).toISOString(), stage };
+        c.terminalReason = "authorization_or_provider_configuration";
         await progress("failed", true, e.message);
+      } else if (e.sourceUrl) {
+        const failure = recordImportItemFailure(c, e.sourceUrl, e.message, e.status);
+        if (failure.retry) {
+          c.transientRetries = Math.max(Number(c.transientRetries ?? 0), failure.attempt);
+          c.rateRetries = e.status === 429 ? failure.attempt : 0;
+          c.waitUntil = Date.now() + retryDelay(failure.attempt, e.retryAfterMs);
+          c.waitReason = e.status === 429 ? "rate_limit" : "transient_retry";
+          await progress("running", true);
+        } else if (advanceExternalFailedSource(c, e.sourceUrl)) {
+          finishFailedImportItem(c);
+          counts.skipped++;
+          await progress("running", true);
+        } else {
+          c.waitUntil = Date.now() + retryDelay(1);
+          c.waitReason = "transient_retry";
+          await progress("running", true);
+        }
       } else {
-        c.waitUntil = Date.now() + retryDelay(c.transientRetries, e.retryAfterMs);
-        c.waitReason = e.status === 429 ? "rate_limit" : "transient_retry";
+        c.lastError = { message: e.message, status: e.status ?? null, at: (/* @__PURE__ */ new Date()).toISOString(), stage };
+        c.waitUntil = Date.now() + retryDelay(1);
+        c.waitReason = "transient_retry";
         await progress("running", true);
       }
-      console.error(JSON.stringify({ event: "job_error", job_id: job.id, status: e.status, attempt: c.transientRetries, error: e.message, wait_until: c.waitUntil ?? null }));
+      console.error(JSON.stringify({ event: "job_error", job_id: job.id, url: e.sourceUrl ?? null, status: e.status, attempt: c.itemRetries?.[e.sourceUrl ?? ""] ?? c.lastFailedSource?.attempts ?? null, error: e.message, wait_until: c.waitUntil ?? null }));
     } finally {
       clearInterval(heartbeat);
     }
