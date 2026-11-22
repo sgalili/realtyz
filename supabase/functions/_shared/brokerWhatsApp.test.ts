@@ -1,0 +1,27 @@
+import { describe, expect, it } from 'bun:test';
+import { brokerWhatsAppAction, brokerWhatsAppRetry, discoverBrokerWhatsApp, normalizeBrokerWhatsApp } from './brokerWhatsApp';
+
+describe('source-backed broker WhatsApp', () => {
+  it('normalizes Israeli numbers without changing the main phone', () => {
+    const broker = { phone: '972501111111', whatsapp: normalizeBrokerWhatsApp('050-222-2222') };
+    expect(broker).toEqual({ phone: '972501111111', whatsapp: '972502222222' });
+    expect(normalizeBrokerWhatsApp('00972502222222')).toBe('972502222222');
+  });
+  it('resolves explicit WhatsApp action numbers only', () => {
+    expect(brokerWhatsAppAction('https://api.whatsapp.com/send?phone=%2B972502222222&text=hello')).toEqual({ phone: '972502222222', link: 'https://wa.me/972502222222' });
+    expect(brokerWhatsAppAction('https://wa.me.evil.test/972502222222')).toBeNull();
+    expect(brokerWhatsAppAction('tel:0502222222')).toBeNull();
+    expect(normalizeBrokerWhatsApp('0502222222 extension 4')).toBeNull();
+  });
+  it('never takes contacts from related ads or ambiguous pages', () => {
+    expect(discoverBrokerWhatsApp('<main><a href="https://wa.me/972502222222">WhatsApp</a><aside><a href="https://wa.me/972503333333">Other</a></aside></main>')?.phone).toBe('972502222222');
+    expect(discoverBrokerWhatsApp('<main><a href="https://wa.me/972502222222">A</a><a href="https://wa.me/972503333333">B</a></main>')).toBeNull();
+    expect(discoverBrokerWhatsApp('<footer><a href="https://wa.me/972502222222">A</a></footer>')).toBeNull();
+  });
+  it('stops after three attempts and caps rate-limit waits at 180 seconds', () => {
+    expect(brokerWhatsAppRetry(429, 1, 900)).toBe(180);
+    expect(brokerWhatsAppRetry(503, 2)).toBe(30);
+    expect(brokerWhatsAppRetry(503, 3)).toBe(0);
+    expect(brokerWhatsAppRetry(407, 1)).toBe(0);
+  });
+});

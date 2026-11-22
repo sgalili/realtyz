@@ -1842,6 +1842,20 @@
       "when": 1795296604424,
       "tag": "0262_restrict_grace_settings_read",
       "breakpoints": true
+    },
+    {
+      "idx": 263,
+      "version": "7",
+      "when": 1795310305711,
+      "tag": "0263_broker_whatsapp_discovery_queue",
+      "breakpoints": true
+    },
+    {
+      "idx": 264,
+      "version": "7",
+      "when": 1795310523291,
+      "tag": "0264_broker_whatsapp_expired_lease_recovery",
+      "breakpoints": true
     }
   ]
 }

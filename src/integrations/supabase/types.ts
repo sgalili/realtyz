@@ -1788,6 +1788,140 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_whatsapp_contacts: {
+        Row: {
+          broker_id: string
+          discovered_at: string
+          source_url: string
+          whatsapp_link: string
+          whatsapp_phone: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          broker_id: string
+          discovered_at?: string
+          source_url: string
+          whatsapp_link: string
+          whatsapp_phone: string
+          workspace_owner_id: string
+        }
+        Update: {
+          broker_id?: string
+          discovered_at?: string
+          source_url?: string
+          whatsapp_link?: string
+          whatsapp_phone?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_whatsapp_contacts_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_whatsapp_contacts_workspace_owner_id_fkey"
+            columns: ["workspace_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broker_whatsapp_jobs: {
+        Row: {
+          attempts: number
+          broker_id: string
+          consent_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          last_error: string | null
+          lease_token: string | null
+          lease_until: string | null
+          listing_id: string
+          message_id: string | null
+          next_attempt_at: string
+          outreach: boolean
+          source_url: string
+          status: string
+          updated_at: string
+          worker_id: string | null
+          workspace_owner_id: string
+        }
+        Insert: {
+          attempts?: number
+          broker_id: string
+          consent_at?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          last_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          listing_id: string
+          message_id?: string | null
+          next_attempt_at?: string
+          outreach?: boolean
+          source_url: string
+          status?: string
+          updated_at?: string
+          worker_id?: string | null
+          workspace_owner_id: string
+        }
+        Update: {
+          attempts?: number
+          broker_id?: string
+          consent_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          last_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          listing_id?: string
+          message_id?: string | null
+          next_attempt_at?: string
+          outreach?: boolean
+          source_url?: string
+          status?: string
+          updated_at?: string
+          worker_id?: string | null
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_whatsapp_jobs_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_whatsapp_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_whatsapp_jobs_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_whatsapp_jobs_workspace_owner_id_fkey"
+            columns: ["workspace_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_limits: {
         Row: {
           created_at: string
@@ -10836,6 +10970,35 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_broker_whatsapp_job: {
+        Args: { _worker: string }
+        Returns: {
+          attempts: number
+          broker_id: string
+          consent_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          last_error: string | null
+          lease_token: string | null
+          lease_until: string | null
+          listing_id: string
+          message_id: string | null
+          next_attempt_at: string
+          outreach: boolean
+          source_url: string
+          status: string
+          updated_at: string
+          worker_id: string | null
+          workspace_owner_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "broker_whatsapp_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_developer_import_identity: {
         Args: { _key: string; _token: string }
         Returns: Json
@@ -11333,6 +11496,17 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      finish_broker_whatsapp_discovery: {
+        Args: {
+          _error?: string
+          _id: string
+          _phone: string
+          _retry_seconds?: number
+          _token: string
+          _worker: string
+        }
+        Returns: Json
       }
       finish_developer_import_identity: {
         Args: {

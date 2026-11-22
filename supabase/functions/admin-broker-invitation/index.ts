@@ -14,20 +14,34 @@ const schema = z.object({
   consent: z.literal(true).optional(),
   demo: z.boolean().optional(),
   attachment_id: z.string().uuid().nullable().optional(),
+  use_discovered_whatsapp: z.boolean().default(false),
+  worker_job_id: z.string().uuid().optional(),
 }).strict();
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
-  const caller = await requireCaller(req, ['user']);
-  if (caller instanceof Response) return caller;
-  if (caller.kind !== 'user' || !await isSuperAdmin(caller.userId)) return json({ error: 'Super Admin required' }, 403);
+  const verifiedCaller = await requireCaller(req, ['user', 'service']);
+  if (verifiedCaller instanceof Response) return verifiedCaller;
+  let caller: { kind: 'user'; userId: string };
+  if (verifiedCaller.kind === 'user') caller = verifiedCaller;
+  else caller = { kind: 'user', userId: '' };
   let parsed;
   try { parsed = schema.safeParse(await req.json()); } catch { return json({ error: 'Invalid JSON' }, 400); }
   if (!parsed.success) return json({ error: parsed.error.flatten() }, 400);
   const input = parsed.data;
   const admin = adminClient();
+  if (verifiedCaller.kind === 'service') {
+    if (input.action !== 'send' || !input.worker_job_id || input.request_id !== input.worker_job_id || !input.use_discovered_whatsapp || !input.consent) return json({ error: 'forbidden_worker_send' }, 403);
+    const { data: job, error } = await admin.from('broker_whatsapp_jobs').select('*').eq('id', input.worker_job_id).single();
+    if (error || !job || job.broker_id !== input.broker_id || job.status !== 'sending' || !job.outreach || !job.consent_at || Date.parse(job.lease_until ?? '') <= Date.now()) return json({ error: 'forbidden_worker_job' }, 403);
+    const { data: source, error: se } = await admin.from('listings').select('id').eq('id', job.listing_id).eq('workspace_owner_id', job.broker_id).eq('user_id', job.broker_id).eq('source_url', job.source_url).maybeSingle();
+    const { data: demoActor, error: de } = await admin.from('demo_view_accounts').select('user_id').in('user_id', [job.created_by, job.broker_id]).limit(1);
+    if (se || de || !source || demoActor?.length) return json({ error: 'forbidden_worker_scope' }, 403);
+    caller = { kind: 'user', userId: job.created_by };
+  } else if (input.worker_job_id) return json({ error: 'forbidden_worker_job' }, 403);
+  if (!await isSuperAdmin(caller.userId, admin)) return json({ error: 'Super Admin required' }, 403);
   const demo = input.demo ?? true;
   // Wording is fixed server-side; on send the recipient's saved gender decides the variant.
   let gender: unknown = input.gender;
@@ -103,8 +117,11 @@ Deno.serve(async req => {
     if (template?.status !== 'APPROVED') return json({ error: 'התבנית טרם אושרה ב-Meta', status: template?.status ?? 'NOT_REGISTERED' }, 409);
     const { data: broker, error: brokerError } = await admin.from('profiles').select('id,full_name,phone').eq('id', input.broker_id).single();
     const invitedRoles = ['agent', 'lead_agent', 'managing_broker', 'junior_agent', 'developer', 'marketing_company', 'property_owner', 'property_seeker', 'affiliate'];
-    if (brokerError || !broker || !roles.some(role => invitedRoles.includes(role))) return json({ error: 'הנמען אינו חשבון הממתין להזמנה' }, 400);
-    const phone = officialBrokerPhone(contact?.phone ?? broker.phone ?? '');
+    const { data: importedBroker } = await admin.from('admin_broker_onboarding').select('imported_license_number').eq('user_id', input.broker_id).not('import_source', 'is', null).maybeSingle();
+    if (brokerError || !broker || (!roles.some(role => invitedRoles.includes(role)) && !importedBroker?.imported_license_number)) return json({ error: 'הנמען אינו חשבון הממתין להזמנה' }, 400);
+    const { data: discovered, error: discoveryError } = input.use_discovered_whatsapp ? await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id', broker.id).single() : { data: null, error: null };
+    if (discoveryError || (input.use_discovered_whatsapp && !discovered)) return json({ error: 'אין מספר WhatsApp שמור למתווך' }, 409);
+    const phone = officialBrokerPhone(discovered?.whatsapp_phone ?? contact?.phone ?? broker.phone ?? '');
     if (!phone) return json({ error: 'חסר מספר נייד תקין למתווך' }, 400);
     const { data: onboarding, error: onboardingError } = await admin.from('admin_broker_onboarding').select('user_id,invitation_link_token,first_invitation_at,first_login_at').eq('user_id', broker.id).maybeSingle();
     if (onboardingError || !onboarding) return json({ error: 'המתווך אינו בתהליך הצטרפות בניהול מנהל' }, 409);
@@ -126,7 +143,8 @@ Deno.serve(async req => {
     try {
       const site = new URL(publicSiteOrigin());
       if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');
-      const link = demo ? demoLink! : invitationLink(site.origin, broker.id, onboarding.invitation_link_token);
+      const link = demo ? demoLink : invitationLink(site.origin, broker.id, onboarding.invitation_link_token);
+      if (!link) throw new Error('Missing invitation link');
       sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: (contact?.name || broker.full_name)?.trim().split(/\s+/)[0] || 'מתווך' }, ...(templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });
     } catch (e) {
       await admin.from('broker_invitation_sends').update({ status: 'unknown' }).eq('request_id', input.request_id);

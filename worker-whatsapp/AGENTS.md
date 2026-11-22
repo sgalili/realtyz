@@ -1,0 +1,4 @@
+# Broker WhatsApp execution
+- This independent Node service claims only broker WhatsApp jobs through a dedicated machine credential; it never writes import jobs or holds database credentials. Why: isolate discovery failures and prevent import interference.
+- Source pages come only from Cloud-authorized saved broker listings; Cloud validates extracted contact evidence and preserves the primary phone. Why: avoid unrelated contact attribution.
+- Outreach requires per-job recorded Super Admin consent and reuses live-approved official Meta invitations; uncertain sends are never automatically retried. Why: prevent unsolicited or duplicate messaging.

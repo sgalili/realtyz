@@ -24,8 +24,9 @@ import { returnState } from '@/lib/returnNav';
 import { invitationHistoryKey, threadInvitationHistory } from '@/lib/invitationHistory';
 import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
 import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
+import { BrokerWhatsAppContact } from './BrokerWhatsAppContact';
 
-export type ContactBroker = { user_id: string; full_name: string; phone: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
+export type ContactBroker = { user_id: string; full_name: string; phone: string | null; whatsapp_phone?: string | null; whatsapp_link?: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
 async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(fn, { body });
@@ -189,7 +190,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
           {b.phone && <a href={`tel:+${b.phone}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-primary hover:bg-accent" aria-label={`חיוג אל ${b.full_name} ${formatPhoneDisplay(b.phone)}`} title={formatPhoneDisplay(b.phone)}><Phone className="h-4 w-4" /></a>}
         </>;
   return <li className="space-y-2 rounded-xl border border-border/70 p-3 sm:p-4">
-    <div className="flex items-center gap-1">
+    <div className="flex flex-wrap items-center gap-1">
       <div className="flex min-w-0 flex-1 items-center gap-1">
         {b.license_verified ? <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-label="אומת מול המאגר הממשלתי" /> : !b.is_developer && <ShieldX className="h-4 w-4 shrink-0 text-destructive" role="img" aria-label="הרישיון לא אומת מול המאגר הממשלתי"><title>הרישיון לא אומת מול המאגר הממשלתי</title></ShieldX>}
         <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
@@ -198,8 +199,9 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
         </button>
         {!b.is_developer && !b.gender && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'זכר', '\u2642\uFE0E'], ['female', 'נקבה', '\u2640\uFE0E']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role="radio" aria-checked={false} aria-label={label} title={label} className="h-7 w-7 text-base text-muted-foreground" disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>}
       </div>
-      <div className="flex shrink-0 items-center gap-0">
+      <div className="flex max-w-full flex-wrap items-center gap-0">
         {phoneControls}
+        {!b.is_developer && <BrokerWhatsAppContact brokerId={b.user_id} name={b.full_name} phone={b.whatsapp_phone} />}
         <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} />
         <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>
       </div>

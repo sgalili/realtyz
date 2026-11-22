@@ -1,0 +1,7 @@
+{
+  "name": "toraff-broker-whatsapp-worker",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node --env-file-if-exists=.env index.js", "test": "node --test *.test.js" }
+}

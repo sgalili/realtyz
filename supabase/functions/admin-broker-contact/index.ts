@@ -150,7 +150,7 @@ Deno.serve(async req => {
   if (input.action === 'list') {
     const rows = [];
     for (let start = 0; ; start += 500) {
-      const { data, error } = await admin.from('admin_broker_onboarding').select('user_id,contact_status,import_source,first_invitation_at,first_login_at,email_consent_at,email_invited_at,invited_at,created_at').not('import_source', 'is', null).is('first_invitation_at', null).is('first_login_at', null).order('user_id').range(start, start + 499);
+      const { data, error } = await admin.from('admin_broker_onboarding').select('user_id,contact_status,import_source,imported_license_number,first_invitation_at,first_login_at,email_consent_at,email_invited_at,invited_at,created_at').not('import_source', 'is', null).is('first_invitation_at', null).is('first_login_at', null).order('user_id').range(start, start + 499);
       if (error) return json({ error: 'קריאת הרשימה נכשלה' }, 500);
       rows.push(...(data ?? []));
       if ((data?.length ?? 0) < 500) break;
@@ -173,11 +173,15 @@ Deno.serve(async req => {
     ]);
     if (inventoryError || !inventory || inventory.length !== ids.length) return json({ error: 'קריאת ספירת הפרויקטים והדירות נכשלה; יש לרענן ולנסות שוב' }, 500);
     const { data: devCompanies } = await admin.from('developers').select('workspace_owner_id,company_name,logo_url').in('workspace_owner_id', ids);
+    const { data: whatsappContacts, error: whatsappError } = await admin.from('broker_whatsapp_contacts').select('broker_id,whatsapp_phone,whatsapp_link').in('broker_id', ids);
+    if (whatsappError) return json({ error: 'קריאת פרטי WhatsApp נכשלה' }, 500);
     const brokers = eligible.map(r => {
       const p = profiles?.find(x => x.id === r.user_id);
       const counts = inventory.find((x: { user_id: string }) => x.user_id === r.user_id);
       return { user_id: r.user_id, full_name: p?.full_name ?? '', phone: p?.phone ?? null, email: realEmail(p?.email) ? p?.email : null,
-        license_number: verified?.find(l => l.user_id === r.user_id)?.license_number ?? licenses?.find(l => l.user_id === r.user_id)?.license_number ?? null,
+        whatsapp_phone: whatsappContacts?.find(c => c.broker_id === r.user_id)?.whatsapp_phone ?? null,
+        whatsapp_link: whatsappContacts?.find(c => c.broker_id === r.user_id)?.whatsapp_link ?? null,
+        license_number: verified?.find(l => l.user_id === r.user_id)?.license_number ?? licenses?.find(l => l.user_id === r.user_id)?.license_number ?? r.imported_license_number ?? null,
         office_name: offices?.find(o => o.user_id === r.user_id)?.agency_name ?? devCompanies?.find(d => d.workspace_owner_id === r.user_id)?.company_name ?? null,
         office_logo_url: offices?.find(o => o.user_id === r.user_id)?.logo_url ?? devCompanies?.find(d => d.workspace_owner_id === r.user_id)?.logo_url ?? null, avatar_url: (p as any)?.avatar_url ?? null,
         profile_license: (p as any)?.broker_license_number ?? null, gender: (p as any)?.gender ?? null, city: (p as any)?.city ?? null,

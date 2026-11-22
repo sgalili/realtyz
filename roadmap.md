@@ -1,5 +1,10 @@
 # Roadmap
 
+## Broker WhatsApp worker November 22
+- [ ] Add an independent, fenced discovery queue that stores source-backed WhatsApp contacts without replacing login phones.
+- [ ] Add Super Admin broker-card discovery/contact controls and consent-gated official outreach.
+- [ ] Test queue isolation, phone normalization, retries and card behavior; document deployment and unverified provider flows.
+
 ## Properties bulk action toolbar November 21
 - [x] Move selected-property bulk actions to a dedicated row below the multi-select controls.
 - [x] Use a borderless Globe publish action and keep the photo-rotation spinner active until every selected update settles.
