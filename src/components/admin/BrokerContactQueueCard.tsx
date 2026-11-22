@@ -144,7 +144,6 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
   const openWs = useOpenWorkspace();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [genderEditing, setGenderEditing] = useState(false);
   const [phone, setPhone] = useState(b.phone ? formatPhoneDisplay(b.phone) : '');
   const save = useMutation({
     mutationFn: () => invoke<{ complete: boolean }>('admin-broker-contact', { action: 'save', user_id: b.user_id, phone: phone.trim() || undefined }),
@@ -169,10 +168,11 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
   });
   const dirty = !!phone.trim() && phone.replace(/\D/g, '') !== (b.phone ? formatPhoneDisplay(b.phone).replace(/\D/g, '') : '');
   const dest = b.is_developer ? 'הפרויקטים' : 'הנכסים';
-  const regLicense = b.profile_license ?? b.license_number;
+  const regLicense = b.profile_license?.trim() || b.license_number?.trim();
+  const hasSelectedGender = b.gender === 'male' || b.gender === 'female';
   const setGender = useMutation({
     mutationFn: (gender: 'male' | 'female') => invoke('admin-broker-contact', { action: 'save', user_id: b.user_id, gender }),
-    onSuccess: () => { setGenderEditing(false); toast.success('המגדר נשמר'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
+    onSuccess: () => { toast.success('המגדר נשמר'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
   const details = b.is_developer ? `${b.projects ?? 0} פרויקטים • ${b.apartments ?? 0} דירות במאגר` : [`${b.drafts} טיוטות`, b.license_number && `רישיון ${b.license_number}`, b.city].filter(Boolean).join(' · ');
@@ -191,9 +191,9 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
         {b.license_verified ? <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-label="אומת מול המאגר הממשלתי" /> : !b.is_developer && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense??''} onUpdated={() => void qc.invalidateQueries({queryKey:['broker-contact-queue']})} />}
         <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
           {b.is_developer ? <DeveloperLogo name={b.full_name} logoUrl={b.office_logo_url} className="h-9 w-9" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
-          <span className="break-words text-base font-bold sm:text-lg">{b.full_name || 'ללא שם'}</span>
+          <span className="flex min-w-0 items-center gap-1 text-base sm:text-lg"><span className="min-w-0 break-words font-bold">{b.full_name || 'ללא שם'}</span>{!b.is_developer && hasSelectedGender && regLicense && <span dir="ltr" className="shrink-0 whitespace-nowrap text-sm font-normal text-muted-foreground sm:text-base">{regLicense}</span>}</span>
         </button>
-        {!b.is_developer && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'זכר', '\u2642\uFE0E'], ['female', 'נקבה', '\u2640\uFE0E']] as const).filter(([g]) => !b.gender || genderEditing || b.gender === g).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role={genderEditing || !b.gender ? 'radio' : undefined} aria-checked={genderEditing || !b.gender ? b.gender === g : undefined} aria-label={label} title={b.gender === g ? `שינוי מגדר: ${label}` : label} className={`h-7 w-7 text-base ${g === 'male' ? 'text-gender-male' : 'text-gender-female'}`} disabled={setGender.isPending} onClick={() => { if (b.gender === g && !genderEditing) setGenderEditing(true); else setGender.mutate(g); }}>{icon}</Button>)}</div>}
+        {!b.is_developer && !hasSelectedGender && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'זכר', '\u2642\uFE0E'], ['female', 'נקבה', '\u2640\uFE0E']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role="radio" aria-checked={false} aria-label={label} title={label} className={`h-7 w-7 text-base ${g === 'male' ? 'text-gender-male' : 'text-gender-female'}`} disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>}
         </div>
         {!b.is_developer && <div className="flex min-w-0 max-w-[45%] shrink-0 justify-end"><OfficeNameField b={b} showLogo={false} /></div>}
       </div>
