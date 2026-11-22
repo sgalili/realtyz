@@ -1,5 +1,9 @@
 # Roadmap
 
+## Import secondary tab band November 22
+- [x] Raise the pending-invitation secondary tab row by 8px, from 20px to 12px top spacing.
+- [x] Pin the secondary row directly below the existing primary sticky band with an opaque background and verify signed-in mobile scrolling.
+
 ## Broker discovery and registry controls November 22
 - [x] Replace WhatsApp discovery dialog with immediate enqueue and in-button activity through pending/running/retry; terminal states restore the control. Actual authorized enqueue returned pending with no dialog.
 - [x] Move registry verification to the unverified shield and approved labels in Profile/admin user editing, with a persistent pale-gray failure state and independent five-second error clearing; existing server authorization/identity checks remain unchanged.

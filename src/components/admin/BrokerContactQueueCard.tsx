@@ -388,9 +388,13 @@ function PendingInvitations() {
   const count = (g: RecipientGroup) => all.filter(b => groupOf(b) === g).length;
   const brokers = all.filter(b => groupOf(b) === group);
   return <div className="space-y-4">
-    <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList className="grid w-full grid-cols-3">
-      <TabsTrigger value="broker" className="px-1">מתווכים ({count('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({count('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({count('marketing')})</TabsTrigger>
-    </TabsList></Tabs>
+    {/* The scrollport has 20px top padding and the primary band is 76px high. A 56px
+        offset therefore joins this row to it, with an opaque background over passing cards. */}
+    <div data-import-secondary-tabs className="sticky top-[56px] z-20 -mx-[15px] bg-background px-[15px]">
+      <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="broker" className="px-1">מתווכים ({count('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({count('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({count('marketing')})</TabsTrigger>
+      </TabsList></Tabs>
+    </div>
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} marketing={marketing.data?.get(b.user_id)} />)}</ul>}
   </div>;
@@ -399,7 +403,7 @@ function PendingInvitations() {
 export type BrokerContactView = 'pending' | 'imports' | 'sends';
 
 export function BrokerContactQueueCard({ view = 'pending' }: { view?: BrokerContactView }) {
-  return <section dir="rtl" className="py-5 text-right">
+  return <section dir="rtl" className="pb-5 pt-3 text-right">
     {view === 'pending' ? <PendingInvitations /> : view === 'imports' ? <ImportHistory /> : <SendHistory />}
   </section>;
 }
