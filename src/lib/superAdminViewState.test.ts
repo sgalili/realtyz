@@ -10,10 +10,10 @@ describe('Super Admin view restoration', () => {
     expect(adminHistoryFromParams(null)).toBe('pending');
   });
 
-  it('restores the last section and opens the pending tab when URL parameters are absent', () => {
+  it('restores the last section and tab when URL parameters are absent', () => {
     saveSuperAdminViewState({ section: 'import', history: 'sends' });
     expect(adminSectionFromParams(null)).toBe('import');
-    expect(adminHistoryFromParams(null)).toBe('pending');
+    expect(adminHistoryFromParams(null)).toBe('sends');
   });
 
   it('restores the exact open send card without losing the section', () => {
@@ -26,5 +26,11 @@ describe('Super Admin view restoration', () => {
     saveSuperAdminViewState({ section: 'import', history: 'sends' });
     expect(adminSectionFromParams('users')).toBe('users');
     expect(adminHistoryFromParams('imports')).toBe('imports');
+  });
+  it('retains group, status expansion and open card across section changes', () => {
+    saveSuperAdminViewState({ section: 'import', history: 'imports', importKind: 'developer', pendingGroup: 'marketing', sendGroup: 'developer', importStatus: { jobId: 'job-1', expanded: true }, openSendKey: 'send-1' });
+    saveSuperAdminViewState({ section: 'users' });
+    saveSuperAdminViewState({ section: 'import' });
+    expect(readSuperAdminViewState()).toEqual({ section: 'import', history: 'imports', importKind: 'developer', pendingGroup: 'marketing', sendGroup: 'developer', importStatus: { jobId: 'job-1', expanded: true }, openSendKey: 'send-1' });
   });
 });

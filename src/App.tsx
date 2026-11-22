@@ -314,7 +314,7 @@ function RootRoute() {
     if (next && next.startsWith('/.lovable/oauth/consent')) return <Navigate to={next} replace />;
   }
   void isMarketingHost; // the public board is the homepage on every host
-  if (loading) return (
+  if (loading && user) return (
     <div className="min-h-screen flex items-center justify-center">
       <RealtyzLoader size="lg" />
     </div>
@@ -479,9 +479,15 @@ function AdminBrokerFirstEntry({ children }: { children: React.ReactNode }) {
 
 function EarningsFeedback() { useEarningsFeedback(); return null; }
 
+function AccountPageLoading({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+  // Guests keep their welcome visible; admin section returns never mount a splash.
+  return <FullPageLoadingProvider enabled={Boolean(user) && pathname !== '/super-admin'}>{children}</FullPageLoadingProvider>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <FullPageLoadingProvider>
     <CreditRateSync>
     <DirectionProvider dir="rtl">
       <TooltipProvider>
@@ -489,6 +495,7 @@ const App = () => (
           <AccessibilityEffects />
           <RouteScrollRestoration />
           <AuthProvider>
+          <AccountPageLoading>
           <PersonalLanguageProvider>
           <EarningsFeedback />
           <Sonner />
@@ -637,12 +644,12 @@ const App = () => (
             </WhiteLabelProvider>
             </WorkspaceProvider>
           </PersonalLanguageProvider>
-          </AuthProvider>
+          </AccountPageLoading>
+           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </DirectionProvider>
     </CreditRateSync>
-    </FullPageLoadingProvider>
   </QueryClientProvider>
 );
 

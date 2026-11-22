@@ -1,5 +1,10 @@
 # Roadmap
 
+## Import navigation and visitor loading November 22
+- [x] Keep red import errors inside expanded status details only; actual expanded/collapsed card verified.
+- [x] Restore import tabs and UI state immediately on client-side return without a splash; real Super Admin section return measured about 280ms with no document reload and preserved developer tab/expansion.
+- [x] Disable loading splashes for guests so welcome slides remain visible; all three slides verified on mobile/desktop with delayed network, 33 focused tests passed.
+
 ## Broker WhatsApp worker November 22
 - [x] Add an independent, fenced discovery queue that stores source-backed WhatsApp contacts without replacing login phones.
 - [x] Add Super Admin broker-card discovery/contact controls; user chose discovery only, with manual official Meta invitations and no private-device chat.

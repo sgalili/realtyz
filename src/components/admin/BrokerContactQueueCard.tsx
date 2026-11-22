@@ -265,7 +265,8 @@ function SendHistory() {
     const { data, error } = await supabase.rpc('admin_marketing_contacts', { _owners: ownerIds });
     if (error) throw error; return new Map((data ?? []).map(r => [r.owner_id, r as MarketingContact]));
   } });
-  const [group, setGroup] = useState<RecipientGroup>('broker');
+  const [group, setGroup] = useState<RecipientGroup>(() => readSuperAdminViewState().sendGroup ?? 'broker');
+  useEffect(() => saveSuperAdminViewState({ sendGroup: group }), [group]);
   const sendCount = (g: RecipientGroup) => items.filter(i => recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) === g).length;
   const shown = items.filter(i => recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) === group);
   const [openKey, setOpenKey] = useState<string | null>(() => readSuperAdminViewState().openSendKey ?? null);
@@ -343,7 +344,8 @@ export function ImportHistory() {
     finally { setOpening(null); }
   };
   const q = useQuery({ queryKey: ['broker-import-history'], queryFn: () => invoke<{ items: ImportItem[] }>('admin-broker-contact', { action: 'imports' }) });
-  const [kind, setKind] = useState<'broker' | 'developer'>('broker');
+  const [kind, setKind] = useState<'broker' | 'developer'>(() => readSuperAdminViewState().importKind ?? 'broker');
+  useEffect(() => saveSuperAdminViewState({ importKind: kind }), [kind]);
   const allImports = q.data?.items ?? [];
   // Rows whose account was removed have no workspace and render grayed out: list them last and leave them out of tab counts.
   const isRemoved = (i: ImportItem) => !i.workspace_owner_id;
@@ -374,7 +376,8 @@ export function usePendingInvitations() {
 function PendingInvitations() {
   const q = usePendingInvitations();
   const all = q.data?.brokers ?? [];
-  const [group, setGroup] = useState<RecipientGroup>('broker');
+  const [group, setGroup] = useState<RecipientGroup>(() => readSuperAdminViewState().pendingGroup ?? 'broker');
+  useEffect(() => saveSuperAdminViewState({ pendingGroup: group }), [group]);
   const devIds = all.filter(b => b.is_developer).map(b => b.user_id);
   const marketing = useQuery({ queryKey: ['marketing-contacts', devIds.join(',')], enabled: devIds.length > 0, queryFn: async () => {
     const { data, error } = await supabase.rpc('admin_marketing_contacts', { _owners: devIds });

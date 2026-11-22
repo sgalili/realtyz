@@ -2,10 +2,15 @@ import { resolveAdminSection, type AdminSection } from './superAdminSections';
 
 const STORAGE_KEY = 'toraff-super-admin-view';
 export type AdminHistoryTab = 'pending' | 'imports' | 'sends';
+export type AdminRecipientGroup = 'broker' | 'developer' | 'marketing';
 export type SuperAdminViewState = {
   section?: AdminSection;
   history?: AdminHistoryTab;
   openSendKey?: string | null;
+  importStatus?: { jobId: string; expanded: boolean };
+  pendingGroup?: AdminRecipientGroup;
+  sendGroup?: AdminRecipientGroup;
+  importKind?: 'broker' | 'developer';
 };
 
 export function readSuperAdminViewState(): SuperAdminViewState {
@@ -31,6 +36,6 @@ export function adminSectionFromParams(value: string | null): AdminSection {
 
 export function adminHistoryFromParams(value: string | null): AdminHistoryTab {
   if (value === 'pending' || value === 'imports' || value === 'sends') return value;
-  // Entering the import screen without an explicit tab always opens ממתינים.
-  return 'pending';
+  const saved = readSuperAdminViewState().history;
+  return saved === 'imports' || saved === 'sends' ? saved : 'pending';
 }

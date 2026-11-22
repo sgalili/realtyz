@@ -29,3 +29,11 @@ it('shows only the selected content and supports returning to pending invitation
   await waitFor(() => expect(screen.getByTestId('active-import-view').textContent).toBe('pending'));
   expect(screen.queryByText('imports')).toBeNull();
 });
+
+it('restores the selected history tab after leaving and remounting without a tab parameter', () => {
+  const first = setup('/?history=imports');
+  expect(screen.getByTestId('active-import-view')).toHaveTextContent('imports');
+  first.unmount();
+  setup('/');
+  expect(screen.getByTestId('active-import-view')).toHaveTextContent('imports');
+});

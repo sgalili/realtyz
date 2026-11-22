@@ -5,6 +5,25 @@ vi.mock('./toraff-loader', () => ({ ToraffLoader: () => <span>video animation</s
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 const overlay = () => screen.queryByRole('status', { name: 'טעינת עמוד' });
 describe('persistent page loading overlay', () => {
+  it('never registers a guest splash even when a nested page is still loading', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    render(<FullPageLoadingProvider enabled={false}><FullPageLoadingProvider><PageLoadingRegion><FullPageLoading /></PageLoadingRegion></FullPageLoadingProvider></FullPageLoadingProvider>);
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(overlay()).toBeNull();
+  });
+  it('immediately clears an existing splash on a suppressed navigation and can load again later', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    const view = render(<FullPageLoadingProvider><FullPageLoading /></FullPageLoadingProvider>);
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(overlay()).not.toBeNull();
+    view.rerender(<FullPageLoadingProvider enabled={false}><FullPageLoading /></FullPageLoadingProvider>);
+    expect(overlay()).toBeNull();
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(overlay()).toBeNull();
+    view.rerender(<FullPageLoadingProvider><FullPageLoading /></FullPageLoadingProvider>);
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(overlay()).not.toBeNull();
+  });
   it('isolates homepage result loading from the enclosing shell provider', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
     render(<FullPageLoadingProvider>

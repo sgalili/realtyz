@@ -33,6 +33,8 @@ const SuperAdmin = () => {
   const { isSuperAdmin, loading: roleLoading } = useUserRole();
   const [searchParams] = useSearchParams();
   const section = adminSectionFromParams(searchParams.get('section'));
+  const [importVisited, setImportVisited] = useState(section === 'import');
+  useEffect(() => { if (section === 'import') setImportVisited(true); }, [section]);
   useEffect(() => saveSuperAdminViewState({ section }), [section]);
   const [health, setHealth] = useState<Record<'whatsapp' | 'ai', 'idle' | 'checking' | 'online' | 'degraded'>>({ whatsapp: 'idle', ai: 'idle' });
 
@@ -161,7 +163,7 @@ const SuperAdmin = () => {
       {section === 'rita-chats' && <RitaChatsManager />}
       {section === 'qr' && <DynamicQrManager />}
 
-      {section === 'import' && <BrokerImportWorkspace />}
+      {(importVisited || section === 'import') && <div hidden={section !== 'import'}><BrokerImportWorkspace /></div>}
 
       {section === 'deletion' && (
         <div className="space-y-4">

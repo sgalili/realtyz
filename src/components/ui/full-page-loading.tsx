@@ -4,6 +4,7 @@ import { ToraffLoader } from './toraff-loader';
 import { PAGE_LOADING_THRESHOLD_MS, remainingPageLoadingTime } from '@/lib/pageLoadingDuration';
 
 const PageLoadingContext = createContext<(() => () => void) | null>(null);
+const PageLoadingEnabledContext = createContext(true);
 const PageLoadingRegionContext = createContext<{
   setHost: (host: HTMLElement | null) => void;
   visible: boolean;
@@ -32,7 +33,9 @@ export function PageLoadingRegion({ as = 'div', children, ...props }: HTMLAttrib
 }
 
 /** Persistent host outlives Suspense fallbacks, so fast requests cannot bypass the minimum. */
-export function FullPageLoadingProvider({ children }: { children: ReactNode }) {
+export function FullPageLoadingProvider({ children, enabled = true }: { children: ReactNode; enabled?: boolean }) {
+  const inheritedEnabled = useContext(PageLoadingEnabledContext);
+  const allowed = enabled && inheritedEnabled;
   const [visible, setVisible] = useState(false);
   const [fading, setFading] = useState(false);
   const [host, setHost] = useState<HTMLElement | null>(null);
@@ -43,6 +46,7 @@ export function FullPageLoadingProvider({ children }: { children: ReactNode }) {
   const showTimer = useRef<ReturnType<typeof setTimeout>>();
   const shown = useRef(false);
   const register = useCallback(() => {
+    if (!allowed) return () => {};
     clearTimeout(timer.current);
     count.current += 1;
     setFading(false);
@@ -77,7 +81,18 @@ export function FullPageLoadingProvider({ children }: { children: ReactNode }) {
       // Include one paint allowance so commit/portal latency cannot shorten visible time.
       }, remainingPageLoadingTime(startedAt.current, performance.now()) + 50);
     };
-  }, []);
+  }, [allowed]);
+
+  useLayoutEffect(() => {
+    if (allowed) return;
+    clearTimeout(timer.current);
+    clearTimeout(showTimer.current);
+    showTimer.current = undefined;
+    startedAt.current = null;
+    shown.current = false;
+    setVisible(false);
+    setFading(false);
+  }, [allowed]);
 
   useLayoutEffect(() => {
     if (!host || !visible) {
@@ -109,10 +124,11 @@ export function FullPageLoadingProvider({ children }: { children: ReactNode }) {
     height: bounds.height,
   } : undefined;
 
-  return <PageLoadingContext.Provider value={register}>
-    <PageLoadingRegionContext.Provider value={{ setHost, visible }}>
-      <div className="page-loading-content" aria-busy={visible && !host} aria-hidden={visible && !host ? true : undefined} {...(visible && !host ? { inert: '' } : {})}>{children}</div>
-      {visible && createPortal(<div
+  const active = allowed && visible;
+  return <PageLoadingEnabledContext.Provider value={allowed}><PageLoadingContext.Provider value={register}>
+    <PageLoadingRegionContext.Provider value={{ setHost, visible: active }}>
+      <div className="page-loading-content" aria-busy={active && !host} aria-hidden={active && !host ? true : undefined} {...(active && !host ? { inert: '' } : {})}>{children}</div>
+      {active && createPortal(<div
         className={`toraff-page-loading-overlay${fading ? ' toraff-page-loading-overlay-exiting' : ''}`}
         style={overlayStyle}
         role="status"
@@ -120,7 +136,7 @@ export function FullPageLoadingProvider({ children }: { children: ReactNode }) {
         aria-live="polite"
       ><ToraffLoader fullPage /></div>, document.body)}
     </PageLoadingRegionContext.Provider>
-  </PageLoadingContext.Provider>;
+  </PageLoadingContext.Provider></PageLoadingEnabledContext.Provider>;
 }
 
 export function FullPageLoading(_props: { size?: string; label?: string } = {}) {
