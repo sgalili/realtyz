@@ -1,5 +1,10 @@
 # Roadmap
 
+## Broker discovery and registry controls November 22
+- [x] Replace WhatsApp discovery dialog with immediate enqueue and in-button activity through pending/running/retry; terminal states restore the control. Actual authorized enqueue returned pending with no dialog.
+- [x] Move registry verification to the unverified shield and approved labels in Profile/admin user editing, with a persistent pale-gray failure state and independent five-second error clearing; existing server authorization/identity checks remain unchanged.
+- [x] Verify scope guards, duplicate-click prevention, timed error clearing and authenticated mobile presentation: 38 focused tests and build passed; real license mismatch stayed protected, error expired and gray icon remained. Discovery completion with a real number is unverified while its job is pending (existing Railway WhatsApp setup task).
+
 ## Automatic import failure continuation November 22
 - [x] Replace item-error job stops with three URL-local attempts, persisted failed-source records and automatic cursor advance across broker/developer/draft paths.
 - [x] Recover error-paused and lease-stalled jobs automatically while respecting explicit user pauses and fatal authorization/provider failures; deployed 0266/0267 and reactivated the exact failed live job without changing its 39 saved drafts.

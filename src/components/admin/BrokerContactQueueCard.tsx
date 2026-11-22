@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck, ShieldX, ChevronDown, Phone } from 'lucide-react';
+import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck, ChevronDown, Phone } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
 import { MarketingContactLine, type MarketingContact } from './MarketingContactLine';
@@ -194,7 +194,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
   return <li className="space-y-2 rounded-xl border border-border/70 p-3 sm:p-4">
     <div className="flex flex-wrap items-center gap-1">
       <div className="flex min-w-0 flex-1 items-center gap-1">
-        {b.license_verified ? <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-label="אומת מול המאגר הממשלתי" /> : !b.is_developer && <ShieldX className="h-4 w-4 shrink-0 text-destructive" role="img" aria-label="הרישיון לא אומת מול המאגר הממשלתי"><title>הרישיון לא אומת מול המאגר הממשלתי</title></ShieldX>}
+        {b.license_verified ? <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-label="אומת מול המאגר הממשלתי" /> : !b.is_developer && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense??''} onUpdated={() => void qc.invalidateQueries({queryKey:['broker-contact-queue']})} />}
         <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
           {b.is_developer ? <DeveloperLogo name={b.full_name} logoUrl={b.office_logo_url} className="h-9 w-9" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
           <span className="truncate text-base font-bold sm:text-lg">{b.full_name || 'ללא שם'}</span>
@@ -211,7 +211,6 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
     <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">
       {!b.is_developer && <OfficeNameField b={b} />}
       <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground sm:text-base" title={details}>{details}</p>
-      {!b.is_developer && !b.license_verified && regLicense && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense} onUpdated={() => void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] })} />}
     </div>
     {b.is_developer && <MarketingContactLine ownerId={b.user_id} devName={b.full_name} contact={marketing} />}
     <Dialog open={deleting} onOpenChange={open => { if (!remove.isPending) setDeleting(open); }}>

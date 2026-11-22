@@ -511,6 +511,10 @@ button.publication-limit-link:focus-visible {
   :root .text-muted-foreground\/70 {
     color: hsl(213 55% 22%) !important;
   }
+  /* Registry failures stay pale despite the general icon contrast pass. */
+  .broker-registry-failed {
+    color: hsl(var(--muted-foreground) / 0.45) !important;
+  }
   /* Anglo Saxon brand palette for icons on light card surfaces:
      navy #0b3982, red #c8102e, dark yellow #b8860b, deep green #1f7a3a.
      Targets standalone lucide icons inside cards (not buttons). */

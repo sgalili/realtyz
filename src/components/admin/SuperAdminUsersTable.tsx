@@ -24,6 +24,7 @@ import { BROKER_STAGE_LABELS, type BrokerOnboardingStatus } from '@/lib/brokerOn
 import { UserCreditBalanceEditor } from './UserCreditBalanceEditor';
 import { emptyAdminUserFilters, matchesAdminUser, type AdminUserFilters } from '@/lib/adminUserFilters';
 import { AgencyIdentity } from '@/components/community/AgencyIdentity';
+import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'סופר אדמין', admin: 'מנהל', moderator: 'מנחה', managing_broker: 'מתווך מנהל', agent: 'סוכן',
@@ -230,7 +231,7 @@ export function SuperAdminUsersTable() {
               {draft.identityLocked && (k === 'full_name' || k === 'city') ? <span dir={dir} className="text-base font-semibold">{draft[k] || '—'}</span> : <Input id={`edit-${k}`} dir={dir} value={draft[k]} onChange={e => setDraft({ ...draft, [k]: e.target.value })} />}</div>
           ))}
           <div className="grid gap-1"><Label htmlFor="edit-agency-phone">טלפון המשרד</Label><Input id="edit-agency-phone" dir="ltr" readOnly value={agencyPhone.isLoading ? 'טוען…' : agencyPhone.isError ? 'הטעינה נכשלה' : agencyPhone.data || '—'} /></div>
-          {draft.broker_license_number && <div className="grid gap-1"><Label htmlFor="edit-broker-license">מספר רישיון תיווך</Label><div className="flex flex-wrap items-center gap-2"><Input id="edit-broker-license" className="min-w-0 flex-1" dir="ltr" readOnly value={draft.broker_license_number} /><span role="status" className="flex items-center gap-1 text-sm text-success">{(draft.identityLocked || draft.manualApproved) && <BadgeCheck className="h-4 w-4" aria-hidden />}{draft.identityLocked ? 'מאומת' : draft.manualApproved ? 'מאושר' : 'ממתין לאימות'}</span></div><span className="text-sm text-muted-foreground">{draft.roles.some(role => ['agent', 'lead_agent', 'managing_broker'].includes(role)) ? 'הרשאות מתווך פעילות' : 'ללא הרשאות מתווך פעילות'}</span></div>}
+          {draft.broker_license_number && <div className="grid gap-1"><Label htmlFor="edit-broker-license">מספר רישיון תיווך</Label><div className="flex flex-wrap items-center gap-2"><Input id="edit-broker-license" className="min-w-0 flex-1" dir="ltr" readOnly value={draft.broker_license_number} />{draft.manualApproved&&!draft.identityLocked ? <BrokerRegistryNameButton compact presentation="approved" userId={draft.id} license={draft.broker_license_number} onUpdated={profile=>{setDraft(current=>current?.id===profile.id?{...current,full_name:profile.full_name,city:profile.city??'',identityLocked:true}:current);void qc.invalidateQueries({queryKey:['admin-registry-evidence']});}} /> : <span role="status" className="flex items-center gap-1 text-sm text-success">{draft.identityLocked && <BadgeCheck className="h-4 w-4" aria-hidden />}{draft.identityLocked ? 'מאומת' : 'ממתין לאימות'}</span>}</div><span className="text-sm text-muted-foreground">{draft.roles.some(role => ['agent', 'lead_agent', 'managing_broker'].includes(role)) ? 'הרשאות מתווך פעילות' : 'ללא הרשאות מתווך פעילות'}</span></div>}
           <div className="grid gap-1"><Label>מגדר</Label>
             <Select value={draft.gender || undefined} onValueChange={v => setDraft({ ...draft, gender: v })}>
               <SelectTrigger dir="rtl"><SelectValue placeholder="בחר מגדר" /></SelectTrigger>

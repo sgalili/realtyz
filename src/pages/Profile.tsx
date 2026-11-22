@@ -44,6 +44,7 @@ import { useAccountIdentity } from '@/hooks/useAccountIdentity';
 import { useUserRole } from '@/hooks/useUserRole';
 import { UpgradeToBrokerButton } from '@/components/profile/UpgradeToBrokerButton';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
+import { BrokerRegistryNameButton } from '@/components/admin/BrokerRegistryNameButton';
 import { verifyBrokerLicense } from '@/lib/brokerLicense';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { profileFieldChange, type ProfileContacts, type ProfileSaveField } from '@/lib/profileFieldSave';
@@ -506,10 +507,15 @@ function PersonalTab() {
             <div className="min-w-[90px] flex-1 basis-24">
               <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label={licenseState.approved ? 'מספר רישיון תיווך מאושר' : 'מספר רישיון תיווך מאומת'}>{storedLicense}</span>
             </div>
-            <span role="status" className={cn('flex shrink-0 items-center gap-1 text-sm font-semibold', licenseState.verified || licenseState.approved ? 'text-success' : 'text-muted-foreground')}>
+            {licenseState.approved && !licenseState.verified ? <BrokerRegistryNameButton compact presentation="approved" ownAccount={isOwnProfile} disabled={savingField!==null||hydratedFor!==profileOwnerId} userId={profileOwnerId} license={storedLicense} onUpdated={(saved, active) => {
+              setFullName(saved.full_name);setCity(saved.city??'');setLockedBrokerName(saved.full_name);setStoredLicense(saved.broker_license_number);setEvidenceLicense(saved.broker_license_number);setIdentityLocked(true);setLicenseLiveVerified(active??licenseLiveVerified);
+              savedContacts.current={...savedContacts.current,fullName:saved.full_name,city:saved.city??''};
+              window.dispatchEvent(new CustomEvent<{profileOwnerId:string}>('realtyz:profile-saved',{detail:{profileOwnerId}}));
+              window.dispatchEvent(new Event('realtyz:license-verified'));void queryClient.invalidateQueries();
+            }} /> : <span role="status" className={cn('flex shrink-0 items-center gap-1 text-sm font-semibold', licenseState.verified || licenseState.approved ? 'text-success' : 'text-muted-foreground')}>
               {licenseState.verified || licenseState.approved ? <BadgeCheck className="h-4 w-4" aria-hidden /> : <Clock className="h-4 w-4" aria-hidden />}
               {licenseState.verified ? 'מאומת' : licenseState.approved ? 'מאושר' : 'ממתין לאימות'}
-            </span>
+            </span>}
             <Button type="button" variant="ghost" size="icon" className="ms-auto h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10" aria-label="הסרת רישיון התיווך" onClick={() => setRemoveLicenseOpen(true)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
