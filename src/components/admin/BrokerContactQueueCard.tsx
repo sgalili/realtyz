@@ -127,7 +127,7 @@ function useOpenWorkspace() {
 }
 
 /** Brokerage office name (bold, click-to-edit with dotted underline) with its logo when one exists. */
-function OfficeNameField({ b }: { b: ContactBroker }) {
+function OfficeNameField({ b, showLogo = true }: { b: ContactBroker; showLogo?: boolean }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(b.office_name ?? '');
@@ -137,15 +137,14 @@ function OfficeNameField({ b }: { b: ContactBroker }) {
     onError: (e: Error) => toast.error(e.message),
   });
   const commit = () => { if (value.trim().length < 2) { toast.error('שם המשרד קצר מדי'); return; } save.mutate(); };
-  if (editing) return <span className="flex shrink-0 items-center gap-1">
-    <Input autoFocus aria-label="שם משרד התיווך" className="h-8 w-40 px-2 text-sm sm:text-base" value={value} onChange={e => setValue(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false); }} />
+  if (editing) return <span className="flex min-w-0 items-center gap-1">
+    <Input autoFocus aria-label="שם משרד התיווך" className="h-8 min-w-0 w-40 px-2 text-sm sm:text-base" value={value} onChange={e => setValue(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false); }} />
     <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="שמירת שם המשרד" disabled={save.isPending} onClick={commit}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>
     <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="ביטול" onClick={() => { setValue(b.office_name ?? ''); setEditing(false); }}><X className="h-4 w-4" /></Button>
   </span>;
   return <span className="flex min-w-0 shrink items-center gap-1.5">
-    {b.is_developer ? <DeveloperLogo name={b.office_name} logoUrl={b.office_logo_url} className="h-7 w-7" /> : b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-7 w-7 shrink-0 rounded-md object-contain" />}
-    <button type="button" disabled={!!b.first_login_at} onClick={() => setEditing(true)} aria-label="עריכת שם משרד התיווך" className={`min-w-0 truncate text-sm font-bold underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.office_name ? 'text-foreground' : 'text-primary'}`}>{b.office_name || 'הוסף משרד תיווך'}</button>
-    <span aria-hidden className="text-muted-foreground">·</span>
+    {showLogo && (b.is_developer ? <DeveloperLogo name={b.office_name} logoUrl={b.office_logo_url} className="h-7 w-7" /> : b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-7 w-7 shrink-0 rounded-md object-contain" />)}
+    <button type="button" disabled={!!b.first_login_at} onClick={() => setEditing(true)} aria-label="עריכת שם משרד התיווך" className={`min-w-0 break-words text-right text-sm font-bold underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.office_name ? 'text-foreground' : 'text-primary'}`}>{b.office_name || 'הוסף משרד תיווך'}</button>
   </span>;
 }
 
@@ -196,14 +195,16 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
         </>;
   return <li data-broker-card={b.is_developer ? undefined : b.user_id} className="space-y-2 rounded-xl border border-border/70 p-3 sm:p-4">
     <div className={b.is_developer ? "flex flex-wrap items-center gap-1" : "flex flex-col gap-2"}>
-      <div data-broker-row="identity" className="flex min-w-0 flex-1 items-center gap-1">
+      <div data-broker-row="identity" className="flex min-w-0 flex-1 items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1">
         {b.license_verified ? <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-label="אומת מול המאגר הממשלתי" /> : !b.is_developer && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense??''} onUpdated={() => void qc.invalidateQueries({queryKey:['broker-contact-queue']})} />}
         <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
           {b.is_developer ? <DeveloperLogo name={b.full_name} logoUrl={b.office_logo_url} className="h-9 w-9" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
           <span className="break-words text-base font-bold sm:text-lg">{b.full_name || 'ללא שם'}</span>
         </button>
         {!b.is_developer && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'זכר', '\u2642\uFE0E'], ['female', 'נקבה', '\u2640\uFE0E']] as const).filter(([g]) => !b.gender || genderEditing || b.gender === g).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role={genderEditing || !b.gender ? 'radio' : undefined} aria-checked={genderEditing || !b.gender ? b.gender === g : undefined} aria-label={label} title={b.gender === g ? `שינוי מגדר: ${label}` : label} className={`h-7 w-7 text-base ${g === 'male' ? 'text-gender-male' : 'text-gender-female'}`} disabled={setGender.isPending} onClick={() => { if (b.gender === g && !genderEditing) setGenderEditing(true); else setGender.mutate(g); }}>{icon}</Button>)}</div>}
-
+        </div>
+        {!b.is_developer && <div className="flex min-w-0 max-w-[45%] shrink-0 justify-end"><OfficeNameField b={b} showLogo={false} /></div>}
       </div>
       <div data-broker-row="contacts" className={b.is_developer ? "flex max-w-full flex-wrap items-center gap-0" : "grid max-w-full grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_auto_auto] items-center gap-0 sm:flex"}>
         {phoneControls}
@@ -213,7 +214,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
       </div>
     </div>
     <div data-broker-row="office" className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">
-      {!b.is_developer && <OfficeNameField b={b} />}
+      {!b.is_developer && b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-7 w-7 shrink-0 rounded-md object-contain" />}
       <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground sm:text-base" title={details}>{details}</p>
     </div>
     {b.is_developer && <MarketingContactLine ownerId={b.user_id} devName={b.full_name} contact={marketing} />}

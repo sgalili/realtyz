@@ -50,7 +50,7 @@ export function BrokerNumberEditor({ brokerId, name, phone, kind }: { brokerId: 
   useEffect(() => { if (tracking && status.error) { setTracking(false); toast.error(status.error.message); } }, [tracking, status.error]);
   const busy = discover.isPending || tracking;
   return <>
-    <Button variant="ghost" className="h-8 shrink-0 px-0.5 text-xs font-normal sm:text-sm" dir={phone ? 'ltr' : 'rtl'} aria-label={`${phone ? 'עריכת' : 'הוספת'} ${label} של ${name}`} onClick={() => { setValue(phone ? formatPhoneDisplay(phone) : ''); setTracking(false); setOpen(true); }}>{phone ? formatPhoneDisplay(phone) : `הוסף ${label}`}</Button>
+    <Button variant="ghost" className={`h-8 min-w-0 shrink-0 px-0.5 font-normal ${phone ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`} dir={phone ? 'ltr' : 'rtl'} aria-label={`${phone ? 'עריכת' : 'הוספת'} ${label} של ${name}`} onClick={() => { setValue(phone ? formatPhoneDisplay(phone) : ''); setTracking(false); setOpen(true); }}>{phone ? formatPhoneDisplay(phone) : `הוסף ${label}`}</Button>
     <Dialog open={open} onOpenChange={next => { if (!save.isPending) setOpen(next); }}><DialogContent dir="rtl" className="max-w-md text-right">
       <DialogHeader><DialogTitle>{label} של {name}</DialogTitle><DialogDescription>{kind === 'phone' ? 'טלפון הכניסה משתנה רק לאחר שמירה ידנית.' : 'מספר WhatsApp נשמר בנפרד מטלפון הכניסה.'}</DialogDescription></DialogHeader>
       <label className="space-y-2"><span>עריכה ידנית</span><Input aria-label={`עריכה ידנית של ${label}`} dir="ltr" inputMode="tel" value={value} onChange={event => setValue(event.target.value)} placeholder="05X-XXXXXXX" /></label>
