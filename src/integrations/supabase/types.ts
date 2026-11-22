@@ -1788,6 +1788,252 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_wa_scanner_events: {
+        Row: {
+          chat_id: string | null
+          created_at: string
+          event_at: string | null
+          event_type: string
+          id: string
+          instance_id: string
+          job_id: string | null
+          message_id: string
+          quoted_id: string | null
+          reason: string | null
+          reply_text: string | null
+          sender: string | null
+          status: string
+          workspace_owner_id: string | null
+        }
+        Insert: {
+          chat_id?: string | null
+          created_at?: string
+          event_at?: string | null
+          event_type: string
+          id?: string
+          instance_id: string
+          job_id?: string | null
+          message_id: string
+          quoted_id?: string | null
+          reason?: string | null
+          reply_text?: string | null
+          sender?: string | null
+          status?: string
+          workspace_owner_id?: string | null
+        }
+        Update: {
+          chat_id?: string | null
+          created_at?: string
+          event_at?: string | null
+          event_type?: string
+          id?: string
+          instance_id?: string
+          job_id?: string | null
+          message_id?: string
+          quoted_id?: string | null
+          reason?: string | null
+          reply_text?: string | null
+          sender?: string | null
+          status?: string
+          workspace_owner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_wa_scanner_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "broker_wa_scanner_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broker_wa_scanner_jobs: {
+        Row: {
+          broker_id: string
+          completed_at: string | null
+          consent_at: string
+          created_at: string
+          created_by: string
+          id: string
+          instance_id: string | null
+          last_error: string | null
+          lease_token: string | null
+          lease_until: string | null
+          listing_id: string
+          next_source_at: string
+          prefilled_message: string | null
+          provider_message_id: string | null
+          provider_status: number | null
+          reply_deadline: string | null
+          scanner_phone: string | null
+          send_reserved_at: string | null
+          send_token: string | null
+          source_attempts: number
+          source_url: string
+          status: string
+          target_phone: string | null
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          broker_id: string
+          completed_at?: string | null
+          consent_at: string
+          created_at?: string
+          created_by: string
+          id?: string
+          instance_id?: string | null
+          last_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          listing_id: string
+          next_source_at?: string
+          prefilled_message?: string | null
+          provider_message_id?: string | null
+          provider_status?: number | null
+          reply_deadline?: string | null
+          scanner_phone?: string | null
+          send_reserved_at?: string | null
+          send_token?: string | null
+          source_attempts?: number
+          source_url: string
+          status?: string
+          target_phone?: string | null
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          broker_id?: string
+          completed_at?: string | null
+          consent_at?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          instance_id?: string | null
+          last_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          listing_id?: string
+          next_source_at?: string
+          prefilled_message?: string | null
+          provider_message_id?: string | null
+          provider_status?: number | null
+          reply_deadline?: string | null
+          scanner_phone?: string | null
+          send_reserved_at?: string | null
+          send_token?: string | null
+          source_attempts?: number
+          source_url?: string
+          status?: string
+          target_phone?: string | null
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_wa_scanner_jobs_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_wa_scanner_jobs_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_wa_scanner_jobs_workspace_owner_id_fkey"
+            columns: ["workspace_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broker_wa_scanner_settings: {
+        Row: {
+          budget_day: string | null
+          config_checked_at: string | null
+          connected: boolean
+          daily_cap: number
+          day_attempts: number
+          enabled: boolean
+          end_hour: number
+          error_threshold: number
+          id: boolean
+          instance_id: string | null
+          jitter_max_seconds: number
+          jitter_min_seconds: number
+          next_send_at: string | null
+          pause_reason: string | null
+          paused: boolean
+          scanner_phone: string | null
+          send_errors: number
+          start_hour: number
+          updated_at: string
+          updated_by: string | null
+          webhook_errors: number
+          webhook_ready: boolean
+          webhook_seen_at: string | null
+          worker_seen_at: string | null
+        }
+        Insert: {
+          budget_day?: string | null
+          config_checked_at?: string | null
+          connected?: boolean
+          daily_cap?: number
+          day_attempts?: number
+          enabled?: boolean
+          end_hour?: number
+          error_threshold?: number
+          id?: boolean
+          instance_id?: string | null
+          jitter_max_seconds?: number
+          jitter_min_seconds?: number
+          next_send_at?: string | null
+          pause_reason?: string | null
+          paused?: boolean
+          scanner_phone?: string | null
+          send_errors?: number
+          start_hour?: number
+          updated_at?: string
+          updated_by?: string | null
+          webhook_errors?: number
+          webhook_ready?: boolean
+          webhook_seen_at?: string | null
+          worker_seen_at?: string | null
+        }
+        Update: {
+          budget_day?: string | null
+          config_checked_at?: string | null
+          connected?: boolean
+          daily_cap?: number
+          day_attempts?: number
+          enabled?: boolean
+          end_hour?: number
+          error_threshold?: number
+          id?: boolean
+          instance_id?: string | null
+          jitter_max_seconds?: number
+          jitter_min_seconds?: number
+          next_send_at?: string | null
+          pause_reason?: string | null
+          paused?: boolean
+          scanner_phone?: string | null
+          send_errors?: number
+          start_hour?: number
+          updated_at?: string
+          updated_by?: string | null
+          webhook_errors?: number
+          webhook_ready?: boolean
+          webhook_seen_at?: string | null
+          worker_seen_at?: string | null
+        }
+        Relationships: []
+      }
       broker_whatsapp_batches: {
         Row: {
           created_at: string
@@ -11040,6 +11286,42 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_broker_wa_scanner_source: {
+        Args: never
+        Returns: {
+          broker_id: string
+          completed_at: string | null
+          consent_at: string
+          created_at: string
+          created_by: string
+          id: string
+          instance_id: string | null
+          last_error: string | null
+          lease_token: string | null
+          lease_until: string | null
+          listing_id: string
+          next_source_at: string
+          prefilled_message: string | null
+          provider_message_id: string | null
+          provider_status: number | null
+          reply_deadline: string | null
+          scanner_phone: string | null
+          send_reserved_at: string | null
+          send_token: string | null
+          source_attempts: number
+          source_url: string
+          status: string
+          target_phone: string | null
+          updated_at: string
+          workspace_owner_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "broker_wa_scanner_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_broker_whatsapp_job: {
         Args: { _worker: string }
         Returns: {
@@ -11301,6 +11583,10 @@ export type Database = {
         }[]
       }
       complete_admin_broker_first_login: { Args: never; Returns: string }
+      complete_broker_wa_scanner_reply: {
+        Args: { _event: string; _job: string; _phone: string; _reason: string }
+        Returns: Json
+      }
       complete_grow_payment: {
         Args: {
           _amount_ils: number
@@ -12401,6 +12687,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      record_broker_wa_scanner_error: {
+        Args: { _immediate?: boolean; _kind: string; _reason: string }
+        Returns: undefined
+      }
       record_interaction_message: {
         Args: {
           _content: string
@@ -12470,6 +12760,42 @@ export type Database = {
         Returns: Json
       }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
+      reserve_broker_wa_scanner_send: {
+        Args: { _instance: string; _jitter: number; _phone: string }
+        Returns: {
+          broker_id: string
+          completed_at: string | null
+          consent_at: string
+          created_at: string
+          created_by: string
+          id: string
+          instance_id: string | null
+          last_error: string | null
+          lease_token: string | null
+          lease_until: string | null
+          listing_id: string
+          next_source_at: string
+          prefilled_message: string | null
+          provider_message_id: string | null
+          provider_status: number | null
+          reply_deadline: string | null
+          scanner_phone: string | null
+          send_reserved_at: string | null
+          send_token: string | null
+          source_attempts: number
+          source_url: string
+          status: string
+          target_phone: string | null
+          updated_at: string
+          workspace_owner_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "broker_wa_scanner_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       resolve_custom_qr_destination: {
         Args: { code_id: string }
         Returns: string
@@ -12501,6 +12827,15 @@ export type Database = {
           _reference: string
         }
         Returns: undefined
+      }
+      scanner_broker_eligible: {
+        Args: {
+          _broker: string
+          _creator: string
+          _listing: string
+          _source: string
+        }
+        Returns: boolean
       }
       schedule_workspace_call: {
         Args: {

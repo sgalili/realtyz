@@ -22,7 +22,7 @@ export function brokerWhatsAppAction(url: string): { phone: string; link: string
 }
 
 /** Keep only the observed primary agency contact section inside a sticky aside. */
-function primaryListing(html: string, sourceUrl?: string) {
+export function primaryListing(html: string, sourceUrl?: string) {
   const $ = load(html);
   const main = $('main');
   const mainCount = main.length;

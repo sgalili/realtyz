@@ -1912,6 +1912,13 @@
       "when": 1795321439583,
       "tag": "0272_block_shared_broker_whatsapp_numbers",
       "breakpoints": true
+    },
+    {
+      "idx": 273,
+      "version": "7",
+      "when": 1795322912679,
+      "tag": "0273_dedicated_green_broker_scanner",
+      "breakpoints": true
     }
   ]
 }

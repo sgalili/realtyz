@@ -2,9 +2,9 @@
 
 ## Dedicated Green API discovery request November 22
 - [x] Inspect live broker_whatsapp_jobs/contacts/batches/shared-number schema and claim/finish/recovery functions, discovery Worker/Cloud handler, Green webhook/helpers and broker-card/invitation mapping. Existing discovery is HTML-only; outreach is disabled and the Green webhook drops messages. No sends or live data changes.
-- [ ] Implement isolated scanner sender, durable quota/jitter/daytime/circuit-breaker guards and authenticated correlated reply processing. Blocked pending the user's confirmation of ad-hoc backend rate limiting (no standard primitive exists).
+- [ ] Implement isolated scanner sender, durable quota/jitter/daytime/circuit-breaker guards and authenticated correlated reply processing. User approved ad-hoc limits: 15/day, 45–180-second jitter, daytime window and automatic pause; no anti-ban guarantee.
 - [ ] Configure and verify a dedicated scanner instance and authenticated webhook, without reusing official Meta or existing avatar-session credentials. Dedicated scanner credentials are not listed in project secrets; no linked Green API connector exists.
-- [ ] Verify real Yad2 reply attribution and end-to-end broker contact readback. Awaiting a sanitized real response or an explicitly approved controlled test; never infer broker identity from a shared chat's latest pending job.
+- [ ] Verify real Yad2 reply attribution and end-to-end broker contact readback. User supplied a real textual reply with an api.whatsapp.com personal link; add its parser regression. Raw webhook quotation/message correlation and an explicitly approved controlled live test remain unavailable; never infer broker identity from a shared chat's latest pending job.
 
 ## WhatsApp reset and broker rows November 22
 - [x] Removed five Yad2-discovered contacts carrying the same shared number and reset five completed discovery statuses; Cloud readback confirms zero discovered contacts and zero active jobs. Login phones, inventory and manual contacts remain untouched; no scan restarted.
