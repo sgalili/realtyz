@@ -1,5 +1,10 @@
 # Roadmap
 
+## WhatsApp extraction and broker card November 22
+- [x] One real Bright Data read returned 200 with an explicit WhatsApp anchor in the primary agency contact section under a sticky aside; the old parser removed that entire aside. Retain only this observed primary contact section, continue rejecting unrelated/hidden/ambiguous contacts, and log extraction counts/reasons without phone values. Existing contact-to-queue mapping was correct.
+- [x] Status now returns the broker/workspace-matched persisted WhatsApp contact, so the slot refreshes even after unmounted completion; manual saves invalidate this read too. Email icon moved after its text, broker trash moved to the drafts row at the far edge, and number text increased 14/16px to 16/18px without changing developer layout.
+- [x] Deployed broker-whatsapp-worker; 35 tests passed. Authenticated real discovery completed on attempt 1, saved a normalized source/owner-matched WhatsApp contact and displayed it in the card. Mobile/desktop screenshots confirmed icon/trash placement, 16/18px number sizes, no overflow or runtime errors. No messages sent, login number changed, bulk scan started or Railway service changed. No-match/ambiguity remains explicit rather than inventing numbers.
+
 ## Broker discovery trigger and registry identity November 22
 - [x] Repair idempotent discovery enqueue and restore pending spinner from Cloud; real shared-secret claims/results returned 200. The three previous jobs had no worker/attempts; temporary authorized worker processed them without messaging.
 - [x] Align registry shields at 16px without compact wrapper, use green verified/pale-gray failed states, and accept saved imported license for official names on unverified accounts while protecting locked identities and other-account ownership.

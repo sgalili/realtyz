@@ -2,7 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
 import { validWorkerCredential } from '../_shared/externalImportWorker.ts';
-import { brokerWhatsAppRetry, discoverBrokerWhatsApp, discoverBrokerTelephone, normalizeBrokerWhatsApp } from '../_shared/brokerWhatsApp.ts';
+import { brokerWhatsAppRetry, inspectBrokerWhatsApp, discoverBrokerTelephone, normalizeBrokerWhatsApp } from '../_shared/brokerWhatsApp.ts';
 
 const scope = { worker_id: z.string().min(1).max(100), job_id: z.string().uuid(), lease_token: z.string().uuid() };
 const schema = z.discriminatedUnion('action', [
@@ -66,7 +66,9 @@ Deno.serve(async req => {
     if (input.action === 'status') {
       const { data, error } = await admin.from('broker_whatsapp_jobs').select('id,status,last_error,attempts,updated_at,discovered_phone').eq('broker_id', input.broker_id).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
-      return json({ job: data });
+      const { data: contact, error: ce } = await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id', input.broker_id).eq('workspace_owner_id', input.broker_id).maybeSingle();
+      if (ce) throw ce;
+      return json({ job: data, contact: contact ?? null });
     }
     if (input.action === 'enqueue') return json(await enqueue(input.broker_id));
     if (input.action === 'enqueue_missing') {
@@ -116,10 +118,12 @@ Deno.serve(async req => {
         const {error}=await admin.from('broker_whatsapp_jobs').update({discovered_phone:telephone}).eq('id',input.job_id).eq('status','running').eq('lease_token',input.lease_token).eq('worker_id',input.worker_id).gt('lease_until',new Date().toISOString());
         if(error)throw error;
       }
-      const contact = input.action === 'result' ? discoverBrokerWhatsApp(input.html) : null;
+      const extraction = input.action === 'result' ? inspectBrokerWhatsApp(input.html) : null;
+      const contact = extraction?.contact;
       const { data, error } = await admin.rpc('finish_broker_whatsapp_discovery', { _id: input.job_id, _token: input.lease_token, _worker: input.worker_id, _phone: contact?.phone ?? null, _error: input.action === 'failure' ? input.error : null, _retry_seconds: input.action === 'failure' ? brokerWhatsAppRetry(input.status, job.attempts, input.retry_after) : 0 });
       if (error) throw error;
-      return json(data);
+      if (extraction) console.log('[broker-whatsapp-extraction]', { job_id: input.job_id, main_count: extraction.mainCount, candidates: extraction.candidates, reason: extraction.reason, saved: !!contact });
+      return json({ ...data, extraction: extraction ? { main_count: extraction.mainCount, candidates: extraction.candidates, reason: extraction.reason } : undefined });
     }
     return json({ error: 'unsupported_action' }, 400);
   } catch (reason) {

@@ -80,7 +80,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
     send.mutate();
   };
   return <>
-    <Button variant="ghost" className={`h-7 gap-1 px-0.5 font-normal sm:h-8 ${b.email ? 'min-w-0 max-w-24 sm:max-w-40' : 'min-w-[78px]'}`} aria-label={`שליחת הודעה במייל ל${b.full_name || 'מתווך'}`} title={b.email || 'הוסף מייל'} onClick={() => setOpen(true)}><Mail className="h-4 w-4 shrink-0" /><span dir={b.email ? 'ltr' : 'rtl'} className={`min-w-0 text-xs ${b.email ? 'truncate' : 'whitespace-nowrap'}`}>{b.email || 'הוסף מייל'}</span></Button>
+    <Button variant="ghost" className={`h-7 gap-1 px-0.5 font-normal sm:h-8 ${b.email ? 'min-w-0 max-w-24 sm:max-w-40' : 'min-w-[78px]'}`} aria-label={`שליחת הודעה במייל ל${b.full_name || 'מתווך'}`} title={b.email || 'הוסף מייל'} onClick={() => setOpen(true)}><span dir={b.email ? 'ltr' : 'rtl'} className={`min-w-0 text-xs ${b.email ? 'truncate' : 'whitespace-nowrap'}`}>{b.email || 'הוסף מייל'}</span><Mail className="h-4 w-4 shrink-0" /></Button>
     <Dialog open={open} onOpenChange={v => { if (!send.isPending) setOpen(v); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
         <DialogHeader><DialogTitle>הזמנה במייל ל{recipientName || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">שליחת הזמנה במייל בלבד</DialogDescription></DialogHeader>
@@ -197,16 +197,17 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
         </div>
         {!b.is_developer && <div className="flex min-w-0 max-w-[45%] shrink-0 justify-end"><OfficeNameField b={b} showLogo={false} /></div>}
       </div>
-      <div data-broker-row="contacts" className={b.is_developer ? "flex max-w-full flex-wrap items-center gap-0" : "grid max-w-full grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,.65fr)_auto] items-center gap-0 sm:flex"}>
+      <div data-broker-row="contacts" className={b.is_developer ? "flex max-w-full flex-wrap items-center gap-0" : "flex max-w-full flex-wrap items-center gap-x-1 gap-y-0"}>
         {phoneControls}
         {!b.is_developer && <BrokerWhatsAppContact brokerId={b.user_id} name={b.full_name} phone={b.whatsapp_phone} />}
         <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} />
-        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>
+        {b.is_developer && <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>}
       </div>
     </div>
     <div data-broker-row="office" className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">
       {!b.is_developer && b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-7 w-7 shrink-0 rounded-md object-contain" />}
       <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground sm:text-base" title={details}>{details}</p>
+      {!b.is_developer && <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-destructive" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>}
     </div>
     {b.is_developer && <MarketingContactLine ownerId={b.user_id} devName={b.full_name} contact={marketing} />}
     <Dialog open={deleting} onOpenChange={open => { if (!remove.isPending) setDeleting(open); }}>

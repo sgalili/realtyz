@@ -17,6 +17,13 @@ it('queues discovery only by default', async () => {
   await waitFor(() => expect(state.invoke).toHaveBeenCalledWith('broker-whatsapp-worker', { body: { action: 'enqueue', broker_id: 'broker-id' } }));
   expect(state.invoke.mock.calls.every(([, args]) => ['enqueue', 'status'].includes(args.body.action) && !('outreach' in args.body))).toBe(true);
 });
+it('reads a completed persisted WhatsApp contact into its own slot even without tracking', async () => {
+  state.invoke.mockResolvedValue({ data: { job: { id: 'job', status: 'completed', attempts: 1 }, contact: { whatsapp_phone: '972503333333' } }, error: null });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><BrokerWhatsAppContact brokerId="broker-id" name="Broker" phone={null} /></QueryClientProvider>);
+  expect(await screen.findByRole('button', { name: 'עריכת וואטסאפ של Broker' })).toHaveTextContent('050-3333333');
+  expect(screen.queryByRole('button', { name: 'הוספת וואטסאפ של Broker' })).toBeNull();
+});
 it('blocks another job while discovery is running', async () => {
   setup('running');
   await waitFor(() => expect(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' })).toBeDisabled());

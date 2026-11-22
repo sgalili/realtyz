@@ -14,7 +14,7 @@ import { BrokerNumberEditor } from './BrokerNumberEditor';
 type Job = { id: string; status: string; last_error: string | null; attempts: number };
 const activeStates = ['pending', 'running', 'retry'];
 const labels: Record<string, string> = { pending: 'ממתין לגילוי', running: 'מאתר מספר WhatsApp', retry: 'ממתין לניסיון נוסף', completed: 'המשימה הושלמה', not_found: 'לא נמצא קישור WhatsApp חד־משמעי במודעה', failed: 'הגילוי נכשל' };
-async function invoke(body: Record<string, unknown>): Promise<{ job: Job | null }> {
+async function invoke(body: Record<string, unknown>): Promise<{ job: Job | null; contact?: { whatsapp_phone: string } | null }> {
   const { data, error } = await supabase.functions.invoke('broker-whatsapp-worker', { body });
   if (error) {
     const details = error instanceof FunctionsHttpError ? await error.context.json().catch(() => null) : null;
@@ -33,6 +33,8 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
   const [sendOpen, setSendOpen] = useState(false);
   const status = useQuery({ queryKey: ['broker-whatsapp-job', brokerId], retry: false, queryFn: () => invoke({ action: 'status', broker_id: brokerId }), refetchInterval: query => activeStates.includes(query.state.data?.job?.status ?? '') ? 4000 : false });
   const job = status.data?.job;
+  // Read the persisted contact even when completion happened while this card was unmounted.
+  const savedPhone = status.data?.contact !== undefined ? status.data.contact?.whatsapp_phone : phone;
   const enqueue = useMutation({ mutationFn: (target: string) => invoke({ action: 'enqueue', broker_id: target }),
     onSuccess: (data, target) => { if(currentBroker.current!==target)return; qc.setQueryData(['broker-whatsapp-job', target], data); setTracking(true); },
     onError: (e: Error, target) => { if(currentBroker.current!==target)return; starting.current=false;setTracking(false);toast.error(e.message); } });
@@ -50,12 +52,12 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
   }, [job?.status, tracking, status.error, brokerId, qc]);
   const busy = enqueue.isPending || (!status.isError && activeStates.includes(job?.status ?? '')) || (tracking && status.isLoading);
   return <span className="inline-flex max-w-full flex-wrap items-center gap-0.5">
-    <BrokerNumberEditor brokerId={brokerId} name={name} phone={phone} kind="whatsapp" />
-    {phone && <>
-      <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-lead-whatsapp" aria-label={`WhatsApp רשמי אל ${name}`} title={`שליחה רשמית אל ${formatPhoneDisplay(phone)}`} onClick={() => setSendOpen(true)}><WhatsAppIcon className="h-4 w-4" /></Button>
+    <BrokerNumberEditor brokerId={brokerId} name={name} phone={savedPhone} kind="whatsapp" />
+    {savedPhone && <>
+      <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-lead-whatsapp" aria-label={`WhatsApp רשמי אל ${name}`} title={`שליחה רשמית אל ${formatPhoneDisplay(savedPhone)}`} onClick={() => setSendOpen(true)}><WhatsAppIcon className="h-4 w-4" /></Button>
     </>}
     <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-lead-whatsapp" aria-label={`גילוי WhatsApp של ${name}`} aria-busy={busy} disabled={busy} title={busy ? labels[job?.status ?? 'running'] : 'גילוי WhatsApp במודעת יד2'} onClick={() => { if(starting.current||busy)return;starting.current=true;enqueue.mutate(brokerId); }}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}</Button>
-    <Dialog open={sendOpen} onOpenChange={setSendOpen}><DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto text-right"><DialogHeader><DialogTitle>הזמנה ב־WhatsApp ל־{name}</DialogTitle><DialogDescription>מספר וואטסאפ: <span dir="ltr">{phone ? formatPhoneDisplay(phone) : ''}</span></DialogDescription></DialogHeader>
+    <Dialog open={sendOpen} onOpenChange={setSendOpen}><DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto text-right"><DialogHeader><DialogTitle>הזמנה ב־WhatsApp ל־{name}</DialogTitle><DialogDescription>מספר וואטסאפ: <span dir="ltr">{savedPhone ? formatPhoneDisplay(savedPhone) : ''}</span></DialogDescription></DialogHeader>
       {sendOpen && <OfficialBrokerInvitationPanel broker={{ id: brokerId, full_name: name }} useDiscoveredWhatsApp onClose={() => setSendOpen(false)} />}
     </DialogContent></Dialog>
   </span>;

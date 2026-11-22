@@ -2,9 +2,23 @@ import { describe, expect, it, mock } from 'bun:test';
 import * as cheerio from 'cheerio';
 // Deno resolves npm specifiers; map it to the same installed package for Bun tests.
 mock.module('npm:cheerio@1.0.0-rc.12', () => cheerio);
-const { brokerWhatsAppAction, brokerWhatsAppRetry, discoverBrokerWhatsApp, discoverBrokerTelephone, normalizeBrokerWhatsApp } = await import('./brokerWhatsApp');
+const { brokerWhatsAppAction, brokerWhatsAppRetry, discoverBrokerWhatsApp, discoverBrokerTelephone, normalizeBrokerWhatsApp, inspectBrokerWhatsApp } = await import('./brokerWhatsApp');
 
 describe('source-backed broker WhatsApp', () => {
+  it('extracts the observed primary agency contact inside the listing sticky aside', () => {
+    const html = '<main><div class="contentBox"><aside class="stickyContentBox"><div class="stickyContent"><div class="floatingCard"><div class="forsale-agency-contact-section-module-scss-module__x__forsaleAgencyContactSectionBox"><div class="forsale-agency-contact-section-module-scss-module__x__whatsappButtonBox"><a href="https://api.whatsapp.com/send?phone=+972502222222&amp;text=hello">WhatsApp</a></div><a href="tel:0502222222">Call</a></div></div></div></aside></div></main>';
+    expect(discoverBrokerWhatsApp(html)).toEqual({ phone: '972502222222', link: 'https://wa.me/972502222222' });
+    expect(discoverBrokerTelephone(html)).toBe('972502222222');
+  });
+  it('still rejects unrelated and hidden agency contact sections in sidebars', () => {
+    for (const attributes of ['class="related"', 'hidden', 'aria-hidden="true"']) {
+      expect(discoverBrokerWhatsApp(`<main><aside ${attributes}><div class="forsale-agency-contact-section"><a href="https://wa.me/972502222222">WhatsApp</a></div></aside></main>`)).toBeNull();
+    }
+  });
+  it('reports absent or ambiguous evidence instead of inventing WhatsApp from text or JSON', () => {
+    expect(inspectBrokerWhatsApp('<main><script>{"phone":"0502222222"}</script>0502222222</main>').reason).toBe('no_explicit_whatsapp_action');
+    expect(inspectBrokerWhatsApp('<main><a href="https://wa.me/972502222222">A</a><a href="https://wa.me/972503333333">B</a></main>').reason).toBe('ambiguous_whatsapp_actions');
+  });
   it('suggests only a unique primary telephone action, never inferred WhatsApp', () => {
     const html = '<main><a href="tel:0502222222">Call</a><aside><a href="tel:0503333333">Other</a></aside></main>';
     expect(discoverBrokerTelephone(html)).toBe('972502222222');
