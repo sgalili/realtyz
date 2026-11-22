@@ -1071,3 +1071,8 @@
 ## Registry lookup no-match runtime error
 - [x] Return found:false/valid:false with HTTP 200 for an exact-registry no-match only; preserve authorization/provider/identity-conflict failures. Function deployed and 19 focused tests passed.
 - [x] Real signed-in lookup for an existing saved unverified license returned HTTP 200/no profile; card identity stayed unchanged, shield became gray and remained clickable, error expired after five seconds, and no browser runtime errors occurred.
+
+## Missing-license handling flow sweep
+- [x] Read signup/profile/upgrade/affiliate/public-publisher/imported-login/admin UI, certificate endpoints, queued/legacy imports, Worker and current database verification/approval/setup guards. Explicit Super Admin approval remains separate and unchanged.
+- [x] Completed certificate and manual-create registry misses return unsuccessful HTTP 200 validation results before writes; authorization, missing inputs and upstream failures stay distinct. Catch rejected OTP continuations, imported-review requests and registration calls without changing consent, privileges or records. Certificate and create-user functions deployed.
+- [x] 56 targeted tests passed; authenticated admin no-match lookup verified HTTP 200, unchanged identity, retryable shield, five-second error expiry and no page errors. No live signup/certificate upload or account creation performed. Two pre-existing expectations (partner signup notification and manual-approval-only upgrade visibility) fail in broader tests and were left unchanged as unrelated to this failure.

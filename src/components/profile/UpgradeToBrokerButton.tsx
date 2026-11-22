@@ -116,10 +116,12 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
   const continueVerified = async () => {
     if (sms.data !== true || busy) return;
     setBusy(true);
+    try {
     const { error } = await supabase.rpc('register_as_broker');
-    setBusy(false);
     if (error) { toast.error('לא ניתן להשלים את אימות המתווך כרגע.'); return; }
     onApproved?.();
+    } catch { toast.error('לא ניתן להשלים את אימות המתווך כרגע. אפשר לנסות שוב.'); }
+    finally { setBusy(false); }
   };
 
   // The profile's license row above shows the verified status; no duplicate card here.
@@ -152,14 +154,14 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
           <Button asChild variant="outline"><a href={BROKER_EXAM_REGISTRATION_URL} target="_blank" rel="noopener noreferrer">להרשמה למבחן הלאומי</a></Button>
           <Button variant={hasLicense ? 'secondary' : 'outline'} aria-expanded={hasLicense} type="button" onClick={() => { setHasLicense(true); if (!license && account?.license) setLicense(account.license); }}>יש לי רישיון</Button>
         </div>}
-        {publisher && account?.verified ? <div className="space-y-3"><p>הרישיון מאומת. נדרש אימות SMS של החשבון לפני הפרסום.</p>{sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" onVerified={() => { void sms.refetch(); }} />}<Button disabled={sms.data !== true || busy} onClick={() => void continueVerified()}>המשך לפרסום</Button></div> : !isOwnProfile && !actingForOwner ? <p role="status" className="border-t border-border pt-3 text-base">בקשת השדרוג מוגשת מתוך החשבון האישי של בעל הפרופיל.</p> : pending ? <div role="status" className="space-y-2 border-t border-border pt-3 text-base">
+        {publisher && account?.verified ? <div className="space-y-3"><p>הרישיון מאומת. נדרש אימות SMS של החשבון לפני הפרסום.</p>{sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" onVerified={() => sms.refetch()} />}<Button disabled={sms.data !== true || busy} onClick={() => void continueVerified()}>המשך לפרסום</Button></div> : !isOwnProfile && !actingForOwner ? <p role="status" className="border-t border-border pt-3 text-base">בקשת השדרוג מוגשת מתוך החשבון האישי של בעל הפרופיל.</p> : pending ? <div role="status" className="space-y-2 border-t border-border pt-3 text-base">
           <p>מספר רישיון תיווך: <b dir="ltr">{account?.license}</b></p>
           <p>סטטוס: ממתין לאישור מנהל. נעדכן אותך בהמשך.</p>
         </div> : hasLicense && <div className="space-y-2 border-t border-border pt-3">
           <p className="text-base font-semibold">כבר קיבלת רישיון?</p>
           <div ref={focusLicenseOnMount}>
           <BrokerLicenseField bare value={license} onChange={setLicense} onVerified={() => {}} /></div>
-          {!actingForOwner && sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" description="נדרש אימות מספר הטלפון של החשבון לפני אימות הרישיון." onVerified={() => { void sms.refetch(); }} />}
+          {!actingForOwner && sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" description="נדרש אימות מספר הטלפון של החשבון לפני אימות הרישיון." onVerified={() => sms.refetch()} />}
           <label htmlFor="broker-certificate-image" className="block text-base">צילום תעודת הרישיון</label>
           <Input id="broker-certificate-image" type="file" accept={CERTIFICATE_MIME_TYPES.join(',')} disabled={busy} className="h-auto text-base" onChange={event => {
             const next = event.target.files?.[0] ?? null;

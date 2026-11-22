@@ -39,11 +39,16 @@ export function ImportedLicenseGate({ children }: { children: React.ReactNode })
       await verifyBrokerLicense(license, 'verify');
       setMessage('הרישיון אומת מול רשם המתווכים. תודה!');
     } catch {
+      try {
       const { error } = await supabase.rpc('request_imported_license_review', { _license: brokerLicenseDigits(license) });
       setMessage(error
         ? (error.message.includes('another_account') ? 'מספר הרישיון כבר משויך לחשבון אחר. צרו איתנו קשר.' : 'מספר הרישיון אינו תקין. בדקו ונסו שוב.')
         : 'לא הצלחנו לאמת את הרישיון מול המאגר הממשלתי. העברנו את הבקשה לבדיקה ידנית של צוות TORAFF.');
-    } finally { setBusy(false); await qc.invalidateQueries({ queryKey: key }); }
+      } catch { setMessage('לא ניתן לשלוח את הרישיון לבדיקה כרגע. הפרטים שמורים; אפשר לנסות שוב.'); }
+    } finally {
+      setBusy(false);
+      await qc.invalidateQueries({ queryKey: key }).catch(() => setMessage('לא ניתן לרענן את מצב הרישיון כרגע. אפשר לנסות שוב.'));
+    }
   };
 
   const form = (

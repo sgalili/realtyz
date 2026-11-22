@@ -26,7 +26,7 @@ type Props = {
   lockPhone?: boolean;
   title?: string;
   description?: string;
-  onVerified?: (result: { phone: string; token_hash?: string; session?: { access_token: string; refresh_token: string } }) => void;
+  onVerified?: (result: { phone: string; token_hash?: string; session?: { access_token: string; refresh_token: string } }) => void | Promise<unknown>;
   /** Also offer sending the code by SMS. */
   allowSms?: boolean;
   /** SMS only; WhatsApp/email appear only after "לא קיבלתי קוד". */
@@ -78,6 +78,7 @@ export function WhatsAppOtpVerify({
     }
     setBusy(true);
     setError(null);
+    try {
     const { data, error: fnError } = await supabase.functions.invoke('whatsapp-auth', {
       body: { action: via === 'sms' ? 'send_sms' : 'send', phone: normalized },
     });
@@ -90,6 +91,8 @@ export function WhatsAppOtpVerify({
     setSent(true);
     setCooldown(RESEND_SECONDS);
     toast.success(data?.channel === 'sms' ? 'הקוד נשלח ב-SMS' : 'הקוד נשלח בוואטסאפ');
+    } catch { setError('שליחת הקוד נכשלה. אפשר לנסות שוב.'); }
+    finally { setBusy(false); }
   };
 
   const verify = async () => {
@@ -100,16 +103,20 @@ export function WhatsAppOtpVerify({
     }
     setBusy(true);
     setError(null);
+    let verified = false;
+    try {
     const { data, error: fnError } = await supabase.functions.invoke('whatsapp-auth', {
       body: { action: brokerVerification ? 'broker_verify' : 'verify', phone: normalized, code: code.replace(/\D/g, '') },
     });
-    setBusy(false);
     if (fnError || data?.error) {
       setError(String(data?.error ?? fnError?.message ?? 'האימות נכשל'));
       return;
     }
+    verified = true;
     toast.success('האימות הושלם');
-    onVerified?.({ phone: normalized, token_hash: data?.token_hash, session: data?.session });
+    await onVerified?.({ phone: normalized, token_hash: data?.token_hash, session: data?.session });
+    } catch { setError(verified ? 'האימות הצליח, אך לא ניתן להשלים את הפעולה כרגע. אפשר לנסות שוב.' : 'האימות נכשל. אפשר לנסות שוב.'); }
+    finally { setBusy(false); }
   };
 
   return (

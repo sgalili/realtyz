@@ -3,13 +3,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { UpgradeToBrokerButton } from './UpgradeToBrokerButton';
 
-const state = vi.hoisted(() => ({ verified: false, license: '', pending: false, reads: [] as string[], submissions: 0 }));
+const state = vi.hoisted(() => ({ verified: false, license: '', pending: false, sms: false, rejectRegistration: false, reads: [] as string[], submissions: 0 }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'signed-in-account' } }) }));
 vi.mock('@/components/auth/BrokerLicenseField', () => ({ BrokerLicenseField: () => <input aria-label="מספר רישיון חדש" /> }));
 vi.mock('@/components/auth/BrokerCertificateCheck', () => ({ BrokerCertificateCheck: () => null }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {
   rpc: async (name: string, args: { _user_id?: string }) => {
-    if (name === 'publisher_sms_verified' || name === 'has_role') return { data: false, error: null };
+    if (name === 'publisher_sms_verified') return { data: state.sms, error: null };
+    if (name === 'has_role') return { data: false, error: null };
+    if (name === 'register_as_broker' && state.rejectRegistration) throw new Error('registration offline');
     if (name === 'partner_can_view_closing') { state.reads.push(args._user_id ?? ''); return { data: state.verified, error: null }; }
     state.submissions++; return { data: null, error: null };
   },
@@ -23,8 +25,8 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
     }; return chain;
   },
 } }));
-const mount = (profileOwnerId?: string) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><UpgradeToBrokerButton profileOwnerId={profileOwnerId} /></QueryClientProvider>);
-beforeEach(() => { state.verified = false; state.license = ''; state.pending = false; state.reads = []; state.submissions = 0; (state as any).approved = false; });
+const mount = (profileOwnerId?: string, publisher = false, onApproved?: () => void) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><UpgradeToBrokerButton profileOwnerId={profileOwnerId} publisher={publisher} onApproved={onApproved} /></QueryClientProvider>);
+beforeEach(() => { state.verified = false; state.license = ''; state.pending = false; state.sms = false; state.rejectRegistration = false; state.reads = []; state.submissions = 0; (state as any).approved = false; });
 afterEach(cleanup);
 
 it('allows an unverified account without a license to open verification', async () => {
@@ -67,4 +69,12 @@ it('shows only the verified card after Super Admin approval', async () => {
   (state as any).approved = true; state.license = '77777'; mount();
   await waitFor(() => expect(screen.queryByRole('button', { name: 'בעלי רישיון תיווך מרוויחים יותר!' })).toBeNull());
   expect(screen.queryByText('הרישיון הוזן — השדרוג טרם אושר')).toBeNull();
+});
+it('does not continue publication on a rejected registration promise and permits retry', async () => {
+  state.verified = true; state.sms = true; state.rejectRegistration = true;
+  const onApproved = vi.fn();
+  mount(undefined, true, onApproved);
+  fireEvent.click(await screen.findByRole('button', { name: 'המשך לפרסום' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'המשך לפרסום' })).toBeEnabled());
+  expect(onApproved).not.toHaveBeenCalled();
 });

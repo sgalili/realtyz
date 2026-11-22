@@ -4,7 +4,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 import { requireCaller, isSuperAdmin } from "../_shared/authz.ts";
-import { checkAdminBrokerRegistry } from "../_shared/adminBrokerRegistry.ts";
+import { checkAdminBrokerRegistry, adminRegistryCreationRefusal } from "../_shared/adminBrokerRegistry.ts";
 import { BATCH_NO_EMAIL_DOMAIN } from "../_shared/brokerBatchImport.ts";
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { allowsQueuedContactlessAccount, developerImportPlaceholderId, requiresLicenseVerification } from '../_shared/importedAccountPolicy.ts';
@@ -72,7 +72,10 @@ Deno.serve(async (req) => {
     // Bulk imports store the license as-is; registry verification happens at the broker's first sign-in.
     const registry = requiresLicenseVerification(user_type) && broker_license_number && !(import_job_id && action !== 'check_registry') ? await checkAdminBrokerRegistry(broker_license_number, full_name ?? '') : null;
     if (action === 'check_registry') return new Response(JSON.stringify(registry ?? {valid:false,reason:'invalid_license'}),{headers:{...corsHeaders,'Content-Type':'application/json'}});
-    if (requiresLicenseVerification(user_type) && (!broker_license_number || (!import_job_id && !registry?.valid && !approve_broker))) return new Response(JSON.stringify({error:'נדרש אימות רישיון או אישור מפורש של מנהל'}),{status:400,headers:corsHeaders});
+    if (requiresLicenseVerification(user_type) && (!broker_license_number || (!import_job_id && !registry?.valid && !approve_broker))) {
+      const refusal = adminRegistryCreationRefusal(broker_license_number ? registry?.reason : undefined);
+      return new Response(JSON.stringify(refusal.body), { status: refusal.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
     const normalizedPhone = normalizeIsraeliPhone(phone_e164);
 
     // Queued imports may lack a mobile. Brokers remain pending contact; developers need no license or phone.

@@ -1,0 +1,27 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { WhatsAppOtpVerify } from './WhatsAppOtpVerify';
+const state = vi.hoisted(() => ({ invoke: vi.fn() }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: state.invoke } } }));
+afterEach(() => { cleanup(); state.invoke.mockReset(); });
+it('catches a rejected license continuation after OTP without leaving verification busy', async () => {
+  state.invoke.mockResolvedValue({ data: { channel: 'sms' }, error: null });
+  const continuation = vi.fn().mockRejectedValue(new Error('registry continuation unavailable'));
+  render(<WhatsAppOtpVerify smsOnly defaultPhone="0502222222" onVerified={continuation} />);
+  fireEvent.click(screen.getByRole('button', { name: /קוד ב-SMS$/ }));
+  const code = await screen.findByPlaceholderText('1234');
+  fireEvent.change(code, { target: { value: '2468' } });
+  fireEvent.click(screen.getByRole('button', { name: /^(אמת|אימות) קוד$/ }));
+  await waitFor(() => expect(continuation).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(screen.getByRole('button', { name: /^(אמת|אימות) קוד$/ })).toBeEnabled());
+  expect(screen.getByRole('alert')).toBeVisible();
+});
+it('releases the send control on a rejected request without invoking continuation', async () => {
+  state.invoke.mockRejectedValue(new Error('offline'));
+  const continuation = vi.fn();
+  render(<WhatsAppOtpVerify smsOnly defaultPhone="0502222222" onVerified={continuation} />);
+  fireEvent.click(screen.getByRole('button', { name: /קוד ב-SMS$/ }));
+  await screen.findByRole('alert');
+  expect(screen.getByRole('button', { name: /קוד ב-SMS$/ })).toBeEnabled();
+  expect(continuation).not.toHaveBeenCalled();
+});

@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createResponsesCall } from './responses.ts';
 import { getLovableAiGatewayResponseHeaders } from './run-id.ts';
-import { certificateNameMatches, CERTIFICATE_MAX_BYTES, CERTIFICATE_MIME_TYPES } from '../_shared/brokerCertificate.ts';
+import { certificateRegistryResponse, CERTIFICATE_MAX_BYTES, CERTIFICATE_MIME_TYPES } from '../_shared/brokerCertificate.ts';
 import { BROKER_LICENSE_PATTERN, BROKER_REGISTRY_DATASET, BROKER_REGISTRY_RESOURCE, exactRegistryRecord, registrySourceIsFresh, BROKER_REGISTRY_UNAVAILABLE } from '../_shared/brokerRegistry.ts';
 
 const reply = (body: unknown, status = 200, aiHeaders?: HeadersInit) => new Response(JSON.stringify(body), { status, headers: getLovableAiGatewayResponseHeaders(aiHeaders, { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }) });
@@ -70,11 +70,11 @@ Deno.serve(async req => {
     if (metadata.organization?.name !== 'ministry_of_justice' || !resource?.last_modified || !registrySourceIsFresh(resource.last_modified) || !Array.isArray(found.records)) throw new Error(BROKER_REGISTRY_UNAVAILABLE);
     const record = exactRegistryRecord(found.records, extracted.licenseNumber);
     const registryName = record ? String(record['שם המתווך']) : null;
-    const matched = registryName !== null && certificateNameMatches(extracted.fullName, registryName);
-    const message = matched ? 'פרטי התעודה תואמים לפנקס המתווכים וקבצי האימות הועברו בצורה מאובטחת לבדיקה.' : record ? 'השם בתעודה אינו זהה לשם בפנקס המתווכים. יש לבדוק את התעודה ולהעלות צילום ברור.' : 'מספר הרישיון שבתעודה לא נמצא בפנקס המתווכים המורשים.';
+    const comparison = certificateRegistryResponse(extracted.licenseNumber, extracted.fullName, registryName);
+    const { matched, message } = comparison.body;
     await save({ status: matched ? 'matched' : 'mismatch', license_number: extracted.licenseNumber, certificate_name: extracted.fullName, registry_name: registryName, safe_message: message });
     const response = await result.response;
-    return reply({ matched, licenseNumber: extracted.licenseNumber, fullName: extracted.fullName, registryName, message }, matched ? 200 : 422, response.headers);
+    return reply(comparison.body, comparison.status, response.headers);
   } catch (error) {
     const e = error as { statusCode?: number; responseBody?: string; message?: string };
     upstreamStatus = e.statusCode;

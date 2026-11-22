@@ -1,5 +1,10 @@
 import { BROKER_REGISTRY_DATASET, BROKER_REGISTRY_RESOURCE, BROKER_REGISTRY_SOURCE, exactRegistryRecord, registryDisplayName, registrySourceIsFresh } from './brokerRegistry.ts';
 
+export function adminRegistryCreationRefusal(reason?: string) {
+  return { status: reason === 'not_found' || reason === 'name_mismatch' ? 200 : 400,
+    body: { ok: false, code: reason ?? 'invalid_license', error: 'נדרש אימות רישיון או אישור מפורש של מנהל' } };
+}
+
 export async function checkAdminBrokerRegistry(license: string, name: string) {
   const get = async (url: URL) => {
     const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
