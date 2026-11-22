@@ -3,6 +3,15 @@ import { resolve } from 'node:path';
 import { configuration, retryAfterSeconds, sourceAllowed } from './policy.js';
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+export function createCloudApi(config, fetcher = fetch) {
+  return async body => {
+    const response = await fetcher(config.api, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-broker-wa-worker-secret': config.secret }, body: JSON.stringify({ ...body, worker_id: config.id }), signal: AbortSignal.timeout(60000) });
+    const result = await response.json();
+    if (!response.ok) throw Object.assign(new Error(result.error ?? `cloud_http_${response.status}`), { status: response.status });
+    return result;
+  };
+}
+
 export async function processJob(job, { api, source }) {
   const scope = { job_id: job.id, lease_token: job.lease_token };
   if (job.status !== 'running') throw new Error('invalid_discovery_state');
@@ -25,12 +34,7 @@ export async function startBrokerWhatsAppWorker() {
   let gate = Promise.resolve();
   const stop = () => { stopping = true; };
   process.once('SIGTERM', stop); process.once('SIGINT', stop);
-  const api = async body => {
-    const response = await fetch(config.api, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-broker-wa-worker-secret': config.secret }, body: JSON.stringify({ ...body, worker_id: config.id }), signal: AbortSignal.timeout(60000) });
-    const result = await response.json();
-    if (!response.ok) throw Object.assign(new Error(result.error ?? `cloud_http_${response.status}`), { status: response.status });
-    return result;
-  };
+  const api = createCloudApi(config);
   const pace = () => {
     const turn = gate.then(async () => { await delay(Math.max(0, nextRequest - Date.now())); nextRequest = Date.now() + config.interval; });
     gate = turn.catch(() => {});

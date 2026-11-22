@@ -1,5 +1,11 @@
 # Roadmap
 
+## Broker discovery trigger and registry identity November 22
+- [x] Repair idempotent discovery enqueue and restore pending spinner from Cloud; real shared-secret claims/results returned 200. The three previous jobs had no worker/attempts; temporary authorized worker processed them without messaging.
+- [x] Align registry shields at 16px without compact wrapper, use green verified/pale-gray failed states, and accept saved imported license for official names on unverified accounts while protecting locked identities and other-account ownership.
+- [x] 35 focused tests and signed-in mobile click/enqueue/repeat/readback passed; real registry 404 clears after five seconds. Real source reads saved not_found, and the clicked discovery button returned to enabled. No contact number invented or messages sent.
+- [ ] Deploy the separate Railway WhatsApp service for continuous consumption; deployment access is unavailable here. Temporary execution verified the code/auth, not permanent Railway availability.
+
 ## Import secondary tab band November 22
 - [x] Raise the pending-invitation secondary tab row by 8px, from 20px to 12px top spacing.
 - [x] Pin the secondary row directly below the existing primary sticky band with an opaque background and verify signed-in mobile scrolling.

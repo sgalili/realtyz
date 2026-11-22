@@ -44,12 +44,21 @@ Deno.serve(async req => {
       if (oe || de || re) throw oe ?? de ?? re;
       const brokerRoles = ['agent', 'lead_agent', 'managing_broker', 'junior_agent'];
       if (!onboarding || demo || roles?.some(r => ['developer', 'marketing_company'].includes(r.role)) || (!onboarding.imported_license_number && !roles?.some(r => brokerRoles.includes(r.role)))) return json({ error: 'החשבון אינו מתווך מיובא' }, 403);
+      const activeJob = () => admin.from('broker_whatsapp_jobs').select('id,status,last_error,attempts').eq('broker_id', input.broker_id).in('status', ['pending','running','retry']).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const {data: existing, error: existingError} = await activeJob();
+      if(existingError)throw existingError;
+      if(existing)return json({ok:true,job:existing});
       const { data: listings, error } = await admin.from('listings').select('id,source_url').eq('workspace_owner_id', input.broker_id).eq('user_id', input.broker_id).eq('source', 'yad2').not('source_url', 'is', null).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
       const listing = listings?.find(l => /^https:\/\/www\.yad2\.co\.il\/realestate\/item\/[a-zA-Z0-9]+(?:\?.*)?$/.test(l.source_url ?? ''));
       if (!listing?.source_url) return json({ error: 'אין מודעת יד2 שמורה ומזוהה עם המתווך' }, 422);
       const { data: job, error: insertError } = await admin.from('broker_whatsapp_jobs').insert({ broker_id: input.broker_id, workspace_owner_id: input.broker_id, listing_id: listing.id, source_url: listing.source_url, created_by: caller.userId }).select('id,status').single();
-      if (insertError) return json({ error: insertError.code === '23505' ? 'כבר קיימת משימה פעילה; יש לבדוק את מצבה' : insertError.message }, insertError.code === '23505' ? 409 : 500);
+      if (insertError?.code === '23505') {
+        const {data: concurrent, error: concurrentError} = await activeJob();
+        if(concurrentError)throw concurrentError;
+        if(concurrent)return json({ok:true,job:concurrent});
+      }
+      if (insertError) throw insertError;
       return json({ ok: true, job });
     }
     if (input.action === 'claim') {

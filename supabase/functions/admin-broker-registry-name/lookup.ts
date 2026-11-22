@@ -36,7 +36,7 @@ export async function fetchRegistryName(license: string, fetcher: typeof fetch =
 }
 
 /** A lookup cannot assign a new identity/license or grant broker permissions. */
-export function assertRegistryNameTarget(profile: { broker_license_number: string | null; locked_broker_name: string | null }, license: string, name?: string) {
-  if (profile.broker_license_number !== license) throw new RegistryNameError('license_changed', 'מספר הרישיון אינו תואם לרישיון השמור בפרופיל. רעננו את הפרטים ונסו שוב.', 409);
+export function assertRegistryNameTarget(profile: { broker_license_number: string | null; locked_broker_name: string | null; imported_license_number?: string | null }, license: string, name?: string) {
+  if ((profile.broker_license_number || profile.imported_license_number) !== license) throw new RegistryNameError('license_changed', 'מספר הרישיון אינו תואם לרישיון השמור בפרופיל. רעננו את הפרטים ונסו שוב.', 409);
   if (name && profile.locked_broker_name && profile.locked_broker_name.split(' ').sort().join(' ') !== name.split(' ').sort().join(' ')) throw new RegistryNameError('locked_identity_conflict', 'השם במאגר אינו תואם לזהות המאומתת הנעולה. לא שונו פרטי החשבון.', 409);
 }

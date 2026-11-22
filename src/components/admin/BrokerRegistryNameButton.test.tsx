@@ -24,6 +24,14 @@ it('does not update the profile on a not-found response', async () => {
   await screen.findByRole('alert');
   expect(updated).not.toHaveBeenCalled();
 });
+it('applies the official returned name without comparing it to the old account name', async () => {
+  const profile={id:'target',broker_license_number:'36484',full_name:'פנינה דיין'};
+  state.invoke.mockResolvedValue({data:{profile,registry:{full_name:'פנינה דיין'}},error:null});
+  const updated=vi.fn();
+  render(<BrokerRegistryNameButton compact userId="target" license="36484" onUpdated={updated}/>);
+  fireEvent.click(screen.getByRole('button'));
+  await waitFor(()=>expect(updated).toHaveBeenCalledWith(profile));
+});
 it('discards a response after the selected profile changes', async () => {
   let complete: ((value: unknown) => void) | undefined;
   state.invoke.mockReturnValue(new Promise(resolve => { complete = resolve; }));

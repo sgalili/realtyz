@@ -28,14 +28,25 @@ Deno.serve(async req => {
     const { data: profile, error: profileError } = await admin.from('profiles').select('id,full_name,city,broker_license_number,locked_broker_name').eq('id', userId).maybeSingle();
     if (profileError) throw profileError;
     if (!profile) return reply({ message: 'הפרופיל המבוקש לא נמצא' }, 404);
-    assertRegistryNameTarget(profile, license);
+    const {data: imported,error: importedError} = await admin.from('admin_broker_onboarding').select('imported_license_number').eq('user_id',userId).maybeSingle();
+    if(importedError)throw importedError;
+    const target = {...profile, imported_license_number:imported?.imported_license_number};
+    assertRegistryNameTarget(target, license);
+    // Never borrow a license already attached to another account, including silent imports.
+    for(const [table,column] of [['profiles','broker_license_number'],['admin_broker_onboarding','imported_license_number'],['admin_approved_broker_licenses','license_number'],['broker_license_verifications','license_number']]) {
+      const ownerColumn=table==='profiles'?'id':'user_id';
+      const {data: owners,error: ownerError}=await admin.from(table).select(ownerColumn).eq(column,license).neq(ownerColumn,userId).limit(1);
+      if(ownerError)throw ownerError;
+      if(owners?.length)throw new RegistryNameError('license_owned','מספר הרישיון כבר משויך לחשבון אחר. לא שונו פרטי החשבון.',409);
+    }
     const registry = await fetchRegistryName(license);
-    assertRegistryNameTarget(profile, license, registry.fullName);
+    assertRegistryNameTarget(target, license, registry.fullName);
     // Refresh official evidence so existing name/license triggers use the same current record.
     // This never writes verification evidence, broker roles, approval status or SMS state.
     const { error: registryError } = await admin.from('official_brokers_registry').upsert({ license_number: license, holder_name: registry.rawName, display_name: registry.fullName, registry_city: registry.city, source_url: registry.source, source_updated_at: registry.updatedAt, checked_at: new Date().toISOString() });
     if (registryError) throw registryError;
-    const { data: saved, error: saveError } = await admin.from('profiles').update({ full_name: registry.fullName, locked_broker_name: registry.fullName, city: registry.city || null, locked_broker_city: registry.city }).eq('id', userId).eq('broker_license_number', license).select('id,full_name,city,broker_license_number').single();
+    const update = admin.from('profiles').update({ broker_license_number:license, full_name: registry.fullName, locked_broker_name: registry.fullName, ...(registry.city ? {city:registry.city,locked_broker_city:registry.city}: {}) }).eq('id', userId);
+    const { data: saved, error: saveError } = await (profile.broker_license_number ? update.eq('broker_license_number',profile.broker_license_number) : update.is('broker_license_number',null)).select('id,full_name,city,broker_license_number').single();
     if (saveError || !saved || saved.full_name !== registry.fullName) throw new RegistryNameError('save_failed', 'השם נשלף, אך לא ניתן היה לעדכן את הפרופיל. רעננו ונסו שוב.', 409);
     // Exact registry match confirmed by a Super Admin is official license evidence (no role grant).
     const { data: previous } = await admin.from('broker_license_verifications').select('account_name_before_verification').eq('user_id', userId).maybeSingle();

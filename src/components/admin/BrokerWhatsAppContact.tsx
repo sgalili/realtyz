@@ -30,14 +30,14 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
   const currentBroker = useRef(brokerId);
   currentBroker.current = brokerId;
   const [sendOpen, setSendOpen] = useState(false);
-  const status = useQuery({ queryKey: ['broker-whatsapp-job', brokerId], enabled: tracking, retry: false, queryFn: () => invoke({ action: 'status', broker_id: brokerId }), refetchInterval: query => activeStates.includes(query.state.data?.job?.status ?? '') ? 4000 : false });
+  const status = useQuery({ queryKey: ['broker-whatsapp-job', brokerId], retry: false, queryFn: () => invoke({ action: 'status', broker_id: brokerId }), refetchInterval: query => activeStates.includes(query.state.data?.job?.status ?? '') ? 4000 : false });
   const job = status.data?.job;
   const enqueue = useMutation({ mutationFn: (target: string) => invoke({ action: 'enqueue', broker_id: target }),
     onSuccess: (data, target) => { if(currentBroker.current!==target)return; qc.setQueryData(['broker-whatsapp-job', target], data); setTracking(true); },
     onError: (e: Error, target) => { if(currentBroker.current!==target)return; starting.current=false;setTracking(false);toast.error(e.message); } });
   useEffect(() => { setTracking(activeStates.includes(qc.getQueryData<{job:Job|null}>(['broker-whatsapp-job',brokerId])?.job?.status??'')); starting.current=false;setSendOpen(false); }, [brokerId,qc]);
   useEffect(() => {
-    if (!tracking) return;
+    if (!tracking) { if(!status.error && job && activeStates.includes(job.status))setTracking(true); return; }
     if (status.error) { starting.current=false;setTracking(false);toast.error(status.error.message);return; }
     if(!job&&status.data&&!status.isLoading&&!enqueue.isPending){starting.current=false;setTracking(false);return;}
     if (job && !activeStates.includes(job.status)) {
@@ -47,7 +47,7 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
       else if(job.status==='not_found')toast.info(labels.not_found);
     }
   }, [job?.status, tracking, status.error, brokerId, qc]);
-  const busy = enqueue.isPending || (tracking && !status.isError && (status.isLoading || activeStates.includes(job?.status ?? '')));
+  const busy = enqueue.isPending || (!status.isError && activeStates.includes(job?.status ?? '')) || (tracking && status.isLoading);
   return <span className="inline-flex max-w-full flex-wrap items-center gap-0.5">
     {phone && <>
       <span dir="ltr" className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">{formatPhoneDisplay(phone)}</span>

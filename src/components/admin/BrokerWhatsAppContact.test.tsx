@@ -18,10 +18,10 @@ it('queues discovery only by default', async () => {
   expect(state.invoke.mock.calls.every(([, args]) => ['enqueue', 'status'].includes(args.body.action) && !('outreach' in args.body))).toBe(true);
 });
 it('blocks another job while discovery is running', async () => {
-  setup('running'); fireEvent.click(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' }));
+  setup('running');
   await waitFor(() => expect(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' })).toBeDisabled());
   fireEvent.click(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' }));
-  expect(state.invoke.mock.calls.filter(([,args])=>args.body.action==='enqueue')).toHaveLength(1);
+  expect(state.invoke.mock.calls.filter(([,args])=>args.body.action==='enqueue')).toHaveLength(0);
 });
 it('uses the saved WhatsApp contact through the official sender, not a private-device link', () => {
   setup(); fireEvent.click(screen.getByRole('button', { name: 'WhatsApp רשמי אל Broker' }));

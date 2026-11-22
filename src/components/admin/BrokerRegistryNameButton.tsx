@@ -51,10 +51,14 @@ export function BrokerRegistryNameButton({ userId, license, disabled, compact = 
       setFailed(true);setErrorMessage(message); toast.error(message,{duration:5000});
     } finally { if (currentScope.current === requestScope) {inFlight.current=false;setBusy(false);} }
   };
-  return <div className={compact ? 'flex min-w-0 shrink-0 items-center gap-2' : 'min-w-0 space-y-1'}>
-    <Button type="button" variant="ghost" size={presentation==='approved'?'default':'icon'} title="איתור מספר רישיון במאגר הלאומי" aria-label={presentation==='approved'?'בדיקה חוזרת של הרישיון המאושר במאגר הלאומי':'איתור מספר רישיון במאגר הלאומי'} aria-busy={busy} disabled={busy || disabled || !!found || !/^[1-9][0-9]{0,9}$/.test(license)} onClick={() => void fetchName()} className={`h-9 shrink-0 border-none p-0 shadow-none hover:bg-transparent hover:opacity-80 ${presentation==='approved'?'px-1 text-sm font-semibold text-success':`w-9 ${found?'text-success':failed?'broker-registry-failed':'text-destructive'}`}`}>
-      {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : presentation==='approved' ? (found?'מאומת':'מאושר') : found ? <ShieldCheck className="h-5 w-5 text-success" /> : <ShieldX className={`h-5 w-5 ${failed?'broker-registry-failed':'text-destructive'}`} />}
+  const control = <>
+    <Button type="button" variant="ghost" size={presentation==='approved'?'default':'icon'} title="איתור מספר רישיון במאגר הלאומי" aria-label={presentation==='approved'?'בדיקה חוזרת של הרישיון המאושר במאגר הלאומי':'איתור מספר רישיון במאגר הלאומי'} aria-busy={busy} disabled={busy || disabled || !!found || !/^[1-9][0-9]{0,9}$/.test(license)} onClick={() => void fetchName()} className={`shrink-0 border-none p-0 shadow-none hover:bg-transparent hover:opacity-80 ${presentation==='approved'?'h-9 px-1 text-sm font-semibold text-success':`${compact?'h-4 w-4 rounded-none':'h-9 w-9'} ${found?'text-success':failed?'broker-registry-failed':'text-destructive'}`}`}>
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : presentation==='approved' ? (found?'מאומת':'מאושר') : found ? <ShieldCheck className="h-4 w-4 text-success" /> : <ShieldX className={`h-4 w-4 ${failed?'broker-registry-failed':'text-destructive'}`} />}
     </Button>
+  </>;
+  if(compact)return control;
+  return <div className="min-w-0 space-y-1">
+    {control}
     {found && !compact && <p role="status" className="text-sm text-success [overflow-wrap:anywhere]">שם במאגר: <b>{found.full_name}</b>{found.city ? <> · עיר: <b>{found.city}</b></> : null} · הרישיון אומת</p>}
     {errorMessage && !compact && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{errorMessage}</p>}
   </div>;

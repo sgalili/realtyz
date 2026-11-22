@@ -1,5 +1,7 @@
 export function configuration(env) {
-  for (const key of ['TORAFF_BROKER_WA_API_URL', 'BROKER_WA_WORKER_SHARED_SECRET', 'BRIGHT_DATA_API_KEY', 'BRIGHTDATA_UNLOCKER_ZONE']) {
+  const token = env.BRIGHT_DATA_API_KEY || env.BRIGHTDATA_API_TOKEN;
+  if (!token) throw new Error('Missing BRIGHT_DATA_API_KEY or BRIGHTDATA_API_TOKEN');
+  for (const key of ['TORAFF_BROKER_WA_API_URL', 'BROKER_WA_WORKER_SHARED_SECRET', 'BRIGHTDATA_UNLOCKER_ZONE']) {
     if (!env[key]) throw new Error(`Missing ${key}`);
   }
   const url = new URL(env.TORAFF_BROKER_WA_API_URL);
@@ -9,7 +11,7 @@ export function configuration(env) {
     if (!Number.isInteger(number) || number < min || number > max) throw new Error(`Invalid ${key}`);
     return number;
   };
-  return { api: url.href, secret: env.BROKER_WA_WORKER_SHARED_SECRET, token: env.BRIGHT_DATA_API_KEY, zone: env.BRIGHTDATA_UNLOCKER_ZONE,
+  return { api: url.href, secret: env.BROKER_WA_WORKER_SHARED_SECRET, token, zone: env.BRIGHTDATA_UNLOCKER_ZONE,
     id: env.BROKER_WA_WORKER_ID ?? 'railway-broker-wa-1', concurrency: integer('BROKER_WA_CONCURRENCY', 1, 1, 3),
     interval: integer('BROKER_WA_REQUEST_INTERVAL_MS', 5000, 1000, 60000), poll: integer('BROKER_WA_POLL_INTERVAL_MS', 10000, 1000, 60000),
     timeout: integer('BROKER_WA_SOURCE_TIMEOUT_MS', 45000, 10000, 60000) };

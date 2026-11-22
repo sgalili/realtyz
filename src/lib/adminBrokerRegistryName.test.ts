@@ -21,6 +21,18 @@ it('rejects stale or unofficial registry evidence', async () => {
 it('cannot change the license associated with the selected profile', () => {
   expect(() => assertRegistryNameTarget({ broker_license_number: '31927722', locked_broker_name: null }, '31927721')).toThrow(/אינו תואם/);
 });
+it('accepts only the exact saved imported license before profile verification', () => {
+  const target={broker_license_number:null,locked_broker_name:null,imported_license_number:'36484'};
+  expect(()=>assertRegistryNameTarget(target,'36484','שם רשמי שונה')).not.toThrow();
+  expect(()=>assertRegistryNameTarget(target,'36485','שם רשמי שונה')).toThrow();
+});
+it('uses the registry full name even when the unverified account name is different', async () => {
+  const target={broker_license_number:'36484',locked_broker_name:null};
+  const fetcher=vi.fn().mockImplementation(async(url:URL)=>url.pathname.endsWith('package_show')?json(metadata):json({records:[{'מס רשיון':36484,'שם המתווך':'דיין פנינה'}]}));
+  const registry=await fetchRegistryName('36484',fetcher);
+  expect(registry.fullName).toBe('פנינה דיין');
+  expect(()=>assertRegistryNameTarget(target,'36484',registry.fullName)).not.toThrow();
+});
 it('preserves verified locked identities rather than replacing them with a different registry name', () => {
   expect(() => assertRegistryNameTarget({ broker_license_number: '31927721', locked_broker_name: 'אידלסון דולי' }, '31927721', 'שם אחר')).toThrow(/זהות המאומתת/);
   expect(() => assertRegistryNameTarget({ broker_license_number: '31927721', locked_broker_name: 'אידלסון דולי' }, '31927721', 'אידלסון דולי')).not.toThrow();

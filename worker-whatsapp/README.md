@@ -15,7 +15,7 @@
 משתנים:
 - `TORAFF_BROKER_WA_API_URL`: כתובת פונקציית `broker-whatsapp-worker` מהגדרות הענן; מסתיימת ב־`/functions/v1/broker-whatsapp-worker`.
 - `BROKER_WA_WORKER_SHARED_SECRET`: ערך זהה בסודות Cloud וב־Railway, לפחות 32 תווים; אינו הסוד של Worker הייבוא.
-- `BRIGHT_DATA_API_KEY`: החיבור הקיים של Bright Data; נשאר סודי ב־Railway.
+- `BRIGHT_DATA_API_KEY` או `BRIGHTDATA_API_TOKEN`: החיבור הקיים של Bright Data; שני השמות נתמכים, והערך נשאר סודי ב־Railway.
 - `BRIGHTDATA_UNLOCKER_ZONE`: Zone פעיל התומך Web Unlocker. מומלץ Zone/מכסת קצב ייעודיים כדי שהשירותים לא יתחרו על אותה מכסה.
 - `BROKER_WA_WORKER_ENABLED=true`: רק אחרי הגדרה ובדיקת חיבור; עשוי להפעיל משימות שאושרו.
 - `BROKER_WA_CONCURRENCY`: ברירת מחדל 1, בין 1 ל־3.
