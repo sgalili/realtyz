@@ -12,18 +12,13 @@ function setup(status: string | null = null) {
 }
 it('queues discovery only by default', async () => {
   setup(); fireEvent.click(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'גילוי בלבד' }));
-  await waitFor(() => expect(state.invoke).toHaveBeenCalledWith('broker-whatsapp-worker', { body: { action: 'enqueue', broker_id: 'broker-id', outreach: false } }));
-});
-it('requires explicit recorded recipient consent before background outreach', async () => {
-  setup(); fireEvent.click(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'גילוי בלבד' })).toBeEnabled());
-  fireEvent.click(screen.getByRole('checkbox'));
-  fireEvent.click(screen.getByRole('button', { name: 'גילוי ופנייה מאושרת' }));
-  await waitFor(() => expect(state.invoke).toHaveBeenCalledWith('broker-whatsapp-worker', { body: { action: 'enqueue', broker_id: 'broker-id', outreach: true, consent: true } }));
+  fireEvent.click(screen.getByRole('button', { name: 'גילוי בלבד' }));
+  await waitFor(() => expect(state.invoke).toHaveBeenCalledWith('broker-whatsapp-worker', { body: { action: 'enqueue', broker_id: 'broker-id' } }));
+  expect(state.invoke.mock.calls.every(([, args]) => ['enqueue', 'status'].includes(args.body.action) && !('outreach' in args.body))).toBe(true);
 });
-it('blocks another job while a prior send is uncertain', async () => {
-  setup('unknown'); fireEvent.click(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' }));
+it('blocks another job while discovery is running', async () => {
+  setup('running'); fireEvent.click(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'גילוי בלבד' })).toBeDisabled());
   expect(state.invoke.mock.calls.every(([, args]) => args.body.action === 'status')).toBe(true);
 });

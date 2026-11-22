@@ -21,8 +21,8 @@ BEGIN
  UPDATE public.broker_whatsapp_jobs SET status='running',attempts=3,lease_until=now()-interval '1 second' WHERE id=j.id;
  PERFORM public.claim_broker_whatsapp_job('test-worker');
  IF (SELECT status FROM public.broker_whatsapp_jobs WHERE id=j.id)<>'failed' THEN RAISE EXCEPTION 'Exhausted job stuck'; END IF;
- UPDATE public.broker_whatsapp_jobs SET status='sending',lease_until=now()-interval '1 second' WHERE id=j.id;
- PERFORM public.claim_broker_whatsapp_job('test-worker');
- IF (SELECT status FROM public.broker_whatsapp_jobs WHERE id=j.id)<>'unknown' THEN RAISE EXCEPTION 'Uncertain send retried'; END IF;
+ rejected:=false;
+ BEGIN UPDATE public.broker_whatsapp_jobs SET outreach=true,consent_at=now() WHERE id=j.id; EXCEPTION WHEN check_violation THEN rejected:=true; END;
+ IF NOT rejected THEN RAISE EXCEPTION 'Automatic outreach allowed'; END IF;
 END $$;
 SELECT 'broker WhatsApp isolation, contact preservation and lease tests passed';

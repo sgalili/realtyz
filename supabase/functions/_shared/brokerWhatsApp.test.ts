@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'bun:test';
-import { brokerWhatsAppAction, brokerWhatsAppRetry, discoverBrokerWhatsApp, normalizeBrokerWhatsApp } from './brokerWhatsApp';
+import { describe, expect, it, mock } from 'bun:test';
+import * as cheerio from 'cheerio';
+// Deno resolves npm specifiers; map it to the same installed package for Bun tests.
+mock.module('npm:cheerio@1.0.0-rc.12', () => cheerio);
+const { brokerWhatsAppAction, brokerWhatsAppRetry, discoverBrokerWhatsApp, normalizeBrokerWhatsApp } = await import('./brokerWhatsApp');
 
 describe('source-backed broker WhatsApp', () => {
   it('normalizes Israeli numbers without changing the main phone', () => {
@@ -23,5 +26,8 @@ describe('source-backed broker WhatsApp', () => {
     expect(brokerWhatsAppRetry(503, 2)).toBe(30);
     expect(brokerWhatsAppRetry(503, 3)).toBe(0);
     expect(brokerWhatsAppRetry(407, 1)).toBe(0);
+  });
+  it('rejects nested related contacts, hidden actions and script markup', () => {
+    expect(discoverBrokerWhatsApp('<main><div class="related"><div>Nested</div><a href="https://wa.me/972503333333">Other</a></div><script>const s=\'<a href="https://wa.me/972504444444">Fake</a>\'</script><a hidden href="https://wa.me/972505555555">Hidden</a><a href="https://wa.me/972502222222">WhatsApp</a></main>')?.phone).toBe('972502222222');
   });
 });

@@ -1856,6 +1856,13 @@
       "when": 1795310523291,
       "tag": "0264_broker_whatsapp_expired_lease_recovery",
       "breakpoints": true
+    },
+    {
+      "idx": 265,
+      "version": "7",
+      "when": 1795310846821,
+      "tag": "0265_broker_whatsapp_discovery_only",
+      "breakpoints": true
     }
   ]
 }

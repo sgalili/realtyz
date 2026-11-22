@@ -5,11 +5,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function processJob(job, { api, source }) {
   const scope = { job_id: job.id, lease_token: job.lease_token };
-  if (job.status === 'discovered') {
-    // Cloud records sending before contacting Meta. An uncertain send stays blocked for review.
-    await api({ action: 'outreach', ...scope });
-    return;
-  }
+  if (job.status !== 'running') throw new Error('invalid_discovery_state');
   let html;
   try {
     if (!sourceAllowed(job.source_url)) throw Object.assign(new Error('invalid_source_url'), { status: 400 });

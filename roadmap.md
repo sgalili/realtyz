@@ -2,7 +2,7 @@
 
 ## Broker WhatsApp worker November 22
 - [ ] Add an independent, fenced discovery queue that stores source-backed WhatsApp contacts without replacing login phones.
-- [ ] Add Super Admin broker-card discovery/contact controls and consent-gated official outreach.
+- [ ] Add Super Admin broker-card discovery/contact controls; user chose discovery only, with manual official Meta invitations and no private-device chat.
 - [ ] Test queue isolation, phone normalization, retries and card behavior; document deployment and unverified provider flows.
 
 ## Properties bulk action toolbar November 21

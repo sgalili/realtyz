@@ -15,33 +15,20 @@ const schema = z.object({
   demo: z.boolean().optional(),
   attachment_id: z.string().uuid().nullable().optional(),
   use_discovered_whatsapp: z.boolean().default(false),
-  worker_job_id: z.string().uuid().optional(),
 }).strict();
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
-  const verifiedCaller = await requireCaller(req, ['user', 'service']);
-  if (verifiedCaller instanceof Response) return verifiedCaller;
-  let caller: { kind: 'user'; userId: string };
-  if (verifiedCaller.kind === 'user') caller = verifiedCaller;
-  else caller = { kind: 'user', userId: '' };
+  const caller = await requireCaller(req, ['user']);
+  if (caller instanceof Response) return caller;
+  if (caller.kind !== 'user' || !await isSuperAdmin(caller.userId)) return json({ error: 'Super Admin required' }, 403);
   let parsed;
   try { parsed = schema.safeParse(await req.json()); } catch { return json({ error: 'Invalid JSON' }, 400); }
   if (!parsed.success) return json({ error: parsed.error.flatten() }, 400);
   const input = parsed.data;
   const admin = adminClient();
-  if (verifiedCaller.kind === 'service') {
-    if (input.action !== 'send' || !input.worker_job_id || input.request_id !== input.worker_job_id || !input.use_discovered_whatsapp || !input.consent) return json({ error: 'forbidden_worker_send' }, 403);
-    const { data: job, error } = await admin.from('broker_whatsapp_jobs').select('*').eq('id', input.worker_job_id).single();
-    if (error || !job || job.broker_id !== input.broker_id || job.status !== 'sending' || !job.outreach || !job.consent_at || Date.parse(job.lease_until ?? '') <= Date.now()) return json({ error: 'forbidden_worker_job' }, 403);
-    const { data: source, error: se } = await admin.from('listings').select('id').eq('id', job.listing_id).eq('workspace_owner_id', job.broker_id).eq('user_id', job.broker_id).eq('source_url', job.source_url).maybeSingle();
-    const { data: demoActor, error: de } = await admin.from('demo_view_accounts').select('user_id').in('user_id', [job.created_by, job.broker_id]).limit(1);
-    if (se || de || !source || demoActor?.length) return json({ error: 'forbidden_worker_scope' }, 403);
-    caller = { kind: 'user', userId: job.created_by };
-  } else if (input.worker_job_id) return json({ error: 'forbidden_worker_job' }, 403);
-  if (!await isSuperAdmin(caller.userId, admin)) return json({ error: 'Super Admin required' }, 403);
   const demo = input.demo ?? true;
   // Wording is fixed server-side; on send the recipient's saved gender decides the variant.
   let gender: unknown = input.gender;

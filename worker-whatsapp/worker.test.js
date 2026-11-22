@@ -20,10 +20,10 @@ test('discovery never sends or touches import actions', async () => {
   await processJob({ id: 'job', lease_token: 'lease', status: 'running', source_url: 'https://www.yad2.co.il/realestate/item/abc123' }, { api: async body => calls.push(body), source: async () => '<main />' });
   assert.deepEqual(calls, [{ action: 'result', job_id: 'job', lease_token: 'lease', html: '<main />' }]);
 });
-test('outreach is only dispatched after persisted discovery', async () => {
+test('worker refuses messaging states without sending anything', async () => {
   const calls = [];
-  await processJob({ id: 'job', lease_token: 'lease', status: 'discovered' }, { api: async body => calls.push(body), source: async () => { throw new Error('must not scan'); } });
-  assert.deepEqual(calls, [{ action: 'outreach', job_id: 'job', lease_token: 'lease' }]);
+  await assert.rejects(processJob({ id: 'job', lease_token: 'lease', status: 'discovered' }, { api: async body => calls.push(body), source: async () => { throw new Error('must not scan'); } }), /invalid_discovery_state/);
+  assert.deepEqual(calls, []);
 });
 test('source failure is persisted once, without a local retry loop', async () => {
   const calls = [];

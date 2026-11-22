@@ -1,3 +1,5 @@
+import { load } from 'npm:cheerio@1.0.0-rc.12';
+
 /** Only explicit WhatsApp action URLs are evidence; never infer WhatsApp from a telephone. */
 export function normalizeBrokerWhatsApp(value: string): string | null {
   let digits = value.trim().replace(/[\s()+.-]/g, '');
@@ -19,12 +21,14 @@ export function brokerWhatsAppAction(url: string): { phone: string; link: string
 
 /** Read rendered actions in the primary listing only. Related ads/nav/footer are never a source. */
 export function discoverBrokerWhatsApp(html: string): { phone: string; link: string } | null {
-  const main = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1];
-  if (!main) return null;
-  const content = main.replace(/<(aside|nav|footer)\b[^>]*>[\s\S]*?<\/\1>/gi, '').replace(/<(?:section|div)\b[^>]*(?:data-testid|id|class)=["'][^"']*(?:related|recommend|similar)[^"']*["'][^>]*>[\s\S]*?<\/(?:section|div)>/gi, '');
+  const $ = load(html);
+  const main = $('main');
+  if (main.length !== 1) return null;
+  main.find('aside,nav,footer,script,template,noscript,[hidden],[aria-hidden="true"]').remove();
+  main.find('*').filter((_index, element) => /related|recommend|similar/i.test(['class', 'id', 'data-testid'].map(name => $(element).attr(name) ?? '').join(' '))).remove();
   const candidates = new Map<string, { phone: string; link: string }>();
-  for (const match of content.matchAll(/\bhref\s*=\s*["']([^"']+)["']/gi)) {
-    const action = brokerWhatsAppAction(match[1]);
+  for (const element of main.find('a[href]').toArray()) {
+    const action = brokerWhatsAppAction($(element).attr('href') ?? '');
     if (action) candidates.set(action.phone, action);
   }
   // Ambiguity must be reviewed, never choose the first number on the page.
