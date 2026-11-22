@@ -1,4 +1,5 @@
 # User credit management
+- Import status and history share useAdminImportJobs; count activity matches persisted workspace/source identity and enrichment completion, not aggregate history status. Why: one poll stream and a ring only on the item actually loading inventory.
 - Import views remain mounted within the current authorized admin/tenant scope during section switches; session storage restores only UI selections/expansion, never data or privileges. Why: instant returns without retaining another tenant's results.
 - Use Super Admin-only exact-balance RPCs with per-account row locks, configured server conversion and audited ledger deltas; reject stale expected balances. Why: no role escalation, lost charges or unaudited funds.
 - Users tables opt into Table scrollMode="page" with native sticky headers and the main surface owning both axes; other tables retain bounded scrolling. Why: uninterrupted page gestures without duplicate scroll owners.

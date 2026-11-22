@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Pause, Play, Loader2, ScanSearch, Building2, UserRound, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +16,7 @@ import { validImportParameters } from '../../../supabase/functions/_shared/broke
 import { agencyUrl } from '../../../supabase/functions/_shared/yad2Agencies';
 import { developerImportUrl } from '@/lib/developerImportUrl';
 import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY } from '../../../supabase/functions/_shared/developerImportRetry';
-import { importJobPollInterval, importJobTargetKind } from '@/lib/importJobMonitoring';
+import { importJobTargetKind } from '@/lib/importJobMonitoring';
 import { refreshImportedInventory } from '@/lib/refreshImportedInventory';
 import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
 
@@ -55,16 +56,7 @@ export function BrokerBatchImportCard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const qc = useQueryClient();
-  const { data: jobs } = useQuery({
-    queryKey: ['admin-broker-import-jobs'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('broker_import_jobs').select('*').order('created_at', { ascending: false }).limit(5);
-      if (error) throw error;
-      return data;
-    },
-    refetchInterval: query => importJobPollInterval(query.state.data),
-    refetchIntervalInBackground: false,
-  });
+  const { data: jobs } = useAdminImportJobs();
   const current = jobs?.[0];
   const [statusExpanded, setStatusExpanded] = useState(false);
   useEffect(() => {

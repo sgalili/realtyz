@@ -25,6 +25,8 @@ import { invitationHistoryKey, threadInvitationHistory } from '@/lib/invitationH
 import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
 import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 import { BrokerWhatsAppContact } from './BrokerWhatsAppContact';
+import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
+import { activeImportHistoryIds } from '@/lib/importHistoryActivity';
 
 export type ContactBroker = { user_id: string; full_name: string; phone: string | null; whatsapp_phone?: string | null; whatsapp_link?: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
@@ -303,7 +305,7 @@ function SendHistory() {
   </div>;
 }
 
-type ImportItem = { id: string; kind: 'developer' | 'broker'; name: string; logo_url: string | null; avatar_url?: string | null; workspace_owner_id?: string | null; public_user_id?: string | null; agency_imported: boolean; agency_name?: string | null; projects: number; imported_at: string; status?: string; error?: string | null };
+type ImportItem = { id: string; kind: 'developer' | 'broker'; name: string; logo_url: string | null; avatar_url?: string | null; workspace_owner_id?: string | null; public_user_id?: string | null; source_url?: string | null; agency_imported: boolean; agency_name?: string | null; projects: number; imported_at: string; status?: string; error?: string | null };
 
 /** Row identity shown inside the name cell: saved office/company logo first, then the profile photo. No placeholder when neither exists. */
 function ImportIdentityImage({ item }: { item: ImportItem }) {
@@ -314,17 +316,16 @@ function ImportIdentityImage({ item }: { item: ImportItem }) {
 }
 
 /** Properties/projects count. While the import is still running the number sits centered inside a spinning loader ring. */
-function ImportCount({ item }: { item: ImportItem }) {
-  const running = !!item.status && item.status !== 'completed' && item.status !== 'failed';
+function ImportCount({ item, running }: { item: ImportItem; running: boolean }) {
   const label = item.kind === 'developer' ? 'פרויקטים' : 'נכסים';
-  if (running) return <span role="img" aria-label={`${label} נטענים · ${item.projects}`} className="relative inline-grid h-9 w-9 place-items-center">
-    <span aria-hidden="true" className="absolute inset-0 animate-spin rounded-full border-2 border-primary/25 border-t-primary" />
-    <span className="text-sm font-bold tabular-nums">{item.projects}</span>
+  return <span role={running ? 'img' : undefined} aria-label={running ? `${label} נטענים · ${item.projects}` : undefined} className="relative inline-grid h-9 w-9 place-items-center">
+    {running && <span aria-hidden="true" className="absolute inset-0 animate-spin rounded-full border-2 border-primary/25 border-t-primary motion-reduce:animate-none" />}
+    <span className={`text-sm font-bold tabular-nums ${!running && item.status === 'failed' ? 'text-destructive' : ''}`} title={!running && item.status === 'failed' ? (item.error ?? undefined) : undefined}>{item.projects}</span>
   </span>;
-  return <span className={`text-sm font-bold tabular-nums ${item.status === 'failed' ? 'text-destructive' : ''}`} title={item.status === 'failed' ? (item.error ?? undefined) : undefined}>{item.projects}</span>;
 }
 
 export function ImportHistory() {
+  const { data: progress } = useAdminImportJobs();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
@@ -343,10 +344,11 @@ export function ImportHistory() {
     catch { /* workspace provider shows authorization errors */ }
     finally { setOpening(null); }
   };
-  const q = useQuery({ queryKey: ['broker-import-history'], queryFn: () => invoke<{ items: ImportItem[] }>('admin-broker-contact', { action: 'imports' }) });
+  const q = useQuery({ queryKey: ['broker-import-history'], queryFn: () => invoke<{ items: ImportItem[] }>('admin-broker-contact', { action: 'imports' }), refetchInterval: query => progress?.[0]?.status === 'running' || query.state.data?.items.some(i => i.status === 'running') ? 4000 : false });
   const [kind, setKind] = useState<'broker' | 'developer'>(() => readSuperAdminViewState().importKind ?? 'broker');
   useEffect(() => saveSuperAdminViewState({ importKind: kind }), [kind]);
   const allImports = q.data?.items ?? [];
+  const activeIds = activeImportHistoryIds(allImports, progress);
   // Rows whose account was removed have no workspace and render grayed out: list them last and leave them out of tab counts.
   const isRemoved = (i: ImportItem) => !i.workspace_owner_id;
   const items = allImports.filter(i => i.kind === kind).sort((a, b) => Number(isRemoved(a)) - Number(isRemoved(b)));
@@ -359,7 +361,7 @@ export function ImportHistory() {
       <thead className="bg-muted/50 text-muted-foreground"><tr><th className="p-2 font-semibold">שם</th><th className="p-2 font-semibold">{kind === 'developer' ? 'פרויקטים' : 'נכסים'}</th><th className="p-2 font-semibold">תאריך</th><th className="p-2"><span className="sr-only">מחיקת רשומה</span></th></tr></thead>
       <tbody className="divide-y divide-border/70">{items.map(i => <tr key={`${i.kind}-${i.id}`}>
         <td className="p-2"><Button variant="ghost" className="h-auto justify-start gap-2 p-0 text-right font-bold whitespace-normal" disabled={!i.workspace_owner_id || opening !== null} aria-label={`פתיחת ${i.kind === 'developer' ? 'הפרויקטים' : 'הנכסים'} של ${i.name}`} onClick={() => void openInventory(i)}><ImportIdentityImage item={i} /><span>{i.name || 'ללא שם'}</span>{opening === i.id && <Loader2 className="h-4 w-4 animate-spin" />}</Button></td>
-        <td className="p-2"><ImportCount item={i} /></td>
+        <td className="p-2"><ImportCount item={i} running={activeIds.has(i.id)} /></td>
         <td className="p-2 whitespace-nowrap">{new Date(i.imported_at).toLocaleDateString('he-IL')}</td>
         <td className="p-2"><Button variant="ghost" size="icon" className="text-destructive" title="מחיקת רשומה מההיסטוריה" aria-label={`מחיקת רשומת היבוא של ${i.name}`} onClick={() => setDeleting(i)}><Trash2 className="h-4 w-4" /></Button></td>
       </tr>)}</tbody>

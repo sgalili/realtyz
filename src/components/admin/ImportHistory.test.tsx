@@ -3,14 +3,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ImportHistory } from './BrokerContactQueueCard';
+import type { ImportActivityJob } from '@/lib/importHistoryActivity';
 
-const state = vi.hoisted(() => ({ invoke: vi.fn(), switchWorkspace: vi.fn().mockResolvedValue(undefined) }));
+const state = vi.hoisted(() => ({ invoke: vi.fn(), switchWorkspace: vi.fn().mockResolvedValue(undefined), jobs: [] as ImportActivityJob[] }));
+vi.mock('@/hooks/useAdminImportJobs', () => ({ useAdminImportJobs: () => ({ data: state.jobs }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: state.invoke } } }));
 vi.mock('@/hooks/useWorkspace', () => ({ useWorkspace: () => ({ activeWorkspaceId: 'admin', setActiveWorkspace: state.switchWorkspace }) }));
 vi.mock('./OfficialBrokerInvitationDialog', () => ({ OfficialBrokerInvitationDialog: () => null }));
 vi.mock('./BrokerEmailInvitations', () => ({ BrokerEmailConsentButton: () => null }));
 vi.mock('./BrokerRegistryNameButton', () => ({ BrokerRegistryNameButton: () => null }));
-afterEach(() => { cleanup(); state.invoke.mockReset(); state.switchWorkspace.mockClear(); });
+afterEach(() => { cleanup(); state.invoke.mockReset(); state.switchWorkspace.mockClear(); state.jobs = []; sessionStorage.clear(); });
 const item = { id: 'dev:00000000-0000-0000-0000-000000000001', kind: 'developer', name: 'Owner', workspace_owner_id: 'owner-id', public_user_id: 'owner-id', agency_name: 'Company', logo_url: null, projects: 3, source_url: 'https://www.yad2.co.il/realestate/project/123', imported_at: '2026-11-17', status: 'completed' };
 function setup() {
   state.invoke.mockImplementation((_name, { body }) => Promise.resolve({ data: body.action === 'imports' ? { items: [item] } : { ok: true }, error: null }));
@@ -18,7 +20,10 @@ function setup() {
 }
 function setupWith(items: unknown[]) {
   state.invoke.mockImplementation((_name, { body }) => Promise.resolve({ data: body.action === 'imports' ? { items } : { ok: true }, error: null }));
-  render(<MemoryRouter><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ImportHistory /></QueryClientProvider></MemoryRouter>);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const element = () => <MemoryRouter><QueryClientProvider client={client}><ImportHistory /></QueryClientProvider></MemoryRouter>;
+  const view = render(element());
+  return () => view.rerender(element());
 }
 it('switches to the exact inventory owner on identity click', async () => {
   setup();
@@ -56,9 +61,26 @@ it('renders the saved logo inline inside the name cell', async () => {
   expect(within(nameCell).getByRole('img', { name: 'לוגו Owner' })).toBeTruthy();
 });
 it('shows the count centered inside a loader ring while the import is still running', async () => {
+  state.jobs = [{ id: 'job', status: 'running', stage: 'developer_saving', checkpoint: { externalPendingDeveloper: { owner: 'owner-id' } } }];
   setupWith([{ ...item, status: 'running', projects: 4 }]);
   fireEvent.mouseDown(await screen.findByRole('tab', { name: /^יזמים/ }));
   const ring = await screen.findByRole('img', { name: 'פרויקטים נטענים · 4' });
   expect(ring.textContent).toBe('4');
   expect(screen.queryByText('בתהליך')).not.toBeInTheDocument();
+});
+
+it('transfers the ring to the next broker without changing either saved numeric count', async () => {
+  state.jobs = [{ id: 'job', status: 'running', stage: 'importing', checkpoint: { execution: 'external', activeBroker: { broker_id: 'owner-a' } } }];
+  const refresh = setupWith([{ ...item, id: 'row-a', kind: 'broker', name: 'Broker A', workspace_owner_id: 'owner-a', public_user_id: 'owner-a', projects: 7 }, { ...item, id: 'row-b', kind: 'broker', name: 'Broker B', workspace_owner_id: 'owner-b', public_user_id: 'owner-b', projects: 12 }]);
+  expect(await screen.findByRole('img', { name: 'נכסים נטענים · 7' })).toHaveTextContent('7');
+  expect(screen.queryByRole('img', { name: 'נכסים נטענים · 12' })).toBeNull();
+  state.jobs = [{ ...state.jobs[0], checkpoint: { execution: 'external', activeBroker: { broker_id: 'owner-b' }, workerEnrichedIds: ['owner-a'] } }];
+  refresh();
+  expect(screen.queryByRole('img', { name: 'נכסים נטענים · 7' })).toBeNull();
+  expect(screen.getByRole('img', { name: 'נכסים נטענים · 12' })).toHaveTextContent('12');
+  state.jobs = [{ ...state.jobs[0], status: 'completed' }];
+  refresh();
+  expect(screen.queryByRole('img')).toBeNull();
+  expect(screen.getByText('7')).toBeVisible();
+  expect(screen.getByText('12')).toBeVisible();
 });

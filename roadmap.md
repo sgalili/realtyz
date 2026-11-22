@@ -1,5 +1,10 @@
 # Roadmap
 
+## Active import count rings November 22
+- [x] Match the count ring to the exact broker/developer currently importing inventory, not inherited history status.
+- [x] Share progress polling and transfer the ring between items while preserving saved counts; no Worker or schema changes.
+- [x] Test broker/developer transitions and stopped jobs; verify one real broker ring around its saved count in signed-in mobile UI. Live next-item handoff was not observed during the current provider wait.
+
 ## Import navigation and visitor loading November 22
 - [x] Keep red import errors inside expanded status details only; actual expanded/collapsed card verified.
 - [x] Restore import tabs and UI state immediately on client-side return without a splash; real Super Admin section return measured about 280ms with no document reload and preserved developer tab/expansion.
