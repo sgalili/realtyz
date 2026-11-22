@@ -1081,3 +1081,10 @@
 - [x] Inspect live jobs/recovery/schema, worker credential and polling, bulk enqueue and manual number/gender handlers; existing 180s recovery and bulk control are already implemented.
 - [x] Move only the office name to the opposite edge of the identity row, keep office logo/details below, and increase displayed phone/WhatsApp numbers by 2px.
 - [x] Verified signed-in mobile (411px) and desktop cards, office placement, 14px/16px numbers, manual/automatic controls, no horizontal overflow or runtime errors. 15 UI tests, 9 worker tests and isolated PostgreSQL recovery/lease tests passed. Dedicated machine claim returned HTTP 200 with an idle queue; no source fetch, message, contact change or bulk scan performed. Permanent Railway process remains unverified.
+
+## Cold invitations and public simulation
+- [ ] Separate WhatsApp/email invite modals, use saved WhatsApp target, and show compact card email.
+- [ ] Replace warm-contact defaults with role/gender-aware cold invitation copy and public demo links; preserve consent and Meta approval gates.
+- [ ] Add guest role-selectable public simulation without real private contacts/drafts or auth bypass.
+- [ ] Show five sanitized board-inspired demo campaign posts with simulated counters/comments; preserve real campaign history.
+- [ ] Test public/authenticated flows and report deployment/approval limits.

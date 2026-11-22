@@ -9,8 +9,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { OfficialBrokerInvitationPanel } from './OfficialBrokerInvitationDialog';
-import { BrokerInvitationTemplateEditor } from './BrokerInvitationTemplateEditor';
 import { InvitationAttachmentPicker } from './InvitationAttachmentPicker';
 import { recipientGroup, type RecipientGroup } from '@/lib/invitationSummaries';
 import { BrokerEmailConsentButton } from './BrokerEmailInvitations';
@@ -52,8 +50,6 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
   const recipientFirst = recipientName.split(/\s+/)[0] || '';
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [channel, setChannel] = useState<'email' | 'whatsapp'>('email');
-  const waSent = useRef(false);
   const [email, setEmail] = useState(b.email ?? '');
   const [body, setBody] = useState(() => DEFAULT_EMAIL(recipientFirst));
   const bodyTouched = useRef(false);
@@ -87,15 +83,12 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
     send.mutate();
   };
   return <>
-    <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label={`שליחת הודעה במייל ל${b.full_name || 'מתווך'}`} title="שליחת הודעה במייל" onClick={() => { setOpen(true); setChannel('email'); }}><Mail className="h-4 w-4" /></Button>
-    <Dialog open={open} onOpenChange={v => { if (!send.isPending) { setOpen(v); if (!v && waSent.current) { waSent.current = false; void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); } } }}>
+    <Button variant="ghost" className="h-7 min-w-0 max-w-24 gap-1 px-0.5 font-normal sm:h-8 sm:max-w-40" aria-label={`שליחת הודעה במייל ל${b.full_name || 'מתווך'}`} title={b.email || 'הוסף מייל'} onClick={() => setOpen(true)}><Mail className="h-4 w-4 shrink-0" /><span dir={b.email ? 'ltr' : 'rtl'} className="min-w-0 truncate text-xs">{b.email || 'הוסף מייל'}</span></Button>
+    <Dialog open={open} onOpenChange={v => { if (!send.isPending) setOpen(v); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
-        <DialogHeader><DialogTitle>שליחת הזמנה ל{recipientName || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">בחירת ערוץ שליחה</DialogDescription></DialogHeader>
-        <Tabs value={channel} onValueChange={v => setChannel(v as 'email' | 'whatsapp')} dir="rtl">
-        <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="email">אימייל</TabsTrigger><TabsTrigger value="whatsapp">WhatsApp</TabsTrigger></TabsList>
+        <DialogHeader><DialogTitle>הזמנה במייל ל{recipientName || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">שליחת הזמנה במייל בלבד</DialogDescription></DialogHeader>
         <div className="mt-3"><InvitationAttachmentPicker value={attachmentId} onChange={setAttachmentId} recipientRole={contactPhone ? 'marketing_company' : b.is_developer ? 'developer' : 'broker'} /></div>
-        <TabsContent value="whatsapp" className="space-y-3"><div className="flex justify-end"><BrokerInvitationTemplateEditor /></div>{contactPhone && <p className="pt-2 text-sm text-muted-foreground">ההזמנה וקוד הכניסה יישלחו לאיש הקשר בחברת השיווק: <span dir="ltr">{formatPhoneDisplay(contactPhone)}</span></p>}{b.phone || contactPhone ? <OfficialBrokerInvitationPanel broker={{ id: b.user_id, full_name: b.full_name, recipient_name: contactPhone ? contactName : null }} onClose={() => setOpen(false)} onSent={() => { waSent.current = true; }} attachmentId={attachmentId} /> : <p className="py-4 text-base text-muted-foreground">יש להוסיף נייד בכרטיס כדי לשלוח ב-WhatsApp.</p>}</TabsContent>
-        <TabsContent value="email" className="space-y-3">
+        <div className="space-y-3">
         <div className="flex gap-2">
           <Input aria-label="כתובת אימייל" className="h-11 text-base" dir="ltr" type="email" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} />
           <Button variant="outline" className="h-11" disabled={!email.trim() || !emailDirty || saveEmail.isPending} onClick={() => saveEmail.mutate()}>{saveEmail.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}שמירה</Button>
@@ -111,7 +104,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
           <Button variant="outline" disabled={send.isPending} onClick={() => setOpen(false)}>ביטול</Button>
           <Button disabled={send.isPending} onClick={() => void trySend()}>{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}שליחה</Button>
         </DialogFooter>
-        </TabsContent></Tabs>
+        </div>
       </DialogContent>
     </Dialog>
   </>;
@@ -206,7 +199,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
         </div>
         {!b.is_developer && <div className="flex min-w-0 max-w-[45%] shrink-0 justify-end"><OfficeNameField b={b} showLogo={false} /></div>}
       </div>
-      <div data-broker-row="contacts" className={b.is_developer ? "flex max-w-full flex-wrap items-center gap-0" : "grid max-w-full grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_auto_auto] items-center gap-0 sm:flex"}>
+      <div data-broker-row="contacts" className={b.is_developer ? "flex max-w-full flex-wrap items-center gap-0" : "grid max-w-full grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,.65fr)_auto] items-center gap-0 sm:flex"}>
         {phoneControls}
         {!b.is_developer && <BrokerWhatsAppContact brokerId={b.user_id} name={b.full_name} phone={b.whatsapp_phone} />}
         <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} />
