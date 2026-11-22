@@ -33,6 +33,12 @@ export function BrokerRegistryNameButton({ userId, license, disabled, compact = 
       const response = self ? await verifyBrokerLicense(license,'verify',true).then(result=>({data:{profile:result.profile,registry:{full_name:result.holderName??result.profile?.full_name,city:result.city},active:result.active,message:undefined},error:null})) : await supabase.functions.invoke('admin-broker-registry-name', { body: { user_id: userId, license_number: license } });
       const { data, error } = response;
       if (currentScope.current !== requestScope) return;
+      if (!error && data?.found === false && data?.code === 'license_not_found') {
+        const message = data.message || 'מספר הרישיון לא נמצא במאגר הלאומי';
+        setFound(null); setFailed(true); setErrorMessage(message);
+        toast.error(message, { duration: 5000 });
+        return;
+      }
       if (error || !data?.profile) {
         let message = data?.message;
         const response = (error as { context?: Response } | null)?.context;

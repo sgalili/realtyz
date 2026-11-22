@@ -1067,3 +1067,7 @@
 - [x] Add manual/automatic number controls, separate WhatsApp saves, explicit confirmation of detected login-phone suggestions, and three-row broker cards with clickable blue/pink saved gender icons.
 - [x] 30 focused UI/parser/worker tests and isolated recovery/lease/database checks passed; actual signed-in mobile/desktop cards and enqueue-to-terminal button reset verified. Railway variables documented in worker-whatsapp/README.md.
 - [ ] Deploy the updated independent Railway WhatsApp worker permanently; deployment access is unavailable here. Temporary execution verified the new heartbeat/auth, not permanent Railway deployment.
+
+## Registry lookup no-match runtime error
+- [x] Return found:false/valid:false with HTTP 200 for an exact-registry no-match only; preserve authorization/provider/identity-conflict failures. Function deployed and 19 focused tests passed.
+- [x] Real signed-in lookup for an existing saved unverified license returned HTTP 200/no profile; card identity stayed unchanged, shield became gray and remained clickable, error expired after five seconds, and no browser runtime errors occurred.

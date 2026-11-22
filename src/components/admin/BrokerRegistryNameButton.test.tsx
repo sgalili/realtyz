@@ -24,6 +24,15 @@ it('does not update the profile on a not-found response', async () => {
   await screen.findByRole('alert');
   expect(updated).not.toHaveBeenCalled();
 });
+it('handles a completed no-match lookup without applying identity or verification changes', async () => {
+  state.invoke.mockResolvedValue({ data: { found: false, valid: false, code: 'license_not_found', message: 'הרישיון לא נמצא' }, error: null });
+  const updated = vi.fn();
+  render(<BrokerRegistryNameButton userId="target" license="31927721" onUpdated={updated} />);
+  fireEvent.click(screen.getByRole('button'));
+  await screen.findByRole('alert');
+  expect(updated).not.toHaveBeenCalled();
+  expect(screen.getByRole('button')).toBeEnabled();
+});
 it('applies the official returned name without comparing it to the old account name', async () => {
   const profile={id:'target',broker_license_number:'36484',full_name:'פנינה דיין'};
   state.invoke.mockResolvedValue({data:{profile,registry:{full_name:'פנינה דיין'}},error:null});

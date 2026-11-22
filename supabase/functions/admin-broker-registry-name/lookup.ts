@@ -3,6 +3,13 @@ import { BROKER_REGISTRY_DATASET, BROKER_REGISTRY_RESOURCE, BROKER_REGISTRY_SOUR
 export class RegistryNameError extends Error {
   constructor(public code: string, message: string, public status = 400) { super(message); }
 }
+/** A completed lookup with no exact match is a domain result, not a failed function call. */
+export function registryNameFailureResponse(error: RegistryNameError) {
+  if (error.code === 'license_not_found') {
+    return { status: 200, body: { found: false, valid: false, code: error.code, message: error.message } };
+  }
+  return { status: error.status, body: { error: error.code, message: error.message } };
+}
 export async function fetchRegistryName(license: string, fetcher: typeof fetch = fetch) {
   const officialJson = async (url: URL) => {
     const response = await fetcher(url, { signal: AbortSignal.timeout(10000), redirect: 'error' });

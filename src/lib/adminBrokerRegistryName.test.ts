@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { assertRegistryNameTarget, fetchRegistryName } from '../../supabase/functions/admin-broker-registry-name/lookup';
+import { assertRegistryNameTarget, fetchRegistryName, RegistryNameError, registryNameFailureResponse } from '../../supabase/functions/admin-broker-registry-name/lookup';
 import { BROKER_REGISTRY_RESOURCE } from '../../supabase/functions/_shared/brokerRegistry';
 
 const metadata = { organization: { name: 'ministry_of_justice' }, resources: [{ id: BROKER_REGISTRY_RESOURCE, last_modified: new Date().toISOString() }] };
@@ -13,6 +13,15 @@ it('fetches the exact entered official license and returns its full name', async
 it('rejects unrelated search matches instead of updating the requested profile', async () => {
   const fetcher = vi.fn().mockImplementation(async (url: URL) => url.pathname.endsWith('package_show') ? json(metadata) : json({ records: [{ 'מס רשיון': 31927722, 'שם המתווך': 'שם אחר' }] }));
   await expect(fetchRegistryName('31927721', fetcher)).rejects.toMatchObject({ code: 'license_not_found', status: 404 });
+});
+it('returns a nonverified not-found result with HTTP 200, not a runtime failure', () => {
+  const response = registryNameFailureResponse(new RegistryNameError('license_not_found', 'missing', 404));
+  expect(response).toEqual({ status: 200, body: { found: false, valid: false, code: 'license_not_found', message: 'missing' } });
+  expect('profile' in response.body).toBe(false);
+});
+it('keeps registry outages and identity conflicts as actual request failures', () => {
+  expect(registryNameFailureResponse(new RegistryNameError('registry_unavailable', 'unavailable', 503)).status).toBe(503);
+  expect(registryNameFailureResponse(new RegistryNameError('license_owned', 'owned', 409)).status).toBe(409);
 });
 it('rejects stale or unofficial registry evidence', async () => {
   const fetcher = vi.fn().mockImplementation(async (url: URL) => url.pathname.endsWith('package_show') ? json({ ...metadata, organization: { name: 'other' } }) : json({ records: [] }));

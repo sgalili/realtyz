@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { BROKER_LICENSE_PATTERN } from '../_shared/brokerRegistry.ts';
-import { assertRegistryNameTarget, fetchRegistryName, RegistryNameError } from './lookup.ts';
+import { assertRegistryNameTarget, fetchRegistryName, RegistryNameError, registryNameFailureResponse } from './lookup.ts';
 
 const Body = z.object({ user_id: z.string().uuid(), license_number: z.string().regex(BROKER_LICENSE_PATTERN) }).strict();
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
@@ -55,7 +55,10 @@ Deno.serve(async req => {
     await admin.from('audit_logs').insert({ action: 'admin_registry_name_refresh', actor_id: identity.user.id, target_table: 'profiles', target_id: userId, details: { source: registry.source } });
     return reply({ profile: saved, registry: { full_name: registry.fullName, city: registry.city, license_number: license }, message: 'השם המלא נשלף בהצלחה מהמאגר הממשלתי' });
   } catch (error) {
-    if (error instanceof RegistryNameError) return reply({ error: error.code, message: error.message }, error.status);
+    if (error instanceof RegistryNameError) {
+      const result = registryNameFailureResponse(error);
+      return reply(result.body, result.status);
+    }
     console.error('[admin-broker-registry-name]', { code: 'profile_update_failed' });
     return reply({ error: 'profile_update_failed', message: 'לא ניתן לעדכן את הפרופיל כרגע. נסו שוב מאוחר יותר.' }, 500);
   }
