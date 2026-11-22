@@ -2,9 +2,16 @@ import { describe, expect, it, mock } from 'bun:test';
 import * as cheerio from 'cheerio';
 // Deno resolves npm specifiers; map it to the same installed package for Bun tests.
 mock.module('npm:cheerio@1.0.0-rc.12', () => cheerio);
-const { brokerWhatsAppAction, brokerWhatsAppRetry, discoverBrokerWhatsApp, normalizeBrokerWhatsApp } = await import('./brokerWhatsApp');
+const { brokerWhatsAppAction, brokerWhatsAppRetry, discoverBrokerWhatsApp, discoverBrokerTelephone, normalizeBrokerWhatsApp } = await import('./brokerWhatsApp');
 
 describe('source-backed broker WhatsApp', () => {
+  it('suggests only a unique primary telephone action, never inferred WhatsApp', () => {
+    const html = '<main><a href="tel:0502222222">Call</a><aside><a href="tel:0503333333">Other</a></aside></main>';
+    expect(discoverBrokerTelephone(html)).toBe('972502222222');
+    expect(discoverBrokerWhatsApp(html)).toBeNull();
+    expect(discoverBrokerTelephone('<main><a href="tel:0502222222">A</a><a href="tel:0503333333">B</a></main>')).toBeNull();
+    expect(discoverBrokerTelephone('<main><div class="related"><a href="tel:0502222222">Other</a></div></main>')).toBeNull();
+  });
   it('normalizes Israeli numbers without changing the main phone', () => {
     const broker = { phone: '972501111111', whatsapp: normalizeBrokerWhatsApp('050-222-2222') };
     expect(broker).toEqual({ phone: '972501111111', whatsapp: '972502222222' });

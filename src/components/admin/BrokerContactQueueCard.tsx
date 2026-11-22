@@ -25,6 +25,8 @@ import { invitationHistoryKey, threadInvitationHistory } from '@/lib/invitationH
 import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
 import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 import { BrokerWhatsAppContact } from './BrokerWhatsAppContact';
+import { BrokerNumberEditor } from './BrokerNumberEditor';
+import { BulkBrokerWhatsAppScan } from './BulkBrokerWhatsAppScan';
 import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
 import { activeImportHistoryIds } from '@/lib/importHistoryActivity';
 
@@ -85,7 +87,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
     send.mutate();
   };
   return <>
-    <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label={`שליחת הזמנה ל${b.full_name || 'מתווך'}`} title="שליחת הזמנה" onClick={() => { setOpen(true); setChannel('email'); }}><Mail className="h-4 w-4" /></Button>
+    <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label={`שליחת הודעה במייל ל${b.full_name || 'מתווך'}`} title="שליחת הודעה במייל" onClick={() => { setOpen(true); setChannel('email'); }}><Mail className="h-4 w-4" /></Button>
     <Dialog open={open} onOpenChange={v => { if (!send.isPending) { setOpen(v); if (!v && waSent.current) { waSent.current = false; void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); } } }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
         <DialogHeader><DialogTitle>שליחת הזמנה ל{recipientName || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">בחירת ערוץ שליחה</DialogDescription></DialogHeader>
@@ -152,6 +154,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
   const openWs = useOpenWorkspace();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [genderEditing, setGenderEditing] = useState(false);
   const [phone, setPhone] = useState(b.phone ? formatPhoneDisplay(b.phone) : '');
   const save = useMutation({
     mutationFn: () => invoke<{ complete: boolean }>('admin-broker-contact', { action: 'save', user_id: b.user_id, phone: phone.trim() || undefined }),
@@ -179,11 +182,11 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
   const regLicense = b.profile_license ?? b.license_number;
   const setGender = useMutation({
     mutationFn: (gender: 'male' | 'female') => invoke('admin-broker-contact', { action: 'save', user_id: b.user_id, gender }),
-    onSuccess: () => { toast.success('המגדר נשמר'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
+    onSuccess: () => { setGenderEditing(false); toast.success('המגדר נשמר'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
   const details = b.is_developer ? `${b.projects ?? 0} פרויקטים • ${b.apartments ?? 0} דירות במאגר` : [`${b.drafts} טיוטות`, b.license_number && `רישיון ${b.license_number}`, b.city].filter(Boolean).join(' · ');
-  const phoneControls = editing ? <>
+  const phoneControls = !b.is_developer ? <span className="inline-flex min-w-0 items-center"><BrokerNumberEditor brokerId={b.user_id} name={b.full_name} phone={b.phone} kind="phone" />{b.phone && <a href={`tel:+${b.phone}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-primary" aria-label={`חיוג אל ${b.full_name} ${formatPhoneDisplay(b.phone)}`}><Phone className="h-4 w-4" /></a>}</span> : editing ? <>
           <Input autoFocus aria-label={`נייד (WhatsApp) של ${b.full_name}`} className="h-8 w-24 px-2 text-sm sm:w-36 sm:text-base" dir="ltr" inputMode="tel" placeholder="05X-XXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && dirty) save.mutate(); if (e.key === 'Escape') setEditing(false); }} />
           <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="שמירת נייד" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>
           <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="ביטול" onClick={() => { setPhone(b.phone ? formatPhoneDisplay(b.phone) : ''); setEditing(false); }}><X className="h-4 w-4" /></Button>
@@ -191,24 +194,25 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
           <button type="button" dir={b.phone ? 'ltr' : 'rtl'} disabled={!!b.first_login_at} title="נייד" aria-label={b.phone ? `עריכת הנייד של ${b.full_name}` : `הוספת נייד ל${b.full_name}`} onClick={() => setEditing(true)} className={`whitespace-nowrap px-1 text-xs underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.phone ? '' : 'text-primary'}`}>{b.phone ? formatPhoneDisplay(b.phone) : 'הוסף טלפון'}</button>
           {b.phone && <a href={`tel:+${b.phone}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-primary hover:bg-accent" aria-label={`חיוג אל ${b.full_name} ${formatPhoneDisplay(b.phone)}`} title={formatPhoneDisplay(b.phone)}><Phone className="h-4 w-4" /></a>}
         </>;
-  return <li className="space-y-2 rounded-xl border border-border/70 p-3 sm:p-4">
-    <div className="flex flex-wrap items-center gap-1">
-      <div className="flex min-w-0 flex-1 items-center gap-1">
+  return <li data-broker-card={b.is_developer ? undefined : b.user_id} className="space-y-2 rounded-xl border border-border/70 p-3 sm:p-4">
+    <div className={b.is_developer ? "flex flex-wrap items-center gap-1" : "flex flex-col gap-2"}>
+      <div data-broker-row="identity" className="flex min-w-0 flex-1 items-center gap-1">
         {b.license_verified ? <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-label="אומת מול המאגר הממשלתי" /> : !b.is_developer && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense??''} onUpdated={() => void qc.invalidateQueries({queryKey:['broker-contact-queue']})} />}
         <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
           {b.is_developer ? <DeveloperLogo name={b.full_name} logoUrl={b.office_logo_url} className="h-9 w-9" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
-          <span className="truncate text-base font-bold sm:text-lg">{b.full_name || 'ללא שם'}</span>
+          <span className="break-words text-base font-bold sm:text-lg">{b.full_name || 'ללא שם'}</span>
         </button>
-        {!b.is_developer && !b.gender && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'זכר', '\u2642\uFE0E'], ['female', 'נקבה', '\u2640\uFE0E']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role="radio" aria-checked={false} aria-label={label} title={label} className="h-7 w-7 text-base text-muted-foreground" disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>}
+        {!b.is_developer && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'זכר', '\u2642\uFE0E'], ['female', 'נקבה', '\u2640\uFE0E']] as const).filter(([g]) => !b.gender || genderEditing || b.gender === g).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role={genderEditing || !b.gender ? 'radio' : undefined} aria-checked={genderEditing || !b.gender ? b.gender === g : undefined} aria-label={label} title={b.gender === g ? `שינוי מגדר: ${label}` : label} className={`h-7 w-7 text-base ${g === 'male' ? 'text-gender-male' : 'text-gender-female'}`} disabled={setGender.isPending} onClick={() => { if (b.gender === g && !genderEditing) setGenderEditing(true); else setGender.mutate(g); }}>{icon}</Button>)}</div>}
+
       </div>
-      <div className="flex max-w-full flex-wrap items-center gap-0">
+      <div data-broker-row="contacts" className={b.is_developer ? "flex max-w-full flex-wrap items-center gap-0" : "grid max-w-full grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_auto_auto] items-center gap-0 sm:flex"}>
         {phoneControls}
         {!b.is_developer && <BrokerWhatsAppContact brokerId={b.user_id} name={b.full_name} phone={b.whatsapp_phone} />}
         <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} />
         <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>
       </div>
     </div>
-    <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">
+    <div data-broker-row="office" className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">
       {!b.is_developer && <OfficeNameField b={b} />}
       <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground sm:text-base" title={details}>{details}</p>
     </div>
@@ -280,6 +284,7 @@ function SendHistory() {
     <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList className="grid w-full grid-cols-3">
       <TabsTrigger value="broker" className="px-1">מתווכים ({sendCount('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({sendCount('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({sendCount('marketing')})</TabsTrigger>
     </TabsList></Tabs>
+    {group === 'broker' && <BulkBrokerWhatsAppScan />}
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : shown.length === 0 ? <p className="text-base text-muted-foreground">אין שליחות בלשונית זו.</p> :
       <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{shown.map(i => { const key = invitationHistoryKey(i); const isOpen = openKey === key; const contact = contacts.data?.get(i.user_id); return <li key={key}>
         {(() => { const isBroker = recipientGroup(i, contact?.company_name) === 'broker'; const statusLine = <p className="text-sm text-muted-foreground">{i.channel === 'whatsapp' ? 'וואטסאפ' : 'מייל'} · {STATUS[i.status] ?? i.status} · {new Date(i.sent_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</p>;
@@ -395,6 +400,7 @@ function PendingInvitations() {
         <TabsTrigger value="broker" className="px-1">מתווכים ({count('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({count('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({count('marketing')})</TabsTrigger>
       </TabsList></Tabs>
     </div>
+    {group === 'broker' && <BulkBrokerWhatsAppScan />}
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} marketing={marketing.data?.get(b.user_id)} />)}</ul>}
   </div>;

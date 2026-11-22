@@ -2,12 +2,15 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
 import { validWorkerCredential } from '../_shared/externalImportWorker.ts';
-import { brokerWhatsAppRetry, discoverBrokerWhatsApp } from '../_shared/brokerWhatsApp.ts';
+import { brokerWhatsAppRetry, discoverBrokerWhatsApp, discoverBrokerTelephone, normalizeBrokerWhatsApp } from '../_shared/brokerWhatsApp.ts';
 
 const scope = { worker_id: z.string().min(1).max(100), job_id: z.string().uuid(), lease_token: z.string().uuid() };
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('enqueue'), broker_id: z.string().uuid() }).strict(),
   z.object({ action: z.literal('status'), broker_id: z.string().uuid() }).strict(),
+  z.object({ action: z.literal('enqueue_missing'), after: z.string().uuid().optional() }).strict(),
+  z.object({ action: z.literal('save_contact'), broker_id: z.string().uuid(), phone: z.string().min(5).max(25) }).strict(),
+  z.object({ action: z.literal('heartbeat'), ...scope }).strict(),
   z.object({ action: z.literal('claim'), worker_id: scope.worker_id }).strict(),
   z.object({ action: z.literal('result'), ...scope, html: z.string().max(4000000) }).strict(),
   z.object({ action: z.literal('failure'), ...scope, status: z.number().int().min(400).max(599), error: z.string().max(2000), retry_after: z.number().min(0).max(180).default(0) }).strict(),
@@ -28,38 +31,77 @@ Deno.serve(async req => {
   const parsed = schema.safeParse(await Promise.resolve().then(() => JSON.parse(raw)).catch(() => null));
   if (!parsed.success) return json({ error: 'invalid_input' }, 400);
   const input = parsed.data;
-  const userAction = input.action === 'enqueue' || input.action === 'status';
+  const userAction = ['enqueue', 'status', 'enqueue_missing', 'save_contact'].includes(input.action);
   if ((machine && userAction) || (!machine && !userAction)) return json({ error: 'forbidden_action' }, 403);
   try {
-    if (input.action === 'status') {
-      const { data, error } = await admin.from('broker_whatsapp_jobs').select('id,status,last_error,attempts,updated_at').eq('broker_id', input.broker_id).order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (error) throw error;
-      return json({ job: data });
+    if (userAction || input.action==='claim') {
+      const {error}=await admin.rpc('recover_broker_whatsapp_jobs');
+      if(error)throw error;
     }
-    if (input.action === 'enqueue') {
-      if (caller?.kind !== 'user') return json({ error: 'forbidden' }, 403);
-      const { data: onboarding, error: oe } = await admin.from('admin_broker_onboarding').select('imported_license_number').eq('user_id', input.broker_id).not('import_source', 'is', null).maybeSingle();
-      const { data: demo, error: de } = await admin.from('demo_view_accounts').select('user_id').eq('user_id', input.broker_id).maybeSingle();
-      const { data: roles, error: re } = await admin.from('user_roles').select('role').eq('user_id', input.broker_id);
+    const enqueue=async(brokerId:string)=> {
+      if(caller?.kind!=='user')throw Object.assign(new Error('forbidden'),{code:'42501'});
+      const { data: onboarding, error: oe } = await admin.from('admin_broker_onboarding').select('imported_license_number').eq('user_id', brokerId).not('import_source', 'is', null).maybeSingle();
+      const { data: demo, error: de } = await admin.from('demo_view_accounts').select('user_id').eq('user_id', brokerId).maybeSingle();
+      const { data: roles, error: re } = await admin.from('user_roles').select('role').eq('user_id', brokerId);
       if (oe || de || re) throw oe ?? de ?? re;
       const brokerRoles = ['agent', 'lead_agent', 'managing_broker', 'junior_agent'];
-      if (!onboarding || demo || roles?.some(r => ['developer', 'marketing_company'].includes(r.role)) || (!onboarding.imported_license_number && !roles?.some(r => brokerRoles.includes(r.role)))) return json({ error: 'החשבון אינו מתווך מיובא' }, 403);
-      const activeJob = () => admin.from('broker_whatsapp_jobs').select('id,status,last_error,attempts').eq('broker_id', input.broker_id).in('status', ['pending','running','retry']).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (!onboarding || demo || roles?.some(r => ['developer', 'marketing_company'].includes(r.role)) || (!onboarding.imported_license_number && !roles?.some(r => brokerRoles.includes(r.role)))) throw Object.assign(new Error('החשבון אינו מתווך מיובא'), { code: '42501' });
+      const activeJob = () => admin.from('broker_whatsapp_jobs').select('id,status,last_error,attempts').eq('broker_id', brokerId).in('status', ['pending','running','retry']).order('created_at', { ascending: false }).limit(1).maybeSingle();
       const {data: existing, error: existingError} = await activeJob();
       if(existingError)throw existingError;
-      if(existing)return json({ok:true,job:existing});
-      const { data: listings, error } = await admin.from('listings').select('id,source_url').eq('workspace_owner_id', input.broker_id).eq('user_id', input.broker_id).eq('source', 'yad2').not('source_url', 'is', null).order('created_at', { ascending: false }).limit(50);
+      if(existing)return {ok:true,job:existing};
+      const { data: listings, error } = await admin.from('listings').select('id,source_url').eq('workspace_owner_id', brokerId).eq('user_id', brokerId).eq('source', 'yad2').not('source_url', 'is', null).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
       const listing = listings?.find(l => /^https:\/\/www\.yad2\.co\.il\/realestate\/item\/[a-zA-Z0-9]+(?:\?.*)?$/.test(l.source_url ?? ''));
-      if (!listing?.source_url) return json({ error: 'אין מודעת יד2 שמורה ומזוהה עם המתווך' }, 422);
-      const { data: job, error: insertError } = await admin.from('broker_whatsapp_jobs').insert({ broker_id: input.broker_id, workspace_owner_id: input.broker_id, listing_id: listing.id, source_url: listing.source_url, created_by: caller.userId }).select('id,status').single();
+      if (!listing?.source_url) throw Object.assign(new Error('אין מודעת יד2 שמורה ומזוהה עם המתווך'), { code: 'no_source' });
+      const { data: job, error: insertError } = await admin.from('broker_whatsapp_jobs').insert({ broker_id: brokerId, workspace_owner_id: brokerId, listing_id: listing.id, source_url: listing.source_url, created_by: caller.userId }).select('id,status').single();
       if (insertError?.code === '23505') {
         const {data: concurrent, error: concurrentError} = await activeJob();
         if(concurrentError)throw concurrentError;
-        if(concurrent)return json({ok:true,job:concurrent});
+        if(concurrent)return {ok:true,job:concurrent};
       }
       if (insertError) throw insertError;
-      return json({ ok: true, job });
+      return { ok: true, job };
+    };
+    if (input.action === 'status') {
+      const { data, error } = await admin.from('broker_whatsapp_jobs').select('id,status,last_error,attempts,updated_at,discovered_phone').eq('broker_id', input.broker_id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      return json({ job: data });
+    }
+    if (input.action === 'enqueue') return json(await enqueue(input.broker_id));
+    if (input.action === 'enqueue_missing') {
+      let query = admin.from('admin_broker_onboarding').select('user_id').not('import_source','is',null).order('user_id').limit(20);
+      if (input.after) query = query.gt('user_id',input.after);
+      const {data: rows,error} = await query;
+      if(error)throw error;
+      const results: {broker_id:string;status:string;error?:string}[]=[];
+      for(const row of rows??[]) {
+        const {data: contact,error: ce}=await admin.from('broker_whatsapp_contacts').select('broker_id').eq('broker_id',row.user_id).maybeSingle();
+        if(ce)throw ce;
+        if(contact){results.push({broker_id:row.user_id,status:'already_set'});continue;}
+        try {await enqueue(row.user_id);results.push({broker_id:row.user_id,status:'queued'});}
+        catch(reason){results.push({broker_id:row.user_id,status:'skipped',error:(reason as Error).message});}
+      }
+      return json({results,next:rows?.length===20?rows[rows.length-1]?.user_id:null});
+    }
+    if (input.action === 'save_contact') {
+      if(caller?.kind!=='user')return json({error:'forbidden'},403);
+      const phone=normalizeBrokerWhatsApp(input.phone);
+      if(!phone)return json({error:'יש להזין נייד ישראלי תקין'},400);
+      const {data: broker,error: be}=await admin.from('admin_broker_onboarding').select('user_id').eq('user_id',input.broker_id).not('import_source','is',null).maybeSingle();
+      const {data: demo,error: de}=await admin.from('demo_view_accounts').select('user_id').eq('user_id',input.broker_id).maybeSingle();
+      const {data: roles,error: re}=await admin.from('user_roles').select('role').eq('user_id',input.broker_id);
+      if(be||de||re)throw be??de??re;
+      if(!broker||demo||roles?.some(r=>['developer','marketing_company'].includes(r.role)))return json({error:'forbidden'},403);
+      const {data,error}=await admin.from('broker_whatsapp_contacts').upsert({broker_id:input.broker_id,workspace_owner_id:input.broker_id,whatsapp_phone:phone,whatsapp_link:`https://wa.me/${phone}`,source_url:'manual',discovered_at:new Date().toISOString()}).select('whatsapp_phone').single();
+      if(error)throw error;
+      await admin.from('audit_logs').insert({actor_id:caller.userId,action:'super_admin.broker_whatsapp_manual_set',target_table:'broker_whatsapp_contacts',target_id:input.broker_id,details:{manual:true}});
+      return json({ok:true,phone:data.whatsapp_phone});
+    }
+    if (input.action === 'heartbeat') {
+      const {data,error}=await admin.rpc('heartbeat_broker_whatsapp_job',{_id:input.job_id,_token:input.lease_token,_worker:input.worker_id});
+      if(error)throw error;
+      return data?json({ok:true}):json({error:'stale_worker_lease'},409);
     }
     if (input.action === 'claim') {
       const { data, error } = await admin.rpc('claim_broker_whatsapp_job', { _worker: input.worker_id });
@@ -69,6 +111,11 @@ Deno.serve(async req => {
     if (input.action === 'result' || input.action === 'failure') {
       const { data: job, error: je } = await admin.from('broker_whatsapp_jobs').select('attempts').eq('id', input.job_id).single();
       if (je) throw je;
+      if(input.action==='result') {
+        const telephone=discoverBrokerTelephone(input.html);
+        const {error}=await admin.from('broker_whatsapp_jobs').update({discovered_phone:telephone}).eq('id',input.job_id).eq('status','running').eq('lease_token',input.lease_token).eq('worker_id',input.worker_id).gt('lease_until',new Date().toISOString());
+        if(error)throw error;
+      }
       const contact = input.action === 'result' ? discoverBrokerWhatsApp(input.html) : null;
       const { data, error } = await admin.rpc('finish_broker_whatsapp_discovery', { _id: input.job_id, _token: input.lease_token, _worker: input.worker_id, _phone: contact?.phone ?? null, _error: input.action === 'failure' ? input.error : null, _retry_seconds: input.action === 'failure' ? brokerWhatsAppRetry(input.status, job.attempts, input.retry_after) : 0 });
       if (error) throw error;

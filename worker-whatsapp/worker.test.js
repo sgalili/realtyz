@@ -43,3 +43,18 @@ test('source failure is persisted once, without a local retry loop', async () =>
   await processJob({ id: 'job', lease_token: 'lease', status: 'running', source_url: 'https://www.yad2.co.il/realestate/item/abc123' }, { api: async body => calls.push(body), source: async () => { throw Object.assign(new Error('rate limited'), { status: 429, retryAfter: 180 }); } });
   assert.deepEqual(calls, [{ action: 'failure', job_id: 'job', lease_token: 'lease', status: 429, error: 'rate limited', retry_after: 180 }]);
 });
+test('running source work renews its exact lease every 25 seconds', async context => {
+  context.mock.timers.enable({ apis: ['setInterval'] });
+  const calls=[];
+  let finish;
+  const source=new Promise(resolve=>{finish=resolve;});
+  const work=processJob({id:'job',lease_token:'lease',status:'running',source_url:'https://www.yad2.co.il/realestate/item/abc123'}, {api:async body=>calls.push(body),source:async()=>source});
+  context.mock.timers.tick(25000);
+  await Promise.resolve();
+  assert.deepEqual(calls[0],{action:'heartbeat',job_id:'job',lease_token:'lease'});
+  finish('<main/>');
+  await work;
+  const count=calls.length;
+  context.mock.timers.tick(25000);
+  assert.equal(calls.length,count);
+});

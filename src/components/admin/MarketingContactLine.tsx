@@ -22,7 +22,7 @@ type Gender = 'male' | 'female';
 const dotted = 'whitespace-nowrap underline decoration-dotted underline-offset-4';
 const genderLabel = (gender: Gender) => gender === 'male' ? 'זכר' : 'נקבה';
 const genderSymbol = (gender: Gender) => gender === 'male' ? '\u2642\uFE0E' : '\u2640\uFE0E';
-const genderColor = (gender: Gender) => gender === 'male' ? 'text-primary' : 'text-destructive';
+const genderColor = (gender: Gender) => gender === 'male' ? 'text-gender-male' : 'text-gender-female';
 
 /** Marketing company · contact person · contact phone, each click-to-edit (Super Admin only). */
 export function MarketingContactLine({ ownerId, devName, contact, avatarUrl }: { ownerId: string; devName: string; contact?: MarketingContact | null; avatarUrl?: string | null }) {
@@ -73,7 +73,7 @@ export function MarketingContactLine({ ownerId, devName, contact, avatarUrl }: {
     {field === 'name' && <>
       <Input aria-label="טלפון איש הקשר" className="h-8 w-32 px-2 text-sm sm:text-base" dir="ltr" inputMode="tel" placeholder="05X-XXXXXXX" value={phoneValue} onChange={e => setPhoneValue(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setField(null); }} />
       <div role="radiogroup" aria-label="מגדר איש הקשר" className="flex">
-        {(['male', 'female'] as const).map(g => <Button key={g} type="button" size="icon" variant={genderValue === g ? 'secondary' : 'ghost'} role="radio" aria-checked={genderValue === g} aria-label={genderLabel(g)} title={genderLabel(g)} className={`h-8 w-8 text-base ${genderValue === g ? genderColor(g) : 'text-muted-foreground'}`} disabled={save.isPending} onClick={() => setGenderValue(g)}>{genderSymbol(g)}</Button>)}
+        {(['male', 'female'] as const).map(g => <Button key={g} type="button" size="icon" variant={genderValue === g ? 'secondary' : 'ghost'} role="radio" aria-checked={genderValue === g} aria-label={genderLabel(g)} title={genderLabel(g)} className={`h-8 w-8 text-base ${genderColor(g)}`} disabled={save.isPending} onClick={() => setGenderValue(g)}>{genderSymbol(g)}</Button>)}
       </div>
     </>}
     <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="שמירה" disabled={save.isPending} onClick={commit}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>

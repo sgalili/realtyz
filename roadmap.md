@@ -1060,3 +1060,10 @@
 - [x] Add the public /go redirect and the Super Admin "ניהול QR דינמי" section with destination and usage statistics.
 - [x] Generate a high-error-correction QR for only the canonical /go URL, with a centered square TORAFF logo and high-resolution PNG export.
 - [x] Nine focused tests and TypeScript passed; live guest redirects, scan counting, secured admin saves, mobile layout and 1024px PNG download verified. The decoded PNG contains exactly https://toraff.co.il/go.
+
+## WhatsApp discovery and broker cards
+- [x] Recover stale jobs after 180s without worker progress, preserve a live bulk backlog, and renew fenced leases every 25s. Cloud claim/heartbeat/source/result returned 200 through the actual dedicated credential; four authorized jobs finished not_found without inventing contacts.
+- [x] Add server-scoped paginated bulk discovery for imported brokers without WhatsApp, skipping existing contacts/demos/non-brokers/missing sources; the whole bulk scan was not launched.
+- [x] Add manual/automatic number controls, separate WhatsApp saves, explicit confirmation of detected login-phone suggestions, and three-row broker cards with clickable blue/pink saved gender icons.
+- [x] 30 focused UI/parser/worker tests and isolated recovery/lease/database checks passed; actual signed-in mobile/desktop cards and enqueue-to-terminal button reset verified. Railway variables documented in worker-whatsapp/README.md.
+- [ ] Deploy the updated independent Railway WhatsApp worker permanently; deployment access is unavailable here. Temporary execution verified the new heartbeat/auth, not permanent Railway deployment.

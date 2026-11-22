@@ -1877,6 +1877,20 @@
       "when": 1795313017161,
       "tag": "0267_import_legacy_worker_recovery",
       "breakpoints": true
+    },
+    {
+      "idx": 268,
+      "version": "7",
+      "when": 1795315126267,
+      "tag": "0268_broker_wa_stale_recovery_and_phone_suggestion",
+      "breakpoints": true
+    },
+    {
+      "idx": 269,
+      "version": "7",
+      "when": 1795315344824,
+      "tag": "0269_broker_wa_preserve_live_bulk_backlog",
+      "breakpoints": true
     }
   ]
 }

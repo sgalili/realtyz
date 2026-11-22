@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { OfficialBrokerInvitationPanel } from './OfficialBrokerInvitationDialog';
+import { BrokerNumberEditor } from './BrokerNumberEditor';
 
 type Job = { id: string; status: string; last_error: string | null; attempts: number };
 const activeStates = ['pending', 'running', 'retry'];
@@ -49,11 +50,11 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
   }, [job?.status, tracking, status.error, brokerId, qc]);
   const busy = enqueue.isPending || (!status.isError && activeStates.includes(job?.status ?? '')) || (tracking && status.isLoading);
   return <span className="inline-flex max-w-full flex-wrap items-center gap-0.5">
+    <BrokerNumberEditor brokerId={brokerId} name={name} phone={phone} kind="whatsapp" />
     {phone && <>
-      <span dir="ltr" className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">{formatPhoneDisplay(phone)}</span>
       <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-lead-whatsapp" aria-label={`WhatsApp רשמי אל ${name}`} title={`שליחה רשמית אל ${formatPhoneDisplay(phone)}`} onClick={() => setSendOpen(true)}><WhatsAppIcon className="h-4 w-4" /></Button>
     </>}
-    <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-lead-whatsapp" aria-label={`גילוי WhatsApp של ${name}`} aria-busy={busy} disabled={busy} title={busy ? labels[job?.status ?? 'running'] : 'גילוי WhatsApp במודעת יד2'} onClick={() => { if(starting.current||busy)return;starting.current=true;enqueue.mutate(brokerId); }}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}</Button>
+    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-lead-whatsapp" aria-label={`גילוי WhatsApp של ${name}`} aria-busy={busy} disabled={busy} title={busy ? labels[job?.status ?? 'running'] : 'גילוי WhatsApp במודעת יד2'} onClick={() => { if(starting.current||busy)return;starting.current=true;enqueue.mutate(brokerId); }}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}</Button>
     <Dialog open={sendOpen} onOpenChange={setSendOpen}><DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto text-right"><DialogHeader><DialogTitle>WhatsApp ל־{name}</DialogTitle><DialogDescription><span dir="ltr">{phone ? formatPhoneDisplay(phone) : ''}</span></DialogDescription></DialogHeader>
       {sendOpen && <OfficialBrokerInvitationPanel broker={{ id: brokerId, full_name: name }} useDiscoveredWhatsApp onClose={() => setSendOpen(false)} />}
     </DialogContent></Dialog>

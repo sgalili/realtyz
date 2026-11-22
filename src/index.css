@@ -120,6 +120,8 @@ button.publication-limit-link:focus-visible {
 @layer base {
   :root {
     --loader-surface: 0 0% 100%;
+    --gender-male: 214 90% 48%;
+    --gender-female: 337 79% 54%;
     --loader-ink: 0 0% 0%;
     --chat-tick-muted: 203 12% 58%;
     --chat-tick-read: 197 79% 62%;

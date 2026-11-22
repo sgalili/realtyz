@@ -2,3 +2,4 @@
 - This independent Node service claims only broker WhatsApp jobs through a dedicated machine credential; it never writes import jobs or holds database credentials. Why: isolate discovery failures and prevent import interference.
 - Source pages come only from Cloud-authorized saved broker listings; Cloud validates extracted contact evidence and preserves the primary phone. Why: avoid unrelated contact attribution.
 - This service only discovers contacts; it has no messaging action. Card invitations remain human-approved through the official Meta flow. Why: discovery must not contact people automatically.
+- Renew the fenced discovery lease during source work; Cloud recovers stale queues without expiring a progressing bulk backlog. Telephone discoveries are suggestions only. Why: prevent blocked jobs and silent login changes.

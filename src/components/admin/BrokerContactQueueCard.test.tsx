@@ -20,10 +20,10 @@ const account = {
 
 afterEach(() => { cleanup(); state.invoke.mockReset(); state.rpc.mockReset(); state.rpc.mockResolvedValue({ data: [], error: null }); state.switchWorkspace.mockClear(); });
 
-function setup(deleteStatus = 'deleted') {
+function setup(deleteStatus = 'deleted', gender?: string) {
   state.invoke.mockImplementation((name, { body }) => {
     if (name === 'super-admin-delete-users') return Promise.resolve({ data: { results: [{ user_id: account.user_id, status: deleteStatus }] }, error: null });
-    if (body.action === 'list') return Promise.resolve({ data: { brokers: [account] }, error: null });
+    if (body.action === 'list') return Promise.resolve({ data: { brokers: [{...account, gender}] }, error: null });
     return Promise.resolve({ data: { items: [] }, error: null });
   });
   render(<MemoryRouter><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><BrokerContactQueueCard /></QueryClientProvider></MemoryRouter>);
@@ -101,4 +101,12 @@ it('lists a broker awaiting invitation only under the brokers sub-tab', async ()
   expect(await screen.findByText('Doli Idelson')).toBeTruthy();
   fireEvent.mouseDown(screen.getByRole('tab', { name: /^חברות שיווק/ }));
   await waitFor(() => expect(screen.queryByText('Doli Idelson')).toBeNull());
+});
+it('updates a selected broker gender only through its exact authorized account save',async()=>{
+ setup('deleted','male');
+ fireEvent.mouseDown(await screen.findByRole('tab',{name:/^מתווכים/}));
+ await screen.findByText('Doli Idelson');
+ fireEvent.click(screen.getByRole('button',{name:'זכר'}));
+ fireEvent.click(screen.getByRole('radio',{name:'נקבה'}));
+ await waitFor(()=>expect(state.invoke).toHaveBeenCalledWith('admin-broker-contact',{body:{action:'save',user_id:account.user_id,gender:'female'}}));
 });

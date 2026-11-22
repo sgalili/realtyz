@@ -39,3 +39,17 @@ export function brokerWhatsAppRetry(status: number, attempt: number, retryAfter 
   if (attempt >= 3 || ![429, 500, 502, 503, 504].includes(status)) return 0;
   return Math.min(180, Math.max(15 * 2 ** (attempt - 1), retryAfter));
 }
+/** A unique visible telephone action in the saved primary listing is a suggestion, not a login update. */
+export function discoverBrokerTelephone(html: string): string | null {
+  const $ = load(html);
+  const main = $('main');
+  if (main.length !== 1) return null;
+  main.find('aside,nav,footer,script,template,noscript,[hidden],[aria-hidden="true"]').remove();
+  main.find('*').filter((_i,element)=>/related|recommend|similar/i.test(['class','id','data-testid'].map(name=>$(element).attr(name)??'').join(' '))).remove();
+  const phones=new Set<string>();
+  for(const element of main.find('a[href^="tel:"]').toArray()) {
+    const phone=normalizeBrokerWhatsApp(($(element).attr('href')??'').slice(4));
+    if(phone)phones.add(phone);
+  }
+  return phones.size===1?[...phones][0]:null;
+}

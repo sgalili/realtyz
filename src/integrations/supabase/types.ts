@@ -1837,6 +1837,7 @@ export type Database = {
           consent_at: string | null
           created_at: string
           created_by: string
+          discovered_phone: string | null
           id: string
           last_error: string | null
           lease_token: string | null
@@ -1857,6 +1858,7 @@ export type Database = {
           consent_at?: string | null
           created_at?: string
           created_by: string
+          discovered_phone?: string | null
           id?: string
           last_error?: string | null
           lease_token?: string | null
@@ -1877,6 +1879,7 @@ export type Database = {
           consent_at?: string | null
           created_at?: string
           created_by?: string
+          discovered_phone?: string | null
           id?: string
           last_error?: string | null
           lease_token?: string | null
@@ -10978,6 +10981,7 @@ export type Database = {
           consent_at: string | null
           created_at: string
           created_by: string
+          discovered_phone: string | null
           id: string
           last_error: string | null
           lease_token: string | null
@@ -12075,6 +12079,10 @@ export type Database = {
         Returns: boolean
       }
       has_verified_broker_license: { Args: { _uid: string }; Returns: boolean }
+      heartbeat_broker_whatsapp_job: {
+        Args: { _id: string; _token: string; _worker: string }
+        Returns: boolean
+      }
       import_crm_leads: {
         Args: { _rows: Json }
         Returns: {
@@ -12346,6 +12354,7 @@ export type Database = {
         Args: { _code: string; _lead_id: string; _listing_id: string }
         Returns: string
       }
+      recover_broker_whatsapp_jobs: { Args: never; Returns: number }
       register_as_affiliate: {
         Args: { _display_name?: string; _phone?: string }
         Returns: Json

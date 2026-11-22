@@ -19,6 +19,8 @@ export default {
         serif: ["Playfair Display", "Georgia", "serif"],
       },
       colors: {
+        'gender-male': 'hsl(var(--gender-male))',
+        'gender-female': 'hsl(var(--gender-female))',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

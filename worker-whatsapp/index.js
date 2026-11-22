@@ -16,6 +16,16 @@ export async function processJob(job, { api, source }) {
   const scope = { job_id: job.id, lease_token: job.lease_token };
   if (job.status !== 'running') throw new Error('invalid_discovery_state');
   let html;
+  let heartbeatPending=false;
+  const heartbeat=setInterval(async()=>{
+    if(heartbeatPending)return;
+    heartbeatPending=true;
+    try {await api({action:'heartbeat',...scope});}
+    catch(error){console.error(JSON.stringify({event:'broker_wa_heartbeat_failed',status:error.status??null}));}
+    finally {heartbeatPending=false;}
+  },25000);
+  heartbeat.unref?.();
+  try {
   try {
     if (!sourceAllowed(job.source_url)) throw Object.assign(new Error('invalid_source_url'), { status: 400 });
     html = await source(job.source_url);
@@ -25,6 +35,7 @@ export async function processJob(job, { api, source }) {
   }
   // A failed commit is not a source error: leave its lease to expire instead of overwriting a successful save.
   await api({ action: 'result', ...scope, html });
+  } finally {clearInterval(heartbeat);}
 }
 
 export async function startBrokerWhatsAppWorker() {

@@ -26,3 +26,33 @@ BEGIN
  IF NOT rejected THEN RAISE EXCEPTION 'Automatic outreach allowed'; END IF;
 END $$;
 SELECT 'broker WhatsApp isolation, contact preservation and lease tests passed';
+DO $$
+DECLARE j public.broker_whatsapp_jobs;
+BEGIN
+ SELECT * INTO j FROM public.broker_whatsapp_jobs LIMIT 1;
+ UPDATE public.broker_whatsapp_jobs SET status='pending',attempts=0,updated_at=now()-interval '181 seconds' WHERE id=j.id;
+ PERFORM public.recover_broker_whatsapp_jobs();
+ IF (SELECT status FROM public.broker_whatsapp_jobs WHERE id=j.id)<>'failed' THEN RAISE EXCEPTION 'Pending beyond 180s still blocks enqueue'; END IF;
+ UPDATE public.broker_whatsapp_jobs SET status='pending',updated_at=now()-interval '179 seconds' WHERE id=j.id;
+ PERFORM public.recover_broker_whatsapp_jobs();
+ IF (SELECT status FROM public.broker_whatsapp_jobs WHERE id=j.id)<>'pending' THEN RAISE EXCEPTION 'Fresh pending expired early'; END IF;
+ SELECT * INTO j FROM public.claim_broker_whatsapp_job('alive-worker');
+ IF public.heartbeat_broker_whatsapp_job(j.id,gen_random_uuid(),'alive-worker') THEN RAISE EXCEPTION 'Wrong heartbeat token accepted'; END IF;
+ IF NOT public.heartbeat_broker_whatsapp_job(j.id,j.lease_token,'alive-worker') THEN RAISE EXCEPTION 'Valid heartbeat rejected'; END IF;
+ PERFORM public.recover_broker_whatsapp_jobs();
+ IF (SELECT status FROM public.broker_whatsapp_jobs WHERE id=j.id)<>'running' THEN RAISE EXCEPTION 'Live heartbeat reclaimed'; END IF;
+ UPDATE public.broker_whatsapp_jobs SET lease_until=now()-interval '1 second' WHERE id=j.id;
+ PERFORM public.recover_broker_whatsapp_jobs();
+ IF (SELECT status FROM public.broker_whatsapp_jobs WHERE id=j.id)<>'retry' THEN RAISE EXCEPTION 'Expired running not recovered'; END IF;
+ UPDATE public.broker_whatsapp_jobs SET status='retry',next_attempt_at=now()+interval '180 seconds',updated_at=now()-interval '200 seconds' WHERE id=j.id;
+ PERFORM public.recover_broker_whatsapp_jobs();
+ IF (SELECT status FROM public.broker_whatsapp_jobs WHERE id=j.id)<>'retry' THEN RAISE EXCEPTION 'Valid retry wait expired'; END IF;
+ IF (SELECT phone FROM public.profiles WHERE id=j.broker_id)<>'972503333333' THEN RAISE EXCEPTION 'Recovery changed primary phone'; END IF;
+ IF has_function_privilege('authenticated','public.heartbeat_broker_whatsapp_job(uuid,uuid,text)','EXECUTE') THEN RAISE EXCEPTION 'User may renew machine lease'; END IF;
+ INSERT INTO public.profiles(id,phone) VALUES('00000000-0000-0000-0000-000000000003','972504444444');
+ INSERT INTO public.listings(id,user_id,workspace_owner_id,source_url) VALUES('00000000-0000-0000-0000-000000000011','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000003','https://www.yad2.co.il/realestate/item/def456');
+ INSERT INTO public.broker_whatsapp_jobs(id,broker_id,workspace_owner_id,listing_id,source_url,created_by,updated_at) VALUES('00000000-0000-0000-0000-000000000021','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000011','https://www.yad2.co.il/realestate/item/def456','00000000-0000-0000-0000-000000000001',now()-interval '181 seconds');
+ UPDATE public.broker_whatsapp_jobs SET status='running',lease_until=now()+interval '120 seconds',worker_id='alive-worker',updated_at=now() WHERE id=j.id;
+ PERFORM public.recover_broker_whatsapp_jobs();
+ IF (SELECT status FROM public.broker_whatsapp_jobs WHERE id='00000000-0000-0000-0000-000000000021')<>'pending' THEN RAISE EXCEPTION 'Live bulk backlog expired'; END IF;
+END $$;
