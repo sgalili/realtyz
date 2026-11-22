@@ -132,6 +132,9 @@ Deno.serve(async req => {
       const {data: roles,error: re}=await admin.from('user_roles').select('role').eq('user_id',input.broker_id);
       if(be||de||re)throw be??de??re;
       if(!broker||demo||roles?.some(r=>['developer','marketing_company'].includes(r.role)))return json({error:'forbidden'},403);
+      const {data: shared,error: se}=await admin.from('broker_whatsapp_shared_numbers').select('whatsapp_phone').eq('whatsapp_phone',phone).maybeSingle();
+      if(se)throw se;
+      if(shared)return json({error:'זה מספר WhatsApp משותף של יד2 ולא של המתווך'},400);
       const {data,error}=await admin.from('broker_whatsapp_contacts').upsert({broker_id:input.broker_id,workspace_owner_id:input.broker_id,whatsapp_phone:phone,whatsapp_link:`https://wa.me/${phone}`,source_url:'manual',discovered_at:new Date().toISOString()}).select('whatsapp_phone').single();
       if(error)throw error;
       await admin.from('audit_logs').insert({actor_id:caller.userId,action:'super_admin.broker_whatsapp_manual_set',target_table:'broker_whatsapp_contacts',target_id:input.broker_id,details:{manual:true}});
@@ -159,8 +162,8 @@ Deno.serve(async req => {
       const contact = extraction?.contact;
       const { data, error } = await admin.rpc('finish_broker_whatsapp_discovery', { _id: input.job_id, _token: input.lease_token, _worker: input.worker_id, _phone: contact?.phone ?? null, _error: input.action === 'failure' ? input.error : null, _retry_seconds: input.action === 'failure' ? brokerWhatsAppRetry(input.status, job.attempts, input.retry_after) : 0 });
       if (error) throw error;
-      if (extraction) console.log('[broker-whatsapp-extraction]', { job_id: input.job_id, main_count: extraction.mainCount, candidates: extraction.candidates, reason: extraction.reason, saved: !!contact && data?.ok === true });
-      return json({ ...data, extraction: extraction ? { main_count: extraction.mainCount, candidates: extraction.candidates, reason: extraction.reason } : undefined });
+      if (extraction) console.log('[broker-whatsapp-extraction]', { job_id: input.job_id, main_count: extraction.mainCount, candidates: extraction.candidates, reason: extraction.reason, saved: !!contact && data?.ok === true && !data?.shared, shared: !!data?.shared });
+      return json({ ...data, extraction: extraction ? { main_count: extraction.mainCount, candidates: extraction.candidates, reason: data?.shared ? 'shared_whatsapp_number' : extraction.reason } : undefined });
     }
     return json({ error: 'unsupported_action' }, 400);
   } catch (reason) {

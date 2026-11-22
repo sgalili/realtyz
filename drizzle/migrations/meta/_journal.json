@@ -1905,6 +1905,13 @@
       "when": 1795320581768,
       "tag": "0271_broker_whatsapp_bulk_stop",
       "breakpoints": true
+    },
+    {
+      "idx": 272,
+      "version": "7",
+      "when": 1795321439583,
+      "tag": "0272_block_shared_broker_whatsapp_numbers",
+      "breakpoints": true
     }
   ]
 }

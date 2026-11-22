@@ -1970,6 +1970,24 @@ export type Database = {
           },
         ]
       }
+      broker_whatsapp_shared_numbers: {
+        Row: {
+          created_at: string
+          reason: string
+          whatsapp_phone: string
+        }
+        Insert: {
+          created_at?: string
+          reason: string
+          whatsapp_phone: string
+        }
+        Update: {
+          created_at?: string
+          reason?: string
+          whatsapp_phone?: string
+        }
+        Relationships: []
+      }
       budget_limits: {
         Row: {
           created_at: string

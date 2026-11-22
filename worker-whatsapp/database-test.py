@@ -23,7 +23,7 @@ CREATE TABLE public.listings(id uuid PRIMARY KEY,user_id uuid,workspace_owner_id
 CREATE TABLE public.broker_import_jobs(id uuid PRIMARY KEY,counter integer);
 """
     run(psql, input=fixture, text=True, stdout=subprocess.DEVNULL)
-    for file in ['0263_broker_whatsapp_discovery_queue.sql', '0264_broker_whatsapp_expired_lease_recovery.sql', '0265_broker_whatsapp_discovery_only.sql', '0268_broker_wa_stale_recovery_and_phone_suggestion.sql', '0269_broker_wa_preserve_live_bulk_backlog.sql', '0270_broker_whatsapp_contact_completion.sql', '0271_broker_whatsapp_bulk_stop.sql']:
+    for file in ['0263_broker_whatsapp_discovery_queue.sql', '0264_broker_whatsapp_expired_lease_recovery.sql', '0265_broker_whatsapp_discovery_only.sql', '0268_broker_wa_stale_recovery_and_phone_suggestion.sql', '0269_broker_wa_preserve_live_bulk_backlog.sql', '0270_broker_whatsapp_contact_completion.sql', '0271_broker_whatsapp_bulk_stop.sql', '0272_block_shared_broker_whatsapp_numbers.sql']:
         run(psql + ['-f',str(root/'drizzle/migrations'/file)], stdout=subprocess.DEVNULL)
     run(psql + ['-f',str(root/'tests/database/broker-whatsapp-worker.sql')])
     run(psql + ['-f',str(root/'tests/database/broker-whatsapp-conflict-fixture.sql')],stdout=subprocess.DEVNULL)
@@ -36,6 +36,7 @@ CREATE TABLE public.broker_import_jobs(id uuid PRIMARY KEY,counter integer);
     run(psql + ['-f',str(root/'tests/database/broker-whatsapp-conflict.sql')])
     writer.wait(timeout=5)
     run(psql + ['-f',str(root/'tests/database/broker-whatsapp-bulk-stop.sql')])
+    run(psql + ['-f',str(root/'tests/database/broker-whatsapp-shared-number.sql')])
 finally:
     if cluster.exists():
         subprocess.run(as_user + [binary('pg_ctl'),'-D',str(cluster),'-m','immediate','stop'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)

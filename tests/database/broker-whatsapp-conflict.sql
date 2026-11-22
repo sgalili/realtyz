@@ -1,5 +1,5 @@
 SELECT set_config('request.jwt.claim.role','service_role',false);
-SELECT public.finish_broker_whatsapp_discovery('00000000-0000-0000-0000-000000000022','00000000-0000-0000-0000-000000000099','race-worker','972502222222');
+SELECT public.finish_broker_whatsapp_discovery('00000000-0000-0000-0000-000000000022','00000000-0000-0000-0000-000000000099','race-worker','972506666666');
 DO $$ BEGIN
  IF (SELECT status FROM public.broker_whatsapp_jobs WHERE id='00000000-0000-0000-0000-000000000022')<>'failed' THEN RAISE EXCEPTION 'Conflicting contact falsely completed'; END IF;
  IF (SELECT last_error FROM public.broker_whatsapp_jobs WHERE id='00000000-0000-0000-0000-000000000022')<>'whatsapp_contact_changed_requires_review' THEN RAISE EXCEPTION 'Conflict not recorded'; END IF;
