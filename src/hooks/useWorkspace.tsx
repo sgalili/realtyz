@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { writeAppMode } from '@/hooks/useAppMode';
+import { usePublicWorkspace, switchPublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 
 export type Workspace = {
   workspace_owner_id: string;
@@ -109,6 +110,13 @@ const WorkspaceContext = createContext<WorkspaceContextType>({
 });
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const simulation = usePublicWorkspace();
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  if (simulation) return <WorkspaceContext.Provider value={{ workspaces: simulation.workspaces, activeWorkspaceId: simulation.owner, activeWorkspace: simulation.workspaces.find(w => w.workspace_owner_id === simulation.owner) ?? null, setActiveWorkspace: async owner => switchPublicWorkspace(owner), refresh: async () => {}, loading: false, mustChoose: false, selectorOpen, openSelector: () => setSelectorOpen(true), closeSelector: () => setSelectorOpen(false) }}>{children}</WorkspaceContext.Provider>;
+  return <LiveWorkspaceProvider>{children}</LiveWorkspaceProvider>;
+}
+
+function LiveWorkspaceProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const cachedInit = readWorkspaceCache(user?.id ?? null);

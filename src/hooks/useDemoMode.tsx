@@ -10,6 +10,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { DemoCandidateId } from '@/lib/demoData';
 import { toast as sonnerToast } from 'sonner';
+import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 
 const STORAGE_KEY = 'realtyz-demo-mode';
 const CANDIDATE_KEY = 'realtyz-demo-candidate';
@@ -41,10 +42,12 @@ function readCandidate(): DemoCandidateId | null {
 }
 
 export function DemoModeProvider({ children }: { children: ReactNode }) {
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => readBool(STORAGE_KEY));
+  const simulation = usePublicWorkspace();
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => simulation ? false : readBool(STORAGE_KEY));
   const [demoCandidateId, setDemoCandidate] = useState<DemoCandidateId | null>(() => readCandidate());
 
   const setDemoMode = useCallback((v: boolean) => {
+    if (simulation) return;
     try { window.localStorage.setItem(STORAGE_KEY, v ? 'true' : 'false'); } catch {}
     setIsDemoMode(v);
   }, []);

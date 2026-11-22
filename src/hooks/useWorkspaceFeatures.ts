@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { workspaceFeatures, type WorkspaceFeatures } from '@/config/workspaceMode';
 import { useActiveWorkspaceOwnerId, useWorkspace } from '@/hooks/useWorkspace';
 import type { AppRole } from '@/hooks/useUserRole';
+import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 
 /**
  * Roles of the ACTIVE workspace owner (not the signed-in viewer). The product
@@ -11,11 +12,12 @@ import type { AppRole } from '@/hooks/useUserRole';
  * developer product even to a super_admin visitor.
  */
 export function useWorkspaceOwnerRoles(): AppRole[] {
+  const simulation = usePublicWorkspace();
   const ownerId = useActiveWorkspaceOwnerId();
   const { loading, activeWorkspaceId } = useWorkspace();
   const { data } = useQuery({
     queryKey: ['workspace-owner-roles', ownerId],
-    enabled: !!ownerId && !!activeWorkspaceId && !loading,
+    enabled: !!ownerId && !!activeWorkspaceId && !loading && !simulation,
     queryFn: async () => {
       // Cast: generated types lag behind the migration that added this RPC.
       const { data, error } = await (supabase.rpc as CallableFunction)('get_workspace_owner_roles', { _owner: ownerId }) as { data: string[] | null; error: unknown };
@@ -24,7 +26,7 @@ export function useWorkspaceOwnerRoles(): AppRole[] {
     },
     staleTime: 60_000,
   });
-  return !loading && activeWorkspaceId ? data ?? [] : [];
+  return simulation ? simulation.roles as AppRole[] : !loading && activeWorkspaceId ? data ?? [] : [];
 }
 
 /**

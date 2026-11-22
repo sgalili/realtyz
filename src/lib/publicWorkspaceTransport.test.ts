@@ -1,0 +1,59 @@
+import { describe, expect, it, vi } from 'vitest';
+import { createPublicWorkspaceData, demoOwner } from './publicWorkspaceData';
+import { simulationQuery, simulationRpc, simulationFunction, installPublicWorkspaceTransport } from './publicWorkspaceTransport';
+import { publicWorkspaceRoute } from '@/components/demo/PublicWorkspaceProvider';
+
+describe('isolated registered-screen simulation', () => {
+  it.each(['broker', 'developer', 'marketing', 'owner', 'buyer', 'affiliate'] as const)('uses an isolated synthetic %s workspace with no real contacts or credentials', role => {
+    const store = createPublicWorkspaceData(role);
+    expect(store.owner).toBe(demoOwner(role));
+    expect(store.workspaces).toHaveLength(6);
+    expect(store.roles).not.toContain('super_admin');
+    expect(store.roles).not.toContain('admin');
+    expect(store.leads.every(row => row.workspace_owner_id === store.owner && row.phone === null && row.email === null)).toBe(true);
+    expect(store.profile.email).toBe('demo@example.invalid');
+    expect(simulationRpc(store, 'get_verified_user_roles').data).toEqual([]);
+  });
+  it('scopes navigation to the same routes underneath the public role basename', () => {
+    expect(publicWorkspaceRoute('/demo/developer/developer-dashboard')).toEqual({role:'developer',base:'/demo/developer',choose:false});
+    expect(publicWorkspaceRoute('/demo')).toEqual({role:'broker',base:'/demo',choose:true});
+    expect(publicWorkspaceRoute('/developer-dashboard')).toBeNull();
+  });
+  it('has exactly five simulated campaign records and consistent developer/project/unit identities', () => {
+    const store=createPublicWorkspaceData('developer');
+    expect(store.tables.campaigns).toHaveLength(5);
+    expect(store.projects).toHaveLength(4);
+    expect(store.projects.every(project=>store.developers.some(d=>d.id===project.developer_id)&&project.apartments.length===4)).toBe(true);
+  });
+  it('updates only the local task store and does not grant administrative or payment access', async () => {
+    const store=createPublicWorkspaceData('broker');
+    const id=store.tables.scheduled_items[0].id;
+    await simulationQuery(store,'scheduled_items').update({title:'בדיקת נכס לדוגמה'}).eq('id',id);
+    expect(store.tables.scheduled_items[0].title).toBe('בדיקת נכס לדוגמה');
+    expect((await simulationQuery(store,'user_roles').insert({role:'super_admin'})).status).toBe(403);
+    expect(simulationRpc(store,'publish_developer_project').status).toBe(403);
+    expect(simulationRpc(store,'subscribe_to_plan').status).toBe(403);
+    expect(simulationFunction(store,'admin-broker-invitation').status).toBe(403);
+  });
+  it('blocks raw RPC, storage, OAuth, AI provider and remote fetch traffic without changing a real session', async () => {
+    const remote=vi.spyOn(window,'fetch').mockResolvedValue(new Response('{}'));
+    window.localStorage.setItem('registered-account-preference','unchanged');
+    const runtime=installPublicWorkspaceTransport('broker');
+    try {
+      expect((await window.fetch('https://example.com/rest/v1/leads')).status).toBe(403);
+      expect((await window.fetch('https://example.com/storage/v1/object/photos/test',{method:'POST'})).status).toBe(403);
+      expect((await window.fetch('https://example.com/functions/v1/admin-broker-invitation',{method:'POST'})).status).toBe(403);
+      expect(remote).not.toHaveBeenCalled();
+      const {supabase}=await import('@/integrations/supabase/client');
+      expect((await supabase.auth.getSession()).data.session).toBeNull();
+      expect((await supabase.auth.signInWithOAuth({provider:'google'})).error).toBeTruthy();
+      expect((await supabase.functions.invoke('ai-agent',{body:{message:'מה התקציב?'}})).data.actions).toEqual([]);
+      expect((await supabase.storage.from('photos').upload('test.png',new Blob(['test']))).error).toBeTruthy();
+      expect(window.localStorage.getItem('registered-account-preference')).toBeNull();
+      window.localStorage.setItem('registered-account-preference','demo-only');
+      expect(remote).not.toHaveBeenCalled();
+    } finally {runtime.restore();remote.mockRestore();}
+    expect(window.localStorage.getItem('registered-account-preference')).toBe('unchanged');
+    window.localStorage.removeItem('registered-account-preference');
+  });
+});

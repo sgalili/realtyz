@@ -200,7 +200,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                     variant="ghost"
                     key={w.workspace_owner_id}
                     type="button"
-                    onClick={() => pick(w.workspace_owner_id, label)}
+                    onClick={event => { event.stopPropagation(); void pick(w.workspace_owner_id, label); }}
                     className={cn(
                       'flex h-auto w-full shrink-0 items-center justify-start gap-2.5 rounded-md px-2 py-2 text-right text-sm transition-colors hover:bg-primary/10',
                       active && 'bg-primary/5 font-semibold text-primary',

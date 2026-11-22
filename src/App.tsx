@@ -1,5 +1,7 @@
 import { ImportedLicenseGate } from '@/components/onboarding/ImportedLicenseGate';
 import * as React from 'react';
+import { PublicWorkspaceProvider, InitialDemoWorkspaceChoice, publicWorkspaceRoute, usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
+import { installPublicWorkspaceTransport } from '@/lib/publicWorkspaceTransport';
 import { InventoryComingSoonHost } from '@/components/InventoryCollection';
 import { CreditRateSync } from "@/hooks/useCreditRate";
 import { QueryClient, QueryClientProvider, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -124,7 +126,6 @@ const PartnerChats = lazy(() => import("./pages/partner/PartnerChats"));
 const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
 const PublicListingsBoard = lazy(() => import("./pages/PublicListingsBoard"));
-const PublicDemo = lazy(() => import('./pages/demo/PublicDemo'));
 const AboutToraff = lazy(() => import('./pages/AboutToraff'));
 const FaqPage = lazy(() => import('./pages/FaqPage'));
 const Developers = lazy(() => import("./pages/Developers"));
@@ -203,12 +204,14 @@ const SEEKER_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS];
 const DEVELOPER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/profile', '/developer-dashboard', '/command-center', '/campaigns', '/lead-crm', '/inbox', '/affiliate-network', '/affiliate', '/referral', '/partner/contacts', '/partner/chats', '/posts', '/our-clients'];
 
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
+  const simulation = usePublicWorkspace();
   const { user, loading } = useAuth();
   const queryClient = useQueryClient();
   // A role picked during registration (מתווך / שותף) is applied on the first
   // authenticated render, then the account lands on the matching product.
   const [roleApplied, setRoleApplied] = React.useState(false);
   React.useEffect(() => {
+    if (simulation) { setRoleApplied(true); return; }
     if (!user || roleApplied) return;
     let alive = true;
     // Never let a failed or hanging completion step block the app after OTP:
@@ -434,7 +437,10 @@ function PartnerOnlyRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AuthRoute() {
+  const simulation = usePublicWorkspace();
   const { user, loading } = useAuth();
+  React.useEffect(() => { if (simulation) window.location.assign('/auth'); }, [simulation]);
+  if (simulation) return <PageLoader />;
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <RealtyzLoader size="lg" />
@@ -487,12 +493,24 @@ function AccountPageLoading({ children }: { children: React.ReactNode }) {
   return <FullPageLoadingProvider enabled={Boolean(user) && pathname !== '/super-admin'}>{children}</FullPageLoadingProvider>;
 }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+function DemoEntry() { React.useEffect(() => { window.location.assign('/demo'); }, []); return <PageLoader />; }
+
+const App = () => {
+  const [route, setRoute] = React.useState(() => publicWorkspaceRoute(window.location.pathname));
+  React.useEffect(() => {
+    const sync = () => setRoute(previous => { const next = publicWorkspaceRoute(window.location.pathname); return next?.base === previous?.base ? previous : next; });
+    window.addEventListener('toraff:public-demo-role', sync); window.addEventListener('popstate', sync);
+    return () => { window.removeEventListener('toraff:public-demo-role', sync); window.removeEventListener('popstate', sync); };
+  }, []);
+  const previousRuntime = React.useRef<ReturnType<typeof installPublicWorkspaceTransport> | null>(null);
+  const runtime = React.useMemo(() => { previousRuntime.current?.restore(); const next = route ? installPublicWorkspaceTransport(route.role) : null; previousRuntime.current = next; return next; }, [route?.base]);
+  const cache = React.useMemo(() => runtime ? new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 1000 } } }) : queryClient, [runtime]);
+  React.useEffect(() => () => { runtime?.restore(); if (runtime) cache.clear(); }, [runtime, cache]);
+  return <PublicWorkspaceProvider key={route?.base ?? 'registered'} store={runtime?.store ?? null}><QueryClientProvider client={cache}>
     <CreditRateSync>
     <DirectionProvider dir="rtl">
       <TooltipProvider>
-        <BrowserRouter>
+        <BrowserRouter basename={route?.base}>
           <AccessibilityEffects />
           <RouteScrollRestoration />
           <AuthProvider>
@@ -509,14 +527,15 @@ const App = () => (
             <DemoViewBar />
             <ReferralCapture />
             <WorkspaceSelectorModal />
+            <InitialDemoWorkspaceChoice enabled={route?.choose ?? false} />
             <PostSignupWelcome />
             <AdminBrokerFirstEntry><ImportedLicenseGate><WorkspaceScope>
             <div className="app-route-pages">
             <PendingMessageResume />
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
-              <Route path="/demo" element={<Suspense fallback={<PageLoader />}><PublicDemo /></Suspense>} />
-              <Route path="/demo/:type" element={<Suspense fallback={<PageLoader />}><PublicDemo /></Suspense>} />
+              <Route path="/demo" element={<DemoEntry />} />
+              <Route path="/demo/:type" element={<DemoEntry />} />
               <Route path="/.lovable/oauth/consent" element={<Suspense fallback={<PageLoader />}><OAuthConsent /></Suspense>} />
               <Route path="/affiliates" element={<Suspense fallback={<PageLoader />}><AffiliateSignup /></Suspense>} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -653,7 +672,7 @@ const App = () => (
       </TooltipProvider>
     </DirectionProvider>
     </CreditRateSync>
-  </QueryClientProvider>
-);
+  </QueryClientProvider></PublicWorkspaceProvider>;
+};
 
 export default App;

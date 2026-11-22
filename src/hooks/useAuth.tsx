@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
+import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 
 interface AuthContextType {
   user: User | null;
@@ -17,6 +18,12 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const simulation = usePublicWorkspace();
+  if (simulation) return <AuthContext.Provider value={{ user: simulation.user as User, session: null, loading: false, signOut: async () => { window.location.assign('/'); } }}>{children}</AuthContext.Provider>;
+  return <LiveAuthProvider>{children}</LiveAuthProvider>;
+};
+
+const LiveAuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);

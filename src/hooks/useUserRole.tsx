@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { isAffiliateOnlyAccount } from '@/lib/accountMode';
+import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 
 export type AppRole =
   | 'admin'
@@ -26,13 +27,14 @@ export const userRolesQueryKey = (userId: string | undefined) => ['user-roles', 
 let lastSyncedRoleUser: string | null = null;
 
 export function useUserRole() {
+  const simulation = usePublicWorkspace();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { activeWorkspaceId, loading: wsLoading } = useWorkspace();
-  const { data: ownRoles = [], isLoading, isFetched, isError, refetch } = useQuery({
+  const { data: verifiedRoles = [], isLoading, isFetched, isError, refetch } = useQuery({
     queryKey: userRolesQueryKey(user?.id),
-    enabled: !!user?.id,
+    enabled: !!user?.id && !simulation,
     queryFn: async () => {
       if (!user?.id) return [] as AppRole[];
       const { data, error } = await supabase.rpc('get_verified_user_roles');
@@ -46,11 +48,13 @@ export function useUserRole() {
     refetchOnWindowFocus: true,
     refetchInterval: 30_000,
   });
+  // Presentation-only persona in its own cache/transport; never a verified role grant.
+  const ownRoles = simulation ? simulation.roles as AppRole[] : verifiedRoles;
 
   // Force re-sync of role data whenever the user id changes (e.g. after login).
   // Once per signed-in user (not per mounted component, which made card lists refetch N times).
   useEffect(() => {
-    if (user?.id && lastSyncedRoleUser !== user.id) {
+    if (!simulation && user?.id && lastSyncedRoleUser !== user.id) {
       lastSyncedRoleUser = user.id;
       queryClient.invalidateQueries({ queryKey: ['user-roles', user.id] });
     }
@@ -152,9 +156,9 @@ export function useUserRole() {
     canAccessBilling,
     canInviteTeam,
     canAssignLeads,
-    loading: isLoading || wsLoading || (viewingOther && ownerRolesQuery.isLoading),
-    fetched: isFetched && !wsLoading && (!viewingOther || ownerRolesQuery.isFetched),
-    error: isError,
+    loading: simulation ? false : isLoading || wsLoading || (viewingOther && ownerRolesQuery.isLoading),
+    fetched: simulation ? true : isFetched && !wsLoading && (!viewingOther || ownerRolesQuery.isFetched),
+    error: simulation ? false : isError,
     refetch,
   };
 }
