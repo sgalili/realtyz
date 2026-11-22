@@ -175,7 +175,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
     onSuccess: () => { toast.success('המגדר נשמר'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
-  const details = b.is_developer ? `${b.projects ?? 0} פרויקטים • ${b.apartments ?? 0} דירות במאגר` : [`${b.drafts} טיוטות`, b.license_number && `רישיון ${b.license_number}`, b.city].filter(Boolean).join(' · ');
+  const details = `${b.projects ?? 0} פרויקטים • ${b.apartments ?? 0} דירות במאגר`;
   const phoneControls = !b.is_developer ? <span className="inline-flex min-w-0 items-center"><BrokerNumberEditor brokerId={b.user_id} name={b.full_name} phone={b.phone} kind="phone" />{b.phone && <a href={`tel:+${b.phone}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-primary" aria-label={`חיוג אל ${b.full_name} ${formatPhoneDisplay(b.phone)}`}><Phone className="h-4 w-4" /></a>}</span> : editing ? <>
           <Input autoFocus aria-label={`נייד (WhatsApp) של ${b.full_name}`} className="h-8 w-24 px-2 text-sm sm:w-36 sm:text-base" dir="ltr" inputMode="tel" placeholder="05X-XXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && dirty) save.mutate(); if (e.key === 'Escape') setEditing(false); }} />
           <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="שמירת נייד" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>
@@ -191,24 +191,22 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
         {b.license_verified ? <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-label="אומת מול המאגר הממשלתי" /> : !b.is_developer && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense??''} onUpdated={() => void qc.invalidateQueries({queryKey:['broker-contact-queue']})} />}
         <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
           {b.is_developer ? <DeveloperLogo name={b.full_name} logoUrl={b.office_logo_url} className="h-9 w-9" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
-          <span className="flex min-w-0 items-center gap-1 text-base sm:text-lg"><span className="min-w-0 break-words font-bold">{b.full_name || 'ללא שם'}</span>{!b.is_developer && hasSelectedGender && regLicense && <span dir="ltr" className="shrink-0 whitespace-nowrap text-sm font-normal text-muted-foreground sm:text-base">{regLicense}</span>}</span>
+          <span className="flex min-w-0 items-center gap-1 text-base sm:text-lg"><span className="min-w-0 break-words font-bold">{b.full_name || 'ללא שם'}</span>{!b.is_developer && regLicense && <span dir="ltr" className="shrink-0 whitespace-nowrap text-sm font-normal text-muted-foreground sm:text-base">{regLicense}</span>}</span>
         </button>
         {!b.is_developer && !hasSelectedGender && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'זכר', '\u2642\uFE0E'], ['female', 'נקבה', '\u2640\uFE0E']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role="radio" aria-checked={false} aria-label={label} title={label} className={`h-7 w-7 text-base ${g === 'male' ? 'text-gender-male' : 'text-gender-female'}`} disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>}
         </div>
-        {!b.is_developer && <div className="flex min-w-0 max-w-[45%] shrink-0 justify-end"><OfficeNameField b={b} showLogo={false} /></div>}
+        {!b.is_developer && <div className="flex min-w-0 max-w-[45%] items-center justify-end gap-2">{b.city && <span className="min-w-0 break-words text-sm text-muted-foreground sm:text-base">{b.city}</span>}<OfficeNameField b={b} /></div>}
       </div>
       <div data-broker-row="contacts" className={b.is_developer ? "flex max-w-full flex-wrap items-center gap-0" : "flex max-w-full flex-wrap items-center gap-x-1 gap-y-0"}>
         {phoneControls}
         {!b.is_developer && <BrokerWhatsAppContact brokerId={b.user_id} name={b.full_name} phone={b.whatsapp_phone} />}
         <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} />
-        {b.is_developer && <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive sm:h-8 sm:w-8" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>}
+        <Button size="icon" variant="ghost" className={`h-8 w-8 shrink-0 text-destructive ${b.is_developer ? '' : 'ms-auto'}`} aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>
       </div>
     </div>
-    <div data-broker-row="office" className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">
-      {!b.is_developer && b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-7 w-7 shrink-0 rounded-md object-contain" />}
+    {b.is_developer && <div data-broker-row="office" className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">
       <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground sm:text-base" title={details}>{details}</p>
-      {!b.is_developer && <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-destructive" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>}
-    </div>
+    </div>}
     {b.is_developer && <MarketingContactLine ownerId={b.user_id} devName={b.full_name} contact={marketing} />}
     <Dialog open={deleting} onOpenChange={open => { if (!remove.isPending) setDeleting(open); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-md text-right">

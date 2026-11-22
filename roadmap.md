@@ -1,5 +1,10 @@
 # Roadmap
 
+## WhatsApp reset and broker rows November 22
+- [x] Removed five Yad2-discovered contacts carrying the same shared number and reset five completed discovery statuses; Cloud readback confirms zero discovered contacts and zero active jobs. Login phones, inventory and manual contacts remain untouched; no scan restarted.
+- [x] BrokerContactQueueCard puts trash at the contact-row edge, removes the broker bottom summary entirely, and displays license once next to the full name regardless of gender; the saved city sits between license and office with its logo. Developer summaries remain unchanged.
+- [x] brokerWhatsApp rejects the observed shared Yad2 action; broker-whatsapp-worker deployed, 31 tests passed and build OK. Authenticated 411px/1280px screenshots of a real city-bearing broker verify order, cleared WhatsApp, trash placement and no overflow/runtime errors. No paid source reads or messages.
+
 ## Stop bulk WhatsApp tracing November 22
 - [x] Stopped the requesting Super Admin's 50 active discovery jobs and fenced their leases; a fresh Cloud read confirms zero pending/running/retry jobs. Completed contacts and import queues were not changed.
 - [x] Added account-owned broker_whatsapp_batches and protected start/status/cancel actions. The bulk button stays clickable throughout enqueue/source processing, restores running state on return, and cancels only its exact batch; locked insert guards reject late enqueue and cancelled leases reject late results.

@@ -15,6 +15,8 @@ export function brokerWhatsAppAction(url: string): { phone: string; link: string
     const value = target.hostname === 'wa.me' ? target.pathname.slice(1)
       : ['api.whatsapp.com', 'web.whatsapp.com'].includes(target.hostname) && target.pathname === '/send' ? target.searchParams.get('phone') : null;
     const phone = value ? normalizeBrokerWhatsApp(value) : null;
+    // Observed across unrelated saved ads: Yad2's shared action is not a broker contact.
+    if (phone === '972559895695') return null;
     return phone ? { phone, link: `https://wa.me/${phone}` } : null;
   } catch { return null; }
 }

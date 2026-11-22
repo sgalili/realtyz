@@ -7,6 +7,12 @@ const { brokerWhatsAppAction, brokerWhatsAppRetry, discoverBrokerWhatsApp, disco
 describe('source-backed broker WhatsApp', () => {
   const source = 'https://www.yad2.co.il/realestate/item/abc123';
   const scopedPage = (content: string, token='abc123') => `<script id="__NEXT_DATA__">${JSON.stringify({props:{pageProps:{token}}})}</script><main><a href="https://wa.me/972509999999">Unrelated</a><aside class="stickyContentBox"><div class="forsaleAgencyContactSectionBox">${content}</div></aside></main>`;
+  it('rejects the shared Yad2 WhatsApp number even inside the primary broker contact', () => {
+    expect(brokerWhatsAppAction('https://wa.me/972559895695')).toBeNull();
+    expect(brokerWhatsAppAction('https://api.whatsapp.com/send?phone=0559895695')).toBeNull();
+    expect(discoverBrokerWhatsApp(scopedPage('<a href="https://wa.me/972559895695">WhatsApp</a>'), source)).toBeNull();
+    expect(discoverBrokerWhatsApp(scopedPage('<a href="https://wa.me/972559895695">Site</a><a href="https://wa.me/972502222222">Broker</a>'), source)?.phone).toBe('972502222222');
+  });
   it('production reads only the identified primary contact of the saved listing', () => {
     const html = scopedPage('<a href="https://wa.me/972502222222">WhatsApp</a><a href="tel:0503333333">Call</a>');
     expect(discoverBrokerWhatsApp(html, source)?.phone).toBe('972502222222');
