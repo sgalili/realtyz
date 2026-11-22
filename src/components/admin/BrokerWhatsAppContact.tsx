@@ -45,7 +45,10 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
     if(!job&&status.data&&!status.isLoading&&!enqueue.isPending){starting.current=false;setTracking(false);return;}
     if (job && !activeStates.includes(job.status)) {
       starting.current=false;setTracking(false);
-      if (job.status === 'completed') void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] });
+      if (job.status === 'completed') {
+        void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] });
+        void qc.invalidateQueries({ queryKey: ['broker-whatsapp-invitation-eligibility', brokerId] });
+      }
       else if(job.status==='failed' && job.last_error!=='user_cancelled')toast.error(job.last_error === 'whatsapp_contact_changed_requires_review' ? 'המספר במקור שונה ממספר WhatsApp השמור. המספר השמור לא שונה; נדרשת בדיקה ידנית.' : job.last_error||labels.failed);
       else if(job.status==='not_found')toast.info(labels.not_found);
     }

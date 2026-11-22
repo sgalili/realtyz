@@ -1,12 +1,12 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
-import { coldInvitationBody, invitationTextFor, invitationTargetPhone, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName } from '../_shared/brokerInvitationTemplate.ts';
+import { coldInvitationBody, invitationTextFor, invitationTargetPhone, officialBrokerPhone, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName } from '../_shared/brokerInvitationTemplate.ts';
 import { loadAttachment, attachmentSignedUrl, markAttachmentSent } from '../_shared/invitationAttachment.ts';
 import { publicSiteOrigin, invitationLink, demoInvitationLink } from '../_shared/importInvitationPolicy.ts';
 
 const schema = z.object({
-  action: z.enum(['status', 'register', 'send', 'texts', 'save_text']),
+  action: z.enum(['status', 'register', 'send', 'texts', 'save_text', 'whatsapp_eligibility']),
   text: z.string().max(1024).optional(),
   broker_id: z.string().uuid().optional(),
   gender: z.enum(['male', 'female']).nullable().optional(),
@@ -58,6 +58,16 @@ Deno.serve(async req => {
     roles = (roleRows ?? []).map(role => String(role.role));
     demoLink = demoInvitationLink(publicSiteOrigin(), roles);
   }
+  if (input.action === 'whatsapp_eligibility') {
+    if (!input.broker_id) return json({ error: 'נדרש מתווך לבדיקת מספר WhatsApp' }, 400);
+    const { data: importedBroker, error: importedError } = await admin.from('admin_broker_onboarding').select('imported_license_number').eq('user_id', input.broker_id).not('import_source', 'is', null).maybeSingle();
+    if (importedError) return json({ error: 'בדיקת המתווך נכשלה' }, 500);
+    const isBroker = roles.some(role => ['agent', 'lead_agent', 'managing_broker', 'junior_agent'].includes(role)) || !!importedBroker?.imported_license_number;
+    if (!isBroker) return json({ eligible: false });
+    const { data: whatsapp, error: whatsappError } = await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id', input.broker_id).eq('workspace_owner_id', input.broker_id).maybeSingle();
+    if (whatsappError) return json({ error: 'בדיקת מספר WhatsApp השמור נכשלה' }, 500);
+    return json({ eligible: officialBrokerPhone(whatsapp?.whatsapp_phone ?? '') !== null });
+  }
   const { data: saved } = await admin.from('broker_invitation_template_texts').select('gender,body');
   const savedFor = (g: unknown) => invitationTextFor(saved?.find(r => r.gender === (g === 'female' ? 'female' : 'male'))?.body, g, roles);
   if (input.action === 'texts') return json({ male: savedFor('male'), female: savedFor('female'), ...(input.broker_id ? { recipient: savedFor(gender), email_recipient: coldInvitationBody(gender, roles, 'email'), recipient_gender: gender === 'female' ? 'female' : 'male', demo_link: demoLink } : {}) });
@@ -106,10 +116,14 @@ Deno.serve(async req => {
     const invitedRoles = ['agent', 'lead_agent', 'managing_broker', 'junior_agent', 'developer', 'marketing_company', 'property_owner', 'property_seeker', 'affiliate'];
     const { data: importedBroker } = await admin.from('admin_broker_onboarding').select('imported_license_number').eq('user_id', input.broker_id).not('import_source', 'is', null).maybeSingle();
     if (brokerError || !broker || (!roles.some(role => invitedRoles.includes(role)) && !importedBroker?.imported_license_number)) return json({ error: 'הנמען אינו חשבון הממתין להזמנה' }, 400);
-    const useWhatsApp = input.use_discovered_whatsapp || roles.some(role => ['agent','lead_agent','managing_broker','junior_agent'].includes(role)) || !!importedBroker?.imported_license_number;
-    const { data: discovered, error: discoveryError } = useWhatsApp ? await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id', broker.id).single() : { data: null, error: null };
-    if (discoveryError || (useWhatsApp && !discovered)) return json({ error: 'אין מספר WhatsApp שמור למתווך' }, 409);
-    const phone = invitationTargetPhone(discovered?.whatsapp_phone ?? null, contact?.phone ?? null, broker.phone, useWhatsApp);
+    const isBrokerRecipient = roles.some(role => ['agent','lead_agent','managing_broker','junior_agent'].includes(role)) || !!importedBroker?.imported_license_number;
+    const useSavedWhatsApp = isBrokerRecipient || input.use_discovered_whatsapp;
+    const { data: discovered, error: discoveryError } = useSavedWhatsApp ? await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id', broker.id).eq('workspace_owner_id', broker.id).maybeSingle() : { data: null, error: null };
+    if (discoveryError) return json({ error: 'בדיקת מספר WhatsApp השמור נכשלה' }, 500);
+    const phone = isBrokerRecipient
+      ? officialBrokerPhone(discovered?.whatsapp_phone ?? '')
+      : invitationTargetPhone(discovered?.whatsapp_phone ?? null, contact?.phone ?? null, broker.phone, useSavedWhatsApp);
+    if (isBrokerRecipient && !phone) return json({ error: 'אין מספר וואטסאפ אישי שמור למתווך. לא נעשה שימוש בטלפון איש הקשר או בטלפון הכניסה.' }, 409);
     if (!phone) return json({ error: 'חסר מספר נייד תקין למתווך' }, 400);
     const { data: onboarding, error: onboardingError } = await admin.from('admin_broker_onboarding').select('user_id,invitation_link_token,first_invitation_at,first_login_at').eq('user_id', broker.id).maybeSingle();
     if (onboardingError || !onboarding) return json({ error: 'המתווך אינו בתהליך הצטרפות בניהול מנהל' }, 409);

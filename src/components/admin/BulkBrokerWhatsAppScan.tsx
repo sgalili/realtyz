@@ -49,7 +49,7 @@ export function BulkBrokerWhatsAppScan() {
       } while (after && !stopping.current);
       toast.success(`${queued} מתווכים בתור הגילוי${skipped ? ` · ${skipped} חשבונות ללא מקור מתאים או שאינם מתווכים` : ''}`);
     } catch { if(!stopping.current)toast.error(`הוספת המשימות נעצרה; ${queued} משימות שכבר נשמרו ימשיכו בתור`); }
-    finally { working.current=false;setBusy(false);void qc.invalidateQueries({queryKey:key});void qc.invalidateQueries({ queryKey: ['broker-whatsapp-job'] }); }
+    finally { working.current=false;setBusy(false);void qc.invalidateQueries({queryKey:key});void qc.invalidateQueries({ queryKey: ['broker-whatsapp-job'] });void qc.invalidateQueries({queryKey:['broker-whatsapp-invitation-eligibility']}); }
   };
   return <div className="flex justify-start"><Button variant="ghost" className="text-lead-whatsapp" disabled={cancel.isPending || status.isLoading} aria-busy={busy || cancel.isPending} onClick={()=>running?stop():void scan()}>{cancel.isPending?<Loader2 className="h-4 w-4 animate-spin"/>:running?<Square className="h-4 w-4"/>:<Search className="h-4 w-4"/>}{running?'עצירת איתור WhatsApp':'איתור WhatsApp לכל המתווכים'}</Button></div>;
 }

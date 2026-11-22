@@ -10,9 +10,10 @@ describe('official broker invitation rules', () => {
   it('sends a broker invitation to saved WhatsApp even when the login and contact phones differ', () => {
     expect(invitationTargetPhone('972502222222', '972503333333', '972504444444', true)).toBe('972502222222');
   });
-  it('refuses a missing or invalid WhatsApp number without falling back to the login phone', () => {
+  it('refuses a missing or invalid WhatsApp number without falling back to contact or login phones', () => {
+    expect(invitationTargetPhone(null, '972503333333', '972504444444', true)).toBeNull();
     expect(invitationTargetPhone(null, null, '972504444444', true)).toBeNull();
-    expect(invitationTargetPhone('1234', null, '972504444444', true)).toBeNull();
+    expect(invitationTargetPhone('1234', '972503333333', '972504444444', true)).toBeNull();
   });
   it('requires authentication after accepted invitation, never property review before login', () => {
     expect(brokerStage({ invited_at: '2026-11-10', pending_properties: 8, published_properties: 0 })).toBe('pending_otp');

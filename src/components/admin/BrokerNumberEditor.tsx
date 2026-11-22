@@ -39,7 +39,10 @@ export function BrokerNumberEditor({ brokerId, name, phone, kind }: { brokerId: 
     : call('broker-whatsapp-worker', { action: 'save_contact', broker_id: brokerId, phone: value.trim() }),
     onSuccess: data => {
       const savedPhone = data.phone;
-      if (kind === 'whatsapp' && savedPhone) qc.setQueryData<{ job?: Job | null; contact?: { whatsapp_phone: string } | null }>(['broker-whatsapp-job', brokerId], previous => ({ ...previous, contact: { whatsapp_phone: savedPhone } }));
+      if (kind === 'whatsapp' && savedPhone) {
+        qc.setQueryData<{ job?: Job | null; contact?: { whatsapp_phone: string } | null }>(['broker-whatsapp-job', brokerId], previous => ({ ...previous, contact: { whatsapp_phone: savedPhone } }));
+        void qc.invalidateQueries({ queryKey: ['broker-whatsapp-invitation-eligibility', brokerId] });
+      }
       toast.success('המספר נשמר'); setOpen(false); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-whatsapp-job', brokerId] });
     },
     onError: (error: Error) => toast.error(error.message) });
@@ -48,7 +51,7 @@ export function BrokerNumberEditor({ brokerId, name, phone, kind }: { brokerId: 
     processed.current = job.id;
     setTracking(false);
     if (kind === 'phone' && job.discovered_phone) setValue(formatPhoneDisplay(job.discovered_phone));
-    else if (kind === 'whatsapp' && job.status === 'completed') { setOpen(false); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); }
+    else if (kind === 'whatsapp' && job.status === 'completed') { setOpen(false); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-whatsapp-invitation-eligibility', brokerId] }); }
     else toast.info(job.last_error === 'worker_not_connected_no_progress_180s' ? 'העובד לא התקדם במשך שלוש דקות. המשימה שוחררה; יש לבדוק את שירות Railway.' : 'לא נמצא מספר חד־משמעי במודעה');
   }, [tracking, job, kind, qc]);
   useEffect(() => { if (tracking && status.error) { setTracking(false); toast.error(status.error.message); } }, [tracking, status.error]);
