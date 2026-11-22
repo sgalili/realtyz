@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { brokerInvitation, renderBrokerInvitation } from '@/lib/brokerInvitation';
+import { personalBrokerLink, renderBrokerInvitation } from '@/lib/brokerInvitation';
 import { brokerTemplateFor, BROKER_STAGE_LABELS, type BrokerOnboardingStatus } from '@/lib/brokerOnboarding';
 import { getOfficialWaNumber } from '@/lib/officialWa';
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
@@ -38,7 +38,8 @@ export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachm
   // Fixed wording only; the server picks the variant from the recipient's saved gender.
   const state = useQuery({ queryKey: ['official-broker-template', broker.id], enabled: open, retry: false, staleTime: 0, queryFn: () => invoke({ action: 'status', broker_id: broker.id }) });
   const text: string = state.data?.text ?? brokerTemplateFor(null);
-  const demoLink: string = state.data?.demo_link ?? publicUrl('/auth');
+  const demoLink: string = state.data?.demo_link ?? publicUrl('/demo');
+  const previewLink = demo ? demoLink : personalBrokerLink(broker.id);
   const pricing = useCampaignPricing(open);
   const waPrice = pricing.data?.find(p => p.action_key === 'whatsapp_marketing');
   const onboarding = useQuery({ queryKey: ['broker-onboarding', broker.id], enabled: open, queryFn: async () => {
@@ -51,6 +52,7 @@ export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachm
     setFeedback(`Meta קיבלה את ההזמנה. מסירה לנמען טרם אומתה.${d?.attachment_status === 'failed' ? ' הקובץ המצורף לא נשלח: Meta מאפשרת קובץ רק בשיחה פתוחה מ-24 השעות האחרונות.' : d?.attachment_status === 'sent' ? ' הקובץ המצורף נשלח.' : ''}`); onSent?.(); await qc.invalidateQueries({ queryKey: ['broker-onboarding'] });
     await qc.invalidateQueries({ queryKey: ['broker-contact-history'] });
   }, onError: e => setFeedback(e.message) });
+  const registration = useMutation({ mutationFn: () => invoke({ action: 'register', broker_id: broker.id }), onSuccess: () => { void state.refetch(); }, onError: (error: Error) => setFeedback(error.message) });
   const status = state.data?.status;
   const labels: Record<string, string> = { NOT_REGISTERED: 'הנוסח טרם הוגש ל-Meta', PENDING: 'ממתין לאישור Meta', APPROVED: 'תבנית מאושרת', REJECTED: 'Meta דחתה את התבנית', PAUSED: 'התבנית מושהית', DISABLED: 'התבנית אינה פעילה' };
   return <div className="space-y-3">
@@ -58,14 +60,14 @@ export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachm
       {onboarding.data && <p role="status" className="text-sm text-primary">{BROKER_STAGE_LABELS[onboarding.data.stage]}{onboarding.data.pending_properties > 0 ? ` · ${onboarding.data.pending_properties} נכסים לבדיקה` : ''}</p>}
       {onboarding.isError && <p role="alert" className="text-destructive">לא ניתן לקרוא את שלב ההצטרפות</p>}
       <Label>תצוגת ההודעה לנמען</Label>
-      <p className="whitespace-pre-wrap break-words border-s-2 border-border ps-3 text-sm leading-6">{renderBrokerInvitation(text, { brokerName: (broker.recipient_name || broker.full_name || '').trim().split(/\s+/)[0] || 'מתווך', authLink: demo ? demoLink : brokerInvitation(broker).link })}</p>
+      <p className="whitespace-pre-wrap break-words border-s-2 border-border ps-3 text-sm leading-6">{renderBrokerInvitation(text, { brokerName: (broker.recipient_name || broker.full_name || '').trim().split(/\s+/)[0] || 'מתווך', authLink: previewLink }).split(previewLink).map((part, index, parts) => <span key={index}>{part}{index < parts.length - 1 && <a href={previewLink} target="_blank" rel="noopener noreferrer" className="break-all text-primary underline">{previewLink}</a>}</span>)}</p>
       <div className="flex justify-between items-center gap-2"><span role="status" className="text-sm text-muted-foreground">{state.isFetching ? 'בודק אישור Meta…' : state.isError ? 'בדיקת Meta נכשלה' : labels[status] || status}</span><Button size="icon" variant="ghost" aria-label="רענון אישור Meta" disabled={state.isFetching || !!validation || mutation.isPending} onClick={() => void state.refetch()}><RefreshCw className="h-4 w-4" /></Button></div>
       <p role="note" className="text-sm font-medium">עלות שליחה לנמען חדש ללא היסטוריה: {waPrice ? `${agorotToCredits(waPrice.price_agorot).toLocaleString('he-IL')} קרדיטים להודעה` : pricing.isLoading ? 'טוען…' : 'לא הוגדרה'}</p>
       {state.error && <p role="alert" className="break-words text-sm text-destructive">{state.error.message}</p>}
       <div className="space-y-1"><Label className="flex items-start gap-2 leading-6"><Checkbox checked={demo} disabled={mutation.isPending} onCheckedChange={v => setDemo(v === true)} />שליחת קישור לחשבון דמו לצפייה בלבד</Label>{demo && <p className="text-sm text-muted-foreground">הדמו יותאם לסוג המשתמש, או שייפתח עמוד בחירה אם הסוג אינו ידוע. אין צורך בקוד אימות.</p>}</div>
       <Label className="flex items-start gap-2 leading-6"><Checkbox checked={consent} disabled={mutation.isPending} onCheckedChange={v => setConsent(v === true)} />הנמען הסכים לקבל הזמנה ב־WhatsApp</Label>
       {feedback && <p role="status" className="break-words text-sm">{feedback}</p>}
-      <div className="flex flex-row justify-between gap-2"><Button variant="outline" disabled={mutation.isPending} onClick={onClose}>ביטול</Button>{status === 'APPROVED' ? <Button disabled={!consent || !!validation || state.isFetching || mutation.isPending || !onboarding.data || !!feedback} onClick={() => mutation.mutate('send')}><Send className="h-4 w-4" />{mutation.isPending ? 'שולח…' : 'שליחת הזמנה'}</Button> : <span className="text-sm text-muted-foreground">השליחה תתאפשר לאחר אישור התבנית</span>}</div>
+      <div className="flex flex-row justify-between gap-2"><Button variant="outline" disabled={mutation.isPending || registration.isPending} onClick={onClose}>ביטול</Button>{status === 'APPROVED' ? <Button disabled={!consent || !!validation || state.isFetching || mutation.isPending || !onboarding.data || !!feedback} onClick={() => mutation.mutate('send')}><Send className="h-4 w-4" />{mutation.isPending ? 'שולח…' : 'שליחת הזמנה'}</Button> : status === 'NOT_REGISTERED' ? <Button disabled={registration.isPending || state.isFetching} onClick={() => registration.mutate()}>הגשת הנוסח לאישור Meta</Button> : <span className="text-sm text-muted-foreground">השליחה תתאפשר לאחר אישור התבנית</span>}</div>
     </div>;
 }
 

@@ -1,9 +1,10 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
-import { brokerFirstName, brokerInvitationEmailHtml, propertyExample, BROKER_EMAIL_BATCH_MAX } from '../_shared/brokerInvitationEmail.ts';
+import { brokerFirstName, propertyExample, BROKER_EMAIL_BATCH_MAX } from '../_shared/brokerInvitationEmail.ts';
 import { loadAttachment, attachmentBase64, markAttachmentSent } from '../_shared/invitationAttachment.ts';
 import { demoInvitationLink, invitationLink, publicSiteOrigin } from '../_shared/importInvitationPolicy.ts';
+import { coldInvitationBody } from '../_shared/brokerInvitationTemplate.ts';
 
 // Email only to brokers whose consent a Super Admin recorded; never to scraped contacts without consent.
 const schema = z.discriminatedUnion('action', [
@@ -45,7 +46,7 @@ Deno.serve(async req => {
   const { data: rows, error } = await admin.from('admin_broker_onboarding').select('user_id,email_unsubscribe_token,invitation_link_token').not('email_consent_at', 'is', null).is('email_unsubscribed_at', null).is('email_invited_at', null).is('first_invitation_at', null).is('first_login_at', null).limit(500);
   if (error) return json({ error: 'קריאת רשימת המתווכים נכשלה' }, 500);
   const ids = (rows ?? []).map(r => r.user_id);
-  const { data: profiles } = ids.length ? await admin.from('profiles').select('id,full_name,email').in('id', ids) : { data: [] };
+  const { data: profiles } = ids.length ? await admin.from('profiles').select('id,full_name,email,gender').in('id', ids) : { data: [] };
   const eligible = (rows ?? []).map(r => ({ ...r, p: profiles?.find(p => p.id === r.user_id) })).filter(r => r.p?.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.p.email) && !r.p.email.endsWith('.invalid'));
   if (input.action === 'summary') return json({ eligible: eligible.length, batch_max: BROKER_EMAIL_BATCH_MAX });
 
@@ -73,18 +74,18 @@ Deno.serve(async req => {
     if (!r.p) continue;
     // Same recipient name as the dialog greeting: the marketing-company contact when saved, else the account holder.
     const { data: dev } = await admin.from('developers').select('marketing_company_id').eq('workspace_owner_id', r.user_id).not('marketing_company_id', 'is', null).limit(1).maybeSingle();
-    const { data: mc } = dev?.marketing_company_id ? await admin.from('marketing_companies').select('contact_name').eq('id', dev.marketing_company_id).maybeSingle() : { data: null };
-    const { data: dc } = mc?.contact_name ? { data: null } : await admin.from('developers').select('contact_name').eq('workspace_owner_id', r.user_id).not('contact_name', 'is', null).limit(1).maybeSingle();
+    const { data: mc } = dev?.marketing_company_id ? await admin.from('marketing_companies').select('contact_name,contact_gender').eq('id', dev.marketing_company_id).maybeSingle() : { data: null };
+    const { data: dc } = mc?.contact_name ? { data: null } : await admin.from('developers').select('contact_name,contact_gender').eq('workspace_owner_id', r.user_id).not('contact_name', 'is', null).limit(1).maybeSingle();
     const firstName = brokerFirstName(mc?.contact_name?.trim() || dc?.contact_name?.trim() || r.p.full_name);
     const sentSubject = input.subject || (firstName ? `${firstName}, הנכסים שלך כבר מחכים לך ב-TORAFF` : 'הנכסים שלך כבר מחכים לך ב-TORAFF');
     try {
-      const { data: roleRows, error: roleError } = demo ? await admin.from('user_roles').select('role').eq('user_id', r.user_id) : { data: [], error: null };
+      const { data: roleRows, error: roleError } = await admin.from('user_roles').select('role').eq('user_id', r.user_id);
       if (roleError) throw new Error('קריאת סוג המשתמש נכשלה');
       const link = demo ? demoInvitationLink(site.origin, (roleRows ?? []).map(role => String(role.role))) : invitationLink(site.origin, r.user_id, r.invitation_link_token);
-      const message = input.message ? `${input.message}${demo ? '\n\nהקישור מוביל לחשבון הדגמה ציבורי לצפייה בלבד, ללא צורך בהרשמה או קוד אימות.' : ''}` : undefined;
+      const message = input.message ?? coldInvitationBody(mc?.contact_gender ?? dc?.contact_gender ?? r.p.gender, (roleRows ?? []).map(role => String(role.role)), 'email').replace('{brokerName}', firstName).replace('{authLink}', link);
       const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({
         from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [r.p.email], subject: sentSubject,
-        html: message ? customEmailHtml(message, link, unsubscribeUrl, demo) : brokerInvitationEmailHtml({ firstName, examples, link, unsubscribeUrl, demo }),
+        html: customEmailHtml(message, link, unsubscribeUrl, demo),
         headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
         tags: [{ name: 'type', value: demo ? 'demo_invitation' : 'broker_invitation' }], ...(attachments ? { attachments } : {}),
       }) });

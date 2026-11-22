@@ -2,6 +2,8 @@ import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { canRestorePropertyDraft, propertyCampaignSelection } from '@/lib/campaignPropertyContext';
 import { fetchPartnerCampaignInventory } from '@/lib/partnerCampaignInventory';
 import { useAppMode } from '@/hooks/useAppMode';
+import { useDemoViewStatus } from '@/components/demo/DemoViewBar';
+import { DemoCampaignHistory } from '@/components/demo/DemoCampaignHistory';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { generateSocialDraft } from '@/lib/socialDraftGeneration';
 import { reorderItems } from '@/lib/reorderItems';
@@ -7545,6 +7547,7 @@ const DraftCollapsibleCard = ({
 /* ───────────── Page ───────────── */
 
 const CampaignCenter = () => {
+  const demoView = useDemoViewStatus();
   const [wizardChannel, setWizardChannel] = useState<DistributionChannel | null>(null);
   // Facebook two-step flow: the publishing composer mounts only after the
   // connection screen is completed (or explicitly skipped).
@@ -9081,7 +9084,7 @@ const CampaignCenter = () => {
         </TabsContent>
         <TabsContent value="published" className="mt-6">
           
-          <PublishedFeed
+          {demoView.loading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : demoView.type ? <DemoCampaignHistory /> : <PublishedFeed
             subTab={historyTab}
             onSubTabChange={setHistoryTab}
             altContent={queueAltContent}
@@ -9091,7 +9094,7 @@ const CampaignCenter = () => {
                 campaignHistoryRows.filter((r) => ['scheduled', 'pending', 'queued'].includes(r.status) && !readDeletedTombstones().has(String(r.id))),
               ).length,
             }}
-          />
+          />}
         </TabsContent>
         <TabsContent value="calendar" className="mt-6">
           <ScheduledCampaignCalendar

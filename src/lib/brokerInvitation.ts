@@ -1,24 +1,12 @@
 import { publicUrl } from './publicUrl';
+import { coldInvitationBody } from '../../supabase/functions/_shared/brokerInvitationTemplate';
 
 /**
- * Default manual WhatsApp/SMS invitation an admin copies to a broker.
- * Placeholders: {brokerName} = broker full name, {authLink} = broker-specific
- * OTP login link. Copy is fixed by request — keep it verbatim.
+ * Cold first-contact invitation an admin copies to a broker.
+ * Placeholders use the recipient first name and public view-only demo link.
+ * Personal OTP links remain a separate deliberate alternative.
  */
-export const BROKER_INVITATION_TEMPLATE = `שלום {brokerName},
-לבקשת אודי ויטמן, יועץ נדל״ן מהרצליה, הכנו עבורך מרחב עבודה במערכת TORAFF, הזנו את כל הנכסים שלך והם ממתינים לאישורך כדי להתפרסם בלוח החדש והמטורף שלנו 🚀
-
-לאחר הזנת הקוד ייפתח מסך הנכסים שלך. כל שנותר הוא להגדיר את עמלת הסגירה ותמחור לידים שאתה מציע לשותפים, לכל נכס בנפרד או לכל הנכסים בבת אחת.
-
-לכניסה לחץ על הקישור וקבל קוד אימות:
-{authLink}
-
-אם נתקלת בבעיה או יש לך שאלות, ניתן לפנות ישירות:
-אודי ויטמן: 0522973500
-שי גלילי, המפתח והאחראי הטכנולוגי הראשי: 0546811841
-
-בברכה,
-צוות TORAFF`;
+export const BROKER_INVITATION_TEMPLATE = coldInvitationBody(null, ['agent']);
 
 export function renderBrokerInvitation(
   template: string,
@@ -33,9 +21,11 @@ export function renderBrokerInvitation(
 }
 
 export function brokerInvitation(broker: { id: string; full_name?: string | null }) {
-  const link = publicUrl(`/auth?broker=${encodeURIComponent(broker.id)}`);
-  return { link, message: renderBrokerInvitation(BROKER_INVITATION_TEMPLATE, { brokerName: broker.full_name, authLink: link }) };
+  const link = publicUrl('/demo/broker');
+  return { link, message: renderBrokerInvitation(BROKER_INVITATION_TEMPLATE, { brokerName: broker.full_name?.trim().split(/\s+/)[0], authLink: link }) };
 }
+
+export const personalBrokerLink = (id: string) => publicUrl(`/auth?broker=${encodeURIComponent(id)}`);
 
 export function firstBrokerDestination(value: unknown): '/' | '/properties' {
   return value === '/properties' ? '/properties' : '/';

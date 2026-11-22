@@ -1,7 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
-import { brokerTemplateFor, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName, officialBrokerPhone } from '../_shared/brokerInvitationTemplate.ts';
+import { coldInvitationBody, invitationTextFor, invitationTargetPhone, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName } from '../_shared/brokerInvitationTemplate.ts';
 import { loadAttachment, attachmentSignedUrl, markAttachmentSent } from '../_shared/invitationAttachment.ts';
 import { publicSiteOrigin, invitationLink, demoInvitationLink } from '../_shared/importInvitationPolicy.ts';
 
@@ -59,8 +59,8 @@ Deno.serve(async req => {
     demoLink = demoInvitationLink(publicSiteOrigin(), roles);
   }
   const { data: saved } = await admin.from('broker_invitation_template_texts').select('gender,body');
-  const savedFor = (g: unknown) => saved?.find(r => r.gender === (g === 'female' ? 'female' : 'male'))?.body ?? brokerTemplateFor(g);
-  if (input.action === 'texts') return json({ male: savedFor('male'), female: savedFor('female'), ...(input.broker_id ? { recipient: savedFor(gender), recipient_gender: gender === 'female' ? 'female' : 'male', demo_link: demoLink } : {}) });
+  const savedFor = (g: unknown) => invitationTextFor(saved?.find(r => r.gender === (g === 'female' ? 'female' : 'male'))?.body, g, roles);
+  if (input.action === 'texts') return json({ male: savedFor('male'), female: savedFor('female'), ...(input.broker_id ? { recipient: savedFor(gender), email_recipient: coldInvitationBody(gender, roles, 'email'), recipient_gender: gender === 'female' ? 'female' : 'male', demo_link: demoLink } : {}) });
   if (input.action === 'save_text') {
     if (input.gender !== 'male' && input.gender !== 'female') return json({ error: 'יש לבחור נוסח לגברים או לנשים' }, 400);
     try {
@@ -106,20 +106,16 @@ Deno.serve(async req => {
     const invitedRoles = ['agent', 'lead_agent', 'managing_broker', 'junior_agent', 'developer', 'marketing_company', 'property_owner', 'property_seeker', 'affiliate'];
     const { data: importedBroker } = await admin.from('admin_broker_onboarding').select('imported_license_number').eq('user_id', input.broker_id).not('import_source', 'is', null).maybeSingle();
     if (brokerError || !broker || (!roles.some(role => invitedRoles.includes(role)) && !importedBroker?.imported_license_number)) return json({ error: 'הנמען אינו חשבון הממתין להזמנה' }, 400);
-    const { data: discovered, error: discoveryError } = input.use_discovered_whatsapp ? await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id', broker.id).single() : { data: null, error: null };
-    if (discoveryError || (input.use_discovered_whatsapp && !discovered)) return json({ error: 'אין מספר WhatsApp שמור למתווך' }, 409);
-    const phone = officialBrokerPhone(discovered?.whatsapp_phone ?? contact?.phone ?? broker.phone ?? '');
+    const useWhatsApp = input.use_discovered_whatsapp || roles.some(role => ['agent','lead_agent','managing_broker','junior_agent'].includes(role)) || !!importedBroker?.imported_license_number;
+    const { data: discovered, error: discoveryError } = useWhatsApp ? await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id', broker.id).single() : { data: null, error: null };
+    if (discoveryError || (useWhatsApp && !discovered)) return json({ error: 'אין מספר WhatsApp שמור למתווך' }, 409);
+    const phone = invitationTargetPhone(discovered?.whatsapp_phone ?? null, contact?.phone ?? null, broker.phone, useWhatsApp);
     if (!phone) return json({ error: 'חסר מספר נייד תקין למתווך' }, 400);
     const { data: onboarding, error: onboardingError } = await admin.from('admin_broker_onboarding').select('user_id,invitation_link_token,first_invitation_at,first_login_at').eq('user_id', broker.id).maybeSingle();
     if (onboardingError || !onboarding) return json({ error: 'המתווך אינו בתהליך הצטרפות בניהול מנהל' }, 409);
     const { data: account, error: accountError } = await admin.auth.admin.getUserById(broker.id);
     if (accountError || !account.user || account.user.last_sign_in_at) return json({ error: 'החשבון אינו ממתין להזמנה ראשונה' }, 409);
     if (onboarding.first_login_at || onboarding.first_invitation_at) return json({ error: 'הזמנה ראשונה כבר נשלחה או שהחשבון כבר התחבר' }, 409);
-    if (!demo && contact?.phone) {
-      // Only personal invitations need sign-in codes; public demo links never change the account login phone.
-      const { error: loginPhoneError } = await admin.auth.admin.updateUserById(broker.id, { phone: `+${contact.phone}`, phone_confirm: true });
-      if (loginPhoneError) return json({ error: 'מספר איש הקשר כבר משמש לכניסה לחשבון אחר. יש להזין מספר אחר לאיש הקשר.' }, 409);
-    }
     const { error: claimError } = await admin.from('broker_invitation_sends').insert({ request_id: input.request_id, broker_id: broker.id, created_by: caller.userId, template_name: name });
     if (claimError) {
       const { data: prior } = await admin.from('broker_invitation_sends').select('status,message_id,broker_id,template_name,created_by').eq('request_id', input.request_id).maybeSingle();

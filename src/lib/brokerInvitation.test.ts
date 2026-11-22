@@ -8,25 +8,23 @@ import {
 import { recipientIsSilent } from '../../supabase/functions/_shared/adminOnboarding';
 
 describe('admin broker onboarding', () => {
-  it('invitation uses broker-specific public OTP login, never credentials or preview origin', () => {
+  it('first invitation uses public broker demo without credentials or personal account identifiers', () => {
     const invitation = brokerInvitation({ id: 'broker-id', full_name: 'דולי אידלסון' });
-    expect(invitation.link).toBe('https://toraff.co.il/auth?broker=broker-id');
+    expect(invitation.link).toBe('https://toraff.co.il/demo/broker');
+    expect(invitation.link).not.toContain('broker-id');
     expect(new URL(invitation.link).searchParams.has('token')).toBe(false);
   });
   it('invitation copy is the fixed wording with name and link filled in', () => {
     expect(BROKER_INVITATION_TEMPLATE).toContain('{brokerName}');
     expect(BROKER_INVITATION_TEMPLATE).toContain('{authLink}');
     const invitation = brokerInvitation({ id: 'broker-id', full_name: 'דולי אידלסון' });
-    expect(invitation.message).toContain('שלום דולי אידלסון,\nלבקשת אודי ויטמן');
-    expect(invitation.message).toContain('ממתינים לאישורך כדי להתפרסם בלוח החדש והמטורף שלנו 🚀');
-    expect(invitation.message).toContain('עמלת הסגירה ותמחור לידים');
-    expect(invitation.message).toContain('קוד אימות:\nhttps://toraff.co.il/auth?broker=broker-id\n');
-    expect(invitation.message.endsWith('בברכה,\nצוות TORAFF')).toBe(true);
+    expect(invitation.message).toContain(invitation.link);
+    expect(invitation.message).not.toContain('broker-id');
     expect(invitation.message).not.toContain('{');
   });
   it('invitation greeting stays clean without a broker name', () => {
     const message = renderBrokerInvitation(BROKER_INVITATION_TEMPLATE, { brokerName: '  ', authLink: 'https://toraff.co.il/auth?broker=x' });
-    expect(message.startsWith('שלום,\nלבקשת')).toBe(true);
+    expect(message).not.toContain('{brokerName}');
     expect(message).toContain('https://toraff.co.il/auth?broker=x');
   });
   it('only server first-login destination changes normal homepage routing', () => {

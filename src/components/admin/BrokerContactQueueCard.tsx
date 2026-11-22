@@ -27,6 +27,7 @@ import { BrokerNumberEditor } from './BrokerNumberEditor';
 import { BulkBrokerWhatsAppScan } from './BulkBrokerWhatsAppScan';
 import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
 import { activeImportHistoryIds } from '@/lib/importHistoryActivity';
+import { coldInvitationBody } from '../../../supabase/functions/_shared/brokerInvitationTemplate';
 
 export type ContactBroker = { user_id: string; full_name: string; phone: string | null; whatsapp_phone?: string | null; whatsapp_link?: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
@@ -38,11 +39,7 @@ async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> 
 }
 
 const DEFAULT_SUBJECT = 'הזמנה לפרסום חינם בלוח נדל"ן מבוסס שותפים ובינה מלאכותית';
-const DEFAULT_EMAIL = (name: string) => `שלום${name ? ` ${name.split(/\s+/)[0]}` : ''},
-
-חסכנו לך את העבודה והזנו עבורך את פרטי הנכסים. הם שמורים במרחב האישי שלך ב-TORAFF וממתינים לבדיקה שלך.
-
-הנכסים לא יתפרסמו בלי אישורך. לאחר הכניסה אפשר לעבור עליהם, לתקן פרטים ולקבוע עמלת סגירה ותמחור פניות.`;
+const DEFAULT_EMAIL = (name: string) => coldInvitationBody(null, [], 'email').replace('{brokerName}', name).replace('{authLink}', '').trim();
 
 function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; contactPhone?: string | null; contactName?: string | null }) {
   // Greeting and title use the actual recipient: the saved contact person when set, otherwise the account holder.
@@ -57,9 +54,9 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [attachmentId, setAttachmentId] = useState<string | null>(null);
   // Same gender-matched default wording as the WhatsApp template, filled with the recipient's first name.
-  const sharedText = useQuery({ queryKey: ['broker-template-texts', 'recipient', b.user_id], enabled: open, queryFn: () => invoke<{ recipient?: string }>('admin-broker-invitation', { action: 'texts', broker_id: b.user_id }) });
+  const sharedText = useQuery({ queryKey: ['broker-template-texts', 'recipient', b.user_id], enabled: open, queryFn: () => invoke<{ email_recipient?: string; demo_link?: string }>('admin-broker-invitation', { action: 'texts', broker_id: b.user_id }) });
   useEffect(() => {
-    const t = sharedText.data?.recipient;
+    const t = sharedText.data?.email_recipient;
     if (!t || bodyTouched.current) return;
     setBody(t.replace(/\{brokerName\}|\[שם פרטי\]/g, recipientFirst).replace(/\s*\{authLink\}\s*/, '\n').trim());
   }, [sharedText.data, recipientFirst]);
@@ -83,7 +80,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
     send.mutate();
   };
   return <>
-    <Button variant="ghost" className="h-7 min-w-0 max-w-24 gap-1 px-0.5 font-normal sm:h-8 sm:max-w-40" aria-label={`שליחת הודעה במייל ל${b.full_name || 'מתווך'}`} title={b.email || 'הוסף מייל'} onClick={() => setOpen(true)}><Mail className="h-4 w-4 shrink-0" /><span dir={b.email ? 'ltr' : 'rtl'} className="min-w-0 truncate text-xs">{b.email || 'הוסף מייל'}</span></Button>
+    <Button variant="ghost" className={`h-7 gap-1 px-0.5 font-normal sm:h-8 ${b.email ? 'min-w-0 max-w-24 sm:max-w-40' : 'min-w-[78px]'}`} aria-label={`שליחת הודעה במייל ל${b.full_name || 'מתווך'}`} title={b.email || 'הוסף מייל'} onClick={() => setOpen(true)}><Mail className="h-4 w-4 shrink-0" /><span dir={b.email ? 'ltr' : 'rtl'} className={`min-w-0 text-xs ${b.email ? 'truncate' : 'whitespace-nowrap'}`}>{b.email || 'הוסף מייל'}</span></Button>
     <Dialog open={open} onOpenChange={v => { if (!send.isPending) setOpen(v); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
         <DialogHeader><DialogTitle>הזמנה במייל ל{recipientName || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">שליחת הזמנה במייל בלבד</DialogDescription></DialogHeader>
@@ -97,6 +94,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
         <label className="block space-y-1"><span className="text-sm font-medium">כותרת המייל</span><Input aria-label="כותרת המייל" className="h-11 text-base" maxLength={200} value={subject} onChange={e => setSubject(e.target.value)} /></label>
         <Textarea aria-label="נוסח המייל" className="min-h-[200px] text-base" value={body} onChange={e => { bodyTouched.current = true; setBody(e.target.value); }} />
         <p className="text-sm text-muted-foreground">{demo ? 'קישור הדמו וקישור ההסרה מתווספים אוטומטית בסוף המייל.' : 'קישור הכניסה לנכסים וקישור ההסרה מתווספים אוטומטית בסוף המייל.'}</p>
+        {demo && sharedText.data?.demo_link && <a href={sharedText.data.demo_link} target="_blank" rel="noopener noreferrer" className="inline-block text-sm text-primary underline">פתיחת מרחב ההדגמה</a>}
         <label className="flex items-center gap-2 text-base"><input type="checkbox" className="h-4 w-4" checked={demo} onChange={e => setDemo(e.target.checked)} />שלח קישור לחשבון דמו לצפייה בלבד</label>
         {demo && <p className="text-sm text-muted-foreground">הקישור יותאם אוטומטית לסוג המשתמש, ללא הרשמה או קוד אימות. אם הסוג אינו ידוע, הנמען יבחר אותו לפני הכניסה לדמו.</p>}
         {b.email_invited_at && !demo && <p className="text-sm text-muted-foreground">הזמנה כבר נשלחה באימייל למתווך זה.</p>}

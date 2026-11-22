@@ -1,27 +1,40 @@
 export const BROKER_TEMPLATE_LANGUAGE = 'he';
-export const BROKER_TEMPLATE_BODY = `היי {brokerName},
+export function coldInvitationBody(gender: unknown, roles: readonly string[] = [], channel: 'whatsapp' | 'email' = 'whatsapp') {
+  const audience = roles.includes('marketing_company') ? 'חברות שיווק נדל״ן' : roles.includes('developer') ? 'יזמים וחברות בנייה' : roles.includes('property_owner') ? 'מוכרים ומשכירים פרטיים' : roles.includes('property_seeker') ? 'קונים ומחפשי נכסים' : roles.includes('affiliate') && !roles.some(r => ['agent','lead_agent','managing_broker','junior_agent'].includes(r)) ? 'שותפים לשיווק נכסים' : 'מתווכים ואנשי נדל״ן';
+  const invitation = gender === 'female' ? 'את מוזמנת' : gender === 'male' ? 'אתה מוזמן' : 'אפשר';
+  return `היי {brokerName},
 
-בהמשך לשיחתינו, אשמח לשיחת המשך לאחר התרשמותך מהפלטפורמה שלנו לשיווק נדל"ן.
+TORAFF, לוח טורף, מחבר ${audience} לרשת שותפים ולריטה AI, לשיווק נדל״ן מבוסס הצלחה, ללא דמי מנוי או התחייבות.
 
-חסכנו לכם את העבודה, הקמנו עבורכם חשבון והזנו דוגמא של פרויקטים של חברת...
+חסכנו את העבודה הסיזיפית: הכנו חשבון והזנו נכסים או פרויקטים לעמוד טיוטה לבדיקה. שום נכס לא מתפרסם ללא אישור. לאחר כניסה לחשבון האישי אפשר לתקן פרטים, לקבוע עמלות ותגמולים ולפרסם בחינם.
 
-הנכסים לא יתפרסמו בלי אישורכם. לאחר הכניסה אפשר לעבור עליהם, לתקן פרטים, לקבוע עמלות ולפרסם בלוח השותפים של המדינה בחינם לגמרי.
+${channel === 'whatsapp' ? 'ההזמנה מגיעה למספר הוואטסאפ שלך.' : 'מספר הוואטסאפ שלך משמש לקבלת הודעות WhatsApp.'} כניסה אישית מתבצעת עם קוד אימות במספר הכניסה השמור בחשבון.
 
-בטוראף הכל חינם ומבוסס הצלחה: אין דמי מנוי ואין התחייבות. כל אדם מוזמן להצטרף לרשת השותפים ולפרסם נכסים של אחרים תמורת עמלות, וריטה AI יוצרת, מפרסמת, עונה לתגובות ומייצרת לידים מסוננים 24/7.
+ריטה יוצרת, מפרסמת, עונה לתגובות ומייצרת לידים מסוננים 24/7.
 
-לצפייה בחשבון ההדגמה המותאם לך, ללא צורך בהרשמה או קוד אימות:
+${invitation} לצפות במרחב ההדגמה המותאם לך, ללא צורך בהרשמה או קוד אימות:
 {authLink}
 
 בכל שאלה אני כאן,
 שי גלילי
-לוח טוראף
-0546811841`;
+לוח טורף`;
+}
+export const BROKER_TEMPLATE_BODY = coldInvitationBody(null);
 
 // The requested wording has no gendered verbs; the female variant is kept separate so it can diverge when edited.
-export const BROKER_TEMPLATE_BODY_FEMALE = BROKER_TEMPLATE_BODY;
+export const BROKER_TEMPLATE_BODY_FEMALE = coldInvitationBody('female');
 
 /** Fixed, non-editable invitation wording for the recipient's saved gender (unknown uses the default). */
-export const brokerTemplateFor = (gender: unknown) => gender === 'female' ? BROKER_TEMPLATE_BODY_FEMALE : BROKER_TEMPLATE_BODY;
+export const brokerTemplateFor = (gender: unknown, roles: readonly string[] = []) => coldInvitationBody(gender, roles);
+
+/** Retire only the former warm-contact default; retain deliberate custom edits. */
+export const invitationTextFor = (saved: string | undefined, gender: unknown, roles: readonly string[] = []) =>
+  saved && !/בהמשך לשיחת(?:נו|ינו)/.test(saved) ? saved : brokerTemplateFor(gender, roles);
+
+/** A broker's saved WhatsApp is never replaced by the unrelated login phone. */
+export function invitationTargetPhone(whatsapp: string | null, contact: string | null, login: string | null, useWhatsApp: boolean) {
+  return officialBrokerPhone(useWhatsApp ? whatsapp ?? '' : contact ?? login ?? '');
+}
 
 /** Converts editable text to Meta body. {brokerName} once; {authLink} optional (link-less wording is the default). */
 export function templateBody(text: string): string {

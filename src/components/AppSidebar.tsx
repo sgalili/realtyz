@@ -17,6 +17,7 @@ import {
   Globe,
   Settings,
   Mail,
+  Eye,
   type LucideProps,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
@@ -357,6 +358,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
           <SidebarGroupContent>
             <SidebarMenu>
               {/* Shared public board: always the first menu entry. */}
+              {!user && <SidebarMenuItem><SidebarMenuButton asChild><NavLink to="/demo" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Eye className="h-4 w-4 text-primary" />{!collapsed && <span className="text-sm font-medium">מרחב הדגמה</span>}</NavLink></SidebarMenuButton></SidebarMenuItem>}
               <SidebarMenuItem key="public-listings">
                 <SidebarMenuButton asChild isActive={location.pathname === '/' || location.pathname.startsWith('/public-listings')}>
                   <NavLink

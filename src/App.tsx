@@ -124,6 +124,7 @@ const PartnerChats = lazy(() => import("./pages/partner/PartnerChats"));
 const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
 const PublicListingsBoard = lazy(() => import("./pages/PublicListingsBoard"));
+const PublicDemo = lazy(() => import('./pages/demo/PublicDemo'));
 const AboutToraff = lazy(() => import('./pages/AboutToraff'));
 const FaqPage = lazy(() => import('./pages/FaqPage'));
 const Developers = lazy(() => import("./pages/Developers"));
@@ -514,6 +515,8 @@ const App = () => (
             <PendingMessageResume />
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
+              <Route path="/demo" element={<Suspense fallback={<PageLoader />}><PublicDemo /></Suspense>} />
+              <Route path="/demo/:type" element={<Suspense fallback={<PageLoader />}><PublicDemo /></Suspense>} />
               <Route path="/.lovable/oauth/consent" element={<Suspense fallback={<PageLoader />}><OAuthConsent /></Suspense>} />
               <Route path="/affiliates" element={<Suspense fallback={<PageLoader />}><AffiliateSignup /></Suspense>} />
               <Route path="/reset-password" element={<ResetPassword />} />

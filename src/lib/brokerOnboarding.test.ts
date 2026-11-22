@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { brokerStage, templateBody, BROKER_TEMPLATE_BODY, invitationTemplateName, officialBrokerPhone } from '../../supabase/functions/_shared/brokerInvitationTemplate';
+import { brokerStage, templateBody, BROKER_TEMPLATE_BODY, invitationTemplateName, officialBrokerPhone, invitationTargetPhone, invitationTextFor, coldInvitationBody } from '../../supabase/functions/_shared/brokerInvitationTemplate';
 
 describe('official broker invitation rules', () => {
+  it('retires the old warm-contact default but keeps deliberately edited templates', () => {
+    expect(invitationTextFor('בהמשך לשיחתינו {brokerName} {authLink}', 'female', ['developer'])).toBe(coldInvitationBody('female', ['developer']));
+    const custom = 'custom {brokerName} {authLink}';
+    expect(invitationTextFor(custom, 'female', ['developer'])).toBe(custom);
+  });
+  it('sends a broker invitation to saved WhatsApp even when the login and contact phones differ', () => {
+    expect(invitationTargetPhone('972502222222', '972503333333', '972504444444', true)).toBe('972502222222');
+  });
+  it('refuses a missing or invalid WhatsApp number without falling back to the login phone', () => {
+    expect(invitationTargetPhone(null, null, '972504444444', true)).toBeNull();
+    expect(invitationTargetPhone('1234', null, '972504444444', true)).toBeNull();
+  });
   it('requires authentication after accepted invitation, never property review before login', () => {
     expect(brokerStage({ invited_at: '2026-11-10', pending_properties: 8, published_properties: 0 })).toBe('pending_otp');
     expect(brokerStage({ pending_properties: 8, published_properties: 0 })).toBe('not_invited');

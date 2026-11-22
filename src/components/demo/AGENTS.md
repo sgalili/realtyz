@@ -1,0 +1,3 @@
+# Public simulation safety
+- Public and authenticated simulated campaign history share DemoCampaignHistory and the whitelisted publicDemoModel; anonymous board reads discard original identifiers, addresses, attribution and rewards, using explicitly simulated rewards/counters/comments. Why: exactly five credible examples without private-data or financial leaks.
+- Public role/section/chat changes are local only and never alter auth, workspace, roles, provider activity or real records. Why: safe public simulation without a demo-account bypass.

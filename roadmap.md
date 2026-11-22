@@ -1083,8 +1083,8 @@
 - [x] Verified signed-in mobile (411px) and desktop cards, office placement, 14px/16px numbers, manual/automatic controls, no horizontal overflow or runtime errors. 15 UI tests, 9 worker tests and isolated PostgreSQL recovery/lease tests passed. Dedicated machine claim returned HTTP 200 with an idle queue; no source fetch, message, contact change or bulk scan performed. Permanent Railway process remains unverified.
 
 ## Cold invitations and public simulation
-- [ ] Separate WhatsApp/email invite modals, use saved WhatsApp target, and show compact card email.
-- [ ] Replace warm-contact defaults with role/gender-aware cold invitation copy and public demo links; preserve consent and Meta approval gates.
-- [ ] Add guest role-selectable public simulation without real private contacts/drafts or auth bypass.
-- [ ] Show five sanitized board-inspired demo campaign posts with simulated counters/comments; preserve real campaign history.
-- [ ] Test public/authenticated flows and report deployment/approval limits.
+- [x] Email modal has email only with compact card email/missing prompt; WhatsApp panel uses the server-owned saved WhatsApp contact without login-phone fallback. Invitation sends no longer change Auth phone, as explicitly confirmed by the user.
+- [x] Role/gender-aware cold defaults, legacy warm-default replacement, public demo links and clickable previews are implemented; both invitation functions deployed. Per-recipient template submission is an explicit Meta-approval action, never a send; consent/duplicate/approval gates remain.
+- [x] Guest menu enters six-role /demo simulation with local module views and Rita conversation; only anonymous public-board reads, no auth switching, private drafts or real writes.
+- [x] Public and server-confirmed authenticated demo history share exactly five sanitized public-board-inspired posts with invented rewards, slowly changing simulated counters and at most three comments plus replies. Real campaign records/history are unchanged.
+- [x] 53 focused tests passed across invitation, consent/target, links, simulation and privacy rules; signed-out mobile/desktop verified six roles, anonymous board HTTP 200/media, counter changes and local Rita reply. Signed-in email-only/cold preview returned HTTP 200, and authenticated broker demo history rendered five posts without runtime errors. No messages or Meta approval submissions sent; real invitation delivery remains unverified pending recipient consent/template approval.
