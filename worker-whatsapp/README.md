@@ -37,3 +37,5 @@
 הקצב כאן אינו מכסה גלובלית לשני השירותים: אם משתמשים באותו חשבון Bright Data, יש לתקצב יחד את קצבי הייבוא והגילוי. כשל השירות הזה אינו עוצר את תור הייבוא, אך חסימת חשבון ספק משותף יכולה להשפיע על שניהם.
 
 בדיקות מקומיות: `npm test`. פריסה וחילוץ/מסירה חיים דורשים בדיקה נפרדת; בדיקות מדומות אינן הוכחת פעילות מול יד2/Meta.
+## קו סריקה ייעודי (Green API)
+כבוי כברירת מחדל. להפעלה ב־Railway: `BROKER_WA_SCANNER_ENABLED=true`, `TORAFF_BROKER_WA_SCANNER_API_URL` (פונקציית `broker-whatsapp-scanner`) ו־`BROKER_WA_SCANNER_WORKER_SECRET` (זהה לסוד בענן, שונה מסוד הגילוי). ה־Worker רק קורא מודעות ומעיר את הענן כל 30 שניות; המכסה, ההשהיה האקראית, שעות הפעילות והעצירה נאכפים בענן. ב־Green API של קו הסריקה בלבד: Webhook URL = `.../functions/v1/broker-whatsapp-scanner-webhook`, Webhook URL Token = `Bearer <GREEN_SCANNER_WEBHOOK_TOKEN>`, והפעלת incomingWebhook ו־stateWebhook.
