@@ -7,10 +7,10 @@ vi.mock('@/hooks/useSuperAdminGate', () => ({ useSuperAdminGate: () => ({ enable
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: state.invoke } } }));
 vi.mock('./OfficialBrokerInvitationDialog', () => ({ OfficialBrokerInvitationPanel: ({ useDiscoveredWhatsApp }: { useDiscoveredWhatsApp: boolean }) => <output data-testid="official-recipient">{String(useDiscoveredWhatsApp)}</output> }));
 afterEach(() => { cleanup(); state.invoke.mockReset(); });
-function setup(status: string | null = null) {
+function setup(status: string | null = null, phone: string | null = null) {
   state.invoke.mockResolvedValue({ data: { job: status ? { id: 'job', status, attempts: 1, last_error: null } : null }, error: null });
   const client=new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(<QueryClientProvider client={client}><BrokerWhatsAppContact brokerId="broker-id" name="Broker" phone="972502222222" /></QueryClientProvider>);
+  render(<QueryClientProvider client={client}><BrokerWhatsAppContact brokerId="broker-id" name="Broker" phone={phone} /></QueryClientProvider>);
   return client;
 }
 it('queues discovery only by default', async () => {
@@ -25,14 +25,15 @@ it('reads a completed persisted WhatsApp contact into its own slot even without 
   expect(await screen.findByRole('button', { name: 'עריכת וואטסאפ של Broker' })).toHaveTextContent('050-3333333');
   expect(screen.queryByRole('button', { name: 'הוספת וואטסאפ של Broker' })).toBeNull();
 });
-it('keeps the persisted contact visible while repeating discovery with a stale queue prop', async () => {
-  state.invoke.mockImplementation((_fn,{body}) => Promise.resolve({data:body.action==='enqueue' ? {job:{id:'next-job',status:'pending',attempts:0}} : {job:{id:'job',status:'completed',attempts:1},contact:{whatsapp_phone:'972503333333'}},error:null}));
-  const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
-  render(<QueryClientProvider client={client}><BrokerWhatsAppContact brokerId="broker-id" name="Broker" phone={null}/></QueryClientProvider>);
-  expect(await screen.findByRole('button',{name:'עריכת וואטסאפ של Broker'})).toHaveTextContent('050-3333333');
-  fireEvent.click(screen.getByRole('button',{name:'גילוי WhatsApp של Broker'}));
-  await waitFor(()=>expect(client.getQueryData<{job:{id:string}}>(['broker-whatsapp-job','broker-id'])?.job.id).toBe('next-job'));
-  expect(screen.getByRole('button',{name:'עריכת וואטסאפ של Broker'})).toHaveTextContent('050-3333333');
+it('shows only the invitation button, not discovery, once a personal WhatsApp is saved', async () => {
+  setup(null, '972502222222');
+  expect(screen.getByRole('button', { name: 'WhatsApp רשמי אל Broker' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'גילוי WhatsApp של Broker' })).toBeNull();
+});
+it('shows only discovery, never the invitation button, without a saved WhatsApp', () => {
+  setup();
+  expect(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'WhatsApp רשמי אל Broker' })).toBeNull();
 });
 it('blocks another job while discovery is running', async () => {
   setup('running');
@@ -41,14 +42,13 @@ it('blocks another job while discovery is running', async () => {
   expect(state.invoke.mock.calls.filter(([,args])=>args.body.action==='enqueue')).toHaveLength(0);
 });
 it('uses the saved WhatsApp contact through the official sender, not a private-device link', () => {
-  setup(); fireEvent.click(screen.getByRole('button', { name: 'WhatsApp רשמי אל Broker' }));
+  setup(null, '972502222222'); fireEvent.click(screen.getByRole('button', { name: 'WhatsApp רשמי אל Broker' }));
   expect(screen.getByTestId('official-recipient')).toHaveTextContent('true');
   expect(document.querySelector('a[href^="https://wa.me/"]')).toBeNull();
 });
 it('unlocks the same discovery control when the tracked job completes', async()=>{
   const client=setup('running');
-  fireEvent.click(screen.getByRole('button',{name:'גילוי WhatsApp של Broker'}));
   await waitFor(()=>expect(screen.getByRole('button',{name:'גילוי WhatsApp של Broker'})).toBeDisabled());
-  await act(async()=>{client.setQueryData(['broker-whatsapp-job','broker-id'],{job:{id:'job',status:'completed',attempts:1,last_error:null}});});
+  await act(async()=>{client.setQueryData(['broker-whatsapp-job','broker-id'],{job:{id:'job',status:'not_found',attempts:1,last_error:null}});});
   await waitFor(()=>expect(screen.getByRole('button',{name:'גילוי WhatsApp של Broker'})).toBeEnabled());
 });

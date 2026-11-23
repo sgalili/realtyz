@@ -38,10 +38,8 @@ it('keeps the broker invitation trigger unavailable without a saved personal Wha
   state.eligible = false;
   mockInvocations();
   render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><OfficialBrokerInvitationDialog broker={{ id: 'broker-2', full_name: 'Dana' }} /></QueryClientProvider>);
-  const trigger = await screen.findByRole('button', { name: 'שליחת הזמנה רשמית ב־WhatsApp' });
-  await waitFor(() => expect(trigger).toBeDisabled());
-  fireEvent.click(trigger);
-  expect(screen.queryByRole('dialog')).toBeNull();
+  await waitFor(() => expect(state.invoke).toHaveBeenCalled());
+  expect(screen.queryByRole('button', { name: 'שליחת הזמנה רשמית ב־WhatsApp' })).toBeNull();
   expect(state.invoke.mock.calls.some(([, { body }]) => body.action === 'send')).toBe(false);
 });
 it('does not enable sending after consent when the saved WhatsApp is missing', async () => {
