@@ -1919,6 +1919,13 @@
       "when": 1795322912679,
       "tag": "0273_dedicated_green_broker_scanner",
       "breakpoints": true
+    },
+    {
+      "idx": 274,
+      "version": "7",
+      "when": 1795444154153,
+      "tag": "0274_scanner_worker_rejected_at",
+      "breakpoints": true
     }
   ]
 }

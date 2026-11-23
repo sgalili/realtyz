@@ -1,0 +1,1 @@
+ALTER TABLE public.broker_wa_scanner_settings ADD COLUMN IF NOT EXISTS worker_rejected_at timestamptz;

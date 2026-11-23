@@ -1978,6 +1978,7 @@ export type Database = {
           webhook_errors: number
           webhook_ready: boolean
           webhook_seen_at: string | null
+          worker_rejected_at: string | null
           worker_seen_at: string | null
         }
         Insert: {
@@ -2004,6 +2005,7 @@ export type Database = {
           webhook_errors?: number
           webhook_ready?: boolean
           webhook_seen_at?: string | null
+          worker_rejected_at?: string | null
           worker_seen_at?: string | null
         }
         Update: {
@@ -2030,6 +2032,7 @@ export type Database = {
           webhook_errors?: number
           webhook_ready?: boolean
           webhook_seen_at?: string | null
+          worker_rejected_at?: string | null
           worker_seen_at?: string | null
         }
         Relationships: []

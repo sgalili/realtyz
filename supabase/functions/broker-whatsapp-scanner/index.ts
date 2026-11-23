@@ -24,7 +24,14 @@ const active=['pending_source','reading_source','ready','sending','awaiting_repl
 Deno.serve(async req=>{
   if(req.method==='OPTIONS')return new Response('ok',{headers:corsHeaders});
   if(req.method!=='POST')return json({error:'method_not_allowed'},405);
-  const machine=validWorkerCredential(Deno.env.get('BROKER_WA_SCANNER_WORKER_SECRET')??'',req.headers.get('x-broker-wa-scanner-secret')??'');
+  const suppliedSecret=req.headers.get('x-broker-wa-scanner-secret');
+  const machine=validWorkerCredential(Deno.env.get('BROKER_WA_SCANNER_WORKER_SECRET')??'',suppliedSecret??'');
+  if(suppliedSecret!==null&&!machine) {
+    // A worker presented a scanner key that does not match Cloud: record it so the admin card shows it instead of failing silently.
+    console.error('[broker-wa-scanner] worker_secret_rejected',{length:suppliedSecret.length});
+    await adminClient().from('broker_wa_scanner_settings').update({worker_rejected_at:new Date().toISOString()}).eq('id',true).then(()=>{},()=>{});
+    return json({error:'worker_secret_mismatch'},401);
+  }
   const caller=machine?null:await requireCaller(req,['user']);
   if(caller instanceof Response)return caller;
   const admin=adminClient();
@@ -108,9 +115,10 @@ Deno.serve(async req=>{
       if(ue)throw new Error('scanner_source_save_failed');return json({ok:true,reason:extraction.reason});
     }
     if(body.action==='tick') {
+      // Heartbeat first, even while paused, so the admin card can tell "worker connected" apart from "line paused".
+      if(settings){const {error:heartbeatError}=await admin.from('broker_wa_scanner_settings').update({worker_seen_at:new Date().toISOString()}).eq('id',true);
+      if(heartbeatError)throw new Error('scanner_heartbeat_save_failed');}
       if(!settings?.enabled||settings.paused)return json({ok:true,idle:true});
-      const {error:heartbeatError}=await admin.from('broker_wa_scanner_settings').update({worker_seen_at:new Date().toISOString()}).eq('id',true);
-      if(heartbeatError)throw new Error('scanner_heartbeat_save_failed');
       const {data:events,error:ev}=await admin.from('broker_wa_scanner_events').select('id').eq('status','received').order('created_at').limit(5);
       if(ev)throw new Error('scanner_replay_read_failed');
       for(const event of events??[])await processScannerEvent(event.id,admin);

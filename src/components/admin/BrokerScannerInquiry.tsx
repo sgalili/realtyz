@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { scannerCall } from './BrokerScannerPanel';
+import { scannerBlockReason } from '@/lib/brokerScannerState';
 export const scannerLabels: Record<string, string> = { pending_source: 'ממתין לקריאת המודעה', reading_source: 'קורא את המודעה', ready: 'ממתין לחלון שליחה', sending: 'שולח פנייה', awaiting_reply: 'ממתין לתשובת יד2', completed: 'המספר נשמר', needs_manual: 'נדרשת בדיקה ידנית', cancelled: 'בוטל', failed: 'נכשל' };
 const live = ['pending_source','reading_source','ready','sending','awaiting_reply'];
 
@@ -13,5 +14,7 @@ export function BrokerScannerInquiry({ brokerId, hasWhatsApp }: { brokerId: stri
   // A correlated reply saved the number: refresh the card so it switches to the invitation button.
   useEffect(() => { if (job?.status === 'completed' || status.data?.contact) void qc.invalidateQueries({ queryKey: ['broker-whatsapp-job', brokerId] }); }, [job?.status, status.data?.contact, brokerId, qc]);
   if (hasWhatsApp || status.data?.contact || !job) return null;
-  return <span className="text-xs text-muted-foreground" title={job.last_error ?? undefined}>{scannerLabels[job.status] ?? job.status}</span>;
+  // Before the worker reads the ad, say why it is not moving (paused line or disconnected worker) instead of an endless wait.
+  const blocked = ['pending_source', 'ready'].includes(job.status) && status.data?.settings ? scannerBlockReason(status.data.settings) : null;
+  return <span className="text-xs text-muted-foreground" title={job.last_error ?? undefined}>{scannerLabels[job.status] ?? job.status}{blocked && <span className="text-destructive"> · {blocked}</span>}</span>;
 }
