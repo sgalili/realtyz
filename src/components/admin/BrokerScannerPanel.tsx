@@ -36,7 +36,7 @@ export function BrokerScannerPanel() {
   return <section dir="rtl" className="space-y-2 rounded-md bg-muted/40 p-3" aria-label="קו סריקת WhatsApp ייעודי">
     <div className="flex flex-wrap items-center gap-2 text-sm">
       <strong>קו סריקה ייעודי</strong>
-      <span className={active ? 'text-lead-whatsapp' : 'text-muted-foreground'}>{active ? 'פעיל' : `מושהה · ${reasons[s.pause_reason ?? ''] ?? s.pause_reason ?? ''}`}</span>
+      <span className={active ? 'text-lead-whatsapp' : 'text-muted-foreground'}>{active ? 'פעיל' : s.paused && s.connected && s.webhook_ready ? 'מחובר · לחץ הפעלה' : `מושהה · ${reasons[s.pause_reason ?? ''] ?? s.pause_reason ?? ''}`}</span>
       <span>{status.data.used_today}/{s.daily_cap} פניות היום</span>
       {status.data.manual_replies > 0 && <span className="text-destructive">{status.data.manual_replies} תשובות לבדיקה ידנית</span>}
       {!status.data.credentials_ready && <span className="text-destructive">חסרים פרטי קו</span>}

@@ -42,7 +42,11 @@ export function BrokerNumberEditor({ brokerId, name, phone, kind }: { brokerId: 
       if (kind === 'whatsapp' && savedPhone) {
         qc.setQueryData<{ job?: Job | null; contact?: { whatsapp_phone: string } | null }>(['broker-whatsapp-job', brokerId], previous => ({ ...previous, contact: { whatsapp_phone: savedPhone } }));
         void qc.invalidateQueries({ queryKey: ['broker-whatsapp-invitation-eligibility', brokerId] });
+      } else if (kind === 'whatsapp') {
+        // Cleared: switch the card back to discovery immediately.
+        qc.setQueryData<{ job?: Job | null; contact?: { whatsapp_phone: string } | null }>(['broker-whatsapp-job', brokerId], previous => ({ ...previous, contact: null }));
       }
+      if (kind === 'whatsapp') void qc.invalidateQueries({ queryKey: ['broker-wa-scanner-job', brokerId] });
       toast.success('המספר נשמר'); setOpen(false); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-whatsapp-job', brokerId] });
     },
     onError: (error: Error) => toast.error(error.message) });
