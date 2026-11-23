@@ -32,4 +32,8 @@ describe('dedicated scanner rules', () => {
     expect(scannerReply({senderData:{chatId:'central@c.us',sender:'central@c.us'},messageData:{extendedTextMessageData:{text:'no number',stanzaId:'sent-id'},quotedMessage:{textMessage:'0503333333'}}}))
       .toEqual({text:'no number',quoted_id:'sent-id',chat_id:'central@c.us',sender:'central@c.us'});
   });
+  it('extracts the seller link from the user-supplied Yad2 reply sample', () => {
+    const sample = 'תודה שיצרת איתנו קשר.\nהעברנו את הפנייה שלך לבן ישייב יועץ נדל"ן מסוכנות מגה נדל"ן עם בקשה ליצור איתך קשר בזמן הקרוב.\n*אין להשיב להודעה זו*\nלפנייה למוכר - https://api.whatsapp.com/send?phone=972509464550';
+    expect(replyContact(sample,[]).phone).toBe('972509464550');
+  });
 });

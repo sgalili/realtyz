@@ -25,6 +25,7 @@ import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 import { BrokerWhatsAppContact } from './BrokerWhatsAppContact';
 import { BrokerNumberEditor } from './BrokerNumberEditor';
 import { BulkBrokerWhatsAppScan } from './BulkBrokerWhatsAppScan';
+import { BrokerScannerPanel } from './BrokerScannerPanel';
 import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
 import { activeImportHistoryIds } from '@/lib/importHistoryActivity';
 import { coldInvitationBody } from '../../../supabase/functions/_shared/brokerInvitationTemplate';
@@ -275,7 +276,7 @@ function SendHistory() {
     <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList className="grid w-full grid-cols-3">
       <TabsTrigger value="broker" className="px-1">מתווכים ({sendCount('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({sendCount('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({sendCount('marketing')})</TabsTrigger>
     </TabsList></Tabs>
-    {group === 'broker' && <BulkBrokerWhatsAppScan />}
+    {group === 'broker' && <><BulkBrokerWhatsAppScan /><BrokerScannerPanel /></>}
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : shown.length === 0 ? <p className="text-base text-muted-foreground">אין שליחות בלשונית זו.</p> :
       <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{shown.map(i => { const key = invitationHistoryKey(i); const isOpen = openKey === key; const contact = contacts.data?.get(i.user_id); return <li key={key}>
         {(() => { const isBroker = recipientGroup(i, contact?.company_name) === 'broker'; const statusLine = <p className="text-sm text-muted-foreground">{i.channel === 'whatsapp' ? 'וואטסאפ' : 'מייל'} · {STATUS[i.status] ?? i.status} · {new Date(i.sent_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</p>;
@@ -391,7 +392,7 @@ function PendingInvitations() {
         <TabsTrigger value="broker" className="px-1">מתווכים ({count('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({count('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({count('marketing')})</TabsTrigger>
       </TabsList></Tabs>
     </div>
-    {group === 'broker' && <BulkBrokerWhatsAppScan />}
+    {group === 'broker' && <><BulkBrokerWhatsAppScan /><BrokerScannerPanel /></>}
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} marketing={marketing.data?.get(b.user_id)} />)}</ul>}
   </div>;

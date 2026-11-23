@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { configuration, retryAfterSeconds, sourceAllowed } from './policy.js';
+import { runScanner, scannerConfiguration } from './scanner.js';
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export function createCloudApi(config, fetcher = fetch) {
@@ -94,7 +95,8 @@ export async function startBrokerWhatsAppWorker() {
       }
     }
   };
-  try { await Promise.all(Array.from({ length: config.concurrency }, lane)); }
+  const scanner = scannerConfiguration(process.env);
+  try { await Promise.all([...Array.from({ length: config.concurrency }, lane), ...(scanner ? [runScanner(scanner, { source, isStopping: () => stopping || suspended })] : [])]); }
   finally { process.removeListener('SIGTERM', stop); process.removeListener('SIGINT', stop); }
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) startBrokerWhatsAppWorker().catch(() => { console.error('Broker WhatsApp worker configuration failed'); process.exitCode = 1; });
