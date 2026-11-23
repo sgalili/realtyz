@@ -55,7 +55,13 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
       else if(job.status==='not_found') {
         // Same click continues on the dedicated scanner line: it sends the ad's own Yad2 inquiry and waits for a correlated reply.
         const target=brokerId;
-        void scannerCall({ action: 'enqueue', broker_id: target, confirmed: true })
+        void scannerCall({ action: 'status' })
+          .then(line => {
+            const s = line.settings;
+            // Paused/disabled line: never call enqueue (avoids a refused request); explain instead.
+            if (!s?.enabled || s.paused || !line.credentials_ready) throw new Error('קו הסריקה מושהה — יש להפעיל אותו כדי לשלוח פנייה');
+            return scannerCall({ action: 'enqueue', broker_id: target, confirmed: true });
+          })
           .then(() => { if(currentBroker.current===target)toast.info('לא נמצא מספר במודעה; נשלחת פנייה דרך קו הסריקה'); })
           .catch((e: Error) => { if(currentBroker.current===target)toast.info(`${labels.not_found}. ${e.message}`); })
           .finally(() => void qc.invalidateQueries({ queryKey: ['broker-wa-scanner-job', target] }));
