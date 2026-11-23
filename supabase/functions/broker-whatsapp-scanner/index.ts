@@ -50,7 +50,7 @@ Deno.serve(async req=>{
       return json({settings:settings??{...scannerDefaults,enabled:false,paused:true,pause_reason:'not_configured'},credentials_ready:!!scannerCredentials(),used_today:settings?.budget_day===today?settings.day_attempts:0,manual_replies:count??0,job,contact});
     }
     if(body.action==='configure') {
-      if(body.jitter_max_seconds<body.jitter_min_seconds||body.end_hour<=body.start_hour)return json({error:'invalid_window'},400);
+      if(body.jitter_max_seconds<body.jitter_min_seconds||body.end_hour<=body.start_hour)return json({ok:false,error:'טווח ההשהיה או השעות אינו תקין'});
       const {action,...values}=body;
       const {error}=await admin.from('broker_wa_scanner_settings').upsert({id:true,...values,paused:true,pause_reason:'configuration_changed',updated_by:caller?.kind==='user'?caller.userId:null,updated_at:new Date().toISOString()});
       if(error)throw new Error('scanner_settings_save_failed');
@@ -76,18 +76,18 @@ Deno.serve(async req=>{
     }
     if(body.action==='enqueue') {
       if(caller?.kind!=='user')return json({error:'forbidden'},403);
-      if(!settings?.enabled||settings.paused||!scannerCredentials())return json({error:'קו הסריקה אינו פעיל'},409);
+      if(!settings?.enabled||settings.paused||!scannerCredentials())return json({ok:false,error:'קו הסריקה אינו פעיל'});
       const {data:contact,error:ce}=await admin.from('broker_whatsapp_contacts').select('broker_id').eq('broker_id',body.broker_id).maybeSingle();
       if(ce)throw new Error('scanner_contact_read_failed');
-      if(contact)return json({error:'כבר שמור מספר WhatsApp אישי'},409);
+      if(contact)return json({ok:false,error:'כבר שמור מספר WhatsApp אישי'});
       const {data:listings,error:le}=await admin.from('listings').select('id,source_url').eq('workspace_owner_id',body.broker_id).eq('user_id',body.broker_id).eq('source','yad2').not('source_url','is',null).order('created_at',{ascending:false}).limit(50);
       if(le)throw new Error('scanner_source_read_failed');
       const source=listings?.find(row=>/^https:\/\/www\.yad2\.co\.il\/realestate\/item\/[a-zA-Z0-9]+(?:\?.*)?$/.test(row.source_url??''));
-      if(!source?.source_url)return json({error:'אין למתווך מודעת יד2 שמורה'},400);
+      if(!source?.source_url)return json({ok:false,error:'אין למתווך מודעת יד2 שמורה'});
       const {data:eligible,error:ee}=await admin.rpc('scanner_broker_eligible',{_broker:body.broker_id,_listing:source.id,_creator:caller.userId,_source:source.source_url});
       if(ee)throw new Error('scanner_eligibility_check_failed');if(!eligible)return json({error:'forbidden_broker'},403);
       const {data:job,error:ie}=await admin.from('broker_wa_scanner_jobs').insert({broker_id:body.broker_id,workspace_owner_id:body.broker_id,listing_id:source.id,source_url:source.source_url,created_by:caller.userId,consent_at:new Date().toISOString()}).select('id,status').single();
-      if(ie?.code==='23505')return json({error:'כבר קיימת פנייה למתווך או למודעה זו; לא תישלח פנייה כפולה'},409);
+      if(ie?.code==='23505')return json({ok:false,error:'כבר קיימת פנייה למתווך או למודעה זו; לא תישלח פנייה כפולה'});
       if(ie)throw new Error('scanner_enqueue_failed');return json({ok:true,job});
     }
     if(body.action==='claim_source') {
