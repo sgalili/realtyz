@@ -1926,6 +1926,13 @@
       "when": 1795444154153,
       "tag": "0274_scanner_worker_rejected_at",
       "breakpoints": true
+    },
+    {
+      "idx": 275,
+      "version": "7",
+      "when": 1795451335006,
+      "tag": "0275_scanner_reply_broker_name_correlation",
+      "breakpoints": true
     }
   ]
 }

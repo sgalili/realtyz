@@ -48,7 +48,9 @@ export function scannerReply(payload: Record<string, any>) {
   const message = payload.messageData ?? {};
   const extended = message.extendedTextMessageData ?? {};
   return {
-    text: String(message.textMessageData?.textMessage ?? extended.text ?? ''),
+    // Business senders like Yad2 may use template/button formats instead of plain text.
+    text: String(message.textMessageData?.textMessage ?? extended.text ?? message.templateMessageData?.contentText
+      ?? message.buttonsMessage?.contentText ?? message.interactiveButtons?.contentText ?? ''),
     quoted_id: String(message.quotedMessage?.stanzaId ?? extended.stanzaId ?? ''),
     chat_id: String(payload.senderData?.chatId ?? ''),
     sender: String(payload.senderData?.sender ?? ''),

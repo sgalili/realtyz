@@ -12840,6 +12840,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      scanner_reply_names_broker: {
+        Args: { _broker: string; _text: string }
+        Returns: boolean
+      }
       schedule_workspace_call: {
         Args: {
           _lead: string

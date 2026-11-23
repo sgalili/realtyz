@@ -36,4 +36,8 @@ describe('dedicated scanner rules', () => {
     const sample = 'תודה שיצרת איתנו קשר.\nהעברנו את הפנייה שלך לבן ישייב יועץ נדל"ן מסוכנות מגה נדל"ן עם בקשה ליצור איתך קשר בזמן הקרוב.\n*אין להשיב להודעה זו*\nלפנייה למוכר - https://api.whatsapp.com/send?phone=972509464550';
     expect(replyContact(sample,[]).phone).toBe('972509464550');
   });
+  it('reads Yad2 template-format replies', () => {
+    expect(scannerReply({senderData:{chatId:'c@c.us',sender:'c@c.us'},messageData:{templateMessageData:{contentText:'לפנייה למוכר - https://wa.me/972509464550'}}}).text)
+      .toContain('972509464550');
+  });
 });

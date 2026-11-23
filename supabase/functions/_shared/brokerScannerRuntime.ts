@@ -91,6 +91,10 @@ export async function processScannerEvent(eventId: string, admin = adminClient()
   ));
   // Webhook may arrive before sendMessage's ID is committed. Keep it for bounded replay.
   if (!matches.length && jobs?.some(job=>job.status==='sending') && Date.now()-Date.parse(event.created_at)<120000) return;
+  // Yad2's automatic reply neither quotes our message nor repeats the ad URL. With exactly one outstanding
+  // inquiry on this serial line, hand it to the server, which accepts it only if the reply names that broker.
+  const awaiting = (jobs ?? []).filter(job => job.status === 'awaiting_reply');
+  if (!matches.length && awaiting.length === 1 && !jobs?.some(job => job.status === 'sending')) matches.push(awaiting[0]);
   if (matches.length !== 1) {
     const { error: ue } = await admin.from('broker_wa_scanner_events').update({status:'needs_manual',reason:matches.length ? 'ambiguous_message_correlation' : 'missing_message_correlation'}).eq('id',event.id).eq('status','received');
     if (ue) throw new Error('scanner_event_update_failed');
