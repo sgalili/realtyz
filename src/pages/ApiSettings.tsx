@@ -348,9 +348,12 @@ const ApiSettings = () => {
 
   const edgeFnBase = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/manage-api-configs`;
   const whatsappWebhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
-  const edgeFnHeaders = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+  // The function verifies the signed-in admin, so send the user's session token, not the public key.
+  const edgeFnHeaders = async () => {
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error('not_signed_in');
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
   };
 
   // Secure connection verification on load
@@ -361,7 +364,7 @@ const ApiSettings = () => {
         // Test DB connectivity
         const { error } = await supabase.from('leads').select('id', { count: 'exact', head: true });
         // Test edge function connectivity
-        const res = await fetch(edgeFnBase, { headers: edgeFnHeaders });
+        const res = await fetch(edgeFnBase, { headers: await edgeFnHeaders() });
         setConnectionVerified(!error && res.ok);
       } catch {
         setConnectionVerified(false);
@@ -375,7 +378,7 @@ const ApiSettings = () => {
   const { data: configs } = useQuery({
     queryKey: ['api-configs'],
     queryFn: async () => {
-      const res = await fetch(edgeFnBase, { headers: edgeFnHeaders });
+      const res = await fetch(edgeFnBase, { headers: await edgeFnHeaders() });
       if (!res.ok) throw new Error('Failed to load configs');
       return (await res.json()) as ApiConfig[];
     },
@@ -446,7 +449,7 @@ const ApiSettings = () => {
       if (blockDemoAction('save-api-key')) throw new Error('demo-blocked');
       const res = await fetch(edgeFnBase, {
         method: 'POST',
-        headers: edgeFnHeaders,
+        headers: await edgeFnHeaders(),
         body: JSON.stringify({ service_name: serviceName, api_key: apiKey, webhook_url: webhookUrl || null, is_active: true }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Save failed'); }
@@ -458,7 +461,7 @@ const ApiSettings = () => {
   const deleteConfig = useMutation({
     mutationFn: async (id: string) => {
       if (blockDemoAction('delete-api-key')) throw new Error('demo-blocked');
-      const res = await fetch(edgeFnBase, { method: 'DELETE', headers: edgeFnHeaders, body: JSON.stringify({ id }) });
+      const res = await fetch(edgeFnBase, { method: 'DELETE', headers: await edgeFnHeaders(), body: JSON.stringify({ id }) });
       if (!res.ok) throw new Error('Delete failed');
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['api-configs'] }); toast.success('ההגדרה נמחקה'); },
@@ -471,13 +474,13 @@ const ApiSettings = () => {
       if (!greenApiInstanceId || !greenApiToken) { toast.error('יש למלא Instance ID ו-API Token'); return; }
       setSavingKey('whatsapp');
       const wba = configs?.find((c) => c.service_name === 'WhatsApp Business');
-      if (wba) await fetch(edgeFnBase, { method: 'POST', headers: edgeFnHeaders, body: JSON.stringify({ service_name: 'WhatsApp Business', api_key: wba.api_key, is_active: false }) });
+      if (wba) await fetch(edgeFnBase, { method: 'POST', headers: await edgeFnHeaders(), body: JSON.stringify({ service_name: 'WhatsApp Business', api_key: wba.api_key, is_active: false }) });
       upsertConfig.mutate({ serviceName: 'Green API', apiKey: `${greenApiInstanceId}:${greenApiToken}` });
     } else {
       if (!wbaPhoneId || !wbaAccessToken) { toast.error('יש למלא Phone Number ID ו-Access Token'); return; }
       setSavingKey('whatsapp');
       const green = configs?.find((c) => c.service_name === 'Green API');
-      if (green) await fetch(edgeFnBase, { method: 'POST', headers: edgeFnHeaders, body: JSON.stringify({ service_name: 'Green API', api_key: green.api_key, is_active: false }) });
+      if (green) await fetch(edgeFnBase, { method: 'POST', headers: await edgeFnHeaders(), body: JSON.stringify({ service_name: 'Green API', api_key: green.api_key, is_active: false }) });
       upsertConfig.mutate({ serviceName: 'WhatsApp Business', apiKey: `${wbaPhoneId}:${wbaAccessToken}` });
     }
   };

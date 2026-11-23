@@ -110,16 +110,19 @@ const ConnectionSettings = () => {
   const [homelyHasKey, setHomelyHasKey] = useState(false);
 
   const edgeFnBase = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/manage-api-configs`;
-  const edgeFnHeaders = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+  // The function verifies the signed-in admin, so send the user's session token, not the public key.
+  const edgeFnHeaders = async () => {
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error('not_signed_in');
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
   };
 
   // Load existing api_configs
   const { data: configs } = useQuery({
     queryKey: ['api-configs'],
     queryFn: async () => {
-      const res = await fetch(edgeFnBase, { headers: edgeFnHeaders });
+      const res = await fetch(edgeFnBase, { headers: await edgeFnHeaders() });
       if (!res.ok) throw new Error('Failed to load configs');
       return (await res.json()) as ApiConfig[];
     },
@@ -161,7 +164,7 @@ const ConnectionSettings = () => {
   const saveConfig = async (serviceName: string, apiKey: string) => {
     const res = await fetch(edgeFnBase, {
       method: 'POST',
-      headers: edgeFnHeaders,
+      headers: await edgeFnHeaders(),
       body: JSON.stringify({ service_name: serviceName, api_key: apiKey, is_active: true }),
     });
     if (!res.ok) {
