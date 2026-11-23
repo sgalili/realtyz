@@ -15,6 +15,11 @@ import { BrokerEmailConsentButton } from './BrokerEmailInvitations';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/hooks/useAuth';
+
+/** Admin-only reads run only for a confirmed Super Admin and are keyed by the signed-in user. */
+function useAdminGate() { const { isSuperAdmin, loading } = useUserRole(); const { user } = useAuth(); return { enabled: !loading && isSuperAdmin && !!user, uid: user?.id ?? 'anon' }; }
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -255,7 +260,8 @@ function SendHistoryContent({ item }: { item: HistoryItem }) {
 }
 
 function SendHistory() {
-  const q = useQuery({ queryKey: ['broker-contact-history'], queryFn: () => invoke<{ items: HistoryItem[] }>('admin-broker-contact', { action: 'history' }) });
+  const gate = useAdminGate();
+  const q = useQuery({ queryKey: ['broker-contact-history', gate.uid], enabled: gate.enabled, queryFn: () => invoke<{ items: HistoryItem[] }>('admin-broker-contact', { action: 'history' }) });
   const items = threadInvitationHistory(q.data?.items ?? []);
   const ownerIds = Array.from(new Set(items.map(i => i.user_id))).sort();
   const contacts = useQuery({ queryKey: ['marketing-contacts', ownerIds.join(',')], enabled: ownerIds.length > 0, queryFn: async () => {
@@ -340,7 +346,8 @@ export function ImportHistory() {
     catch { /* workspace provider shows authorization errors */ }
     finally { setOpening(null); }
   };
-  const q = useQuery({ queryKey: ['broker-import-history'], queryFn: () => invoke<{ items: ImportItem[] }>('admin-broker-contact', { action: 'imports' }), refetchInterval: query => progress?.[0]?.status === 'running' || query.state.data?.items.some(i => i.status === 'running') ? 4000 : false });
+  const gate = useAdminGate();
+  const q = useQuery({ queryKey: ['broker-import-history', gate.uid], enabled: gate.enabled, queryFn: () => invoke<{ items: ImportItem[] }>('admin-broker-contact', { action: 'imports' }), refetchInterval: query => progress?.[0]?.status === 'running' || query.state.data?.items.some(i => i.status === 'running') ? 4000 : false });
   const [kind, setKind] = useState<'broker' | 'developer'>(() => readSuperAdminViewState().importKind ?? 'broker');
   useEffect(() => saveSuperAdminViewState({ importKind: kind }), [kind]);
   const allImports = q.data?.items ?? [];
@@ -368,7 +375,8 @@ export function ImportHistory() {
 
 /** Silently imported accounts awaiting their first successful invitation. */
 export function usePendingInvitations() {
-  return useQuery({ queryKey: ['broker-contact-queue'], queryFn: () => invoke<{ brokers: ContactBroker[] }>('admin-broker-contact', { action: 'list' }), refetchOnWindowFocus: true, refetchInterval: 30000 });
+  const gate = useAdminGate();
+  return useQuery({ queryKey: ['broker-contact-queue', gate.uid], enabled: gate.enabled, queryFn: () => invoke<{ brokers: ContactBroker[] }>('admin-broker-contact', { action: 'list' }), refetchOnWindowFocus: true, refetchInterval: 30000 });
 }
 
 function PendingInvitations() {

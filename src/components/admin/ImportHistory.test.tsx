@@ -6,6 +6,8 @@ import { ImportHistory } from './BrokerContactQueueCard';
 import type { ImportActivityJob } from '@/lib/importHistoryActivity';
 
 const state = vi.hoisted(() => ({ invoke: vi.fn(), switchWorkspace: vi.fn().mockResolvedValue(undefined), jobs: [] as ImportActivityJob[] }));
+vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isSuperAdmin: true, loading: false }) }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'admin' } }) }));
 vi.mock('@/hooks/useAdminImportJobs', () => ({ useAdminImportJobs: () => ({ data: state.jobs }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: state.invoke } } }));
 vi.mock('@/hooks/useWorkspace', () => ({ useWorkspace: () => ({ activeWorkspaceId: 'admin', setActiveWorkspace: state.switchWorkspace }) }));

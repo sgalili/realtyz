@@ -5,6 +5,8 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { BrokerContactQueueCard } from './BrokerContactQueueCard';
 
 const state = vi.hoisted(() => ({ invoke: vi.fn(), rpc: vi.fn().mockResolvedValue({ data: [], error: null }), switchWorkspace: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isSuperAdmin: true, loading: false }) }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'admin' } }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: state.invoke }, rpc: state.rpc } }));
 vi.mock('@/hooks/useWorkspace', () => ({ useWorkspace: () => ({ activeWorkspaceId: 'admin', setActiveWorkspace: state.switchWorkspace }) }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'admin' } }) }));
