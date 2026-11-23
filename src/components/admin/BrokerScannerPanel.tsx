@@ -18,7 +18,7 @@ export async function scannerCall(body: Record<string, unknown>) {
     const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
     throw new Error(body?.error === 'forbidden' ? 'אין הרשאת Super Admin' : body?.error === 'scanner_operation_failed' ? 'הבדיקה מול Green API נכשלה; נסו שוב בעוד דקה' : body?.error || 'פעולת קו הסריקה נכשלה');
   }
-  return data as ScannerStatus & { ok?: boolean; reason?: string };
+  return data as ScannerStatus & { ok?: boolean; reason?: string; error?: string };
 }
 const reasons: Record<string, string> = { not_configured: 'טרם הוגדר', configuration_changed: 'ההגדרות השתנו — יש לבדוק ולהפעיל', user_paused: 'הושהה ידנית', scanner_disconnected: 'הקו מנותק', scanner_webhook_not_configured: 'הוובהוק אינו מוגדר בקו', scanner_phone_not_dedicated: 'הקו אינו ייעודי', scanner_instance_in_use_by_workspace: 'הקו כבר משמש חשבון אחר', scanner_credentials_missing: 'חסרים פרטי קו', scanner_phone_is_broker_contact: 'מספר הקו שמור כמספר של מתווך', save_settings_first: 'יש לשמור הגדרות תחילה', scanner_not_ready: 'הקו אינו מוכן' };
 
