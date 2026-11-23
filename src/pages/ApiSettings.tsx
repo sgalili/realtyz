@@ -748,7 +748,7 @@ const ApiSettings = () => {
       const proxyUrl = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/test-webhook`;
       const res = await fetch(proxyUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        headers: await edgeFnHeaders(),
         body: JSON.stringify({ webhook_url: url, auth_token: token && token !== 'none' ? token : undefined, payload: { type: 'ping', source: 'TORAFF', timestamp: new Date().toISOString() } }),
       });
       const data = await res.json();
@@ -765,7 +765,7 @@ const ApiSettings = () => {
     try {
       const res = await fetch(`https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/generate-content`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        headers: await edgeFnHeaders(),
         body: JSON.stringify({ topic: 'בדיקת חיבור', platform: 'twitter' }),
       });
       if (res.ok) toast.success('✅ חיבור Gemini AI תקין!');
@@ -831,7 +831,7 @@ const ApiSettings = () => {
       if (!user || !pass) { toast.error('יש למלא שם משתמש וטוקן, או לשמור אותם קודם'); setTestingService(null); return; }
       const res = await fetch(`https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/test-sms-connection`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        headers: await edgeFnHeaders(),
         body: JSON.stringify({ user, password: pass }),
       });
       const data = await res.json();
