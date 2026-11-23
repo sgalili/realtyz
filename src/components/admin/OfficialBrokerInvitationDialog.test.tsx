@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 import { OfficialBrokerInvitationDialog, OfficialBrokerInvitationPanel } from './OfficialBrokerInvitationDialog';
 const state = vi.hoisted(() => ({ invoke: vi.fn(), status: 'APPROVED', eligible: true }));
+vi.mock('@/hooks/useSuperAdminGate', () => ({ useSuperAdminGate: () => ({ enabled: true, uid: 'admin' }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: state.invoke }, rpc: async () => ({ data: { stage: 'not_invited', pending_properties: 2 }, error: null }) } }));
 vi.mock('@/lib/officialWa', () => ({ getOfficialWaNumber: async () => '972537983832' }));
 vi.mock('@/hooks/useCampaignPricing', () => ({ useCampaignPricing: () => ({ data: [{ action_key: 'whatsapp_marketing', price_agorot: 100 }] }) }));

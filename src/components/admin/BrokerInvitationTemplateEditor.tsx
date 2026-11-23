@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSuperAdminGate } from '@/hooks/useSuperAdminGate';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type Gender = 'male' | 'female';
@@ -22,7 +23,8 @@ function GenderEditor({ gender, initial }: { gender: Gender; initial: string }) 
   const qc = useQueryClient();
   const [text, setText] = useState(initial);
   useEffect(() => setText(initial), [initial]);
-  const status = useQuery({ queryKey: ['broker-template-status', gender], queryFn: () => invoke<{ status: string }>({ action: 'status', gender }) });
+  const gate = useSuperAdminGate();
+  const status = useQuery({ queryKey: ['broker-template-status', gender, gate.uid], enabled: gate.enabled, queryFn: () => invoke<{ status: string }>({ action: 'status', gender }) });
   const submit = useMutation({
     mutationFn: () => invoke<{ status: string }>({ action: 'save_text', gender, text }),
     onSuccess: d => { toast.success(d.status === 'APPROVED' ? 'הנוסח נשמר ומאושר' : 'הנוסח נשמר והוגש לאישור Meta'); void qc.invalidateQueries({ queryKey: ['broker-template-texts'] }); void qc.invalidateQueries({ queryKey: ['broker-template-status', gender] }); void qc.invalidateQueries({ queryKey: ['official-broker-template'] }); },

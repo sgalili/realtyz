@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 import { BrokerWhatsAppContact } from './BrokerWhatsAppContact';
 const state = vi.hoisted(() => ({ invoke: vi.fn() }));
+vi.mock('@/hooks/useSuperAdminGate', () => ({ useSuperAdminGate: () => ({ enabled: true, uid: 'admin' }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: state.invoke } } }));
 vi.mock('./OfficialBrokerInvitationDialog', () => ({ OfficialBrokerInvitationPanel: ({ useDiscoveredWhatsApp }: { useDiscoveredWhatsApp: boolean }) => <output data-testid="official-recipient">{String(useDiscoveredWhatsApp)}</output> }));
 afterEach(() => { cleanup(); state.invoke.mockReset(); });

@@ -4,6 +4,7 @@ import { Loader2, Pause, Play, PlugZap } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useSuperAdminGate } from '@/hooks/useSuperAdminGate';
 import { supabase } from '@/integrations/supabase/client';
 
 export type ScannerSettings = { enabled: boolean; paused: boolean; pause_reason: string | null; daily_cap: number; jitter_min_seconds: number; jitter_max_seconds: number; start_hour: number; end_hour: number; error_threshold: number; connected?: boolean; webhook_ready?: boolean };
@@ -17,7 +18,8 @@ const reasons: Record<string, string> = { not_configured: 'טרם הוגדר', c
 
 export function BrokerScannerPanel() {
   const qc = useQueryClient();
-  const status = useQuery({ queryKey: ['broker-wa-scanner'], retry: false, queryFn: () => scannerCall({ action: 'status' }), refetchInterval: 15000 });
+  const gate = useSuperAdminGate();
+  const status = useQuery({ queryKey: ['broker-wa-scanner', gate.uid], enabled: gate.enabled, retry: false, queryFn: () => scannerCall({ action: 'status' }), refetchInterval: 15000 });
   const s = status.data?.settings;
   const [draft, setDraft] = useState<Partial<ScannerSettings>>({});
   const value = (key: keyof ScannerSettings) => Number(draft[key] ?? s?.[key] ?? 0);

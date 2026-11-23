@@ -4,6 +4,7 @@ import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdm
 import { BrokerBatchImportCard } from './BrokerBatchImportCard';
 
 const state = vi.hoisted(() => ({ job: { id: 'job-1', status: 'paused', stage: 'importing', target_brokers: 10, brokers_done: 2, listings_done: 8, skipped: 0, updated_at: '2026-11-22T01:35:00Z', error: null as string | null, checkpoint: { lastError: { message: 'provider timeout', status: 504 } } } }));
+vi.mock('@/hooks/useSuperAdminGate', () => ({ useSuperAdminGate: () => ({ enabled: true, uid: 'admin' }) }));
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: [state.job] }), useQueryClient: () => ({ invalidateQueries: vi.fn().mockResolvedValue(null) }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: vi.fn() } } }));
 vi.mock('@/lib/refreshImportedInventory', () => ({ refreshImportedInventory: vi.fn() }));

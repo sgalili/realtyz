@@ -3,6 +3,7 @@ import { QueryClient,QueryClientProvider } from '@tanstack/react-query';
 import { afterEach,it,expect,vi } from 'vitest';
 import { BulkBrokerWhatsAppScan } from './BulkBrokerWhatsAppScan';
 const state=vi.hoisted(()=>({invoke:vi.fn()}));
+vi.mock('@/hooks/useSuperAdminGate', () => ({ useSuperAdminGate: () => ({ enabled: true, uid: 'admin' }) }));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{functions:{invoke:state.invoke}}}));
 vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({user:{id:'admin'}})}));
 afterEach(()=>{cleanup();state.invoke.mockReset();});

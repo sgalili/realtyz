@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import { BrokerImportWorkspace } from './BrokerImportWorkspace';
 
+vi.mock('@/hooks/useSuperAdminGate', () => ({ useSuperAdminGate: () => ({ enabled: true, uid: 'admin' }) }));
 vi.mock('./BrokerBatchImportCard', () => ({ BrokerBatchImportCard: () => <div>סטטוס הייבוא</div> }));
 vi.mock('./BrokerContactQueueCard', () => ({ usePendingInvitations: () => ({ data: { brokers: [] } }), BrokerContactQueueCard: ({ view }: { view: string }) => <div data-testid="active-import-view">{view}</div> }));
 

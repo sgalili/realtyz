@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { BrokerNumberEditor } from './BrokerNumberEditor';
 import { BrokerWhatsAppContact } from './BrokerWhatsAppContact';
 const state=vi.hoisted(()=>({invoke:vi.fn()}));
+vi.mock('@/hooks/useSuperAdminGate', () => ({ useSuperAdminGate: () => ({ enabled: true, uid: 'admin' }) }));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{functions:{invoke:state.invoke}}}));
 afterEach(()=>{cleanup();state.invoke.mockReset();});
 it('manual WhatsApp readback updates the shared slot even when the follow-up status read fails', async () => {

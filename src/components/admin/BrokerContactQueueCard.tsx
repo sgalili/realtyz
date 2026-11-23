@@ -15,11 +15,7 @@ import { BrokerEmailConsentButton } from './BrokerEmailInvitations';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { useUserRole } from '@/hooks/useUserRole';
-import { useAuth } from '@/hooks/useAuth';
-
-/** Admin-only reads run only for a confirmed Super Admin and are keyed by the signed-in user. */
-function useAdminGate() { const { isSuperAdmin, loading } = useUserRole(); const { user } = useAuth(); return { enabled: !loading && isSuperAdmin && !!user, uid: user?.id ?? 'anon' }; }
+import { useSuperAdminGate as useAdminGate } from '@/hooks/useSuperAdminGate';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useWorkspace } from '@/hooks/useWorkspace';

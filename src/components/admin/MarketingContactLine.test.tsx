@@ -8,6 +8,7 @@ const state = vi.hoisted(() => {
   const update = vi.fn().mockReturnValue({ eq });
   return { eq, update, from: vi.fn().mockReturnValue({ update }) };
 });
+vi.mock('@/hooks/useSuperAdminGate', () => ({ useSuperAdminGate: () => ({ enabled: true, uid: 'admin' }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: state.from } }));
 vi.mock('./MarketingCompanyLine', () => ({ MarketingCompanyLine: () => null }));
 

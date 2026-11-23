@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UserCreditBalanceEditor, validCreditBalance } from './UserCreditBalanceEditor';
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
+vi.mock('@/hooks/useSuperAdminGate', () => ({ useSuperAdminGate: () => ({ enabled: true, uid: 'admin' }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc } }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 describe('Super Admin exact credit editor', () => {

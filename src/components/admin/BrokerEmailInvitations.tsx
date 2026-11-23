@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { useSuperAdminGate } from '@/hooks/useSuperAdminGate';
 import { hasNewAdminItems } from '@/lib/adminUserFilters';
 
 async function invoke(body: Record<string, unknown>) {
@@ -22,7 +23,8 @@ async function invoke(body: Record<string, unknown>) {
 export type BrokerEmailState = { email_consent_at: string | null; email_unsubscribed_at: string | null; email_invited_at: string | null };
 
 export function useBrokerEmailStates(enabled: boolean) {
-  return useQuery({ queryKey: ['broker-email-states'], enabled, queryFn: async () => {
+  const gate = useSuperAdminGate();
+  return useQuery({ queryKey: ['broker-email-states', gate.uid], enabled: enabled && gate.enabled, queryFn: async () => {
     const { data, error } = await supabase.from('admin_broker_onboarding').select('user_id,email_consent_at,email_unsubscribed_at,email_invited_at');
     if (error) throw error;
     return Object.fromEntries((data ?? []).map(r => [r.user_id, r as BrokerEmailState]));
@@ -48,7 +50,8 @@ export function BrokerEmailConsentButton({ broker, state }: { broker: { id: stri
 
 export function BrokerEmailBatchCard() {
   const qc = useQueryClient();
-  const summary = useQuery({ queryKey: ['broker-email-summary'], refetchInterval: 30000, queryFn: () => invoke({ action: 'summary' }) as Promise<{ eligible: number; batch_max: number }> });
+  const gate = useSuperAdminGate();
+  const summary = useQuery({ queryKey: ['broker-email-summary', gate.uid], enabled: gate.enabled, refetchInterval: 30000, queryFn: () => invoke({ action: 'summary' }) as Promise<{ eligible: number; batch_max: number }> });
   const send = useMutation({ mutationFn: () => invoke({ action: 'send_batch' }) as Promise<{ sent: number; failed: number; remaining: number }>, onSuccess: d => {
     toast[d.failed ? 'warning' : 'success'](`נשלחו ${d.sent} אימיילים${d.failed ? `, ${d.failed} נכשלו` : ''}. נותרו ${d.remaining}.`);
     void qc.invalidateQueries({ queryKey: ['broker-email-summary'] }); void qc.invalidateQueries({ queryKey: ['broker-email-states'] });
