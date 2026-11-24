@@ -1,0 +1,6 @@
+import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+export function ScannerActionConfirm({ open, onOpenChange, title, description, confirmLabel, pending, onConfirm }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; description: string; confirmLabel: string; pending?: boolean; onConfirm: () => void }) {
+  return <Dialog open={open} onOpenChange={value => { if (!pending) onOpenChange(value); }}><DialogContent dir="rtl" className="max-w-sm text-right"><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader><div className="flex items-center justify-between gap-3"><Button variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>ביטול</Button><Button disabled={pending} onClick={onConfirm}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}{confirmLabel}</Button></div></DialogContent></Dialog>;
+}

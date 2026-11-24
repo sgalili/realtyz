@@ -4,6 +4,7 @@ import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
 import { validWorkerCredential } from '../_shared/externalImportWorker.ts';
 import { extractYad2Inquiry, scannerDefaults, scannerJitter } from '../_shared/brokerScannerPolicy.ts';
 import { checkScannerConnection, processScannerEvent, scannerCredentials, scannerError, scannerGreen } from '../_shared/brokerScannerRuntime.ts';
+import { continueBrokerScanner } from '../_shared/brokerScannerContinuation.ts';
 import { brokerFailure, brokerUserError, transientBrokerConnectionError } from '../_shared/brokerRecovery.ts';
 
 const schema = z.discriminatedUnion('action',[
@@ -64,8 +65,10 @@ Deno.serve(async req=>{
         if(be)throw brokerFailure('scanner_queue_read_failed',be);outstanding=!!busy;
         outstanding_until=busy?.status==='awaiting_reply'?busy.reply_deadline:busy?.send_reserved_at?new Date(Date.parse(busy.send_reserved_at)+90000).toISOString():null;
       }
+      const overview = !body.broker_id ? await admin.rpc('get_broker_discovery_overview') : {data:undefined,error:null};
+      if(overview.error)throw brokerFailure('scanner_overview_failed',overview.error);
       const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem'}).format(new Date());
-      return json({queue_ahead,outstanding,outstanding_until,settings:settings??{...scannerDefaults,enabled:false,paused:true,pause_reason:'not_configured'},credentials_ready:!!scannerCredentials(),used_today:settings?.budget_day===today?settings.day_attempts:0,manual_replies:count??0,job,contact});
+      return json({overview:overview.data,queue_ahead,outstanding,outstanding_until,settings:settings??{...scannerDefaults,enabled:false,paused:true,pause_reason:'not_configured'},credentials_ready:!!scannerCredentials(),used_today:settings?.budget_day===today?settings.day_attempts:0,manual_replies:count??0,job,contact});
     }
     if(body.action==='configure') {
       if(body.jitter_max_seconds<body.jitter_min_seconds)return json({ok:false,error:'טווח ההשהיה אינו תקין'});
@@ -136,6 +139,9 @@ Deno.serve(async req=>{
       if(settings){const {error:heartbeatError}=await admin.from('broker_wa_scanner_settings').update({worker_seen_at:new Date().toISOString()}).eq('id',true);
       if(heartbeatError)throw brokerFailure('scanner_heartbeat_save_failed',heartbeatError);}
       if(!settings?.enabled||settings.paused)return json({ok:true,idle:true});
+      const continuations=await admin.rpc('pending_broker_scanner_continuations');
+      if(continuations.error)throw brokerFailure('scanner_continuation_read_failed',continuations.error);
+      for(const pending of continuations.data??[])await continueBrokerScanner(admin,pending);
       const {data:events,error:ev}=await admin.from('broker_wa_scanner_events').select('id').eq('status','received').order('created_at').limit(5);
       if(ev)throw brokerFailure('scanner_replay_read_failed',ev);
       for(const event of events??[]) {

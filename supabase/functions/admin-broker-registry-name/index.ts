@@ -2,7 +2,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { BROKER_LICENSE_PATTERN } from '../_shared/brokerRegistry.ts';
-import { assertRegistryNameTarget, fetchRegistryName, RegistryNameError, registryNameFailureResponse } from './lookup.ts';
+import { RegistryNameError, registryNameFailureResponse } from './lookup.ts';
+
+import { refreshAdminRegistryName } from '../_shared/adminRegistryRefresh.ts';
 
 const Body = z.object({ user_id: z.string().uuid(), license_number: z.string().regex(BROKER_LICENSE_PATTERN) }).strict();
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
@@ -25,35 +27,7 @@ Deno.serve(async req => {
     const parsed = Body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return reply({ message: 'נא להזין מספר רישיון תקין בספרות בלבד' }, 400);
     const { user_id: userId, license_number: license } = parsed.data;
-    const { data: profile, error: profileError } = await admin.from('profiles').select('id,full_name,city,broker_license_number,locked_broker_name').eq('id', userId).maybeSingle();
-    if (profileError) throw profileError;
-    if (!profile) return reply({ message: 'הפרופיל המבוקש לא נמצא' }, 404);
-    const {data: imported,error: importedError} = await admin.from('admin_broker_onboarding').select('imported_license_number').eq('user_id',userId).maybeSingle();
-    if(importedError)throw importedError;
-    const target = {...profile, imported_license_number:imported?.imported_license_number};
-    assertRegistryNameTarget(target, license);
-    // Never borrow a license already attached to another account, including silent imports.
-    for(const [table,column] of [['profiles','broker_license_number'],['admin_broker_onboarding','imported_license_number'],['admin_approved_broker_licenses','license_number'],['broker_license_verifications','license_number']]) {
-      const ownerColumn=table==='profiles'?'id':'user_id';
-      const {data: owners,error: ownerError}=await admin.from(table).select(ownerColumn).eq(column,license).neq(ownerColumn,userId).limit(1);
-      if(ownerError)throw ownerError;
-      if(owners?.length)throw new RegistryNameError('license_owned','מספר הרישיון כבר משויך לחשבון אחר. לא שונו פרטי החשבון.',409);
-    }
-    const registry = await fetchRegistryName(license);
-    assertRegistryNameTarget(target, license, registry.fullName);
-    // Refresh official evidence so existing name/license triggers use the same current record.
-    // This never writes verification evidence, broker roles, approval status or SMS state.
-    const { error: registryError } = await admin.from('official_brokers_registry').upsert({ license_number: license, holder_name: registry.rawName, display_name: registry.fullName, registry_city: registry.city, source_url: registry.source, source_updated_at: registry.updatedAt, checked_at: new Date().toISOString() });
-    if (registryError) throw registryError;
-    const update = admin.from('profiles').update({ broker_license_number:license, full_name: registry.fullName, locked_broker_name: registry.fullName, ...(registry.city ? {city:registry.city,locked_broker_city:registry.city}: {}) }).eq('id', userId);
-    const { data: saved, error: saveError } = await (profile.broker_license_number ? update.eq('broker_license_number',profile.broker_license_number) : update.is('broker_license_number',null)).select('id,full_name,city,broker_license_number').single();
-    if (saveError || !saved || saved.full_name !== registry.fullName) throw new RegistryNameError('save_failed', 'השם נשלף, אך לא ניתן היה לעדכן את הפרופיל. רעננו ונסו שוב.', 409);
-    // Exact registry match confirmed by a Super Admin is official license evidence (no role grant).
-    const { data: previous } = await admin.from('broker_license_verifications').select('account_name_before_verification').eq('user_id', userId).maybeSingle();
-    const { error: evidenceError } = await admin.from('broker_license_verifications').upsert({ user_id: userId, license_number: license, registry_holder_name: registry.rawName, account_name_before_verification: previous?.account_name_before_verification ?? profile.full_name ?? '', source_url: registry.source, source_updated_at: registry.updatedAt, verified_at: new Date().toISOString() });
-    if (evidenceError) throw evidenceError;
-    await admin.from('audit_logs').insert({ action: 'admin_registry_name_refresh', actor_id: identity.user.id, target_table: 'profiles', target_id: userId, details: { source: registry.source } });
-    return reply({ profile: saved, registry: { full_name: registry.fullName, city: registry.city, license_number: license }, message: 'השם המלא נשלף בהצלחה מהמאגר הממשלתי' });
+    return reply(await refreshAdminRegistryName(admin, userId, license, identity.user.id));
   } catch (error) {
     if (error instanceof RegistryNameError) {
       const result = registryNameFailureResponse(error);

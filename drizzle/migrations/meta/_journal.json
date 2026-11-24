@@ -1996,6 +1996,20 @@
       "when": 1795487323057,
       "tag": "0284_scanner_queue_priority",
       "breakpoints": true
+    },
+    {
+      "idx": 285,
+      "version": "7",
+      "when": 1795491556854,
+      "tag": "0285_durable_broker_scanner_registry_batches",
+      "breakpoints": true
+    },
+    {
+      "idx": 286,
+      "version": "7",
+      "when": 1795491740799,
+      "tag": "0286_registry_source_timestamp_casts",
+      "breakpoints": true
     }
   ]
 }

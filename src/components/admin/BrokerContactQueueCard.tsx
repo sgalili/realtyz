@@ -24,7 +24,8 @@ import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdm
 import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 import { BrokerWhatsAppContact } from './BrokerWhatsAppContact';
 import { BrokerNumberEditor } from './BrokerNumberEditor';
-import { BrokerScannerPanel } from './BrokerScannerPanel';
+import { sortDiscoveryPriority } from '@/lib/brokerDiscoveryPriority';
+import { BrokerScannerPanel, scannerCall } from './BrokerScannerPanel';
 import { emptyImportSearch, matchesImportSearch, newestImportsFirst, type ImportSearch } from '@/lib/adminImportPresentation';
 import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
 import { activeImportHistoryIds } from '@/lib/importHistoryActivity';
@@ -260,6 +261,9 @@ export function useSendHistoryRows() {
 
 function SendHistory({ search }: { search: ImportSearch }) {
   const q = useSendHistoryRows();
+  const gate = useAdminGate();
+  const [prioritySort, setPrioritySort] = useState(false);
+  const scanner = useQuery({ queryKey: ['broker-wa-scanner', gate.uid], enabled: gate.enabled, retry: false, queryFn: () => scannerCall({ action: 'status' }), refetchInterval: 15000 });
   const items = threadInvitationHistory(q.data?.items ?? []);
   const ownerIds = Array.from(new Set(items.map(i => i.user_id))).sort();
   const contacts = useQuery({ queryKey: ['marketing-contacts', ownerIds.join(',')], enabled: ownerIds.length > 0, queryFn: async () => {
@@ -270,7 +274,8 @@ function SendHistory({ search }: { search: ImportSearch }) {
   useEffect(() => saveSuperAdminViewState({ sendGroup: group }), [group]);
   const sendCount = (g: RecipientGroup) => items.filter(i => recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) === g).length;
   const searching = search.text.trim() || search.kind !== 'all' || search.channel !== 'all';
-  const shown = items.filter(i => (searching || recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) === group) && matchesImportSearch({ ...i, kind: recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) }, { ...search, whatsapp: 'all' }));
+  const filteredItems = items.filter(i => (searching || recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) === group) && matchesImportSearch({ ...i, kind: recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) }, { ...search, whatsapp: 'all' }));
+  const shown = prioritySort ? sortDiscoveryPriority(filteredItems, scanner.data?.overview?.rows ?? []) : filteredItems;
   const [openKey, setOpenKey] = useState<string | null>(() => readSuperAdminViewState().openSendKey ?? null);
   const toggleOpen = (key: string) => {
     const next = openKey === key ? null : key;
@@ -281,7 +286,7 @@ function SendHistory({ search }: { search: ImportSearch }) {
     <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList className="grid w-full grid-cols-3">
       <TabsTrigger value="broker" className="px-1">מתווכים ({sendCount('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({sendCount('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({sendCount('marketing')})</TabsTrigger>
     </TabsList></Tabs>
-    {group === 'broker' && <BrokerScannerPanel />}
+    {group === 'broker' && <BrokerScannerPanel prioritySort={prioritySort} onPrioritySort={() => setPrioritySort(value => !value)} />}
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError && !q.data ? <p role="alert" className="text-base text-destructive">{brokerUserError(q.error)}</p> : shown.length === 0 ? <p className="text-base text-muted-foreground">אין שליחות בלשונית זו.</p> :
       <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{shown.map(i => { const key = invitationHistoryKey(i); const isOpen = openKey === key; const contact = contacts.data?.get(i.user_id); return <li key={key}>
         {(() => { const isBroker = recipientGroup(i, contact?.company_name) === 'broker'; const statusLine = <p className="text-sm text-muted-foreground">{i.channel === 'whatsapp' ? 'וואטסאפ' : 'מייל'} · {STATUS[i.status] ?? i.status} · {new Date(i.sent_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</p>;
@@ -387,6 +392,9 @@ export function usePendingInvitations() {
 function PendingInvitations({ search }: { search: ImportSearch }) {
   const q = usePendingInvitations();
   const all = newestImportsFirst(q.data?.brokers ?? []);
+  const gate = useAdminGate();
+  const [prioritySort, setPrioritySort] = useState(false);
+  const scanner = useQuery({ queryKey: ['broker-wa-scanner', gate.uid], enabled: gate.enabled, retry: false, queryFn: () => scannerCall({ action: 'status' }), refetchInterval: 15000 });
   const [group, setGroup] = useState<RecipientGroup>(() => readSuperAdminViewState().pendingGroup ?? 'broker');
   useEffect(() => saveSuperAdminViewState({ pendingGroup: group }), [group]);
   const devIds = all.filter(b => b.is_developer).map(b => b.user_id);
@@ -397,7 +405,8 @@ function PendingInvitations({ search }: { search: ImportSearch }) {
   const groupOf = (b: ContactBroker) => recipientGroup({ recipient_kind: b.is_developer ? 'developer' : 'broker' }, marketing.data?.get(b.user_id)?.company_name);
   const count = (g: RecipientGroup) => all.filter(b => groupOf(b) === g).length;
   const searching = search.text.trim() || search.kind !== 'all' || search.whatsapp !== 'all';
-  const brokers = all.filter(b => (searching || groupOf(b) === group) && matchesImportSearch({ ...b, kind: groupOf(b) }, { ...search, channel: 'all' }));
+  const filtered = all.filter(b => (searching || groupOf(b) === group) && matchesImportSearch({ ...b, kind: groupOf(b) }, { ...search, channel: 'all' }));
+  const brokers = prioritySort ? sortDiscoveryPriority(filtered, scanner.data?.overview?.rows ?? []) : filtered;
   return <div className="space-y-4">
     {/* The scrollport has 20px top padding and the primary band is 76px high. A 56px
         offset therefore joins this row to it, with an opaque background over passing cards. */}
@@ -406,7 +415,7 @@ function PendingInvitations({ search }: { search: ImportSearch }) {
         <TabsTrigger value="broker" className="px-1">מתווכים ({count('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({count('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({count('marketing')})</TabsTrigger>
       </TabsList></Tabs>
     </div>
-    {group === 'broker' && <BrokerScannerPanel />}
+    {group === 'broker' && <BrokerScannerPanel prioritySort={prioritySort} onPrioritySort={() => setPrioritySort(value => !value)} />}
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError && !q.data ? <p role="alert" className="text-base text-destructive">{brokerUserError(q.error)}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} marketing={marketing.data?.get(b.user_id)} />)}</ul>}
   </div>;

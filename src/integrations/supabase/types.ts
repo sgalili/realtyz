@@ -1701,6 +1701,98 @@ export type Database = {
           },
         ]
       }
+      broker_registry_batch_items: {
+        Row: {
+          attempts: number
+          batch_id: string
+          broker_id: string
+          created_at: string
+          id: string
+          license_number: string | null
+          next_attempt_at: string
+          status: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          attempts?: number
+          batch_id: string
+          broker_id: string
+          created_at?: string
+          id?: string
+          license_number?: string | null
+          next_attempt_at?: string
+          status?: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          attempts?: number
+          batch_id?: string
+          broker_id?: string
+          created_at?: string
+          id?: string
+          license_number?: string | null
+          next_attempt_at?: string
+          status?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_registry_batch_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "broker_registry_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_registry_batch_items_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broker_registry_batches: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_registry_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_role_suspensions: {
         Row: {
           reason: string
@@ -1849,6 +1941,7 @@ export type Database = {
       }
       broker_wa_scanner_jobs: {
         Row: {
+          batch_id: string | null
           broker_id: string
           completed_at: string | null
           consent_at: string
@@ -1877,6 +1970,7 @@ export type Database = {
           workspace_owner_id: string
         }
         Insert: {
+          batch_id?: string | null
           broker_id: string
           completed_at?: string | null
           consent_at: string
@@ -1905,6 +1999,7 @@ export type Database = {
           workspace_owner_id: string
         }
         Update: {
+          batch_id?: string | null
           broker_id?: string
           completed_at?: string | null
           consent_at?: string
@@ -1933,6 +2028,13 @@ export type Database = {
           workspace_owner_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "broker_wa_scanner_jobs_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "broker_whatsapp_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "broker_wa_scanner_jobs_broker_id_fkey"
             columns: ["broker_id"]
@@ -2046,6 +2148,7 @@ export type Database = {
           created_by: string
           enqueue_finished: boolean
           id: string
+          persistent: boolean
           status: string
           updated_at: string
         }
@@ -2054,6 +2157,7 @@ export type Database = {
           created_by: string
           enqueue_finished?: boolean
           id?: string
+          persistent?: boolean
           status?: string
           updated_at?: string
         }
@@ -2062,6 +2166,7 @@ export type Database = {
           created_by?: string
           enqueue_finished?: boolean
           id?: string
+          persistent?: boolean
           status?: string
           updated_at?: string
         }
@@ -11231,6 +11336,10 @@ export type Database = {
         Args: { _workspace_owner_id?: string }
         Returns: boolean
       }
+      cancel_broker_registry_batch: {
+        Args: { _actor: string; _id: string }
+        Returns: undefined
+      }
       cancel_broker_whatsapp_batch: {
         Args: { _creator: string; _id: string }
         Returns: number
@@ -11329,9 +11438,28 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_broker_registry_batch: {
+        Args: { _id: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "broker_registry_batches"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_broker_wa_scanner_source: {
         Args: never
         Returns: {
+          batch_id: string | null
           broker_id: string
           completed_at: string | null
           consent_at: string
@@ -11782,6 +11910,10 @@ export type Database = {
         Args: { _id: string; _schedule_name: string }
         Returns: undefined
       }
+      dispatch_broker_registry_batch: {
+        Args: { _id: string }
+        Returns: undefined
+      }
       dispatch_developer_import_retry: {
         Args: { _id: string; _schedule_name: string }
         Returns: undefined
@@ -11898,6 +12030,16 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      finish_broker_registry_item: {
+        Args: {
+          _batch: string
+          _item: string
+          _retry?: boolean
+          _status: string
+          _token: string
+        }
+        Returns: boolean
       }
       finish_broker_whatsapp_discovery: {
         Args: {
@@ -12190,7 +12332,13 @@ export type Database = {
         }[]
       }
       get_agency_phone_admin: { Args: { _owner_id: string }; Returns: string }
+      get_broker_discovery_overview: { Args: never; Returns: Json }
       get_broker_license_state: { Args: { _user_id: string }; Returns: Json }
+      get_broker_registry_batch: { Args: { _id?: string }; Returns: Json }
+      get_broker_whatsapp_batch_progress: {
+        Args: { _id: string }
+        Returns: Json
+      }
       get_business_performance: {
         Args: { days_window?: number; user_uuid: string }
         Returns: Json
@@ -12693,6 +12841,37 @@ export type Database = {
         Returns: Json
       }
       partner_can_view_closing: { Args: { _user_id: string }; Returns: boolean }
+      pending_broker_scanner_continuations: {
+        Args: never
+        Returns: {
+          attempts: number
+          batch_id: string | null
+          broker_id: string
+          consent_at: string | null
+          created_at: string
+          created_by: string
+          discovered_phone: string | null
+          id: string
+          last_error: string | null
+          lease_token: string | null
+          lease_until: string | null
+          listing_id: string
+          message_id: string | null
+          next_attempt_at: string
+          outreach: boolean
+          source_url: string
+          status: string
+          updated_at: string
+          worker_id: string | null
+          workspace_owner_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "broker_whatsapp_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       post_media_source_key: { Args: { _url: string }; Returns: string }
       prepare_account_self_deletion: {
         Args: {
@@ -12783,6 +12962,10 @@ export type Database = {
         Returns: Json
       }
       register_referral: { Args: { _code: string }; Returns: Json }
+      release_broker_registry_batch: {
+        Args: { _id: string; _token: string }
+        Returns: undefined
+      }
       release_fb_group_post_slot: {
         Args: { _group: string; _owner: string }
         Returns: undefined
@@ -12818,6 +13001,7 @@ export type Database = {
       reserve_broker_wa_scanner_send: {
         Args: { _instance: string; _jitter: number; _phone: string }
         Returns: {
+          batch_id: string | null
           broker_id: string
           completed_at: string | null
           consent_at: string
@@ -12875,6 +13059,21 @@ export type Database = {
       run_availability_checks: { Args: { _limit?: number }; Returns: Json }
       rz_is_synthetic_email: { Args: { _e: string }; Returns: boolean }
       rz_phone_label: { Args: { _p: string }; Returns: string }
+      save_admin_registry_match: {
+        Args: {
+          _actor: string
+          _batch?: string
+          _city: string
+          _display_name: string
+          _license: string
+          _raw_name: string
+          _source: string
+          _source_updated: string
+          _token?: string
+          _user: string
+        }
+        Returns: Json
+      }
       save_grow_card_reference: {
         Args: {
           _brand: string
@@ -12969,6 +13168,10 @@ export type Database = {
         Returns: boolean
       }
       social_identity_key: { Args: { _raw: string }; Returns: string }
+      start_broker_registry_batch: {
+        Args: { _actor: string; _targets: string[] }
+        Returns: string
+      }
       start_fresh_broker_import_job: {
         Args: {
           _actor: string
@@ -12977,6 +13180,10 @@ export type Database = {
           _min: number
           _target: number
         }
+        Returns: string
+      }
+      start_selected_broker_whatsapp_batch: {
+        Args: { _actor: string; _brokers: string[] }
         Returns: string
       }
       submit_affiliate_license: {
