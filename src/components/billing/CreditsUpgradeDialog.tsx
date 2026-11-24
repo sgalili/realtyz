@@ -1,3 +1,4 @@
+import { MONTHLY_FREE_CREDITS_DEFAULT, useMonthlyFreeCredits } from '@/hooks/useMonthlyFreeCredits';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -28,12 +29,13 @@ export function CreditsUpgradeDialog() {
     setOpen(true);
   }, [empty, user]);
 
+  const monthlyCredits = useMonthlyFreeCredits().data ?? MONTHLY_FREE_CREDITS_DEFAULT;
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent dir="rtl" className="max-w-lg">
         <DialogHeader>
           <DialogTitle>נגמרו הקרדיטים החינמיים</DialogTitle>
-          <DialogDescription>כל חודש מקבלים 20 קרדיטים חינם. כדי להמשיך לפרסם ולשלוח עכשיו, בחרו חבילה. ככל שהחבילה גדולה יותר, הבונוס גדל.</DialogDescription>
+          <DialogDescription>כל חודש מקבלים {monthlyCredits} קרדיטים חינם. כדי להמשיך לפרסם ולשלוח עכשיו, בחרו חבילה. ככל שהחבילה גדולה יותר, הבונוס גדל.</DialogDescription>
         </DialogHeader>
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {WALLET_BONUS_TIERS.map(t => { const p = walletPackage(t.amount, rate); return (

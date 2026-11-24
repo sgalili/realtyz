@@ -9,6 +9,7 @@ import { referralLink } from '@/lib/referralAttribution';
 import { fmtCredits } from '@/lib/credits';
 import { INVITE_BONUS_DEFAULTS, useInviteBonusSettings } from '@/hooks/useInviteBonusSettings';
 import { usePersonalLanguage } from '@/i18n/personalLanguage';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 
 const STEPS = [
   { icon: Link2, label: 'שולחים קישור', color: 'text-deal-blue', surface: 'bg-deal-blue/10' },
@@ -35,9 +36,10 @@ export function AffiliateInviteCard() {
   }, []);
   const bonus = useInviteBonusSettings().data ?? INVITE_BONUS_DEFAULTS;
   const { gender } = usePersonalLanguage();
+  const brokersOnly = useBrokersOnly();
   const referrerLabel = gender === 'female' ? 'לך · המזמינה' : 'לך · המזמין';
   const link = data?.code ? referralLink(data.code) : '';
-  const message = `בואו ל־TORAFF! אחרי העסקה המאושרת הראשונה שלכם, תקבלו ${fmtCredits(bonus.friend_credits)} לארנק ואני אקבל ${fmtCredits(bonus.referrer_credits)}. מצטרפים דרך הקישור שלי: ${link}`;
+  const message = `${brokersOnly ? 'מערכת ההפעלה שלי כמתווך היא TORAFF. ' : ''}בואו ל־TORAFF! אחרי העסקה המאושרת הראשונה שלכם, תקבלו ${fmtCredits(bonus.friend_credits)} לארנק ואני אקבל ${fmtCredits(bonus.referrer_credits)}. מצטרפים דרך הקישור שלי: ${link}`;
   const copy = async () => {
     if (!link) return;
     try {
@@ -56,7 +58,7 @@ export function AffiliateInviteCard() {
   return (
     <section dir="rtl" data-no-hero-wave className="space-y-8 px-2 pt-6 sm:px-6 sm:pt-10">
       <header className="space-y-3 text-center">
-        <p className="mx-auto max-w-md text-base leading-relaxed text-muted-foreground">קונים, מוכרים, מתווכים ושותפים. עסקה מאושרת אחת, בונוס לשניכם.</p>
+        <p className="mx-auto max-w-md text-base leading-relaxed text-muted-foreground">{brokersOnly ? 'מזמינים מתווכים אחרים. עסקה מאושרת אחת, בונוס לשניכם.' : 'קונים, מוכרים, מתווכים ושותפים. עסקה מאושרת אחת, בונוס לשניכם.'}</p>
       </header>
       <div className="grid grid-cols-3 gap-2 sm:gap-6">
         {STEPS.map((step, i) => (

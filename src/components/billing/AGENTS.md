@@ -9,3 +9,4 @@
 - Verified live payment changes atomically enqueue platform-sender SMS; claim before sending and review ambiguous deliveries without blind retries. Why: payment callbacks must not duplicate customer receipts.
 - Saved Grow cards require explicit self consent and verified live card payment; keep raw tokens in provider vault, expose only display metadata and allow self revocation. Price changes enqueue service-only, idempotent issuer checks using server fees/caps. Why: no hidden mandates or reusable-token leaks.
 - Out-of-credits prompt is the global CreditsUpgradeDialog (openCreditsUpgrade event + auto-open once per session at zero balance). Why: one upgrade surface.
+- Monthly free credits come from platform_system_settings.monthly_free_credits (Super Admin edits in System); grant_monthly_free_credits_for and all copy read it via useMonthlyFreeCredits. Why: one configurable value.

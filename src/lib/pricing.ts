@@ -42,7 +42,7 @@ export const UNIVERSAL_FEATURES: string[] = [
   `${TOUCHES_PER_CONTACT} מגעי AI לכל ליד בחודש · טעינת ארנק בכל רגע`,
 ];
 
-/** החבילות הרשמיות. מחיר חודשי קבוע, בלי עלויות נסתרות. */
+/** מסלול חינם בלבד: השימוש בתשלום עובר דרך חבילות קרדיטים, ללא מנוי חודשי. */
 export const PACKAGES: PricingPackage[] = [
   {
     id: 'free',
@@ -51,34 +51,6 @@ export const PACKAGES: PricingPackage[] = [
     tagline: 'להתחלה, בלי כרטיס אשראי',
     contacts: FREE_CONTACTS,
     properties: FREE_PROPERTIES,
-    features: UNIVERSAL_FEATURES,
-  },
-  {
-    id: 'basic',
-    name: 'Agent',
-    monthlyPrice: 145,
-    tagline: 'למתווך שמתחיל בגדול',
-    contacts: 250,
-    properties: Infinity,
-    features: UNIVERSAL_FEATURES,
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    monthlyPrice: 495,
-    tagline: 'המסלול הפופולרי',
-    contacts: 1_000,
-    properties: Infinity,
-    features: UNIVERSAL_FEATURES,
-    highlight: true,
-  },
-  {
-    id: 'agency',
-    name: 'Max',
-    monthlyPrice: 795,
-    tagline: 'לנפח פעילות גבוה',
-    contacts: 5_000,
-    properties: Infinity,
     features: UNIVERSAL_FEATURES,
   },
 ];

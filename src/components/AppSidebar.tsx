@@ -263,7 +263,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       });
   }, [audience, features, access.projects, access.properties, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError, identity.label, isPartnerMode]);
   // Brokers-only SaaS hides partner/affiliate and referral-reward screens (code and data stay intact).
-  const navItems = useMemo(() => brokersOnly ? allNavItems.filter(i => !['/affiliate-network', '/referral', '/partner/chats', '/sharing-pool'].includes(i.url)) : allNavItems, [allNavItems, brokersOnly]);
+  const navItems = useMemo(() => brokersOnly ? allNavItems.filter(i => !['/affiliate-network', '/partner/chats', '/sharing-pool'].includes(i.url)) : allNavItems, [allNavItems, brokersOnly]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts || audience !== 'professional') return undefined;

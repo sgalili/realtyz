@@ -8568,18 +8568,21 @@ export type Database = {
       platform_system_settings: {
         Row: {
           id: boolean
+          monthly_free_credits: number
           platform_mode: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           id?: boolean
+          monthly_free_credits?: number
           platform_mode?: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           id?: boolean
+          monthly_free_credits?: number
           platform_mode?: string
           updated_at?: string
           updated_by?: string | null
