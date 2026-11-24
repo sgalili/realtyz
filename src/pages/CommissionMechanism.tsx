@@ -1,7 +1,10 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
+import { BrokersPricing } from '@/components/legal/BrokersOnlyLegal';
 import { LegalPageLayout, LegalSection } from '@/components/public/LegalPageLayout';
 import UnlicensedPartnerCommissionNote from '@/components/public/UnlicensedPartnerCommissionNote';
 
 export default function CommissionMechanism() {
+  if (useBrokersOnly()) return <BrokersPricing />;
   return <LegalPageLayout title="מנגנון העמלות">
     <p className="text-base leading-8 text-muted-foreground">ב־TORAFF יש שלושה מסלולים נפרדים: שימוש בשירותים דיגיטליים בקרדיטים, תגמול על פניות מאומתות ועמלת תיווך בגין סגירת עסקה. צפייה במודעה או שליחת פנייה אינן כשלעצמן התחייבות לתשלום דמי תיווך.</p>
     <LegalSection title="מוכרים ומשכירים">

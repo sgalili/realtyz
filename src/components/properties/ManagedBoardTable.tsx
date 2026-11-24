@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BadgeCheck } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -41,10 +42,12 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
 }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
+  const brokersOnly = useBrokersOnly();
   const rows = useMemo<Row[]>(() => results.map(result => ({ result, card: toCard(result) })), [results, toCard]);
   const columns = usePublicBoardColumns<Row>(`managed:${user?.id || 'anon'}:${activeWorkspaceId || 'none'}`, rows, {
     columns: [
-      { id: 'publish', label: 'פרסום' }, { id: 'photo', label: 'תמונה' }, { id: 'address', label: 'כותרת' }, { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'תגמולים' },
+      // Brokers-only mode drops public publication and partner reward columns.
+      ...(brokersOnly ? [] : [{ id: 'publish' as const, label: 'פרסום' }]), { id: 'photo' as const, label: 'תמונה' }, { id: 'address' as const, label: 'כותרת' }, { id: 'price' as const, label: 'מחיר' }, ...(brokersOnly ? [] : [{ id: 'commissions' as const, label: 'תגמולים' }]),
       { id: 'rooms', label: 'חדרים' }, { id: 'sqm', label: 'מ״ר' }, { id: 'floor', label: 'קומה' },
     ],
     value: ({ card, result }, id) => id === 'publish' ? (isLive(result.raw) ? 1 : 0) : id === 'price' ? card.price ?? null : id === 'rooms' ? card.rooms ?? null : id === 'sqm' ? card.sqm ?? null : id === 'floor' ? card.floor ?? null : id === 'address' ? publicAdTitle(card) : null,

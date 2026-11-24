@@ -2305,3 +2305,8 @@ svg.lucide-megaphone {
 .realtyz-dashboard-scale .reward-card-title { font-size: 16px !important; }
 :is([data-site-dialog], [data-site-popup]) .reward-card-title { font-size: calc(14px + var(--dialog-font-increase)) !important; }
 .pricing-editor :is([data-site-dialog], [data-site-popup]) .reward-card-title, :is([data-site-dialog], [data-site-popup]) .pricing-editor .reward-card-title { font-size: 17px !important; }
+
+/* Dashboard hero: brand navy into primary blue. */
+.dashboard-hero {
+  background: linear-gradient(135deg, hsl(var(--brand-deep)), hsl(var(--primary)) 60%, hsl(var(--nav-chats)));
+}

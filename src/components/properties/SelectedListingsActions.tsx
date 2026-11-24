@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Globe, Images, Loader2, Pause, Trash2 } from 'lucide-react';
@@ -20,6 +21,7 @@ export function SelectedListingsActions({ ids, liveIds, unconfiguredIds, workspa
   ids: string[]; liveIds: string[]; unconfiguredIds: string[]; workspaceId: string;
   onPublished: (ids: string[], live?: boolean) => void; onDelete: () => void; onCommissionSaved: () => void;
 }) {
+  const brokersOnly = useBrokersOnly();
   const qc = useQueryClient();
   const { isSuperAdmin } = useUserRole();
   const { isDemoMode } = useDemoMode();
@@ -70,10 +72,10 @@ export function SelectedListingsActions({ ids, liveIds, unconfiguredIds, workspa
 
   return <div className="flex items-center gap-0.5">
     <Button size="icon" variant="ghost" className={`${bare} text-destructive hover:text-destructive`} title="מחיקה של הנבחרים" aria-label="מחיקה של הנבחרים" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
-    {missing.length > 0
+    {brokersOnly ? null : missing.length > 0
       ? <BulkClosingCommission ids={missing} workspaceId={workspaceId} onSaved={onCommissionSaved} trigger={open => <Button size="icon" variant="ghost" className={`${bare} text-primary`} title="פרסם בלוח" aria-label="פרסם בלוח" onClick={open}><Globe className="h-4 w-4" /></Button>} />
       : <QuickPublicPromotion ids={ids} bare onPublished={onPublished} />}
-    {live.length > 0 && <Button size="icon" variant="ghost" className={`${bare} text-muted-foreground`} disabled={busy !== null} title="הפסק פרסום" aria-label="הפסק פרסום" onClick={() => setPauseOpen(true)}>{busy === 'pause' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />}</Button>}
+    {!brokersOnly && live.length > 0 && <Button size="icon" variant="ghost" className={`${bare} text-muted-foreground`} disabled={busy !== null} title="הפסק פרסום" aria-label="הפסק פרסום" onClick={() => setPauseOpen(true)}>{busy === 'pause' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />}</Button>}
     {canRotate && (busy === 'photos'
       ? <span role="status" aria-live="polite" aria-label="מזיז 2 תמונות ראשונות לסוף" title="מזיז 2 תמונות ראשונות לסוף" className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /></span>
       : <Button size="icon" variant="ghost" className={`${bare} text-muted-foreground`} disabled={busy !== null} title="הזז 2 תמונות ראשונות לסוף" aria-label="הזז 2 תמונות ראשונות לסוף" onClick={() => void rotate()}><Images className="h-4 w-4" /></Button>)}

@@ -1,10 +1,14 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
+import { BrokersTerms } from '@/components/legal/BrokersOnlyLegal';
 import { Link } from 'react-router-dom';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { LegalPageLayout, LegalSection } from '@/components/public/LegalPageLayout';
 import UnlicensedPartnerCommissionNote from '@/components/public/UnlicensedPartnerCommissionNote';
 
 export default function Terms({ embedded = false }: { embedded?: boolean }) {
+  const brokersOnly = useBrokersOnly();
   const { masterBrand } = useWhiteLabel();
+  if (brokersOnly) return <BrokersTerms embedded={embedded} />;
   return <LegalPageLayout title="תנאי שימוש" embedded={embedded}>
     <LegalSection title="1. השירות וההסכמה">
       <p>TORAFF מחברת בעלי נכסים, קונים, שוכרים, מתווכים, יזמים ושותפים מפיצים, ומציעה ניהול נכסים ולידים, סביבות עבודה, תמחור פניות, מסרים, יצירת תוכן וכלי אוטומציה. השירות מיועד לבגירים המורשים לפעול בשמם או בשם הארגון שלהם.</p>

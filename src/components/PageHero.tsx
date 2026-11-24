@@ -266,7 +266,8 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
 ];
 
 function resolvePageTitle(pathname: string): string {
-  return ROUTE_TITLES.find((r) => r.match.test(pathname))?.title ?? "";
+  const found = ROUTE_TITLES.find((r) => r.match.test(pathname))?.title ?? "";
+  return found;
 }
 
 export function PageHero() {
@@ -326,7 +327,7 @@ export function PageHero() {
   // suffix (Homely/Webtiv/Yad2/etc.) is appended.
   void propertySuffix;
   void isPropertyDetail;
-  const displayTitle = isCampaignsCreate ? "פרסום קמפיין חדש" : isCampaignsCalendar ? "פרסומים מתוזמנים" : title;
+  const displayTitle = isCampaignsCreate ? "פרסום קמפיין חדש" : isCampaignsCalendar ? "פרסומים מתוזמנים" : brokersOnly && title === "מנגנון העמלות" ? "תמחור וקרדיטים" : title;
   const [inboxSearchOpen, setInboxSearchOpen] = React.useState(false);
   const inboxSection = searchParams.get('section') === 'community' || searchParams.has('community') ? 'community' : 'leads';
   React.useEffect(() => {

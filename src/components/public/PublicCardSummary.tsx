@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeListing } from '@/pages/PublicListingPage';
@@ -28,7 +29,9 @@ export function PublicCardPublisher({ card }: { card: PublicCard }) {
   return <BrokerAttribution listingId={card.id} table compact brokerName={publisher?.broker_name ?? data?.listing.brokerName} officeName={publisher?.office_name ?? data?.listing.officeName} logoUrl={publisher?.agency_logo_url ?? data?.listing.agencyLogoUrl} publisherKind={publisher?.publisher_kind ?? data?.listing.publisherKind} dealType={card.deal_type} />;
 }
 
-export default function PublicCardSummary({ card, price, showBroker = true, showCommissions = true, dense = false }: { card: PublicCard; price?: string; showBroker?: boolean; showCommissions?: boolean; dense?: boolean }) {
+export default function PublicCardSummary({ card, price, showBroker = true, showCommissions: showCommissionsProp = true, dense = false }: { card: PublicCard; price?: string; showBroker?: boolean; showCommissions?: boolean; dense?: boolean }) {
+  // Brokers-only mode never shows partner reward icons.
+  const showCommissions = showCommissionsProp && !useBrokersOnly();
   const { user } = useAuth();
   const { activeWorkspaceId, loading } = useWorkspace();
   const { data } = useQuery({

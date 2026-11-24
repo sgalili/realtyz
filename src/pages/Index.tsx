@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip as UiTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Building2, Flame, CalendarCheck2, Trophy, MapPin, HelpCircle, FileSignature,
-  Eye, MessageCircle, Home, AlertCircle,
+  Eye, MessageCircle, Home, AlertCircle, Sparkles, Users, Megaphone, ClipboardList, Wallet,
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
@@ -18,6 +18,9 @@ import {
 import { format, formatDistanceToNow, startOfMonth, subHours } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { TERMINAL_LISTING_STATUSES } from '@/lib/publicationSettings';
 import { PendingListingsCard } from '@/components/PendingListingsCard';
 import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection';
 
@@ -93,10 +96,17 @@ const RealEstateDashboard = () => {
   }, [user?.id, queryClient]);
 
   /* ───── KPIs ───── */
+  const brokersOnly = useBrokersOnly();
+  const ownerId = useActiveWorkspaceOwnerId();
   const { data: activeListings, isLoading: loadingListings } = useQuery({
-    queryKey: ['kpi-active-listings', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['kpi-active-listings', user?.id, brokersOnly, ownerId],
+    enabled: !!user?.id && (!brokersOnly || !!ownerId),
     queryFn: async () => {
+      // Brokers-only counts the workspace catalog, never public-board publication.
+      if (brokersOnly) {
+        const { count } = await supabase.from('listings').select('id', { count: 'exact', head: true }).eq('workspace_owner_id', ownerId!).is('canonical_duplicate_of', null).not('status', 'in', `(${TERMINAL_LISTING_STATUSES.join(',')})`);
+        return count ?? 0;
+      }
       const { count } = await supabase
         .from('listings')
         .select('id', { count: 'exact', head: true })
@@ -282,11 +292,27 @@ const RealEstateDashboard = () => {
 
   return (
     <div className="realtyz-dashboard-scale space-y-6" dir="rtl">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">לוח בקרה</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          תמונת מצב חיה של הפעילות הנדל״נית שלך
+      <div className="dashboard-hero relative overflow-hidden rounded-2xl px-5 py-6 text-center text-primary-foreground shadow-lg">
+        <Sparkles aria-hidden className="absolute left-4 top-4 h-6 w-6 opacity-40" />
+        <h1 className="text-2xl font-bold tracking-tight">לוח בקרה</h1>
+        <p className="mt-1 text-sm opacity-90">
+          תמונת מצב חיה של הנכסים, הלידים והפעילות שלך
         </p>
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {[
+            { icon: Building2, label: 'הנכסים שלי', to: '/properties', tone: 'nav-properties' },
+            { icon: Users, label: 'לידים', to: '/lead-crm', tone: 'nav-tasks' },
+            { icon: MessageCircle, label: 'צ׳אטים', to: '/inbox', tone: 'nav-chats' },
+            { icon: Megaphone, label: 'קמפיינים', to: '/campaigns', tone: 'nav-posts' },
+            { icon: ClipboardList, label: 'מטלות', to: '/command-center', tone: 'nav-deals' },
+            { icon: Wallet, label: 'קרדיטים', to: '/wallet', tone: 'success' },
+          ].map(({ icon: Icon, label, to, tone }) => (
+            <button key={to} type="button" onClick={() => navigate(to)} className="flex flex-col items-center gap-1.5 rounded-xl bg-background/95 px-2 py-3 text-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <span className="grid h-9 w-9 place-items-center rounded-full" style={{ background: `hsl(var(--${tone}) / 0.12)`, color: `hsl(var(--${tone}))` }}><Icon className="h-5 w-5" /></span>
+              <span className="text-xs font-semibold">{label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
 
@@ -306,8 +332,9 @@ const RealEstateDashboard = () => {
           label="נכסים בטיפול"
           value={activeListings ?? 0}
           loading={loadingListings}
-          tooltip="כמות הנכסים שמשווקים כרגע ופורסמו לציבור."
-          to={access.properties ? '/properties' : '/my-ads'}
+          tooltip={brokersOnly ? 'כמות הנכסים הפעילים במאגר שלך.' : 'כמות הנכסים שמשווקים כרגע ופורסמו לציבור.'}
+          accent="success"
+          to={access.properties || brokersOnly ? '/properties' : '/my-ads'}
         />
         <KpiCard
           icon={Flame}
@@ -361,7 +388,7 @@ const RealEstateDashboard = () => {
               <Skeleton className="h-[260px] w-full" />
             ) : activityFeed.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-10">
-                עדיין אין פעילות. ברגע שתתקבל פנייה או תיקבע פגישה — היא תופיע כאן.
+                עדיין אין פעילות. ברגע שתתקבל פנייה או תיקבע פגישה, היא תופיע כאן.
               </p>
             ) : (
               <div className="space-y-2 max-h-[320px] overflow-y-auto pe-1">
@@ -440,9 +467,9 @@ const RealEstateDashboard = () => {
           <CollapsibleSection id="match-progress" title="התאמות לידים ונכסים" description="מצב ההתאמות בין לידים לנכסים">
             <MatchProgressCard />
           </CollapsibleSection>
-          <CollapsibleSection id="listing-visibility" title="ניהול חשיפת נכסים" description="נכסים מקודמים ומודגשים">
+          {!brokersOnly && <CollapsibleSection id="listing-visibility" title="ניהול חשיפת נכסים" description="נכסים מקודמים ומודגשים">
             <ListingVisibilityManagerCard />
-          </CollapsibleSection>
+          </CollapsibleSection>}
         </>
       )}
 
@@ -543,13 +570,19 @@ function KpiCard({
     primary: 'text-primary',
     success: 'text-success',
     warning: 'text-warning',
-    danger: 'text-red-500',
+    danger: 'text-destructive',
   }[accent];
   const accentBg = {
     primary: 'bg-primary/10',
     success: 'bg-success/10',
     warning: 'bg-warning/10',
-    danger: 'bg-red-100',
+    danger: 'bg-destructive/10',
+  }[accent];
+  const accentStripe = {
+    primary: 'before:bg-primary',
+    success: 'before:bg-success',
+    warning: 'before:bg-warning',
+    danger: 'before:bg-destructive',
   }[accent];
 
   return (
@@ -570,7 +603,7 @@ function KpiCard({
                 }
               : undefined
           }
-          className={`relative overflow-hidden border border-border/80 bg-card shadow-sm ${
+          className={`relative overflow-hidden border border-border/80 bg-card shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-1 ${accentStripe} ${
             to ? 'cursor-pointer transition-all hover:border-primary/50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring' : ''
           }`}
         >

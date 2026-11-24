@@ -162,6 +162,7 @@ function saveCache(s: SavedState, scope: string) {
 }
 
 export default function Properties() {
+  const brokersOnly = useBrokersOnly();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
@@ -954,7 +955,7 @@ export default function Properties() {
               <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
             </div>
             {/* Commissions shortcut: every saved property still missing commissions. */}
-            {!searchOpen && activeWorkspaceId && unconfiguredIds.length > 0 && <div className="order-2 flex min-w-0 flex-1 px-1">
+            {!brokersOnly && !searchOpen && activeWorkspaceId && unconfiguredIds.length > 0 && <div className="order-2 flex min-w-0 flex-1 px-1">
               <BulkClosingCommission ids={commissionIds} workspaceId={activeWorkspaceId} overwriteOption publishAfterSave onPickInTable={() => { setCommissionPicked(new Set(unconfiguredIds)); setViewMode('table'); }} onSaved={() => { setCommissionPicked(null); void unconfiguredQuery.refetch(); }} trigger={open => <Button type="button" variant="outline" disabled={!commissionIds.length} className="h-11 w-full min-w-0 whitespace-nowrap border border-border bg-gradient-to-b from-background to-muted px-3 text-[17px] font-bold text-foreground shadow-[0_1px_2px_hsl(var(--foreground)/0.12),inset_0_1px_0_hsl(var(--background))] hover:to-secondary active:translate-y-px" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); open(); }}>{`הגדר עמלות ל-${commissionIds.length} נכסים ופרסם עכשיו`}</Button>} />
               {commissionPicked && <Button type="button" variant="ghost" size="icon" className="h-11 w-9 shrink-0" aria-label="ביטול בחירת נכסים לעמלות" title="ביטול בחירה" onClick={() => setCommissionPicked(null)}><X className="h-4 w-4" /></Button>}
             </div>}
@@ -1223,7 +1224,7 @@ export default function Properties() {
                     actions={(multiSelectMode && r.localId) || r.localId ? (
                       <div className="mb-2 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
                         {multiSelectMode && r.localId ? <Checkbox checked={selectedListingIds.has(r.localId)} onCheckedChange={() => toggleSelectedListing(r.localId as string)} aria-label="בחירת נכס" /> : <span />}
-                        {r.localId ? <QuickPublicPromotion ids={[r.localId]} compact onPublished={markPublished} /> : null}
+                        {r.localId && !brokersOnly ? <QuickPublicPromotion ids={[r.localId]} compact onPublished={markPublished} /> : null}
                       </div>
                     ) : null}
                   />
@@ -1637,8 +1638,8 @@ export function ResultTable({
   const renderCommission = commissionCell
     ?? ((r: UnifiedResult) => (r.localId ? <AffiliateTierPrices config={affiliateConfigs?.get(r.localId)} /> : null));
   const brokersOnly = useBrokersOnly();
-  const showAffiliateColumn = !!affiliateCell || (!brokersOnly && !hideDefaultActions && localIds.length > 0);
-  const showCommissionColumn = !!commissionCell || (!brokersOnly && !hideDefaultActions && localIds.length > 0);
+  const showAffiliateColumn = !brokersOnly && (!!affiliateCell || (!hideDefaultActions && localIds.length > 0));
+  const showCommissionColumn = !brokersOnly && (!!commissionCell || (!hideDefaultActions && localIds.length > 0));
   // Owner-only readiness: partner/read-only tables never show internal status.
   const showStatusColumn = !hideDefaultActions && localIds.length > 0;
   const selectAllIds = allSelectableIds && allSelectableIds.length > 0 ? allSelectableIds : localIds;

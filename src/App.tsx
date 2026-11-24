@@ -332,7 +332,8 @@ function RootRoute() {
   if (modeLoading) return <PageLoader />;
   if (mode === 'brokers_only') {
     if (!user) return <Suspense fallback={<PageLoader />}><Landing /></Suspense>;
-    return <Navigate to="/dashboard" replace />;
+    // Brokers land on their property catalog; the dashboard stays in navigation.
+    return <Navigate to="/properties" replace />;
   }
   if (!user) return <Suspense fallback={<PageLoader />}><PublicListingsBoard /></Suspense>;
   return <ProtectedRoute><Suspense fallback={<PageLoader />}><PublicListingsBoard embedded /></Suspense></ProtectedRoute>;

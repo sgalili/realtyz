@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Accessibility, ChevronDown, CircleHelp, Eye, Info, LogIn, Menu, MessageCircle, Scale, UserPlus } from 'lucide-react';
@@ -14,6 +15,7 @@ const FALLBACK_HEADER_HEIGHT = 64;
 export function VisitorMenu({ onSignup }: { onSignup: () => void }) {
   const [open, setOpen] = useState(false);
   const [legal, setLegal] = useState(false);
+  const brokersOnly = useBrokersOnly();
   const navigate = useNavigate();
   const signup = () => { setOpen(false); onSignup(); };
   const login = () => { setOpen(false); navigate('/auth', { state: { signup: false } }); };
@@ -74,7 +76,7 @@ export function VisitorMenu({ onSignup }: { onSignup: () => void }) {
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base" onClick={() => go('/faq')}><CircleHelp className="!h-[26px] !w-[26px]" />שאלות ותשובות</Button>
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base" onClick={() => go('/about-toraff')}><Info className="!h-[26px] !w-[26px]" />מה זה TORAFF</Button>
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base" aria-expanded={legal} onClick={() => setLegal(v => !v)}><Scale className="!h-[26px] !w-[26px]" />מידע משפטי<ChevronDown className="ms-auto h-4 w-4" /></Button>
-        {legal && <div className="border-s border-border ps-5">{[['תנאי שימוש','/terms'],['מדיניות פרטיות','/privacy-policy'],['עמלות ותגמולים','/commission-mechanism']].map(([label,path]) => <Button key={path} variant="ghost" className="min-h-11 w-full justify-start text-sm" onClick={() => go(path)}>{label}</Button>)}</div>}
+        {legal && <div className="border-s border-border ps-5">{[['תנאי שימוש','/terms'],['מדיניות פרטיות','/privacy-policy'],[brokersOnly ? 'תמחור וקרדיטים' : 'עמלות ותגמולים','/commission-mechanism']].map(([label,path]) => <Button key={path} variant="ghost" className="min-h-11 w-full justify-start text-sm" onClick={() => go(path)}>{label}</Button>)}</div>}
         <Button asChild variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base"><a href={officialWaLink(VISITOR_WHATSAPP_INTRO)} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}><MessageCircle className="!h-[26px] !w-[26px]" />צרו קשר</a></Button>
         <AccessibilityMenu trigger={<Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base"><Accessibility className="!h-[26px] !w-[26px]" aria-hidden="true" />נגישות</Button>} />
       </nav>

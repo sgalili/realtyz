@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { Link } from 'react-router-dom';
 import { Accessibility } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,7 @@ import { AccessibilityMenu } from '@/components/accessibility/AccessibilityMenu'
 
 /** Canonical legal footer shared by public, account and administration pages. */
 export function AppFooter() {
+  const brokersOnly = useBrokersOnly();
   return (
     <footer className="auth-page-footer" dir="rtl" aria-label="תחתית האתר">
       <div className="auth-footer-legal">
@@ -14,7 +16,7 @@ export function AppFooter() {
           <span className="auth-footer-separator" aria-hidden="true" />
           <Link to="/terms">תנאים</Link>
           <Link to="/privacy-policy">פרטיות</Link>
-          <Link to="/commission-mechanism">עמלות</Link>
+          <Link to="/commission-mechanism">{brokersOnly ? 'תמחור' : 'עמלות'}</Link>
         </div>
       </div>
     </footer>
