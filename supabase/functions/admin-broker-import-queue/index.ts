@@ -91,7 +91,7 @@ Deno.serve(async req => {
     if(input.action==='pause'||input.action==='reset_cooldown') {
       if(existing.status==='completed') return json({ok:true});
       const scoped=createClient(Deno.env.get('SUPABASE_URL')??'',Deno.env.get('SUPABASE_ANON_KEY')??'',{global:{headers:{Authorization:req.headers.get('Authorization')??''}}});
-      const {error}=await scoped.rpc('control_broker_import_job',{_id:input.job_id,_action:input.action}); if(error) throw error;
+      const {error}=await scoped.rpc('control_broker_import_job',{_id:input.job_id,_action:input.action}); if(error){ if(input.action==='reset_cooldown'&&String(error.message??'').includes('הפעולה הקודמת עדיין מסתיימת')) return json({ok:true,already_running:true}); throw error; }
       return json({ok:true});
     }
     if(input.action==='resume') {
@@ -102,7 +102,7 @@ Deno.serve(async req => {
       // A manual resume after exhausted retries starts a fresh bounded retry series instead of pausing on the next blip.
       const cp=(existing.checkpoint??{}) as Record<string,unknown>;
       if(Number(cp.transientRetries??0)>0){const {error:re}=await admin.from('broker_import_jobs').update({checkpoint:{...cp,transientRetries:0}}).eq('id',input.job_id).neq('status','running');if(re)throw re;}
-      const {error}=await scoped.rpc('control_broker_import_job',{_id:input.job_id,_action:'resume'}); if(error) throw error;
+      const {error}=await scoped.rpc('control_broker_import_job',{_id:input.job_id,_action:'resume'}); if(error){ if(String(error.message??'').includes('הפעולה הקודמת עדיין מסתיימת')) return json({ok:true,already_running:true}); throw error; }
       return json({ok:true});
     }
     if(existing.checkpoint?.execution==='external') return json({error:'external_worker_only'},409);
