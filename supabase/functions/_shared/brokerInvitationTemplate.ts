@@ -13,7 +13,7 @@ export function firstContactBody(channel: 'whatsapp' | 'email' = 'email') {
   if (channel === 'whatsapp') return FIRST_CONTACT_WHATSAPP.replace('{{1}}', '{brokerName}').replace('{{2}}', '{propertyAddress}');
   return `היי {brokerName},
 
-ראיתי את המודעה שלך ב{propertyAddress} ורציתי לשאול בקצרה: האם יעניין אותך לקבל גישה בחינם למערכת AI מתקדמת למתווכים, שמרכזת נכסים, לידים וקמפיינים במקום אחד?
+ראיתי את המודעה שלך ב{propertyAddress} ורציתי לשאול: האם יעניין אותך לקבל גישה בחינם למערכת AI מתקדמת למתווכים, שמרכזת נכסים, לידים וקמפיינים במקום אחד?
 
 אם כן, הכי פשוט לשלוח לנו הודעת וואטסאפ קצרה בלחיצה על הכפתור למטה, ונמשיך משם.
 אם לא מתאים, אפשר להשיב ״הסרה״ ולא נפנה שוב.

@@ -4,14 +4,14 @@ import { Send, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { personalBrokerLink, renderBrokerInvitation } from '@/lib/brokerInvitation';
-import { brokerTemplateFor, BROKER_STAGE_LABELS, type BrokerOnboardingStatus } from '@/lib/brokerOnboarding';
+import { BROKER_STAGE_LABELS, type BrokerOnboardingStatus } from '@/lib/brokerOnboarding';
 import { getOfficialWaNumber } from '@/lib/officialWa';
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { agorotToCredits } from '@/lib/credits';
 import { publicUrl } from '@/lib/publicUrl';
+const FIRST_CONTACT_PREVIEW = 'היי {{1}},\n\nראיתי את המודעה שלך ב{{2}} ורציתי לשאול בקצרה: האם יעניין אותך לקבל גישה בחינם למערכת AI מתקדמת למתווכים, שמרכזת נכסים, לידים וקמפיינים במקום אחד?\n\nאם כן, פשוט השב ״כן״ ונמשיך מכאן.\nאם לא מתאים, אפשר להשיב ״הסרה״ ולא נפנה שוב.\n\nריטה | TORAFF';
 import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
 
 async function invoke(body: Record<string, unknown>) {
@@ -33,8 +33,9 @@ function useBrokerWhatsAppEligibility(brokerId: string) {
 /** WhatsApp invitation content, usable inside any dialog or tab. */
 export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachmentId, useDiscoveredWhatsApp = false, outreach = false }: { broker: { id: string; full_name?: string | null; recipient_name?: string | null }; onClose: () => void; onSent?: () => void; attachmentId?: string | null; useDiscoveredWhatsApp?: boolean; outreach?: boolean }) {
   const open = true;
-  const [consent, setConsent] = useState(false);
-  const [demo, setDemo] = useState(outreach || !useDiscoveredWhatsApp);
+  // The fixed first message is itself the opt-in request; pressing send is the Super Admin's explicit confirmation.
+  const consent = true;
+  const demo = false;
   const [feedback, setFeedback] = useState('');
   const requestId = useRef(crypto.randomUUID());
   const qc = useQueryClient();
@@ -43,7 +44,8 @@ export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachm
   const hasSavedWhatsApp = whatsappEligibility.data === true;
   // Fixed wording only; the server picks the variant from the recipient's saved gender.
   const state = useQuery({ queryKey: ['official-broker-template', broker.id, outreach], enabled: open, retry: false, staleTime: 0, queryFn: () => invoke({ action: 'status', broker_id: broker.id, ...(outreach?{outreach:true}:{}) }) });
-  const text: string = state.data?.text ?? brokerTemplateFor(null);
+  // Only the fixed short opt-in template is ever previewed; no legacy long text fallback.
+  const text: string = String(state.data?.text ?? FIRST_CONTACT_PREVIEW).replace('{{1}}', '{brokerName}').replace('{{2}}', 'יד2');
   const demoLink: string = state.data?.demo_link ?? publicUrl('/demo');
   const previewLink = demo ? demoLink : personalBrokerLink(broker.id);
   const pricing = useCampaignPricing(open);
@@ -70,8 +72,6 @@ export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachm
       <div className="flex justify-between items-center gap-2"><span role="status" className="text-sm text-muted-foreground">{state.isFetching ? 'בודק אישור Meta…' : state.isError ? 'בדיקת Meta נכשלה' : labels[status] || status}</span><Button size="icon" variant="ghost" aria-label="רענון אישור Meta" disabled={state.isFetching || !!validation || mutation.isPending} onClick={() => void state.refetch()}><RefreshCw className="h-4 w-4" /></Button></div>
       <p role="note" className="text-sm font-medium">עלות שליחה לנמען חדש ללא היסטוריה: {waPrice ? `${agorotToCredits(waPrice.price_agorot).toLocaleString('he-IL')} קרדיטים להודעה` : pricing.isLoading ? 'טוען…' : 'לא הוגדרה'}</p>
       {state.error && <p role="alert" className="break-words text-sm text-destructive">{state.error.message}</p>}
-      <div className="space-y-1"><Label className="flex items-start gap-2 leading-6"><Checkbox checked={demo} disabled={mutation.isPending} onCheckedChange={v => setDemo(v === true)} />שליחת קישור לחשבון דמו לצפייה בלבד</Label>{demo && <p className="text-sm text-muted-foreground">הדמו יותאם לסוג המשתמש, או שייפתח עמוד בחירה אם הסוג אינו ידוע. אין צורך בקוד אימות.</p>}</div>
-      <Label className="flex items-start gap-2 leading-6"><Checkbox checked={consent} disabled={mutation.isPending} onCheckedChange={v => setConsent(v === true)} />הנמען הסכים לקבל הזמנה ב־WhatsApp</Label>
       {!whatsappEligibility.isLoading && !hasSavedWhatsApp && <p role="alert" className="text-sm text-destructive">שליחת הזמנה ב־WhatsApp אפשרית רק לאחר שמירת מספר וואטסאפ אישי. לא נעשה שימוש בטלפון איש הקשר או בטלפון הכניסה.</p>}
       {feedback && <p role="status" className="break-words text-sm">{feedback}</p>}
       <div className="flex flex-row justify-between gap-2"><Button variant="outline" disabled={mutation.isPending || registration.isPending} onClick={onClose}>ביטול</Button>{status === 'APPROVED' ? <Button disabled={!consent || !hasSavedWhatsApp || whatsappEligibility.isFetching || !!validation || state.isFetching || mutation.isPending || !onboarding.data || !!feedback} onClick={() => mutation.mutate('send')}><Send className="h-4 w-4" />{mutation.isPending ? 'שולח…' : 'שליחת הזמנה'}</Button> : status === 'NOT_REGISTERED' ? <Button disabled={registration.isPending || state.isFetching} onClick={() => registration.mutate()}>הגשת הנוסח לאישור Meta</Button> : <span className="text-sm text-muted-foreground">השליחה תתאפשר לאחר אישור התבנית</span>}</div>

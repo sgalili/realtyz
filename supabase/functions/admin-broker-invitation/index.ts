@@ -102,10 +102,17 @@ Deno.serve(async req => {
     outreachAddress=[listing.address,listing.city].join(', ');
     text=FIRST_CONTACT_WHATSAPP;
   }
+  // Every first WhatsApp invitation uses the fixed short opt-in template; saved/legacy long texts never reach the recipient.
+  if(!input.outreach && input.action!=='save_text'){
+    const {data:listing}=input.broker_id?await admin.from('listings').select('address,city').eq('workspace_owner_id',input.broker_id).eq('source','yad2').not('address','is',null).order('created_at',{ascending:false}).limit(1).maybeSingle():{data:null};
+    outreachAddress=listing?.address?[listing.address,listing.city].filter(Boolean).join(', '):'יד2';
+    text=FIRST_CONTACT_WHATSAPP;
+  }
+  const firstContact = text===FIRST_CONTACT_WHATSAPP;
   let body: string;
-  try { body = input.outreach ? text : templateBody(text); } catch (e) { return json({ error: e instanceof Error ? e.message : 'Invalid template' }, 400); }
+  try { body = firstContact ? text : templateBody(text); } catch (e) { return json({ error: e instanceof Error ? e.message : 'Invalid template' }, 400); }
   const name = await invitationTemplateName(body);
-  if (input.action === 'send' && demo && !input.outreach && !templateHasLink(body)) return json({ error: 'תבנית הדמו אינה כוללת קישור. יש לעדכן אותה ולהגיש ל-Meta מחדש.' }, 409);
+  if (input.action === 'send' && demo && !firstContact && !templateHasLink(body)) return json({ error: 'תבנית הדמו אינה כוללת קישור. יש לעדכן אותה ולהגיש ל-Meta מחדש.' }, 409);
   try {
     // Use only the platform's already configured official number, never the target broker's WABA.
     const { data: rows, error: configError } = await admin.from('wa_providers').select('config').eq('provider_name', 'WBA').eq('is_official', true).eq('is_active', true).order('updated_at', { ascending: false });
@@ -127,9 +134,9 @@ Deno.serve(async req => {
     let template = live.data?.find((t: { name: string; language: string }) => t.name === name && t.language === BROKER_TEMPLATE_LANGUAGE);
     if (template && template.components?.find((c: { type: string }) => c.type === 'BODY')?.text !== body) return json({ error: 'נוסח Meta אינו תואם לתצוגה. יש לרענן לפני שליחה.' }, 409);
     if ((input.action === 'register' || input.action === 'save_text') && !template) {
-      template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [input.outreach ? ['ישראל','הרצל 10, תל אביב'] : templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/auth'] : ['ישראל ישראלי']] } }] });
+      template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [firstContact ? ['ישראל','הרצל 10, תל אביב'] : templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/auth'] : ['ישראל ישראלי']] } }] });
     }
-    if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text:input.outreach?text.replace('{{2}}',outreachAddress??''):text, sender: '972537983832', demo_link: demoLink });
+    if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text:firstContact?text.replace('{{2}}',outreachAddress??''):text, sender: '972537983832', demo_link: demoLink });
     if (!input.broker_id || !input.request_id || !input.consent) return json({ error: 'נדרשים מתווך, מזהה שליחה ואישור הסכמת הנמען' }, 400);
     if (template?.status !== 'APPROVED') return json({ error: 'התבנית טרם אושרה ב-Meta', status: template?.status ?? 'NOT_REGISTERED' }, 409);
     const { data: broker, error: brokerError } = await admin.from('profiles').select('id,full_name,phone').eq('id', input.broker_id).single();
@@ -162,7 +169,7 @@ Deno.serve(async req => {
       if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');
       const link = demo ? demoLink : invitationLink(site.origin, broker.id, onboarding.invitation_link_token);
       if (!link) throw new Error('Missing invitation link');
-      sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: (contact?.name || broker.full_name)?.trim().split(/\s+/)[0] || 'מתווך' }, ...(input.outreach ? [{type:'text',text:outreachAddress??''}] : templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });
+      sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: (contact?.name || broker.full_name)?.trim().split(/\s+/)[0] || 'מתווך' }, ...(firstContact ? [{type:'text',text:outreachAddress??''}] : templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });
     } catch (e) {
       await admin.from('broker_invitation_sends').update({ status: 'unknown' }).eq('request_id', input.request_id);
       throw e;

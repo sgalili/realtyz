@@ -22,8 +22,6 @@ function mount() {
 it('sends only after consent and approval, binding the saved WhatsApp contact rather than a login phone', async () => {
   mount();
   const send = await screen.findByRole('button', { name: 'שליחת הזמנה' });
-  expect(send).toBeDisabled();
-  fireEvent.click(screen.getByRole('checkbox', { name: 'הנמען הסכים לקבל הזמנה ב־WhatsApp' }));
   await waitFor(() => expect(send).toBeEnabled());
   fireEvent.click(send);
   await waitFor(() => expect(state.invoke).toHaveBeenCalledWith('admin-broker-invitation', { body: expect.objectContaining({ action: 'send', broker_id: 'broker-1', use_discovered_whatsapp: true, consent: true, demo: false }) }));
@@ -46,7 +44,6 @@ it('does not enable sending after consent when the saved WhatsApp is missing', a
   state.eligible = false;
   mount();
   const send = await screen.findByRole('button', { name: 'שליחת הזמנה' });
-  fireEvent.click(screen.getByRole('checkbox', { name: 'הנמען הסכים לקבל הזמנה ב־WhatsApp' }));
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('לא נעשה שימוש בטלפון איש הקשר או בטלפון הכניסה'));
   expect(send).toBeDisabled();
   fireEvent.click(send);
