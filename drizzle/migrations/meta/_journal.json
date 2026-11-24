@@ -1954,6 +1954,13 @@
       "when": 1795479788383,
       "tag": "0278_closing_documents_upload_and_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 279,
+      "version": "7",
+      "when": 1795480039366,
+      "tag": "0279_scanner_send_24_7",
+      "breakpoints": true
     }
   ]
 }

@@ -7,7 +7,7 @@ import { checkScannerConnection, processScannerEvent, scannerCredentials, scanne
 
 const schema = z.discriminatedUnion('action',[
   z.object({action:z.literal('status'),broker_id:z.string().uuid().optional()}).strict(),
-  z.object({action:z.literal('configure'),daily_cap:z.number().int().min(1).max(50),jitter_min_seconds:z.number().int().min(45).max(600),jitter_max_seconds:z.number().int().min(45).max(600),start_hour:z.number().int().min(6).max(20),end_hour:z.number().int().min(7).max(22),error_threshold:z.number().int().min(1).max(5)}).strict(),
+  z.object({action:z.literal('configure'),daily_cap:z.number().int().min(1).max(50),jitter_min_seconds:z.number().int().min(45).max(600),jitter_max_seconds:z.number().int().min(45).max(600),error_threshold:z.number().int().min(1).max(5)}).strict(),
   z.object({action:z.literal('test_connection')}).strict(),
   z.object({action:z.literal('resume')}).strict(),
   z.object({action:z.literal('pause')}).strict(),
@@ -47,17 +47,25 @@ Deno.serve(async req=>{
     const {data:settings,error:se}=await admin.from('broker_wa_scanner_settings').select('*').eq('id',true).maybeSingle();
     if(se)throw new Error('scanner_settings_read_failed');
     if(body.action==='status') {
-      const {data:job,error:je}=body.broker_id?await admin.from('broker_wa_scanner_jobs').select('id,status,last_error,provider_status,reply_deadline,updated_at').eq('broker_id',body.broker_id).order('created_at',{ascending:false}).limit(1).maybeSingle():{data:null,error:null};
+      const {data:job,error:je}=body.broker_id?await admin.from('broker_wa_scanner_jobs').select('id,status,last_error,provider_status,reply_deadline,updated_at,created_at').eq('broker_id',body.broker_id).order('created_at',{ascending:false}).limit(1).maybeSingle():{data:null,error:null};
       if(je)throw new Error('scanner_job_read_failed');
       const {count,error:ce}=await admin.from('broker_wa_scanner_events').select('id',{head:true,count:'exact'}).eq('status','needs_manual');
       if(ce)throw new Error('scanner_event_count_failed');
       const {data:contact,error:co}=body.broker_id?await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id',body.broker_id).eq('workspace_owner_id',body.broker_id).maybeSingle():{data:null,error:null};
       if(co)throw new Error('scanner_contact_read_failed');
+      // Queue order for the live countdown: jobs created earlier that will consume a send slot first.
+      let queue_ahead=0, outstanding=false;
+      if(job&&['pending_source','reading_source','ready'].includes(job.status)){
+        const {count:ahead,error:ae}=await admin.from('broker_wa_scanner_jobs').select('id',{head:true,count:'exact'}).in('status',['pending_source','reading_source','ready']).lt('created_at',job.created_at);
+        if(ae)throw new Error('scanner_queue_read_failed');queue_ahead=ahead??0;
+        const {count:busy,error:be}=await admin.from('broker_wa_scanner_jobs').select('id',{head:true,count:'exact'}).in('status',['sending','awaiting_reply']);
+        if(be)throw new Error('scanner_queue_read_failed');outstanding=!!busy;
+      }
       const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem'}).format(new Date());
-      return json({settings:settings??{...scannerDefaults,enabled:false,paused:true,pause_reason:'not_configured'},credentials_ready:!!scannerCredentials(),used_today:settings?.budget_day===today?settings.day_attempts:0,manual_replies:count??0,job,contact});
+      return json({queue_ahead,outstanding,settings:settings??{...scannerDefaults,enabled:false,paused:true,pause_reason:'not_configured'},credentials_ready:!!scannerCredentials(),used_today:settings?.budget_day===today?settings.day_attempts:0,manual_replies:count??0,job,contact});
     }
     if(body.action==='configure') {
-      if(body.jitter_max_seconds<body.jitter_min_seconds||body.end_hour<=body.start_hour)return json({ok:false,error:'טווח ההשהיה או השעות אינו תקין'});
+      if(body.jitter_max_seconds<body.jitter_min_seconds)return json({ok:false,error:'טווח ההשהיה אינו תקין'});
       const {action,...values}=body;
       const {error}=await admin.from('broker_wa_scanner_settings').upsert({id:true,...values,paused:true,pause_reason:'configuration_changed',updated_by:caller?.kind==='user'?caller.userId:null,updated_at:new Date().toISOString()});
       if(error)throw new Error('scanner_settings_save_failed');
@@ -127,8 +135,8 @@ Deno.serve(async req=>{
       const {count,error:re}=await admin.from('broker_wa_scanner_jobs').select('id',{head:true,count:'exact'}).eq('status','ready');
       if(re)throw new Error('scanner_ready_read_failed');
       if(!count)return json({ok:true,idle:true});
-      const hour=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jerusalem',hour:'2-digit',hourCycle:'h23'}).format(new Date()));
-      if(hour<settings.start_hour||hour>=settings.end_hour||Date.parse(settings.next_send_at??'')>Date.now())return json({ok:true,idle:true});
+      // 24/7: no daytime window; pacing (next_send_at), daily quota and the error circuit breaker remain.
+      if(Date.parse(settings.next_send_at??'')>Date.now())return json({ok:true,idle:true});
       const {count:waiting,error:we}=await admin.from('broker_wa_scanner_jobs').select('id',{head:true,count:'exact'}).in('status',['sending','awaiting_reply']);
       if(we)throw new Error('scanner_waiting_read_failed');
       if(waiting) {

@@ -54,13 +54,13 @@ export function BrokerScannerPanel() {
       {(() => { const w = scannerWorkerState(s); return <span className={w === 'connected' ? 'text-lead-whatsapp' : 'text-destructive'}>{workerStateLabels[w]}</span>; })()}
     </div>
     <div className="flex flex-wrap items-center gap-2">
-      {field('daily_cap','מכסה יומית',1,50)}{field('jitter_min_seconds','השהיה מ־',45,600)}{field('jitter_max_seconds','עד',45,600)}{field('start_hour','משעה',6,20)}{field('end_hour','עד שעה',7,22)}{field('error_threshold','עצירה אחרי שגיאות',1,5)}
-      <Button size="sm" variant="outline" disabled={act.isPending} onClick={() => act.mutate({ action: 'configure', daily_cap: value('daily_cap'), jitter_min_seconds: value('jitter_min_seconds'), jitter_max_seconds: value('jitter_max_seconds'), start_hour: value('start_hour'), end_hour: value('end_hour'), error_threshold: value('error_threshold') })}>שמירה</Button>
+      {field('daily_cap','מכסה יומית',1,50)}{field('jitter_min_seconds','השהיה מ־',45,600)}{field('jitter_max_seconds','עד',45,600)}{field('error_threshold','עצירה אחרי שגיאות',1,5)}
+      <Button size="sm" variant="outline" disabled={act.isPending} onClick={() => act.mutate({ action: 'configure', daily_cap: value('daily_cap'), jitter_min_seconds: value('jitter_min_seconds'), jitter_max_seconds: value('jitter_max_seconds'), error_threshold: value('error_threshold') })}>שמירה</Button>
       <Button size="icon" variant="ghost" aria-label="בדיקת חיבור הקו" disabled={act.isPending} onClick={() => act.mutate({ action: 'test_connection' })}><PlugZap className="h-4 w-4" /></Button>
       <Button size="icon" variant="ghost" aria-label={active ? 'השהיית הסריקה' : 'הפעלת הסריקה'} disabled={act.isPending} onClick={() => act.mutate({ action: active ? 'pause' : 'resume' })}>{act.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : active ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}</Button>
     </div>
     {act.isPending && <p role="status" className="text-sm text-muted-foreground">בודק…</p>}
     {result && <p role="status" aria-live="polite" className={`text-sm ${result.ok ? 'text-lead-whatsapp' : 'text-destructive'}`}>{result.text}</p>}
-    <p className="text-xs text-muted-foreground">ההגבלות מפחיתות סיכון אך אינן מבטיחות שהקו לא ייחסם. נשלח רק נוסח הפנייה שמופיע במודעה.</p>
+    <p className="text-xs text-muted-foreground">ההגבלות מפחיתות סיכון אך אינן מבטיחות שהקו לא ייחסם. נשלח רק נוסח הפנייה שמופיע במודעה. הקו פועל 24/7 לפי המכסה היומית וההשהיה האקראית.</p>
   </section>;
 }

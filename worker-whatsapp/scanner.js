@@ -28,7 +28,7 @@ export async function runScanner(config, { source, isStopping }, api = createSca
         try { await api({ action: 'source_result', job_id: job.id, lease_token: job.lease_token, html: await source(job.source_url) }); }
         catch (error) { await api({ action: 'source_failure', job_id: job.id, lease_token: job.lease_token, status: error.status >= 400 && error.status <= 599 ? error.status : 504 }); }
       }
-      // Cloud owns quota, jitter, daytime and circuit state; this only wakes it.
+      // Cloud owns quota, jitter (24/7) and circuit state; this only wakes it.
       await api({ action: 'tick' });
     } catch (error) {
       const denied = [401, 403].includes(error.status);
