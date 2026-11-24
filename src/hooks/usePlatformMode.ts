@@ -14,3 +14,9 @@ export function usePlatformMode() {
     staleTime: 60_000,
   });
 }
+
+/** True while the platform runs as a brokers-only SaaS (also while the setting loads, since it is the default). */
+export function useBrokersOnly() {
+  const { data } = usePlatformMode();
+  return data !== 'full_marketplace';
+}

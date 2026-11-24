@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import PropertyReferralButton from '@/components/public/PropertyReferralButton';
 import { RewardDialog } from '@/components/affiliate/RewardDialog';
 import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
@@ -46,6 +47,7 @@ export function PropertyRowActions({
   hideAffiliate?: boolean;
   hideSharePublish?: boolean;
 }) {
+  const brokersOnly = useBrokersOnly();
   const live = sourceYad2Url(r);
   return (
     <div className="inline-flex items-center gap-1.5">
@@ -54,7 +56,7 @@ export function PropertyRowActions({
         {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Megaphone className="h-3.5 w-3.5" />}
       </Button>
       <PropertyShareMenu results={[r]} iconOnly variant="ghost" hidePublish={hideSharePublish} />
-      {r.localId && <PropertyReferralButton listingId={r.localId} />}
+      {r.localId && !brokersOnly && <PropertyReferralButton listingId={r.localId} />}
       {onEdit ? (
         <Button size="icon" variant="ghost" className="h-8 w-8" title="עריכת הנכס" aria-label="עריכת הנכס" onClick={() => onEdit(r)}>
           <Pencil className="h-4 w-4" />
@@ -65,7 +67,7 @@ export function PropertyRowActions({
           <Trash2 className="h-4 w-4" />
         </Button>
       ) : null}
-      {hideAffiliate ? null : onAffiliate ? (() => {
+      {hideAffiliate || brokersOnly ? null : onAffiliate ? (() => {
         const raw = (r as any).raw ?? {};
         const active = !!raw.affiliate_enabled && Number(raw.affiliate_reward_amount ?? 0) > 0;
         return (
@@ -85,6 +87,7 @@ export function PropertyRowActions({
  * the listing's workspace_owner_id read through RLS, never by public data.
  */
 export function OwnerListingActions({ listingId, onOpenNewPage }: { listingId: string; onOpenNewPage?: () => void }) {
+  const brokersOnly = useBrokersOnly();
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const navigate = useNavigate();
@@ -135,9 +138,9 @@ export function OwnerListingActions({ listingId, onOpenNewPage }: { listingId: s
           <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${row.localId}&listing=${row.localId}&fresh=1`, { state: returnState() })}>
             <Megaphone className="h-4 w-4" /> צור קמפיין לנכס
           </DropdownMenuItem>
-          <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setRewardOpen(true)}>
+          {!brokersOnly && <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setRewardOpen(true)}>
             <Handshake className={`h-4 w-4 ${affiliateActive ? 'text-success' : ''}`} /> {affiliateActive ? 'שיווק שותפים פעיל' : 'הגדר שיווק שותפים'}
-          </DropdownMenuItem>
+          </DropdownMenuItem>}
           {onOpenNewPage ? <DropdownMenuItem className="gap-2 text-sm" onSelect={onOpenNewPage}><ExternalLink className="h-4 w-4" /> פתיחה בעמוד חדש</DropdownMenuItem> : null}
           <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/properties/${listingId}`, { state: { ...returnState(), returnTo: window.location.pathname + window.location.search, openEdit: true } })}>
             <Pencil className="h-4 w-4" /> עריכת הנכס

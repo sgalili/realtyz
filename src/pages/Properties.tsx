@@ -85,6 +85,7 @@ import { listingPublishedAt } from '@/lib/listingFreshness';
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { AffiliateShareCell, AffiliateTierPrices } from '@/components/properties/AffiliateShareCell';
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import type { ListingSortValue } from '@/lib/listingSortOptions';
@@ -1635,8 +1636,9 @@ export function ResultTable({
   // Reward amounts always sit in their own "עמלות" column, like the affiliate table.
   const renderCommission = commissionCell
     ?? ((r: UnifiedResult) => (r.localId ? <AffiliateTierPrices config={affiliateConfigs?.get(r.localId)} /> : null));
-  const showAffiliateColumn = !!affiliateCell || (!hideDefaultActions && localIds.length > 0);
-  const showCommissionColumn = !!commissionCell || (!hideDefaultActions && localIds.length > 0);
+  const brokersOnly = useBrokersOnly();
+  const showAffiliateColumn = !!affiliateCell || (!brokersOnly && !hideDefaultActions && localIds.length > 0);
+  const showCommissionColumn = !!commissionCell || (!brokersOnly && !hideDefaultActions && localIds.length > 0);
   // Owner-only readiness: partner/read-only tables never show internal status.
   const showStatusColumn = !hideDefaultActions && localIds.length > 0;
   const selectAllIds = allSelectableIds && allSelectableIds.length > 0 ? allSelectableIds : localIds;

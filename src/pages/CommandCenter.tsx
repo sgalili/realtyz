@@ -78,15 +78,15 @@ const TAB_LABEL: Record<SectionTab, string> = {
   tasks: 'משימות',
   leads: 'לידים',
   demos: 'הדגמות',
-  notes: '',
-  calls: 'שיחות',
+  notes: 'הערות',
+  calls: 'סיכום שיחות',
 };
 
 /** Tabs that never show a card count next to their label. */
 const TABS_WITHOUT_COUNT = new Set<SectionTab>([]);
 
 /** Standard workspaces: tasks (incl. reminders) first, then tours and calls. */
-const DEFAULT_TABS: SectionTab[] = ['tasks', 'tours', 'calls'];
+const DEFAULT_TABS: SectionTab[] = ['tours', 'tasks', 'calls', 'leads', 'notes'];
 /**
  * Rita's marketing workspace: tasks first, demos next, property tours hidden
  * (her workspace never manages properties).
@@ -463,7 +463,7 @@ function ProfessionalCommandCenter() {
           </div>
         ) : (
           <div className="space-y-3">
-            {(tab === 'calls' ? callView : taskView) === 'calendar' ? (
+            {tab !== 'notes' && (tab === 'calls' ? callView : taskView) === 'calendar' ? (
               <ScheduleMonthGrid
                 items={visible.map((t) => ({
                   id: `${t.source}-${t.id}`,

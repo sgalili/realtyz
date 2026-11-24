@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { BROKER_NAV_PATHS } from '@/lib/brokerNavigation';
 import { Button } from '@/components/ui/button';
 import { APP_TOUR_EVENT } from '@/lib/appWalkthrough';
@@ -206,6 +207,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
   const { isPartnerMode } = useAppMode();
+  const brokersOnly = useBrokersOnly();
   const identity = useAccountIdentity();
   const { gender } = usePersonalLanguage();
 
@@ -218,7 +220,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const affiliateOnlyNav = isAffiliateOnly || isPartnerMode;
   const audience = activityAudience(roles, isPartnerMode);
   const brokerMenu = audience === 'professional' && !access.projects;
-  const navItems = useMemo(() => {
+  const allNavItems = useMemo(() => {
     if (roleLoading || roleError) return [];
     // Marketing companies manage marketing for several developers at once.
     if (roles.includes('marketing_company') && !isPartnerMode) {
@@ -253,6 +255,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         return true;
       });
   }, [audience, features, access.projects, access.properties, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError, identity.label, isPartnerMode]);
+  // Brokers-only SaaS hides partner/affiliate and referral-reward screens (code and data stay intact).
+  const navItems = useMemo(() => brokersOnly ? allNavItems.filter(i => !['/affiliate-network', '/referral', '/partner/chats', '/sharing-pool'].includes(i.url)) : allNavItems, [allNavItems, brokersOnly]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts || audience !== 'professional') return undefined;
@@ -315,7 +319,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               </div>
 
               {/* Settings + Tutorial + broker/partner toggle share one row. */}
-              <div className={cn("mt-2 grid w-full items-stretch gap-1", identity.canSwitch ? "grid-cols-[1fr_1fr_1.8fr]" : "grid-cols-2")} dir="rtl" onClick={(e) => e.stopPropagation()}>
+              <div className={cn("mt-2 grid w-full items-stretch gap-1", identity.canSwitch && !brokersOnly ? "grid-cols-[1fr_1fr_1.8fr]" : "grid-cols-2")} dir="rtl" onClick={(e) => e.stopPropagation()}>
                 {/* Settings shortcut: opens /profile and closes the sidebar.
                     Hidden in Rita's marketing workspace. */}
                 {(
@@ -347,7 +351,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   <HelpCircle className="h-4 w-4 text-[hsl(var(--nav-help))]" />הדרכה
                 </Button>
 
-                {identity.canSwitch && <AppModeSwitcher keepSidebarOpen className="w-full min-w-0 [&>button]:h-[31px] [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-0.5 [&>button]:!text-sm" />}
+                {identity.canSwitch && !brokersOnly && <AppModeSwitcher keepSidebarOpen className="w-full min-w-0 [&>button]:h-[31px] [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-0.5 [&>button]:!text-sm" />}
               </div>
 
             </SidebarGroupContent>
@@ -375,7 +379,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                 </SidebarMenuButton>
                 {!collapsed && <HelpHint path="/public-listings" className="absolute left-1 top-1/2 -translate-y-1/2" />}
               </SidebarMenuItem>
-              {user && audience === 'partner' && (
+              {user && audience === 'partner' && !brokersOnly && (
                 <SidebarMenuItem key="partner-pool">
                   <SidebarMenuButton asChild><NavLink to="/sharing-pool" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Home className="h-4 w-4 text-primary" />{!collapsed && <span className="text-sm font-medium">נכסים פתוחים לשיתוף</span>}</NavLink></SidebarMenuButton>
                 </SidebarMenuItem>

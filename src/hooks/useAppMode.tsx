@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { useCallback, useEffect, useState } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
@@ -69,6 +70,7 @@ export function useAppMode() {
   const { accountRoles } = useUserRole();
   const isAffiliate = accountRoles.includes('affiliate');
   const isAffiliateOnly = isAffiliateOnlyAccount(accountRoles);
+  const brokersOnly = useBrokersOnly();
   const [state, setModeState] = useState(() => ({ userId, mode: readAppMode(userId) }));
   const mode = state.userId === userId ? state.mode : readAppMode(userId);
 
@@ -89,6 +91,6 @@ export function useAppMode() {
   }, [userId]);
 
   // A stored display preference never creates partner authorization.
-  const effectiveMode: AppMode = isAffiliate && (isAffiliateOnly || mode === 'partner') ? 'partner' : 'broker';
+  const effectiveMode: AppMode = isAffiliate && (isAffiliateOnly || (!brokersOnly && mode === 'partner')) ? 'partner' : 'broker';
   return { mode: effectiveMode, setMode, isPartnerMode: effectiveMode === 'partner', isBrokerMode: effectiveMode === 'broker' };
 }
