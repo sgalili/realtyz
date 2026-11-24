@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { ClipboardList, Phone, Trophy } from 'lucide-react';
 import { fmtILS } from '@/lib/formatCurrency';
 import { leadPriceLevel, closingLevelColor, closingLevelClass } from '@/lib/leadPriceRanges';
@@ -15,7 +16,7 @@ const rewardIcons = [
   { key: 'closing', label: 'סגירת עסקה', Icon: Trophy, tone: 'text-lead-closing' },
 ] as const;
 
-export function RewardIcons({ levels, types, prices, zeroTypes, label = 'תגמולים', grid = false, closingLevel }: { levels?: Partial<Record<'form' | 'whatsapp' | 'phone', number | null>>; closingLevel?: number | null; grid?: boolean; types: RewardTypes; zeroTypes?: RewardTypes; prices?: Partial<Record<keyof RewardTypes, number>>; label?: string | null }) {
+function RewardIconsInner({ levels, types, prices, zeroTypes, label = 'תגמולים', grid = false, closingLevel }: { levels?: Partial<Record<'form' | 'whatsapp' | 'phone', number | null>>; closingLevel?: number | null; grid?: boolean; types: RewardTypes; zeroTypes?: RewardTypes; prices?: Partial<Record<keyof RewardTypes, number>>; label?: string | null }) {
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
   const rows = rewardIcons.filter(row => types[row.key] === true);
@@ -36,12 +37,27 @@ export function RewardIcons({ levels, types, prices, zeroTypes, label = 'תגמ�
   </span>;
 }
 
-export function CommissionTierBadges({ tiers, compact: _compact = false, level4Locked = false, closingOnly = false }: { tiers: CommissionTiers; compact?: boolean; level4Locked?: boolean; closingOnly?: boolean }) {
+function CommissionTierBadgesInner({ tiers, compact: _compact = false, level4Locked = false, closingOnly = false }: { tiers: CommissionTiers; compact?: boolean; level4Locked?: boolean; closingOnly?: boolean }) {
   const { level4Unlocked } = useAffiliateLicense();
   return <RewardIcons zeroTypes={{ form: tiers.tier1 === 0, whatsapp: tiers.tier2 === 0, phone: tiers.tier3 === 0, closing: level4Unlocked && tiers.tier4 === 0 }} types={{ form: !closingOnly, whatsapp: !closingOnly, phone: !closingOnly, closing: !level4Locked }} />;
 }
 
-export function GuestTierIcons({ types = {} }: { types?: RewardTypes }) {
+function GuestTierIconsInner({ types = {} }: { types?: RewardTypes }) {
   return <RewardIcons types={{ form: true, whatsapp: true, phone: true, closing: true }} zeroTypes={Object.fromEntries(Object.entries(types).map(([key, active]) => [key, active === false]))} />;
 }
 export default CommissionTierBadges;
+
+export function RewardIcons(props: Parameters<typeof RewardIconsInner>[0]) {
+  const brokersOnly = useBrokersOnly();
+  return brokersOnly ? null : <RewardIconsInner {...props} />;
+}
+
+export function CommissionTierBadges(props: Parameters<typeof CommissionTierBadgesInner>[0]) {
+  const brokersOnly = useBrokersOnly();
+  return brokersOnly ? null : <CommissionTierBadgesInner {...props} />;
+}
+
+export function GuestTierIcons(props: Parameters<typeof GuestTierIconsInner>[0]) {
+  const brokersOnly = useBrokersOnly();
+  return brokersOnly ? null : <GuestTierIconsInner {...props} />;
+}

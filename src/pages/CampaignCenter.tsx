@@ -1,3 +1,5 @@
+import { BrokerLiveActivity } from '@/components/activity/BrokerLiveActivity';
+import { useBrokersOnly as useBrokersOnlyMode } from '@/hooks/usePlatformMode';
 import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { canRestorePropertyDraft, propertyCampaignSelection } from '@/lib/campaignPropertyContext';
 import { fetchPartnerCampaignInventory } from '@/lib/partnerCampaignInventory';
@@ -7549,6 +7551,7 @@ const DraftCollapsibleCard = ({
 /* ───────────── Page ───────────── */
 
 const CampaignCenter = () => {
+  const brokersOnlyMode = useBrokersOnlyMode();
   const demoView = useDemoViewStatus();
   const [wizardChannel, setWizardChannel] = useState<DistributionChannel | null>(null);
   // Facebook two-step flow: the publishing composer mounts only after the
@@ -8690,6 +8693,7 @@ const CampaignCenter = () => {
 
   return (
     <div className="-mt-[25px] space-y-6" dir="rtl">
+      {brokersOnlyMode && <BrokerLiveActivity focus="campaigns" />}
       {isTargetedMode && (
         <div className="relative -mx-3 sm:-mx-6 -mt-6 mb-2 overflow-hidden text-primary-foreground"
              style={{ backgroundColor: 'hsl(var(--header-bg))' }} data-no-hero-wave>

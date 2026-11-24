@@ -25,3 +25,10 @@ globalThis.ResizeObserver = class {
   unobserve() {}
   disconnect() {}
 } as typeof ResizeObserver;
+
+// Components read the platform mode through React Query; tests default to the
+// full marketplace unless a test file mocks this module itself.
+vi.mock('@/hooks/usePlatformMode', () => ({
+  usePlatformMode: () => ({ data: 'full_marketplace', isLoading: false }),
+  useBrokersOnly: () => false,
+}));

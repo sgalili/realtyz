@@ -10993,6 +10993,33 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_lead_screening: {
+        Row: {
+          form_fields: Json
+          questions: Json
+          questions_phone: Json
+          updated_at: string
+          updated_by: string | null
+          workspace_owner_id: string
+        }
+        Insert: {
+          form_fields?: Json
+          questions?: Json
+          questions_phone?: Json
+          updated_at?: string
+          updated_by?: string | null
+          workspace_owner_id: string
+        }
+        Update: {
+          form_fields?: Json
+          questions?: Json
+          questions_phone?: Json
+          updated_at?: string
+          updated_by?: string | null
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       workspace_memberships: {
         Row: {
           account_type: string | null
@@ -13082,6 +13109,10 @@ export type Database = {
           _reference: string
         }
         Returns: undefined
+      }
+      save_workspace_lead_screening: {
+        Args: { _form_fields: Json; _questions: Json; _questions_phone: Json }
+        Returns: Json
       }
       scanner_broker_eligible: {
         Args: {

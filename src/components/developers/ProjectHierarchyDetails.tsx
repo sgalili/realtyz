@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Building2, ExternalLink, Globe, Megaphone, MoreVertical, Pencil } from 'lucide-react';
@@ -116,12 +117,13 @@ function DeveloperIdentity({ developer }: { developer: ProjectDeveloperIdentity 
 function UnitDetails({ units, project, developer, grid, onPublish, onPost, onEdit, selectionMode = false, selectedUnits, onToggleUnit }: { units: ProjectUnit[]; project: DeveloperProject; developer?: ProjectDeveloperIdentity; grid: boolean; onPublish?: (unit: ProjectUnit) => void; onPost?: (unit: ProjectUnit) => void; onEdit?: () => void } & UnitSelectionProps) {
   const [opened, setOpened] = useState<ProjectUnit | null>(null);
   const edit = () => { setOpened(null); onEdit?.(); };
+  const brokersOnlyMode = useBrokersOnly();
   return <div className="min-w-0">
     {grid ? <div className="property-card-grid">
       {units.map(unit => { const selectionKey = projectUnitSelectionKey(project.id, unit); return <div key={`${unit.building_id}:${unit.source_unit_id}`} className="relative">{selectionMode && <SelectBox className="absolute right-2 top-2 z-20 h-6 w-6 bg-background shadow-xs" checked={selectedUnits?.has(selectionKey) ?? false} onChange={() => onToggleUnit?.(selectionKey)} label={`בחירת ${unitTitle(unit)}`} />}<StandardPropertyCard card={unitCard(unit, project)} onOpen={() => setOpened(unit)} onFavorite={() => undefined} showContact={false} showOwnerMenu={false} menu={<DeveloperUnitMenu unit={unit} project={project} onOpen={() => setOpened(unit)} onPublish={onPublish} onPost={onPost} onEdit={onEdit} onRotated={() => setOpened(null)} />} /></div>; })}
     </div> : <div className="overflow-x-auto rounded-lg border bg-card">
       <table className="w-full min-w-[760px] text-right text-sm">
-        <thead className="bg-muted/40 text-muted-foreground"><tr>{selectionMode && <th className="w-8 p-2"><span className="sr-only">בחירה</span></th>}<th className="p-2 font-semibold">תמונה</th><th className="p-2 font-semibold">דירה</th><th className="p-2 font-semibold">מחיר</th><th className="p-2 font-semibold">תגמולים</th><th className="p-2 font-semibold">חדרים</th><th className="p-2 font-semibold">מ״ר</th><th className="p-2 font-semibold">קומה</th><th className="p-2"><span className="sr-only">פעולות</span></th></tr></thead>
+        <thead className="bg-muted/40 text-muted-foreground"><tr>{selectionMode && <th className="w-8 p-2"><span className="sr-only">בחירה</span></th>}<th className="p-2 font-semibold">תמונה</th><th className="p-2 font-semibold">דירה</th><th className="p-2 font-semibold">מחיר</th>{!brokersOnlyMode && <th className="p-2 font-semibold">תגמולים</th>}<th className="p-2 font-semibold">חדרים</th><th className="p-2 font-semibold">מ״ר</th><th className="p-2 font-semibold">קומה</th><th className="p-2"><span className="sr-only">פעולות</span></th></tr></thead>
         <tbody className="divide-y divide-border/70">{units.map(unit => {
           const card = unitCard(unit, project);
           const selectionKey = projectUnitSelectionKey(project.id, unit);
@@ -130,7 +132,7 @@ function UnitDetails({ units, project, developer, grid, onPublish, onPost, onEdi
             <td className="p-2">{card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded bg-muted"><Building2 className="h-5 w-5 text-muted-foreground" /></div>}</td>
             <td className="min-w-56 p-2"><PublicCardSummary card={card} showCommissions={false} showBroker={false} dense /></td>
             <td className="whitespace-nowrap p-2 text-[17px] font-bold text-success">{card.price ? `₪${Number(card.price).toLocaleString('he-IL')}` : ''}</td>
-            <td className="p-2"><DeveloperCommissionBadges project={project} unit={unit} /></td>
+            {!brokersOnlyMode && <td className="p-2"><DeveloperCommissionBadges project={project} unit={unit} /></td>}
             <td className="p-2">{card.rooms || ''}</td><td className="p-2">{card.sqm || ''}</td><td className="whitespace-nowrap p-2">{card.floor ?? ''}</td>
             <td className="p-2" onClick={event => event.stopPropagation()}><DeveloperUnitMenu unit={unit} project={project} onOpen={() => setOpened(unit)} onPublish={onPublish} onPost={onPost} onEdit={onEdit} onRotated={() => setOpened(null)} /></td>
           </tr>;

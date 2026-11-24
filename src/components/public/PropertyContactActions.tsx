@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useNavigate } from '@/lib/router-compat';
@@ -60,12 +61,13 @@ export default function PropertyContactActions({
   formAsButton?: boolean;
   singleRow?: boolean;
 }) {
+  const brokersOnly = useBrokersOnly();
   const settings = options ?? {};
   // Preserve priced identity capture, but avoid a redundant form when a
   // configured conversation can collect it itself.
-  const showWhatsapp = !shareOnly && settings.whatsapp === true;
+  const showWhatsapp = !shareOnly && (settings.whatsapp === true || (brokersOnly && settings.whatsapp !== false));
   const showPhone = !shareOnly && settings.phone === true;
-  const showDigital = !shareOnly && settings.digital === true;
+  const showDigital = !shareOnly && (settings.digital === true || (brokersOnly && settings.digital !== false));
   const [mode, setMode] = useState<'digital' | 'phone' | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -89,7 +91,8 @@ export default function PropertyContactActions({
     return () => { alive = false; };
   }, [closingOnly, user?.id]);
   const [challenge, setChallenge] = useState<InquiryChallenge | null>(null);
-  const ref = propertyInquiryRef();
+  // Brokers-only: no partner attribution; contacts go straight to the broker.
+  const ref = brokersOnly ? null : propertyInquiryRef();
   // Fire-and-forget: counts which lead type visitors pick; never blocks the inquiry.
   const trackClick = (leadType: 'form' | 'whatsapp' | 'phone') => {
     try { void Promise.resolve(supabase.rpc('record_lead_type_click', { _listing_id: listingId, _lead_type: leadType })).catch(() => undefined); } catch { /* tracking must never block the inquiry */ }
@@ -185,7 +188,7 @@ export default function PropertyContactActions({
           {showDigital && <Button variant="inquiryForm" className="property-inquiry-action" onClick={() => { trackClick('form'); setMode('digital'); setInquiryStarted(true); }}><ClipboardList /><span>השארת פרטים</span></Button>}
           {showWhatsapp && <Button variant="inquiryWhatsapp" className="property-inquiry-action" onClick={() => { trackClick('whatsapp'); openRita(); }}><WhatsAppIcon /><span>ווטסאפ</span></Button>}
           {showPhone && <Button variant="inquiryPhone" className="property-inquiry-action" onClick={() => { trackClick('phone'); setMode('phone'); setInquiryStarted(true); }}><Phone /><span>שיחת טלפון</span></Button>}
-          {closingOnly && brokerAllowed && <Button variant="outline" className="property-inquiry-action border-primary text-primary" onClick={() => window.open(officialWaLink(`שלום, אני מתווך/ת מורשה ומעוניין/ת בשיתוף פעולה על חלוקת עמלת הסגירה עבור ${title}. מזהה נכס: ${listingId}`), '_blank', 'noopener,noreferrer')}><Handshake /><span>שיתופי פעולה בין מתווכים</span></Button>}
+          {!brokersOnly && closingOnly && brokerAllowed && <Button variant="outline" className="property-inquiry-action border-primary text-primary" onClick={() => window.open(officialWaLink(`שלום, אני מתווך/ת מורשה ומעוניין/ת בשיתוף פעולה על חלוקת עמלת הסגירה עבור ${title}. מזהה נכס: ${listingId}`), '_blank', 'noopener,noreferrer')}><Handshake /><span>שיתופי פעולה בין מתווכים</span></Button>}
         </div>}
         {showShare && !user && (
           <Button variant="outline" size={compact ? 'icon' : 'default'} className={cn(shareButtonClassName || (compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1'), !shareOnly && 'order-5 sm:order-none')} aria-label="שיתוף נכס" title="שיתוף נכס" onClick={() => setJoinOpen(true)}>

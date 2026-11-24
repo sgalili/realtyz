@@ -2017,6 +2017,20 @@
       "when": 1795496053130,
       "tag": "0287_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 288,
+      "version": "7",
+      "when": 1795497004378,
+      "tag": "0288_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 289,
+      "version": "7",
+      "when": 1795497101977,
+      "tag": "0289_migration",
+      "breakpoints": true
     }
   ]
 }

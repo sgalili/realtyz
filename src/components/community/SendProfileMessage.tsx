@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { useEffect } from 'react';
 import { useNavigate } from '@/lib/router-compat';
 import { MessageCircle } from 'lucide-react';
@@ -5,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { messagePath, rememberPendingMessage, takePendingMessage } from '@/lib/pendingCommunityMessage';
 
-export function SendProfileMessage({ recipientId }: { recipientId: string }) {
+function SendProfileMessageInner({ recipientId }: { recipientId: string }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   if (user?.id === recipientId) return null;
@@ -18,4 +19,10 @@ export function PendingMessageResume() {
   const navigate = useNavigate();
   useEffect(() => { if (!user || loading) return; const id = takePendingMessage(); if (id && id !== user.id) navigate(messagePath(id)); }, [user, loading, navigate]);
   return null;
+}
+
+/** Brokers-only mode has no broker-to-broker or community messaging. */
+export function SendProfileMessage(props: Parameters<typeof SendProfileMessageInner>[0]) {
+  const brokersOnly = useBrokersOnly();
+  return brokersOnly ? null : <SendProfileMessageInner {...props} />;
 }

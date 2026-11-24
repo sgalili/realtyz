@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { addToDistributionFunnel } from '@/lib/distributionFunnel';
 import { useUserRole } from '@/hooks/useUserRole';
 import { canManageListing } from '@/lib/propertyMenuPolicy';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 
 export const profileAssetPath = (card: { id: string; slug?: string | null }) => `/p/${encodeURIComponent(card.slug || card.id)}`;
 
@@ -31,16 +32,17 @@ export function QuickShareButton({ title, path, label = false }: { title: string
 export function ProfileAssetMenu({ card, title, isOwner, isFav, onFavorite, onPublish, onOpenNewPage }: { card: { id: string; slug?: string | null }; title: string; isOwner: boolean; isFav: boolean; onFavorite: () => void; onPublish?: () => void; onOpenNewPage?: () => void }) {
   const navigate = useNavigate();
   const { isSuperAdmin } = useUserRole();
+  const brokersOnly = useBrokersOnly();
   if (canManageListing(isOwner, isSuperAdmin)) return <OwnerListingActions listingId={card.id} onOpenNewPage={onOpenNewPage} />;
   const path = profileAssetPath(card);
   return <DropdownMenu>
     <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="אפשרויות נכס" title="אפשרויות נכס" onClick={(e) => e.stopPropagation()}><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
     <DropdownMenuContent align="start" className="w-48" onClick={(e) => e.stopPropagation()}>
-      <DropdownMenuLabel className="text-xs">אפשרויות שותף</DropdownMenuLabel>
+      {!brokersOnly && <DropdownMenuLabel className="text-xs">אפשרויות שותף</DropdownMenuLabel>}
       <DropdownMenuItem onSelect={() => void quickShareAsset(title, path)}><Share2 className="me-2 h-4 w-4" />שיתוף מהיר</DropdownMenuItem>
       <DropdownMenuItem onSelect={() => navigate(path)}><ExternalLink className="me-2 h-4 w-4" />פתיחת הנכס</DropdownMenuItem>
       {onOpenNewPage && <DropdownMenuItem onSelect={onOpenNewPage}><ExternalLink className="me-2 h-4 w-4" />פתיחה בעמוד חדש</DropdownMenuItem>}
-      <DropdownMenuItem onSelect={() => void addToDistributionFunnel(card.id)}><Megaphone className="me-2 h-4 w-4 text-primary" />פרסום קמפיין ברשתות</DropdownMenuItem>
+      {!brokersOnly && <DropdownMenuItem onSelect={() => void addToDistributionFunnel(card.id)}><Megaphone className="me-2 h-4 w-4 text-primary" />פרסום קמפיין ברשתות</DropdownMenuItem>}
       <DropdownMenuItem onSelect={onFavorite}><Heart className="me-2 h-4 w-4" />{isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}</DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>;

@@ -1,3 +1,4 @@
+import { LeadScreeningSettings } from '@/components/leads/LeadScreeningSettings';
 import SmartTimelineCard from '@/components/SmartTimelineCard';
 import { ToraffLoader } from '@/components/ui/toraff-loader';
 import { safeRows } from '@/lib/spreadsheetSafe';
@@ -3001,5 +3002,5 @@ export function InboxLeadDetails({ leadId, onClose }: { leadId: string; onClose:
 }
 
 export default function LeadCRMPage({ activityOnly = false }: { activityOnly?: boolean } = {}) {
-  return activityOnly ? <LeadCRM activityOnly /> : <LeadDirectionTabs><LeadCRM /></LeadDirectionTabs>;
+  return activityOnly ? <LeadCRM activityOnly /> : <><LeadScreeningSettings /><LeadDirectionTabs><LeadCRM /></LeadDirectionTabs></>;
 }

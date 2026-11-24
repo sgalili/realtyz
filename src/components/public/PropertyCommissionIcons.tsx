@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { useState } from 'react';
 import { Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -68,7 +69,7 @@ export function rewardColorLevels(
   return { levels, closingLevel };
 }
 
-export default function PropertyCommissionIcons({ listingId, raw, networkOpen, table = false, facts }: { listingId: string; raw?: Record<string, unknown>; networkOpen?: boolean; table?: boolean; facts?: RewardFacts }) {
+function PropertyCommissionIconsInner({ listingId, raw, networkOpen, table = false, facts }: { listingId: string; raw?: Record<string, unknown>; networkOpen?: boolean; table?: boolean; facts?: RewardFacts }) {
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
   const marketplace = useAffiliateMarketplace();
@@ -140,4 +141,10 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   const icons = <RewardIcons types={display.types} zeroTypes={zeroTypes} prices={display.prices} label={table || !user ? null : 'תגמולים'} grid={table} closingLevel={closingLevel} levels={levels as never} />;
   if (table && owned.data) return <><Button variant="ghost" className="relative min-h-8 min-w-8 bg-transparent p-0 hover:bg-transparent" aria-label="עריכת תגמולים" disabled={owned.isFetching} onClick={async event => { event.stopPropagation(); const fresh = await owned.refetch(); if (fresh.data) setDraft({ ...listingToDraft(fresh.data), resumeStep: 8, files: [], savedAt: Date.now() }); }}>{Object.values(display.types).some(Boolean) ? icons : (level4Unlocked ? <Trophy className="h-3.5 w-3.5 text-lead-closing" aria-label="סגירת עסקה" /> : <span className="text-xs font-semibold text-primary underline underline-offset-2">הגדרת תגמולים</span>)}</Button>{draft && <PublicListingPublisher pricingOnly adminOnlyEdit={!!owned.data?.__adminOnly} resumeDraft={draft} onRecovered={() => { setDraft(undefined); void owned.refetch(); }} />}</>;
   return <LeadPricingDialog readOnly closingLevel={closingLevel} rewardTypes={types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}>{icons}</LeadPricingDialog>;
+}
+
+/** Brokers-only mode never shows rewards or commissions. */
+export default function PropertyCommissionIcons(props: Parameters<typeof PropertyCommissionIconsInner>[0]) {
+  const brokersOnly = useBrokersOnly();
+  return brokersOnly ? null : <PropertyCommissionIconsInner {...props} />;
 }

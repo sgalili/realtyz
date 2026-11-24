@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { useState } from 'react';
 import { Ban, Power, Trash2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,7 +13,7 @@ import { DealTermsDialog } from './DealTermsDialog';
 import { toast } from 'sonner';
 
 /** Same peer actions for directory cards, conversation cards and open headers. */
-export function CommunityPeerActions({ id, name, onHide }: { id: string; name: string | null; onHide?: () => void }) {
+function CommunityPeerActionsInner({ id, name, onHide }: { id: string; name: string | null; onHide?: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const settings = useCommunityConversationSettings('peer');
@@ -51,4 +52,9 @@ export function CommunityPeerActions({ id, name, onHide }: { id: string; name: s
     <Button variant="ghost" className="text-destructive" onClick={() => setConfirm('hide')}><Trash2 className="h-5 w-5" />הסרת שיחה</Button>
     <AlertDialog open={!!confirm} onOpenChange={open => { if (!open) setConfirm(null); }}><AlertDialogContent dir="rtl"><AlertDialogHeader><AlertDialogTitle>{confirm === 'hide' ? 'להסיר את השיחה מהרשימה?' : blocked ? 'להסיר את החסימה?' : 'לחסום את המשתמש?'}</AlertDialogTitle><AlertDialogDescription>{confirm === 'hide' ? 'ההיסטוריה נשמרת למשתתפים. הודעה חדשה תחזיר את השיחה לרשימה. ריטה תכובה לשיחה זו.' : `${name ?? 'חבר הקהילה'} ${blocked ? 'יוכל לשלוח הודעות שוב.' : 'לא יוכל לשלוח לך הודעות פרטיות.'}`}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={busy}>ביטול</AlertDialogCancel><AlertDialogAction disabled={busy} onClick={event => { event.preventDefault(); void execute(); }}>{confirm === 'hide' ? 'הסרה' : blocked ? 'הסרת חסימה' : 'חסימה'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </>;
+}
+/** Brokers-only mode has no broker-to-broker or community messaging. */
+export function CommunityPeerActions(props: Parameters<typeof CommunityPeerActionsInner>[0]) {
+  const brokersOnly = useBrokersOnly();
+  return brokersOnly ? null : <CommunityPeerActionsInner {...props} />;
 }

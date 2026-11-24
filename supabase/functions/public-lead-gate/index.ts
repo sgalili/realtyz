@@ -61,6 +61,11 @@ Deno.serve(async (req) => {
     const admin = createClient(backendUrl, serviceKey);
 
     const body = await req.json().catch(() => ({}));
+    // Brokers-only SaaS: inquiries go straight to the listing's own broker workspace,
+    // with no partner attribution and no per-lead pricing requirement.
+    const { data: modeRow } = await admin.from("platform_system_settings").select("platform_mode").eq("id", true).maybeSingle();
+    const brokersOnly = modeRow?.platform_mode === "brokers_only";
+    if (brokersOnly && body && typeof body === "object") (body as any).ref = null;
     const action = str(body?.action, 20) || "register";
 
     // ---------------------------------------------------------- register
@@ -80,7 +85,7 @@ Deno.serve(async (req) => {
         .eq("id", listingId)
         .maybeSingle();
       if (listingError) throw listingError;
-      if (!listing || !(listing.is_published || listing.affiliate_enabled) || (intent === 'digital' && !(Number(listing.affiliate_tier1_amount) > 0))) {
+      if (!listing || (!brokersOnly && (!(listing.is_published || listing.affiliate_enabled) || (intent === 'digital' && !(Number(listing.affiliate_tier1_amount) > 0))))) {
         return json({ error: "הנכס אינו זמין" }, 404);
       }
       const gid = await guardIdentity(req, body, phone);
@@ -167,7 +172,7 @@ Deno.serve(async (req) => {
         platform: "web",
         action_type: "lead_gate_registration",
         actor_type: "system",
-        content: `מתעניין חדש מהלוח הציבורי: ${name} · ${phone}`,
+        content: `${brokersOnly ? "פנייה חדשה מעמוד הנכס" : "מתעניין חדש מהלוח הציבורי"}: ${name} · ${phone}`,
         metadata: { listing_id: listing.id, lead_id: leadId, intent, comment: comment || null, form_answers: formAnswers },
       });
 
@@ -195,7 +200,7 @@ Deno.serve(async (req) => {
       const phone = normalizePhone(str(body?.phone, 30));
       if (!listingId || !phone) return json({ error: "מספר טלפון תקין הוא שדה חובה" }, 400);
       const { data: listing } = await admin.from("listings").select("id, city, address, house_number, property_title, deal_type, workspace_owner_id, user_id, contact_options, affiliate_enabled, is_published, affiliate_tier3_amount, latitude, longitude").eq("id", listingId).maybeSingle();
-      if (!listing || !(listing.affiliate_enabled || listing.is_published) || !(Number(listing.affiliate_tier3_amount) > 0)) return json({ error: "אפשרות השיחה אינה זמינה" }, 404);
+      if (!listing || (!brokersOnly && (!(listing.affiliate_enabled || listing.is_published) || !(Number(listing.affiliate_tier3_amount) > 0)))) return json({ error: "אפשרות השיחה אינה זמינה" }, 404);
       const gid = await guardIdentity(req, body, phone);
       const guard = await checkGuard(admin, gid, geoOf(listing), body?.verification, listing.workspace_owner_id ?? listing.user_id);
       if (guard) return json(guard, guard.blocked ? 429 : 200);

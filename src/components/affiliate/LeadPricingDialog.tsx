@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -103,7 +104,7 @@ export function pricingSubtitle(title: string | null | undefined, details?: Pric
   return [address || (title ?? '').trim(), price].filter(Boolean).join(' · ') || 'פרטי הנכס';
 }
 
-export default function LeadPricingDialog({ listing, referralId, children, readOnly = false, compact = true, gross = false, closingOnly = false, rewardTypes, closingLevel }: { listing: PricingListing; referralId?: string | null; children?: ReactNode; readOnly?: boolean; compact?: boolean; gross?: boolean; closingOnly?: boolean; rewardTypes?: RewardTypes; closingLevel?: number | null }) {
+function LeadPricingDialogInner({ listing, referralId, children, readOnly = false, compact = true, gross = false, closingOnly = false, rewardTypes, closingLevel }: { listing: PricingListing; referralId?: string | null; children?: ReactNode; readOnly?: boolean; compact?: boolean; gross?: boolean; closingOnly?: boolean; rewardTypes?: RewardTypes; closingLevel?: number | null }) {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const workspaceId = useActiveWorkspaceOwnerId();
@@ -139,4 +140,9 @@ export default function LeadPricingDialog({ listing, referralId, children, readO
       </DialogContent>
     </Dialog>}
   </>;
+}
+/** Brokers-only mode never shows rewards or commissions. */
+export default function LeadPricingDialog(props: Parameters<typeof LeadPricingDialogInner>[0]) {
+  const brokersOnly = useBrokersOnly();
+  return brokersOnly ? null : <LeadPricingDialogInner {...props} />;
 }
