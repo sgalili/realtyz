@@ -19,6 +19,8 @@ import { cn } from '@/lib/utils';
 import { activityAudience } from '@/lib/activityAudience';
 import PartnerActivityProperties from './PartnerActivityProperties';
 import PrivateActivityInquiries from './PrivateActivityInquiries';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
+import { BrokerActivityLeads, BrokerActivityProperties, BrokerActivityShortcuts, useBrokerActivityCounts } from './BrokerActivityPanel';
 
 const MyAds = lazy(() => import('@/pages/MyAds'));
 const LeadCRM = lazy(() => import('@/pages/LeadCRM'));
@@ -36,6 +38,8 @@ export default function HomeActivityPill() {
   const audience = activityAudience(roles, isPartnerMode);
   const privateView = audience === 'private';
   const professionalView = audience === 'professional';
+  const brokersOnly = useBrokersOnly();
+  const brokerView = brokersOnly && professionalView && !partnerView;
   const [open, setOpen] = useState(false);
   const [activity, setActivity] = useState('properties');
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -71,9 +75,14 @@ export default function HomeActivityPill() {
     staleTime: 10 * 60_000, gcTime: 60 * 60_000,
     queryFn: async () => { if (!owner) return 0; const { count, error } = await supabase.from('leads').select('id', { count: 'exact', head: true }).eq('workspace_owner_id', owner); if (error) throw error; return count ?? 0; },
   });
+  const brokerCounts = useBrokerActivityCounts(brokerView ? owner : null);
   if (!user) return null;
   const n = (v: number | undefined) => v === undefined ? '' : ` (${v.toLocaleString('he-IL')})`;
-  const tabs = [
+  const tabs = brokerView ? [
+    { id: 'properties', label: `הנכסים שלי${n(brokerCounts.data?.listings)}` },
+    { id: 'leads', label: `לידים${n(brokerCounts.data?.leads ?? leadCount.data)}` },
+    { id: 'earnings', label: 'קיצורי דרך' },
+  ] : [
     { id: 'properties', label: partnerView ? 'נכסים פתוחים לשיתוף' : `הנכסים שלי${n(ads.data?.filter(r => r.relation === 'owned').length)}` },
     { id: 'leads', label: privateView ? 'הפניות שלי' : `לידים בשיווק${n(partnerView ? submissions.data?.length : leadCount.data)}` },
     { id: 'earnings', label: privateView ? 'מועדפים' : `רווחים${n(submissions.data?.filter(r => Number(r.earned_amount ?? 0) > 0).length)}` },
@@ -100,6 +109,11 @@ export default function HomeActivityPill() {
         </TabsList>
         <div data-activity-scroll className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain border-t px-2 sm:px-3">
           <Suspense fallback={<p role="status" className="py-8 text-center text-sm text-muted-foreground">טוען פעילות…</p>}>
+            {brokerView && owner ? <>
+              <TabsContent value="properties" className="mt-0 min-w-0"><BrokerActivityProperties owner={owner} onNavigate={() => setOpen(false)} /></TabsContent>
+              <TabsContent value="leads" className="min-w-0"><BrokerActivityLeads userId={user.id} owner={owner} /></TabsContent>
+              <TabsContent value="earnings"><BrokerActivityShortcuts owner={owner} onNavigate={() => setOpen(false)} /></TabsContent>
+            </> : <>
             <TabsContent value="properties" className="mt-0 min-w-0">{partnerView ? <PartnerActivityProperties key={`${user.id}:${owner}`} /> : <MyAds key={`${user.id}:${owner}`} activityOnly />}</TabsContent>
             <TabsContent value="leads" className="min-w-0">{privateView ? <PrivateActivityInquiries /> : partnerView ? <div className="divide-y">{submissions.isError ? <p role="alert" className="py-8 text-center text-destructive">לא ניתן לטעון את הלידים כרגע</p> : !submissions.isSuccess ? <p role="status" className="py-8 text-center">טוען לידים…</p> : submissions.data.length ? submissions.data.map(row => <div key={row.id} className="space-y-1 py-3 text-sm"><p className="font-semibold break-words">{row.lead_name}</p><p className="break-words text-muted-foreground">{row.listing?.property_title}</p></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין לידים בשיווק</p>}</div> : <LeadCRM key={`${user.id}:${owner}`} activityOnly />}</TabsContent>
             <TabsContent value="earnings">
@@ -107,6 +121,7 @@ export default function HomeActivityPill() {
                 {submissions.isError ? <p role="alert" className="py-8 text-center text-destructive">לא ניתן לטעון את הרווחים כרגע</p> : !submissions.isSuccess ? <p role="status" className="py-8 text-center">טוען רווחים…</p> : submissions.data.length ? submissions.data.filter(row => Number(row.earned_amount ?? 0) > 0).map(row => <div key={row.id} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="min-w-0 break-words">{row.listing?.property_title || row.lead_name}</span><bdi className="shrink-0">{fmtILS(Number(row.earned_amount ?? 0))}</bdi></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין רווחים</p>}
               </div>}
             </TabsContent>
+            </>}
           </Suspense>
         </div>
       </Tabs>

@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { FaqHost } from '@/components/faq/FaqDialog';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -472,6 +473,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   // avatar are NEVER used as shell branding.
   const headerIdentity = resolveWorkspaceIdentity(activeWorkspace, brand, masterBrand);
   const headerLogo = headerIdentity.logo || '';
+  const brokersOnly = useBrokersOnly();
   const headerName = headerIdentity.name;
   const headerUserName = friendlyUserDisplayName({ user_metadata: { full_name: activeWorkspace && !activeWorkspace.is_self ? activeWorkspace.owner_full_name : headerUserProfile?.full_name, name: friendlyUserDisplayName(user, '') } }, 'ללא שם');
 
@@ -494,7 +496,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="relative z-40 flex shrink-0 items-center gap-1">
               <HeaderProfileLink />
               <NotificationCenter />
-              <HomeActivityPill />
+              {!brokersOnly && <HomeActivityPill />}
             </div>
 
             {/* Absolute screen center (fixed, so the sidebar width does not shift it). */}
@@ -504,12 +506,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
               aria-label={`${headerName} - דף הבית`}
               className="pointer-events-auto fixed left-1/2 top-[env(safe-area-inset-top)] z-30 flex h-16 max-w-[calc(100vw-9rem)] -translate-x-1/2 items-center gap-1.5 overflow-hidden text-right leading-none"
             >
-              <PlatformBrand className="h-[54px]" />
+              {brokersOnly ? <span className="flex flex-col items-center gap-0.5"><PlatformBrand className="h-[30px]" /><span className="whitespace-nowrap text-[11px] font-semibold leading-none text-foreground sm:text-xs">המערכת היחידה שכל מתווך חייב</span></span> : <PlatformBrand className="h-[54px]" />}
             </Link>
 
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
-              <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />
+              {brokersOnly ? <HomeActivityPill /> : <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />}
             </div>
             </div>
           </header>
