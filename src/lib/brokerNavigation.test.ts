@@ -8,6 +8,7 @@ describe('broker sidebar navigation', () => {
       '/properties',
       '/my-ads',
       '/command-center',
+      '/signatures',
       '/inbox',
       '/campaigns',
       '/referral',

@@ -122,6 +122,7 @@ const AiDialer = lazy(() => import("./pages/AiDialer"));
 const PlatformCredentials = lazy(() => import("./pages/PlatformCredentials"));
 const FbEngagement = lazy(() => import("./pages/FbEngagement"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
+const DigitalSignatures = lazy(() => import("./pages/DigitalSignatures"));
 const AffiliateSignup = lazy(() => import("./pages/AffiliateSignup"));
 const AffiliateNetwork = lazy(() => import("./pages/AffiliateNetwork"));
 const PartnerChats = lazy(() => import("./pages/partner/PartnerChats"));
@@ -570,6 +571,7 @@ const App = () => {
               <Route path="/privacy-policy" element={<PublicProfileShell hero><Suspense fallback={<PageLoader />}><PrivacyPolicy /></Suspense></PublicProfileShell>} />
 
               <Route path="/dashboard" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
+              <Route path="/signatures" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><DigitalSignatures /></Suspense></ProtectedRoute>} />
               <Route path="/command-center" element={<ProtectedRoute allowGuestDemo><CommandCenter /></ProtectedRoute>} />
               <Route path="/sharing-pool" element={<PartnerOnlyRoute><ProtectedRoute><SharingPool /></ProtectedRoute></PartnerOnlyRoute>} />
               <Route path="/tasks" element={<Navigate to="/command-center" replace />} />

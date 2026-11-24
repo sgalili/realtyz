@@ -1947,6 +1947,13 @@
       "when": 1795479475329,
       "tag": "0277_monthly_free_credits_20",
       "breakpoints": true
+    },
+    {
+      "idx": 278,
+      "version": "7",
+      "when": 1795479788383,
+      "tag": "0278_closing_documents_upload_and_approval",
+      "breakpoints": true
     }
   ]
 }

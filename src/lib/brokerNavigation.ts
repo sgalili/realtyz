@@ -4,6 +4,7 @@ export const BROKER_MENU_ORDER = [
   '/properties',
   '/my-ads',
   '/command-center',
+  '/signatures',
   '/inbox',
   '/campaigns',
   '/referral',

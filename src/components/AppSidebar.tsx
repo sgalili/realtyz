@@ -57,7 +57,7 @@ import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIco
 import { useAccountIdentity } from '@/hooks/useAccountIdentity';
 import { SidebarRitaChat } from '@/components/sidebar/SidebarRitaChat';
 import { AccessibilityMenu } from '@/components/accessibility/AccessibilityMenu';
-import { Accessibility } from 'lucide-react';
+import { Accessibility, FileSignature } from 'lucide-react';
 import { usePersonalLanguage } from '@/i18n/personalLanguage';
 import { Megaphone as MyAdsIcon, Building2 as ClientsIcon } from 'lucide-react';
 
@@ -99,6 +99,13 @@ const NAV_ITEMS: NavItem[] = [
     iconColor: '!text-[hsl(var(--nav-tasks))]', // sky-700
     badgeClass: 'bg-sky-50 text-sky-700 ring-sky-200',
     aliases: ['/tasks'],
+  },
+  {
+    title: 'חתימות דיגיטליות',
+    url: '/signatures',
+    icon: FileSignature,
+    iconColor: '!text-[hsl(var(--nav-deals))]',
+    badgeClass: 'bg-rose-50 text-rose-700 ring-rose-200',
   },
   {
     title: 'קמפיינים',
@@ -242,7 +249,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     // but broker-only tools (Yad2 broker inventory, deal room, developer directory)
     // are swapped for their own project management dashboard.
     if (access.projects) {
-      const base = NAV_ITEMS.filter((i) => !['/properties', '/deal-room', '/developers', '/dashboard', '/affiliate-network'].includes(i.url));
+      const base = NAV_ITEMS.filter((i) => !['/properties', '/deal-room', '/developers', '/dashboard', '/affiliate-network', '/signatures'].includes(i.url));
       const projects = NAV_ITEMS.find((i) => i.url === '/developers');
       return projects ? [{ ...projects, title: 'הפרויקטים שלנו', url: '/developer-dashboard' }, ...base] : base;
     }

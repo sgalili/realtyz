@@ -2872,6 +2872,9 @@ export type Database = {
       }
       closing_documents: {
         Row: {
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           expires_at: string
           fields: Json
@@ -2895,6 +2898,9 @@ export type Database = {
           workspace_owner_id: string | null
         }
         Insert: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           expires_at?: string
           fields?: Json
@@ -2918,6 +2924,9 @@ export type Database = {
           workspace_owner_id?: string | null
         }
         Update: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           expires_at?: string
           fields?: Json
@@ -11155,6 +11164,10 @@ export type Database = {
       approve_invite_verified_deal: {
         Args: { _source_id: string; _source_type: string; _user_id: string }
         Returns: string
+      }
+      approve_signed_document: {
+        Args: { _id: string; _note?: string }
+        Returns: Json
       }
       attribute_whatsapp_referral: {
         Args: { _name?: string; _phone: string; _ref: string }
