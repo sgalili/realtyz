@@ -1,3 +1,4 @@
+import { openCreditsUpgrade } from '@/components/billing/CreditsUpgradeDialog';
 import { supabase } from '@/integrations/supabase/client';
 
 export const SOCIAL_DRAFT_CONFIRM_EVENT = 'toraff:social-draft-confirm';
@@ -13,6 +14,7 @@ async function responseDetails(result: { data: any; error: any }) {
   return context && typeof context === 'object' ? context : null;
 }
 function draftError(details: any) {
+  if (details?.error === 'insufficient_credits') openCreditsUpgrade();
   const messages: Record<string, string> = {
     generation_in_progress: 'יצירת נוסח קודם עדיין בתהליך. נסו שוב בעוד רגע.',
     insufficient_credits: 'אין מספיק קרדיטים ליצירת הקמפיין.',

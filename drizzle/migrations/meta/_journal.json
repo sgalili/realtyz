@@ -1940,6 +1940,13 @@
       "when": 1795479345152,
       "tag": "0276_platform_mode_setting",
       "breakpoints": true
+    },
+    {
+      "idx": 277,
+      "version": "7",
+      "when": 1795479475329,
+      "tag": "0277_monthly_free_credits_20",
+      "breakpoints": true
     }
   ]
 }

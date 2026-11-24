@@ -39,6 +39,8 @@ import { FullPageLoading as RealtyzLoader, FullPageLoadingProvider } from '@/com
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { useWorkspaceFeatures } from "@/hooks/useWorkspaceFeatures";
+import { CreditsUpgradeDialog } from '@/components/billing/CreditsUpgradeDialog';
+import { usePlatformMode } from '@/hooks/usePlatformMode';
 import { applyPendingSignupRole, readPostSignupWelcome } from '@/lib/signupRole';
 import { PostSignupWelcome } from '@/components/onboarding/PostSignupWelcome';
 import { useEarningsFeedback } from '@/hooks/useEarningsFeedback';
@@ -310,6 +312,7 @@ const ROOT_MARKETING_HOSTS = new Set(['realtyz.co.il', 'www.realtyz.co.il']);
 
 function RootRoute() {
   const { user, loading } = useAuth();
+  const { data: mode, isLoading: modeLoading } = usePlatformMode();
   const isMarketingHost = typeof window !== 'undefined' &&
     ROOT_MARKETING_HOSTS.has(window.location.hostname.toLowerCase());
   if (user && !loading) {
@@ -323,6 +326,11 @@ function RootRoute() {
       <RealtyzLoader size="lg" />
     </div>
   );
+  if (modeLoading) return <PageLoader />;
+  if (mode === 'brokers_only') {
+    if (!user) return <Suspense fallback={<PageLoader />}><Landing /></Suspense>;
+    return <Navigate to="/dashboard" replace />;
+  }
   if (!user) return <Suspense fallback={<PageLoader />}><PublicListingsBoard /></Suspense>;
   return <ProtectedRoute><Suspense fallback={<PageLoader />}><PublicListingsBoard embedded /></Suspense></ProtectedRoute>;
 }
@@ -521,6 +529,7 @@ const App = () => {
             <WorkspaceProvider>
             <WhiteLabelProvider>
             <DemoModeProvider>
+            <CreditsUpgradeDialog />
             <ElectionTypeProvider>
             <MandateProvider>
             <Suspense fallback={<PageLoader />}>
