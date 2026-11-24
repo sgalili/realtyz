@@ -1,0 +1,2 @@
+ALTER TABLE public.broker_invitation_template_texts DROP CONSTRAINT IF EXISTS broker_invitation_template_texts_gender_check;
+ALTER TABLE public.broker_invitation_template_texts ADD CONSTRAINT broker_invitation_template_texts_gender_check CHECK (gender IN ('male','female','email_first_contact'));

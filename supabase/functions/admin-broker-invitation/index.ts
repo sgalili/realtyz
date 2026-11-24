@@ -1,13 +1,13 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
-import { coldInvitationBody, firstContactBody, invitationTextFor, invitationTargetPhone, officialBrokerPhone, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName } from '../_shared/brokerInvitationTemplate.ts';
+import { coldInvitationBody, firstContactBody, FIRST_CONTACT_WHATSAPP, invitationTextFor, invitationTargetPhone, officialBrokerPhone, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName } from '../_shared/brokerInvitationTemplate.ts';
 import { loadAttachment, attachmentSignedUrl, markAttachmentSent } from '../_shared/invitationAttachment.ts';
 import { publicSiteOrigin, invitationLink, demoInvitationLink } from '../_shared/importInvitationPolicy.ts';
 
 const schema = z.object({
-  action: z.enum(['status', 'register', 'send', 'texts', 'save_text', 'whatsapp_eligibility']),
-  text: z.string().max(1024).optional(),
+  action: z.enum(['status', 'register', 'send', 'texts', 'save_text', 'save_email_text', 'whatsapp_eligibility']),
+  text: z.string().max(4000).optional(),
   broker_id: z.string().uuid().optional(),
   gender: z.enum(['male', 'female']).nullable().optional(),
   request_id: z.string().uuid().optional(),
@@ -71,7 +71,15 @@ Deno.serve(async req => {
   }
   const { data: saved } = await admin.from('broker_invitation_template_texts').select('gender,body');
   const savedFor = (g: unknown) => invitationTextFor(saved?.find(r => r.gender === (g === 'female' ? 'female' : 'male'))?.body, g, roles);
-  if (input.action === 'texts') return json({ male: savedFor('male'), female: savedFor('female'), ...(input.broker_id ? { recipient: savedFor(gender), email_recipient: firstContactBody('email'), recipient_gender: gender === 'female' ? 'female' : 'male', demo_link: demoLink } : {}) });
+  if (input.action === 'texts') return json({ male: savedFor('male'), female: savedFor('female'), ...(input.broker_id ? { recipient: savedFor(gender), email_recipient: saved?.find(r => r.gender === 'email_first_contact')?.body ?? firstContactBody('email'), recipient_gender: gender === 'female' ? 'female' : 'male', demo_link: demoLink } : {}) });
+  if (input.action === 'save_email_text') {
+    // Global first-outreach email default only; the WhatsApp template is fixed and never touched here.
+    const t = (input.text ?? '').trim();
+    if (t.length < 20 || t.length > 4000) return json({ error: 'נוסח המייל חייב להכיל 20 עד 4000 תווים' }, 400);
+    const { error } = await admin.from('broker_invitation_template_texts').upsert({ gender: 'email_first_contact', body: t, updated_by: caller.userId, updated_at: new Date().toISOString() });
+    if (error) return json({ error: 'שמירת הנוסח הכללי נכשלה' }, 500);
+    return json({ ok: true });
+  }
   if (input.action === 'save_text') {
     if (input.gender !== 'male' && input.gender !== 'female') return json({ error: 'יש לבחור נוסח לגברים או לנשים' }, 400);
     try {
@@ -92,10 +100,10 @@ Deno.serve(async req => {
     if(!j?.enabled||!j.message_consent_at||j.opted_out_at)return json({error:'נדרשת הסכמה מתועדת להפעלת מסלול הפנייה'},409);
     if(!listing?.address||!listing.city)return json({error:'אין כתובת ועיר מאומתות ממודעת יד2 לפנייה האישית'},409);
     outreachAddress=[listing.address,listing.city].join(', ');
-    text='היי {brokerName}, ראיתי את המודעה שלך ב{{2}} ורציתי לשאול בקצרה: האם יהיה לך מעניין לשמוע על ערכת כלים מתקדמת למתווכים, שמרכזת נכסים, לידים, וואטסאפ וקמפיינים במקום אחד? אם כן, אפשר להשיב ״כן״ ונשלח פרטים. אם לא מתאים, אפשר להשיב ״הסרה״ ולא נפנה שוב. שי גלילי, TORAFF';
+    text=FIRST_CONTACT_WHATSAPP;
   }
   let body: string;
-  try { body = input.outreach ? text.replace('{brokerName}','{{1}}') : templateBody(text); } catch (e) { return json({ error: e instanceof Error ? e.message : 'Invalid template' }, 400); }
+  try { body = input.outreach ? text : templateBody(text); } catch (e) { return json({ error: e instanceof Error ? e.message : 'Invalid template' }, 400); }
   const name = await invitationTemplateName(body);
   if (input.action === 'send' && demo && !input.outreach && !templateHasLink(body)) return json({ error: 'תבנית הדמו אינה כוללת קישור. יש לעדכן אותה ולהגיש ל-Meta מחדש.' }, 409);
   try {

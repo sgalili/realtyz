@@ -16,3 +16,13 @@ describe('first-contact invitation', () => {
     }
   });
 });
+
+describe('fixed first-outreach WhatsApp template', () => {
+  it('offers free access and is signed by Rita', async () => {
+    const { FIRST_CONTACT_WHATSAPP } = await import('../../supabase/functions/_shared/brokerInvitationTemplate');
+    expect(FIRST_CONTACT_WHATSAPP.startsWith('היי {{1}},')).toBe(true);
+    expect(FIRST_CONTACT_WHATSAPP).toContain('ראיתי את המודעה שלך ב{{2}}');
+    expect(FIRST_CONTACT_WHATSAPP).toContain('גישה בחינם');
+    expect(FIRST_CONTACT_WHATSAPP.trim().endsWith('ריטה | TORAFF')).toBe(true);
+  });
+});

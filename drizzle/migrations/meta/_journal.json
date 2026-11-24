@@ -2094,6 +2094,13 @@
       "when": 1795529721340,
       "tag": "0298_repeat_import_on_toggle_after_completion",
       "breakpoints": true
+    },
+    {
+      "idx": 299,
+      "version": "7",
+      "when": 1795531899924,
+      "tag": "0299_email_first_contact_default",
+      "breakpoints": true
     }
   ]
 }

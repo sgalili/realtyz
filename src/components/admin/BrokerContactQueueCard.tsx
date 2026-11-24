@@ -70,6 +70,12 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
     onSuccess: d => { if (d.sent) { toast.success('המייל נשלח'); setOpen(false); } else { const r = d.results?.[0]; toast.error(r?.status === 'skipped' ? 'המייל לא נשלח: כבר נשלחה הזמנה או שהחשבון כבר נכנס' : `המייל לא נשלח${r?.error ? `: ${brokerUserError(r.error)}` : ''}`); } void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-contact-history'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
+  // Global save: the edited wording (first name restored to its placeholder) becomes the default for future email invites only.
+  const saveGlobal = useMutation({
+    mutationFn: () => { const first = recipientFirst.trim(); const text = first ? body.trim().replace(new RegExp(`^(היי\\s+)${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), '$1{brokerName}') : body.trim(); return invoke('admin-broker-invitation', { action: 'save_email_text', text }); },
+    onSuccess: () => { toast.success('הנוסח נשמר כברירת המחדל למיילים'); void qc.invalidateQueries({ queryKey: ['broker-template-texts'] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const emailDirty = email.trim().toLowerCase() !== (b.email ?? '');
   // The button stays clickable; missing details are explained instead of silently disabling it.
   const trySend = async () => {
@@ -96,7 +102,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
         <p className="text-sm text-muted-foreground">כפתור לפתיחת שיחת וואטסאפ איתנו וקישור הסרה מתווספים אוטומטית. כתובת הנכס ממודעת יד2 נכנסת אוטומטית במקום {'{propertyAddress}'}.</p>
         {b.email_invited_at && <p className="text-sm text-muted-foreground">כבר נשלחה פנייה במייל למתווך זה.</p>}
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
-          <Button variant="outline" disabled={send.isPending} onClick={() => setOpen(false)}>ביטול</Button>
+          <div className="flex gap-2"><Button variant="outline" disabled={send.isPending} onClick={() => setOpen(false)}>ביטול</Button><Button variant="outline" disabled={saveGlobal.isPending || body.trim().length < 20} onClick={() => saveGlobal.mutate()}>{saveGlobal.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}שמירה כללית</Button></div>
           <Button disabled={send.isPending} onClick={() => void trySend()}>{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}שליחה</Button>
         </DialogFooter>
         </div>

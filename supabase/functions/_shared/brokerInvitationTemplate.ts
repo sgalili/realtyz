@@ -1,14 +1,24 @@
 export const BROKER_TEMPLATE_LANGUAGE = 'he';
 /** Short first-contact opt-in message (no links, no demo). {propertyAddress} is filled from the broker's own Yad2 listing. */
-export function firstContactBody(channel: 'whatsapp' | 'email' = 'email') {
-  return `היי {brokerName},
+/** Fixed first-outreach WhatsApp (Meta template body): {{1}} first name, {{2}} property address. Never edited from email screens. */
+export const FIRST_CONTACT_WHATSAPP = `היי {{1}},
 
-ראיתי את המודעה שלך ב{propertyAddress} ורציתי לשאול בקצרה: האם יהיה לך מעניין לשמוע על ערכת כלים מתקדמת למתווכים, שמרכזת נכסים, לידים, וואטסאפ וקמפיינים במקום אחד?
+ראיתי את המודעה שלך ב{{2}} ורציתי לשאול בקצרה: האם יעניין אותך לקבל גישה בחינם למערכת AI מתקדמת למתווכים, שמרכזת נכסים, לידים וקמפיינים במקום אחד?
 
-${channel === 'email' ? 'אם כן, הכי פשוט לשלוח לנו הודעת וואטסאפ קצרה בלחיצה על הכפתור למטה, ונמשיך משם.' : 'אם כן, אפשר להשיב ״כן״ ונשלח פרטים.'}
+אם כן, פשוט השב ״כן״ ונמשיך מכאן.
 אם לא מתאים, אפשר להשיב ״הסרה״ ולא נפנה שוב.
 
-שי גלילי
+ריטה | TORAFF`;
+export function firstContactBody(channel: 'whatsapp' | 'email' = 'email') {
+  if (channel === 'whatsapp') return FIRST_CONTACT_WHATSAPP.replace('{{1}}', '{brokerName}').replace('{{2}}', '{propertyAddress}');
+  return `היי {brokerName},
+
+ראיתי את המודעה שלך ב{propertyAddress} ורציתי לשאול בקצרה: האם יעניין אותך לקבל גישה בחינם למערכת AI מתקדמת למתווכים, שמרכזת נכסים, לידים וקמפיינים במקום אחד?
+
+אם כן, הכי פשוט לשלוח לנו הודעת וואטסאפ קצרה בלחיצה על הכפתור למטה, ונמשיך משם.
+אם לא מתאים, אפשר להשיב ״הסרה״ ולא נפנה שוב.
+
+ריטה
 TORAFF`;
 }
 export const fillFirstContact = (text: string, firstName: string, address: string | null) =>

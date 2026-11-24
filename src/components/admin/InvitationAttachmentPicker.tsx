@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Paperclip, Upload, X } from 'lucide-react';
+import { ExternalLink, Loader2, Paperclip, Upload, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -62,17 +62,16 @@ export function InvitationAttachmentPicker({ value, onChange, recipientRole, com
   return <div onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={e => { e.preventDefault(); setDrag(false); void upload(e.dataTransfer.files?.[0]); }}
     className={compact ? `space-y-2 ${drag ? 'bg-accent' : ''}` : `space-y-2 rounded-md border border-dashed p-3 ${drag ? 'bg-accent' : ''}`}>
     <div className="flex items-center gap-2">
-      <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-      <Select value={value ?? ''} onValueChange={v => { if (v === '__add_files') { input.current?.click(); return; } choose(v || null); }}>
+      {compact ? <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0" disabled={busy} aria-label="הוספת קבצים" title="הוספת קבצים (אפשר גם לגרור לכאן)" onClick={() => input.current?.click()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}</Button> : <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />}
+      <Select value={value ?? ''} onValueChange={v => choose(v || null)}>
         <SelectTrigger aria-label="קובץ מצורף" className="h-10 min-w-0 flex-1"><SelectValue placeholder="ללא קובץ מצורף" /></SelectTrigger>
-        <SelectContent dir="rtl">
+        <SelectContent dir="rtl" className="w-[var(--radix-select-trigger-width)] min-w-[min(22rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)]">
           <SelectGroup><SelectLabel>תקצירי מנהלים</SelectLabel>
             {SUMMARY_ROLES.map(r => { const f = files.find(a => a.summary_role === r.value); return f
-              ? <SelectItem key={r.value} value={f.id}>תקציר {r.label} · {f.file_name}</SelectItem>
+              ? <FileRow key={r.value} id={f.id} label={`תקציר ${r.label} · ${f.file_name}`} />
               : <SelectItem key={r.value} value={`missing-${r.value}`} disabled>תקציר {r.label} · טרם הועלה</SelectItem>; })}
           </SelectGroup>
-          {others.length > 0 && <SelectGroup><SelectLabel>קבצים נוספים</SelectLabel>{others.map(a => <SelectItem key={a.id} value={a.id}>{a.file_name}</SelectItem>)}</SelectGroup>}
-          {compact && <SelectItem value="__add_files" className="font-semibold text-primary">{busy ? 'מעלה קובץ...' : 'הוספת קבצים'}</SelectItem>}
+          {others.length > 0 && <SelectGroup><SelectLabel>קבצים נוספים</SelectLabel>{others.map(a => <FileRow key={a.id} id={a.id} label={a.file_name} />)}</SelectGroup>}
         </SelectContent>
       </Select>
       {value && <Button type="button" size="icon" variant="ghost" aria-label="הסרת הקובץ המצורף" onClick={() => choose(null)}><X className="h-4 w-4" /></Button>}
@@ -83,5 +82,25 @@ export function InvitationAttachmentPicker({ value, onChange, recipientRole, com
       <SelectTrigger aria-label="שיוך הקובץ כתקציר מנהלים" className="h-9 text-sm"><SelectValue /></SelectTrigger>
       <SelectContent dir="rtl"><SelectItem value="none">לא משמש כתקציר מנהלים</SelectItem>{SUMMARY_ROLES.map(r => <SelectItem key={r.value} value={r.value}>תקציר מנהלים עבור {r.label}</SelectItem>)}</SelectContent>
     </Select>}
+  </div>;
+}
+
+/** Opens a private attachment through a short-lived signed link in a new tab. */
+async function previewAttachment(id: string) {
+  const win = window.open('', '_blank');
+  try {
+    const { data, error } = await supabase.from('invitation_attachments').select('storage_path').eq('id', id).single();
+    if (error) throw error;
+    const { data: signed, error: e2 } = await supabase.storage.from('invitation-attachments').createSignedUrl(data.storage_path, 300);
+    if (e2) throw e2;
+    if (win) win.location.href = signed.signedUrl; else window.open(signed.signedUrl, '_blank', 'noopener');
+  } catch (e) { win?.close(); toast.error(e instanceof Error ? e.message : 'פתיחת הקובץ נכשלה'); }
+}
+
+function FileRow({ id, label }: { id: string; label: string }) {
+  return <div className="flex items-center gap-1">
+    <SelectItem value={id} className="min-w-0 flex-1 whitespace-normal break-words">{label}</SelectItem>
+    <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" aria-label={`תצוגה מקדימה של ${label}`} title="פתיחה בחלון חדש"
+      onPointerDown={e => { e.preventDefault(); e.stopPropagation(); }} onPointerUp={e => e.stopPropagation()} onClick={e => { e.preventDefault(); e.stopPropagation(); void previewAttachment(id); }}><ExternalLink className="h-4 w-4" /></Button>
   </div>;
 }
