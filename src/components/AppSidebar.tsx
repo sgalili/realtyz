@@ -14,6 +14,8 @@ import {
   Handshake,
   ClipboardList,
   HelpCircle,
+  LogIn,
+  UserPlus,
   Gift,
   Coins,
   Globe,
@@ -391,7 +393,13 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
           <SidebarGroupContent>
             <SidebarMenu>
               {/* Shared public board: always the first menu entry. */}
-              {!user && <SidebarMenuItem><SidebarMenuButton asChild><NavLink to="/demo" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Eye className="h-4 w-4 text-primary" />{!collapsed && <span className="text-sm font-medium">מרחב הדגמה</span>}</NavLink></SidebarMenuButton></SidebarMenuItem>}
+              {!user && brokersOnly && <>
+                <SidebarMenuItem><SidebarMenuButton asChild><NavLink to="/" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Home className="h-4 w-4 text-primary" /><span className="text-sm font-medium">דף הבית</span></NavLink></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild><NavLink to="/auth?mode=signup" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><UserPlus className="h-4 w-4 text-primary" /><span className="text-sm font-medium">הרשמה חינם</span></NavLink></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild><NavLink to="/auth?mode=login" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><LogIn className="h-4 w-4 text-primary" /><span className="text-sm font-medium">התחברות</span></NavLink></SidebarMenuButton></SidebarMenuItem>
+              </>}
+              {!user && <SidebarMenuItem><SidebarMenuButton asChild>{brokersOnly ? <a href="/demo/broker/properties" className="flex items-center gap-3 px-3 py-2.5"><Eye className="h-4 w-4 text-primary" /><span className="text-sm font-medium">כניסה למרחב דמו</span></a> : <NavLink to="/demo" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Eye className="h-4 w-4 text-primary" />{!collapsed && <span className="text-sm font-medium">מרחב הדגמה</span>}</NavLink>}</SidebarMenuButton></SidebarMenuItem>}
+              {!user && brokersOnly && <SidebarMenuItem><SidebarMenuButton asChild><NavLink to="/faq" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><HelpCircle className="h-4 w-4 text-primary" /><span className="text-sm font-medium">שאלות ותשובות</span></NavLink></SidebarMenuButton></SidebarMenuItem>}
               {/* Brokers-only SaaS hides the shared public board entry (route and data stay for full_marketplace). */}
               {!brokersOnly && <SidebarMenuItem key="public-listings">
                 <SidebarMenuButton asChild isActive={location.pathname === '/' || location.pathname.startsWith('/public-listings')}>
@@ -427,7 +435,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   {!collapsed && <HelpHint path="/my-ads" className="absolute left-1 top-1/2 -translate-y-1/2" />}
                 </SidebarMenuItem>
               )}
-              {navItems.map((item) => {
+              {(brokersOnly && !user ? [] : navItems).map((item) => {
                 const active = isActive(item);
                 const tutorialActive =
                   tutorialHighlightPath === item.url ||

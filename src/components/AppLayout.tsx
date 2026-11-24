@@ -404,7 +404,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (isDemoMode) return;
+    if (isDemoMode || !user?.id) return;
     queryClient.prefetchQuery({
       queryKey: ['executive-summary'],
       queryFn: async () => {
@@ -426,7 +426,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       getNextPageParam: () => undefined,
       staleTime: 5 * 60 * 1000,
     });
-  }, [queryClient, isDemoMode]);
+  }, [queryClient, isDemoMode, user?.id]);
 
   useEffect(() => {
     // Skip the transaction-selector popup on entering demo. Auto-pick a sensible
@@ -475,17 +475,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const headerIdentity = resolveWorkspaceIdentity(activeWorkspace, brand, masterBrand);
   const headerLogo = headerIdentity.logo || '';
   const brokersOnly = useBrokersOnly();
+  const brokerGuestHome = brokersOnly && !user && location.pathname === '/';
   const headerName = headerIdentity.name;
   const headerUserName = friendlyUserDisplayName({ user_metadata: { full_name: activeWorkspace && !activeWorkspace.is_self ? activeWorkspace.owner_full_name : headerUserProfile?.full_name, name: friendlyUserDisplayName(user, '') } }, 'ללא שם');
 
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className={brokerGuestHome ? '!min-h-0 !h-[calc(100dvh-var(--app-footer-space)-12px)] overflow-hidden' : undefined}>
       <KeepSidebarOpenAfterModeSwitch />
       <FacebookConnectionDialog />
       {/* A negative wallet locks the app until the balance is topped up. */}
       <WalletLockGate />
-      <div className="realtyz-app-shell h-[100dvh] max-h-[100dvh] overflow-hidden flex w-full bg-background">
+      <div className={`realtyz-app-shell h-[100dvh] max-h-[100dvh] overflow-hidden flex w-full bg-background ${brokerGuestHome ? '!h-full !max-h-full' : ''}`}>
         <AppSidebar />
         <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
           {/* RTL header, right to left: burger menu at the far right, then the
@@ -512,12 +513,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
-              {brokersOnly ? <Link to="/dashboard" aria-label="לוח בקרה" title="לוח בקרה" className="grid h-10 w-10 place-items-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"><LayoutDashboard className="h-6 w-6" /></Link> : <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />}
+              {brokersOnly ? user ? <Link to="/dashboard" aria-label="לוח בקרה" title="לוח בקרה" className="grid h-10 w-10 place-items-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"><LayoutDashboard className="h-6 w-6" /></Link> : <Button asChild variant="ghost" size="icon" aria-label="התחברות" title="התחברות"><Link to="/auth?mode=login"><Smartphone className="h-6 w-6" /></Link></Button> : <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />}
             </div>
             </div>
           </header>
-          <PageHero />
-          <PageLoadingRegion as="main" className={`realtyz-main-surface min-h-0 flex-1 overscroll-contain overflow-x-hidden px-[15px] ${location.pathname.startsWith('/properties') ? 'pt-0' : /^\/(broker|agency)\//.test(location.pathname) ? 'pt-[15px]' : location.pathname === '/profile' ? 'pt-0' : 'pt-[20px]'} ${location.pathname === '/' || location.pathname === '/public-listings' || location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
+          {!brokerGuestHome && <PageHero />}
+          <PageLoadingRegion as="main" className={`realtyz-main-surface min-h-0 flex-1 overscroll-contain overflow-x-hidden px-[15px] ${location.pathname.startsWith('/properties') ? 'pt-0' : /^\/(broker|agency)\//.test(location.pathname) ? 'pt-[15px]' : location.pathname === '/profile' ? 'pt-0' : 'pt-[20px]'} ${brokerGuestHome ? 'overflow-y-auto pb-6' : location.pathname === '/' || location.pathname === '/public-listings' || location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
             <div key={`${user?.id}:${activeWorkspaceId}`} className={`app-content-width w-full ${location.pathname === '/' || location.pathname === '/public-listings' ? '!flex h-full min-h-0 flex-col' : location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'h-full' : ''}`}>
               <FacebookConnectionBanner />
               {user && (workspaceLoading || !activeWorkspaceId) ? <div role="status" className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : children}

@@ -4,13 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { toast } from '@/i18n/personalToast';
-import { ArrowRight, User, UserRound, X } from 'lucide-react';
+import { ArrowRight, Eye, User, UserRound, X } from 'lucide-react';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
+import toraffWordmark from '@/assets/toraff-wordmark.webp';
 import { useLocation, useNavigate } from '@/lib/router-compat';
 import { clearPendingSignupRole, clearPostSignupWelcome } from '@/lib/signupRole';
 import { clearSmsSignup, formatAuthMobile, israeliMobile, saveSmsSignup, smsSignupSchema } from '@/lib/smsSignup';
 import { OtpFailureActions } from '@/components/auth/OtpFailureActions';
 import { otpNeedsNewCode } from '@/lib/otpRetryPolicy';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
+import { authEntrySignup } from '@/lib/authEntryMode';
 
 // Gray, unbolded placeholder; black bold typed text; no border/ring on focus.
 const fieldClass = 'h-12 min-w-0 text-lg md:text-lg font-normal text-foreground placeholder:text-lg placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-0 focus-visible:ring-offset-0';
@@ -22,7 +25,9 @@ const Auth = () => {
   const location = useLocation();
   const brokerId = new URLSearchParams(location.search).get('broker');
   const invitedBroker = !!brokerId;
-  const [signup, setSignup] = useState(!invitedBroker && location.state?.signup !== false);
+  const brokersOnly = useBrokersOnly();
+  const [signup, setSignup] = useState(() => authEntrySignup({ brokersOnly, invitedBroker, search: location.search, signupState: location.state?.signup }));
+  useEffect(() => { if (!codeSent) setSignup(authEntrySignup({ brokersOnly, invitedBroker, search: location.search, signupState: location.state?.signup })); }, [brokersOnly, invitedBroker, location.search, location.state?.signup]);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState('');
@@ -125,7 +130,7 @@ const Auth = () => {
     {codeSent && <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" onClick={switchPhone}><ArrowRight className="h-8 w-8" /></Button>}
 
     <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center pt-[40px]">
-      <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
+      <img src={brokersOnly ? toraffWordmark : realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
       <h1 className={`mb-8 mt-[50px] text-center !font-normal ${codeSent ? 'text-xl' : 'text-[17px]'}`}>{codeSent ? `הזינו את הקוד שקיבלתם ${delivery === 'whatsapp' ? 'בוואטסאפ' : 'ב-SMS'}` : signup ? 'להרשמה מהירה בחינם:' : 'כניסה לחשבון'}</h1>
       <div className="min-h-0 w-full overflow-y-auto overscroll-contain">
         {codeSent ? <div className="space-y-5 text-center">
@@ -147,6 +152,7 @@ const Auth = () => {
           {ready && <Button type="submit" disabled={loading} className="h-12 w-full text-xl font-bold">{loading ? 'שולח...' : invitedBroker ? 'שלחו לי קוד בוואטסאפ' : 'שלחו לי קוד ב-SMS'}</Button>}
         </form>}
         {failure && <div className="mt-4 space-y-3"><p role="alert" className="text-center text-sm text-destructive">{failure}</p><OtpFailureActions disabled={loading || (codeSent && (needsNewCode || attempts >= 3) && resendSeconds > 0)} retryLabel={codeSent && (needsNewCode || attempts >= 3) ? resendSeconds > 0 ? `קוד חדש בעוד ${resendSeconds}` : 'בקשת קוד חדש' : 'ניסיון נוסף'} onRetry={() => { if (codeSent && !needsNewCode && attempts < 3) { setFailure(null); setOtp(''); } else void sendCode(); }} /></div>}
+        {brokersOnly && !failure && <div className="mt-6 border-t border-border pt-4 text-center"><Button asChild variant="outline" disabled={loading} className="h-11 gap-2 text-base"><a href="/demo/broker/properties"><Eye className="h-5 w-5" />כניסה למרחב דמו</a></Button><p className="mt-2 text-sm text-muted-foreground">אפשר להתרשם גם בלי קוד, בהדגמה לקריאה בלבד.</p></div>}
       </div>
     </div>
     {!codeSent && <div className="absolute inset-x-0 bottom-[68px] flex justify-center">

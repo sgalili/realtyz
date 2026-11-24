@@ -27,6 +27,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { WhiteLabelProvider } from "@/hooks/useWhiteLabel";
 import { AppLayout } from "@/components/AppLayout";
+import { BrokerGuestHome } from '@/components/public/BrokerGuestHome';
 import { PendingMessageResume } from "@/components/community/SendProfileMessage";
 import { PublicProfileShell } from "@/components/public/PublicProfileShell";
 import { SocialDraftChargeDialog } from '@/components/campaigns/SocialDraftChargeDialog';
@@ -304,7 +305,7 @@ export function RootRoute() {
   );
   if (modeLoading) return <PageLoader />;
   if (mode === 'brokers_only') {
-    if (!user) return <Suspense fallback={<PageLoader />}><Landing /></Suspense>;
+    if (!user) return <AppLayout><BrokerGuestHome /></AppLayout>;
     // Brokers land on their property catalog; the dashboard stays in navigation.
     return <Navigate to="/properties" replace />;
   }

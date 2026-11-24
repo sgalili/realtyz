@@ -1,5 +1,10 @@
 # Roadmap
 
+## Broker guest home and OTP entry November 24
+- [x] Brokers-only guest root now mounts BrokerGuestHome in AppLayout with concise benefits and signup/login/demo actions; old Landing and full-marketplace board retained. Guest home scroll ends above the legal footer; page headings opt out of hero hiding.
+- [x] Guest sidebar has home/signup/login/direct broker demo/FAQ/accessibility, without professional or marketplace entries. Auth defaults to OTP login in broker mode, preserves explicit signup/login via URL and existing invitation binding, uses clean wordmark and offers immediate or failed-OTP read-only demo. Server verification unchanged; guest private prefetch prevented.
+- [x] 29 focused entry/OTP/demo/metadata tests passed. Fresh signed-out 411x801 and 1280x1800 browser flows verified home/menu/login/signup/demo properties, no horizontal overflow or runtime errors. Real OTP not sent; rejected OTP tested with mocked service, no session created. Footer boundary verified at 751px in 801px viewport.
+
 ## Rita brain and voice connection November 24
 - [x] Reused canonical masterAgentPrompt Rita identity/persona/format/brevity text via a pure rendering module; legacy auth resolver and prompt exports retain their API. Existing IVR Rita/Zina voice and v3 settings reused; ElevenLabs connector verified linked, Vapi settings fallback retained.
 - [x] Both stages read bounded global_ai_documents plus exact broker-local draft facts, first name and saved gender. No active-workspace lookup, private broker KB or sender persona. Stage 2 first generates a short script through streaming Responses and then narrates it with ElevenLabs; Stage 3 injects the same identity/global brain/facts with the short no-tools demo instructions.
