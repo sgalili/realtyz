@@ -15,14 +15,16 @@ export function BrokerScannerInquiry({ brokerId, hasWhatsApp }: { brokerId: stri
   useEffect(() => { if (job?.status === 'completed' || status.data?.contact) void qc.invalidateQueries({ queryKey: ['broker-whatsapp-job', brokerId] }); }, [job?.status, status.data?.contact, brokerId, qc]);
   const [now, setNow] = useState(Date.now());
   const queued = ['pending_source', 'reading_source', 'ready'].includes(job?.status ?? '');
-  useEffect(() => { if (!queued) return; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [queued]);
+  const ticking = live.includes(job?.status ?? '');
+  useEffect(() => { if (!ticking) return; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [ticking]);
   if (hasWhatsApp || status.data?.contact || !job) return null;
   // Before the worker reads the ad, say why it is not moving (paused line or disconnected worker) instead of an endless wait.
   const blocked = ['pending_source', 'ready'].includes(job.status) && status.data?.settings ? scannerBlockReason(status.data.settings) : null;
-  return <span className="text-xs text-muted-foreground" title={job.last_error ?? undefined}>{scannerLabels[job.status] ?? job.status}{blocked && <span className="text-destructive"> · {blocked}</span>}{queued && !blocked && status.data?.settings && (() => {
-    const s = status.data.settings;
-    const left = scannerEta({ ...s, used_today: status.data.used_today ?? 0, queue_ahead: status.data.queue_ahead ?? 0 }, now) - now;
-    // An open inquiry awaiting Yad2's reply also holds the serial line; the estimate starts once it settles.
-    return left > 1000 || status.data.outstanding ? <span dir="ltr" className="ms-1 tabular-nums" aria-label="זמן משוער עד השליחה"> · {formatCountdown(left)}{status.data.outstanding ? '+' : ''}</span> : null;
-  })()}</span>;
+  const st = status.data?.settings;
+  // Compact: a live timer only; the full status lives in the tooltip so the row never wraps.
+  const target = job.status === 'awaiting_reply' ? Date.parse((job as { reply_deadline?: string | null }).reply_deadline ?? '') || 0
+    : queued && st ? scannerEta({ ...st, used_today: status.data?.used_today ?? 0, queue_ahead: status.data?.queue_ahead ?? 0 }, now) : 0;
+  const tip = `${scannerLabels[job.status] ?? job.status}${blocked ? ` · ${blocked}` : ''}${job.last_error ? ` · ${job.last_error}` : ''}`;
+  if (!live.includes(job.status)) return <span className="text-xs text-muted-foreground whitespace-nowrap" title={tip}>{scannerLabels[job.status] ?? job.status}</span>;
+  return <span dir="ltr" className={`whitespace-nowrap text-xs tabular-nums ${blocked ? 'text-destructive' : 'text-muted-foreground'}`} title={tip} aria-label={tip}>{formatCountdown(Math.max(0, target - now))}</span>;
 }

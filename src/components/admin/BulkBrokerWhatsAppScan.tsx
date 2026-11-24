@@ -51,5 +51,7 @@ export function BulkBrokerWhatsAppScan() {
     } catch { if(!stopping.current)toast.error(`הוספת המשימות נעצרה; ${queued} משימות שכבר נשמרו ימשיכו בתור`); }
     finally { working.current=false;setBusy(false);void qc.invalidateQueries({queryKey:key});void qc.invalidateQueries({ queryKey: ['broker-whatsapp-job'] });void qc.invalidateQueries({queryKey:['broker-whatsapp-invitation-eligibility']}); }
   };
-  return <div className="flex justify-start"><Button variant="ghost" className="text-lead-whatsapp" disabled={cancel.isPending || status.isLoading} aria-busy={busy || cancel.isPending} onClick={()=>running?stop():void scan()}>{cancel.isPending?<Loader2 className="h-4 w-4 animate-spin"/>:running?<Square className="h-4 w-4"/>:<Search className="h-4 w-4"/>}{running?'עצירת איתור WhatsApp':'איתור WhatsApp לכל המתווכים'}</Button></div>;
+  const label=running?'עצירת איתור WhatsApp':'איתור וייבוא WhatsApp לכל המתווכים החסרים';
+  // Icon-only: lives inside the scanner card header next to the connection control.
+  return <Button size="icon" variant="ghost" className="text-lead-whatsapp" aria-label={label} title={label} disabled={cancel.isPending || status.isLoading} aria-busy={busy || cancel.isPending} onClick={()=>running?stop():void scan()}>{cancel.isPending?<Loader2 className="h-4 w-4 animate-spin"/>:running?<Square className="h-4 w-4"/>:<Search className="h-4 w-4"/>}</Button>;
 }

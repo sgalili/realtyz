@@ -17,10 +17,18 @@ Deno.serve(async req=>{
     const payload=parsed.data;
     const {data:settings,error:se}=await admin.from('broker_wa_scanner_settings').select('instance_id,scanner_phone').eq('id',true).maybeSingle();
     if(se)throw new Error('scanner_settings_read_failed');
-    if(String(payload.instanceData.idInstance)!==credentials.instance||settings?.instance_id!==credentials.instance||payload.instanceData.wid!==`${settings.scanner_phone}@c.us`)return json({error:'wrong_scanner_instance'},403);
+    const widDigits=payload.instanceData.wid.replace(/\D/g,'');
+    // Green may send wid with a different suffix; compare the line's digits, and log any mismatch instead of failing silently.
+    if(String(payload.instanceData.idInstance)!==credentials.instance||settings?.instance_id!==credentials.instance||!settings?.scanner_phone||(widDigits!==''&&widDigits!==String(settings.scanner_phone).replace(/\D/g,''))){
+      console.error('[broker-wa-scanner-webhook] wrong_scanner_instance',{payload_instance:String(payload.instanceData.idInstance),expected_instance:credentials.instance,saved_instance:settings?.instance_id??null,wid:payload.instanceData.wid,saved_phone:settings?.scanner_phone??null,type:payload.typeWebhook});
+      return json({error:'wrong_scanner_instance'},403);
+    }
     if(payload.typeWebhook==='stateInstanceChanged') {
       // Fail closed on disconnect; an authorized body never resumes the circuit breaker.
-      if(payload.stateInstance!=='authorized') {
+      // Ignore delayed state events older than the last successful connection check: a replayed backlog must not pause a healthy line.
+      const {data:chk}=await admin.from('broker_wa_scanner_settings').select('config_checked_at').eq('id',true).maybeSingle();
+      const stale=!!payload.timestamp&&!!chk?.config_checked_at&&payload.timestamp*1000<Date.parse(chk.config_checked_at);
+      if(payload.stateInstance!=='authorized'&&!stale) {
         const {error}=await admin.from('broker_wa_scanner_settings').update({connected:false,paused:true,pause_reason:'scanner_disconnected',webhook_seen_at:new Date().toISOString()}).eq('id',true);
         if(error)throw new Error('scanner_disconnect_save_failed');
       }
