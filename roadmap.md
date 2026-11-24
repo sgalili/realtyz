@@ -1,5 +1,10 @@
 # Roadmap
 
+## Mode-aware presentation November 24
+- [x] Centralized reversible broker/marketplace title, description and default sharing copy; Helmet owns route head/canonicals and restores defaults after property-page exit. Profile sharing, header tagline and subscribed loader tagline follow the public-safe platform setting. Original marketplace strings/assets remain intact. Static index fallback now describes the default broker platform.
+- [x] Eight focused tests and current build passed. Browser verified actual public broker settings, local cache marketplace/broker round trip without global setting writes, mobile broker demo header and exact-route canonical (including basename), unavailable property route, and no duplicate head tags/runtime errors. No messages, publication or backend changes performed.
+- [ ] Automatic mode-aware previews for non-JavaScript social crawlers require approved server rendering/template migration; current static HTML uses broker fallback, while browser metadata and explicit shared text switch dynamically. User informed; static changes reach live URLs only after publishing.
+
 ## Broker demo and bulk registry recheck November 24
 - [x] Inspected shared App/demo/transport and the red waiting predicate, existing registry action and its server authorization/identity checks.
 - [x] Demo reads only public platform settings before isolation, defaults broker-only entry to Properties, uses a broker-only workspace/sidebar and shared pages, gates all marketplace routes before mounting and shows explicit read-only denials. Sample signatures, tours, notes and wallet support exploration; full-marketplace personas remain available.

@@ -1,4 +1,5 @@
 import { useBrokersOnly } from '@/hooks/usePlatformMode';
+import { platformPresentation } from '@/lib/platformPresentation';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { FaqHost } from '@/components/faq/FaqDialog';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -506,7 +507,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               aria-label={`${headerName} - דף הבית`}
               className="pointer-events-auto fixed left-1/2 top-[env(safe-area-inset-top)] z-30 flex h-16 max-w-[calc(100vw-9rem)] -translate-x-1/2 items-center gap-1.5 overflow-hidden text-right leading-none"
             >
-              {brokersOnly ? <span className="flex flex-col items-center gap-0.5"><PlatformBrand className="h-[24px]" /><span className="whitespace-nowrap text-[11px] font-semibold leading-none text-foreground sm:text-xs">המערכת היחידה שכל מתווך חייב</span></span> : <PlatformBrand className="h-[54px]" />}
+              {brokersOnly ? <span className="flex flex-col items-center gap-0.5"><PlatformBrand className="h-[24px]" /><span className="whitespace-nowrap text-[11px] font-semibold leading-none text-foreground sm:text-xs">{platformPresentation('brokers_only').tagline}</span></span> : <PlatformBrand className="h-[54px]" />}
             </Link>
 
             <div className="flex shrink-0 items-center gap-1">

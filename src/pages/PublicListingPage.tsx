@@ -11,6 +11,9 @@
  *    degrades to a friendly card instead of a white page.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
+import { platformPageMetadata, platformPresentation } from '@/lib/platformPresentation';
 import { FullPageLoading } from '@/components/ui/full-page-loading';
 import type { LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -328,29 +331,10 @@ function PublicListingContent() {
     }
   }, [data?.slug, data?.id, slug, refCode]);
 
-  useEffect(() => {
-    if (!data) return;
-    try {
-      document.title = `${data.title} | TORAFF`;
-      const description = (data.description || data.location || data.title).slice(0, 155);
-      const setMeta = (key: string, content: string) => {
-        let tag = document.querySelector(`meta[property="${key}"], meta[name="${key}"]`) as HTMLMetaElement | null;
-        if (!tag) {
-          tag = document.createElement('meta');
-          tag.setAttribute(key.startsWith('og:') ? 'property' : 'name', key);
-          document.head.appendChild(tag);
-        }
-        tag.content = content;
-      };
-      setMeta('description', description);
-      setMeta('og:title', `${data.title} | TORAFF`);
-      setMeta('og:description', description);
-      setMeta('og:url', shareUrl);
-      setMeta('og:type', 'website');
-    } catch {
-      /* metadata is best-effort */
-    }
-  }, [data, shareUrl]);
+  const brokersOnly = useBrokersOnly();
+  const canonicalUrl = platformPageMetadata(undefined, window.location.pathname).canonical;
+  const description = brokersOnly ? platformPresentation('brokers_only').description
+    : (data?.description || data?.location || data?.title || '').slice(0, 155);
 
   useEffect(() => {
     if (payload?.property.id) setSelectedId(payload.property.id);
@@ -403,6 +387,16 @@ function PublicListingContent() {
 
   return (
     <div className="min-h-screen bg-secondary pb-12" dir="rtl">
+      <Helmet>
+        <title>{`${data.title} | ${brokersOnly ? platformPresentation('brokers_only').title : 'TORAFF'}`}</title>
+        <meta name="description" content={description} />
+        <meta property="og:title" content={`${data.title} | ${brokersOnly ? platformPresentation('brokers_only').title : 'TORAFF'}`} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta name="twitter:title" content={`${data.title} | TORAFF`} />
+        <meta name="twitter:description" content={description} />
+        <link rel="canonical" href={canonicalUrl} />
+      </Helmet>
       <div className="mx-auto max-w-4xl space-y-5 px-4 pt-5">
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between gap-3 px-4 pt-3">

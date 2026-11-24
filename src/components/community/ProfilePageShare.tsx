@@ -7,13 +7,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { publicProfileShare, useNativeProfileShare } from '@/lib/publicProfileShare';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 
 export function ProfilePageShare({ path, title, agency = false }: { path: string; title: string; agency?: boolean }) {
   const button = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const isMobile = useIsMobile();
-  const details = publicProfileShare(path, title);
+  const brokersOnly = useBrokersOnly();
+  const details = publicProfileShare(path, title, brokersOnly ? 'brokers_only' : 'full_marketplace');
   const label = agency ? 'שיתוף עמוד המשרד' : 'שיתוף הפרופיל';
 
   useEffect(() => {

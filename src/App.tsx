@@ -1,5 +1,7 @@
 import { ImportedLicenseGate } from '@/components/onboarding/ImportedLicenseGate';
 import * as React from 'react';
+import { HelmetProvider } from 'react-helmet-async';
+import { PlatformMetadata } from '@/components/PlatformMetadata';
 import { PublicWorkspaceProvider, InitialDemoWorkspaceChoice, publicWorkspaceRoute, usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 import { installPublicWorkspaceTransport } from '@/lib/publicWorkspaceTransport';
 import { BrokerDemoRouteGate } from '@/components/demo/BrokerDemoRouteGate';
@@ -542,6 +544,8 @@ const App = () => {
     <DirectionProvider dir="rtl">
       <TooltipProvider>
         <BrowserRouter basename={route?.base}>
+          <HelmetProvider>
+          <PlatformMetadata />
           <AccessibilityEffects />
           <RouteScrollRestoration />
           <AuthProvider>
@@ -702,6 +706,7 @@ const App = () => {
           </PersonalLanguageProvider>
           </AccountPageLoading>
            </AuthProvider>
+          </HelmetProvider>
         </BrowserRouter>
       </TooltipProvider>
     </DirectionProvider>
