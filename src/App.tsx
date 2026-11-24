@@ -65,6 +65,7 @@ const LeadCRM = lazy(() => import("./pages/LeadCRM"));
 const OmnichannelInbox = lazy(() => import("./pages/OmnichannelInbox"));
 const AIContentGenerator = lazy(() => import("./pages/AIContentGenerator"));
 const CampaignCenter = lazy(() => import("./pages/CampaignCenter"));
+const PublishingHub = lazy(() => import("./pages/PublishingHub"));
 const ActivityLog = lazy(() => import("./pages/ActivityLog"));
 const Mailbox = lazy(() => import("./pages/Mailbox"));
 const ApiSettings = lazy(() => import("./pages/ApiSettings"));
@@ -656,6 +657,7 @@ const App = () => {
               <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
               <Route path="/shared-deals" element={<ProtectedRoute><SharedDeals /></ProtectedRoute>} />
               <Route path="/my-ads" element={<ProtectedRoute><MyAds /></ProtectedRoute>} />
+              <Route path="/publishing" element={<ProtectedRoute><PublishingHub /></ProtectedRoute>} />
               <Route path="/activity-history" element={<ProtectedRoute><PublishingHistory /></ProtectedRoute>} />
               <Route path="/sign/:token" element={<Suspense fallback={<PageLoader />}><SignDocument /></Suspense>} />
               <Route path="/wallet" element={<Navigate to="/wallet" replace />} />

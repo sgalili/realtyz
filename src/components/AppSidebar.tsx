@@ -263,7 +263,18 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       });
   }, [audience, features, access.projects, access.properties, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError, identity.label, isPartnerMode]);
   // Brokers-only SaaS hides partner/affiliate and referral-reward screens (code and data stay intact).
-  const navItems = useMemo(() => brokersOnly ? allNavItems.filter(i => !['/affiliate-network', '/partner/chats', '/partner/contacts', '/sharing-pool', '/posts'].includes(i.url) || (i.url === '/posts' && !PARTNER_NAV_ITEMS.includes(i))) : allNavItems, [allNavItems, brokersOnly]);
+  const navItems = useMemo(() => {
+    const filtered = brokersOnly ? allNavItems.filter(i => !['/affiliate-network', '/partner/chats', '/partner/contacts', '/sharing-pool', '/posts'].includes(i.url) || (i.url === '/posts' && !PARTNER_NAV_ITEMS.includes(i))) : allNavItems;
+    if (!brokersOnly || !brokerMenu) return filtered;
+    // Brokers-only: My Ads and Campaigns share one hub entry; old routes stay live.
+    const camp = filtered.find(i => i.url === '/campaigns');
+    const idx = filtered.findIndex(i => i.url === '/campaigns' || i.url === '/my-ads');
+    if (idx < 0) return filtered;
+    const rest = filtered.filter(i => i.url !== '/campaigns' && i.url !== '/my-ads');
+    const hub: NavItem = { ...(camp ?? MY_ADS_ITEM), title: 'קמפיינים ופרסום', url: '/publishing', aliases: ['/my-ads', '/campaigns', ...(camp?.aliases ?? [])] };
+    rest.splice(Math.min(idx, rest.length), 0, hub);
+    return rest;
+  }, [allNavItems, brokersOnly, brokerMenu]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts || audience !== 'professional') return undefined;
