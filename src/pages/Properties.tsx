@@ -271,8 +271,9 @@ export default function Properties() {
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' }>).detail?.action;
-      if (action === 'manual') setManualOpen(true);
+      const action = (e as CustomEvent<{ action: 'manual' | 'yad2' | 'import' | 'homely' }>).detail?.action;
+      // Manual creation and Yad2 import both open the existing 8-step property wizard.
+      if (action === 'manual' || action === 'yad2') window.dispatchEvent(new CustomEvent('public-publisher:open', { detail: { entry: action } }));
       else if (action === 'import') setImportOpen(true);
       else if (action === 'homely' && homelyConnected) setHomelyBulkOpen(true);
     };
@@ -1254,6 +1255,7 @@ export default function Properties() {
         autoHydrate={!!quickLinkSeed}
         defaultSource="manual"
       />
+      {brokersOnly && <PublicListingPublisher autoResume hideTrigger />}
       <ManualPropertyDialog open={manualOpen} onOpenChange={setManualOpen} onCreated={runSearch} />
       <ImportPropertiesDialog open={importOpen} onOpenChange={setImportOpen} onImported={runSearch} />
       {homelyConnected && <HomelyBulkSyncDialog open={homelyBulkOpen} onOpenChange={setHomelyBulkOpen} onImported={runSearch} mode="properties" />}

@@ -1,3 +1,4 @@
+import { Link2 } from 'lucide-react';
 import { useCreditWallet } from '@/hooks/useSubscription';
 import { fmtCompactCredits, ilsToCredits } from '@/lib/credits';
 import { useBrokersOnly } from '@/hooks/usePlatformMode';
@@ -106,7 +107,7 @@ function usePropertyHeroSuffix(pathname: string): string {
 function PropertiesHeroAddButton() {
   const { connected } = useHomelyConnection();
   const brokersOnly = useBrokersOnly();
-  const dispatch = (action: "manual" | "import" | "homely") =>
+  const dispatch = (action: "manual" | "yad2" | "import" | "homely") =>
     window.dispatchEvent(new CustomEvent("properties:add", { detail: { action } }));
   return (
     <DropdownMenu>
@@ -126,6 +127,9 @@ function PropertiesHeroAddButton() {
         </DropdownMenuItem>}
         <DropdownMenuItem onClick={() => dispatch("manual")} className="gap-2">
           <Plus className="h-4 w-4" /> הוספת נכס ידנית
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => dispatch("yad2")} className="gap-2">
+          <Link2 className="h-4 w-4" /> ייבוא מיד2 (נכס אחד או כל הנכסים)
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => dispatch("import")} className="gap-2">
           <FileSpreadsheet className="h-4 w-4" /> יבוא נכסים מאקסל

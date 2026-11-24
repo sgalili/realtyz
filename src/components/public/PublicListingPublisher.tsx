@@ -48,6 +48,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -175,7 +176,7 @@ export function PublicListingPublisher(props: Parameters<typeof ScopedPublicList
   return <ScopedPublicListingPublisher key={previous.key} {...props} disabled={props.disabled || (!!user && loading)} />;
 }
 
-function ScopedPublicListingPublisher({ autoResume = false, disabled = false, resumeDraft, onRecovered, label = 'פרסום חינם', triggerClassName = '', pricingOnly = false, adminOnlyEdit = false }: { pricingOnly?: boolean; adminOnlyEdit?: boolean; label?: string; triggerClassName?: string; autoResume?: boolean; disabled?: boolean; resumeDraft?: import('@/lib/publicListingDraft').PublicListingDraft; onRecovered?: () => void }) {
+function ScopedPublicListingPublisher({ autoResume = false, disabled = false, resumeDraft, onRecovered, label = 'פרסום חינם', triggerClassName = '', pricingOnly = false, adminOnlyEdit = false, hideTrigger = false }: { hideTrigger?: boolean; pricingOnly?: boolean; adminOnlyEdit?: boolean; label?: string; triggerClassName?: string; autoResume?: boolean; disabled?: boolean; resumeDraft?: import('@/lib/publicListingDraft').PublicListingDraft; onRecovered?: () => void }) {
   const { user, loading: authLoading } = useAuth();
   const { gender } = usePersonalLanguage();
   const { activeWorkspaceId, activeWorkspace, loading: workspaceLoading } = useWorkspace();
@@ -297,10 +298,17 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   };
   // The header-mounted instance also opens from other entry points (e.g. the + menu on My Properties).
   const openNewRef = useRef(openNewPublication);
+  const knownRoleRef = useRef(knownPublisherRole);
+  knownRoleRef.current = knownPublisherRole;
   openNewRef.current = openNewPublication;
   useEffect(() => {
     if (!autoResume || pricingOnly) return;
-    const handler = () => openNewRef.current();
+    const handler = (e: Event) => {
+      const entry = (e as CustomEvent<{ entry?: 'manual' | 'yad2' }>).detail?.entry;
+      openNewRef.current();
+      if (entry === 'manual' && knownRoleRef.current) { setImportSlide(false); setManualDeal(true); }
+      else if (entry === 'yad2') { setImportOption('yad2'); setImportCard('single'); }
+    };
     window.addEventListener('public-publisher:open', handler);
     return () => window.removeEventListener('public-publisher:open', handler);
   }, [autoResume, pricingOnly]);
@@ -369,7 +377,9 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [openLeads, setOpenLeads] = useState<Record<string, boolean>>((): Record<string, boolean> => pricingOnly ? { Form: true, Whatsapp: true, Phone: true } : {});
   const [closingOpen, setClosingOpen] = useState(pricingOnly);
   // Lead cards always render under the price (rent prices have ≤4 digits).
-  const showRewards = true;
+  // Brokers-only mode keeps the price but omits partner rewards and commissions.
+  const brokersOnlyMode = useBrokersOnly();
+  const showRewards = !brokersOnlyMode;
   useEffect(() => {
     if (!fields.dealType || fields.listingId || pricingOnly) return;
     if (fields.dealType === 'sale' && !(Number(fields.commissionDeal) > 0)) {
@@ -421,7 +431,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     if (!user?.id || publishing || entryPending || !activeWorkspaceId) return;
     if (publisherRequiresOwnership(draftFields.publisherType, pricingOnly) && !draftFields.ownerDeclarationAccepted) return;
     if (draftFields.publisherType === 'broker' && !isBroker && !brokerLicenseSchema.safeParse(draftFields.brokerLicense ?? '').success) { toast.error('יש להזין מספר רישיון תיווך תקין בשלב פרטי ההתקשרות'); return; }
-    if (!draftFields.city.trim() || !(draftFields.street.trim() || draftFields.address.trim()) || !draftFields.propertyType.trim() || !(Number(draftFields.price) > 0) || !(Number(draftFields.commissionDeal) > 0)) {
+    if (!draftFields.city.trim() || !(draftFields.street.trim() || draftFields.address.trim()) || !draftFields.propertyType.trim() || !(Number(draftFields.price) > 0) || (!brokersOnlyMode && !(Number(draftFields.commissionDeal) > 0))) {
       return;
     }
     setPublishing(true);
@@ -527,10 +537,15 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
         media_photos: photos, image_url: photos[0] ?? null,
          status: draftFields.brokerLicenseReview ? 'pending' : 'live', source: draftFields.listingId ? source?.source || 'manual' : source ? 'yad2' : 'manual', is_published: !draftFields.brokerLicenseReview, affiliate_enabled: !draftFields.brokerLicenseReview,
       };
-      const { features: pricingFeatures, ...pricing } = draftPricingPayload(draftFields, source?.contact_options ?? {});
-      Object.assign(payload, pricing);
-      Object.assign(payload.features, pricingFeatures);
-      (payload.features as Record<string, unknown>).commission_terms_accepted_at = new Date().toISOString();
+      const { features: pricingFeatures, ...pricing } = brokersOnlyMode ? { features: {}, contact_options: undefined } as any : draftPricingPayload(draftFields, source?.contact_options ?? {});
+      if (brokersOnlyMode) {
+        // Brokers-only: save privately to My Properties, never to the public board or partner network.
+        Object.assign(payload, { is_published: false, affiliate_enabled: false, asking_price: Number(draftFields.price) || null });
+      } else {
+        Object.assign(payload, pricing);
+        Object.assign(payload.features, pricingFeatures);
+        (payload.features as Record<string, unknown>).commission_terms_accepted_at = new Date().toISOString();
+      }
       if (draftFields.brokerLicenseReview) (payload.features as Record<string, unknown>).awaiting_license_approval = true;
       let request;
       // An imported ad may already sit in My Properties (saved during import): update that row instead of inserting a duplicate.
@@ -551,7 +566,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
         if (readError) throw readError;
         if (isTerminalListing(existing.status) || existing.canonical_duplicate_of) throw new Error('נכס שנמכר או הוסר אינו זמין לפרסום מחדש');
         const { slug, user_id, owner_id, workspace_owner_id, affiliate_enabled, ...updates } = payload;
-        request = supabase.from('listings').update({ ...updates, contact_options: { ...(existing.contact_options as object || {}), ...pricing.contact_options }, features: { ...(existing.features as object || {}), ...payload.features }, source_metadata: { ...(existing.source_metadata as object || {}), publication_error: null }, additional_details: existing.additional_details } as never).eq('id', targetListingId).eq('workspace_owner_id', activeWorkspaceId);
+        request = supabase.from('listings').update({ ...updates, contact_options: { ...(existing.contact_options as object || {}), ...(pricing.contact_options ?? {}) }, features: { ...(existing.features as object || {}), ...payload.features }, source_metadata: { ...(existing.source_metadata as object || {}), publication_error: null }, additional_details: existing.additional_details } as never).eq('id', targetListingId).eq('workspace_owner_id', activeWorkspaceId);
       } else request = supabase.from('listings').insert(payload as never);
       const { data, error } = await request.select('id').single();
       if (error) throw error;
@@ -624,7 +639,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     if (step === 3) return Boolean(fields.city.trim() && (fields.street.trim() || fields.address.trim()) && (fields.totalFloors ? validFloorPair(fields.floor, fields.totalFloors) : Boolean(fields.floor)));
     if (step === 4) return Boolean(fields.rooms);
     if (step === 5) return Boolean(fields.sqm || fields.builtSqm);
-    if (step === 8) return Boolean(Number(fields.price) > 0 && fields.commissionTermsAccepted);
+    if (step === 8) return Boolean(Number(fields.price) > 0 && (brokersOnlyMode || fields.commissionTermsAccepted));
     return true;
   };
   const goNext = async () => {
@@ -721,7 +736,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       toast.error('יש למלא שם פרטי ושם משפחה'); return;
     }
     if (!fields.termsAccepted) { toast.error('יש לאשר את התקנון'); return; }
-    if (!fields.commissionTermsAccepted) { toast.error('יש לאשר שקראת והבנת את מנגנון העמלות'); return; }
+    if (!brokersOnlyMode && !fields.commissionTermsAccepted) { toast.error('יש לאשר שקראת והבנת את מנגנון העמלות'); return; }
     {
       const n = (v: unknown) => { const x = Number(String(v ?? '').replace(/[^\d.]/g, '')); return String(v ?? '').trim() === '' || Number.isNaN(x) ? null : x; };
       const amounts = [n(fields.commissionForm), n(fields.commissionWhatsapp), n(fields.commissionPhone)];
@@ -1109,7 +1124,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   return (
     <>
-    {!resumeDraft && <Button disabled={disabled || entryPending} onClick={openNewPublication} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
+    {!resumeDraft && !hideTrigger && <Button disabled={disabled || entryPending} onClick={openNewPublication} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
     <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) { if (guestStage === 'certificate') return; pendingAuthPublish.current = null; authThenConfirm.current = false; awaitingCertificate.current = false; } setOtpOpen(value); }}>
       <DialogContent dir="rtl" className="sm:max-w-sm">
         <DialogHeader><DialogTitle className="text-right">{guestStage === 'certificate' ? 'צילום רישיון התיווך' : 'אימות ופרסום המודעה'}</DialogTitle></DialogHeader>
