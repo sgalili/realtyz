@@ -62,4 +62,3 @@
 - Edge fns gate callers via _shared/authz.ts (service/cron secret/user+scope, Meta sigs). Why: apikey isn't trust.
 - Platform mode: platform_system_settings/usePlatformMode. Why: one switch.
 - TanStack Start: src/app holds guards/providers, pages render client-side, /demo is a router rewrite, links use router-compat. Why: same guards, demo isolation.
-- Brokers-only gating lives in shared reward/messaging components and lead-charge paths; details in src/components/public/AGENTS.md. Why: one switch.
