@@ -2122,6 +2122,13 @@
       "when": 1795536523480,
       "tag": "0302_broker_yad2_total_listings",
       "breakpoints": true
+    },
+    {
+      "idx": 303,
+      "version": "7",
+      "when": 1795537366107,
+      "tag": "0303_developer_yad2_total_projects",
+      "breakpoints": true
     }
   ]
 }

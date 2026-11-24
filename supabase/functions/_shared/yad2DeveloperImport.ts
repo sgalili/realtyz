@@ -299,6 +299,8 @@ export type DeveloperQueueWork = {
   projects: any[];
   pendingUrls: string[];
   visitedUrls: string[];
+  /** Every distinct project seen on Yad2, including ones skipped by the cap. */
+  seenProjectKeys?: string[];
   dirtyProjectKeys: string[];
   accountId?: string;
   developerId?: string;
@@ -328,6 +330,9 @@ export function mergeDeveloperQueuePage(work: DeveloperQueueWork, page: { source
     if (value != null && value !== '' && !(key === 'company_name' && work.developer.company_name)) work.developer[key] = value;
   }
   for (const project of page.projects ?? []) {
+    const seenKey = projectKey(project);
+    work.seenProjectKeys = work.seenProjectKeys ?? [];
+    if (seenKey && !work.seenProjectKeys.includes(seenKey)) work.seenProjectKeys.push(seenKey);
     const index = work.projects.findIndex(old => sameProject(old, project));
     if (index >= 0) work.projects[index] = mergeProject(work.projects[index], project);
     else if (work.maxProjects && work.projects.length >= work.maxProjects) continue;
@@ -377,3 +382,6 @@ export function developerProjectImportRow(old: Record<string, any> | undefined, 
 export function detailedUnitCount(project: Record<string, any>) {
   return savedProjectHierarchy(project).apartments.length;
 }
+
+/** Total projects seen on Yad2 for this developer; never below the imported count. */
+export const developerYad2Total = (work: DeveloperQueueWork) => Math.max(work.seenProjectKeys?.length ?? 0, work.projects.length);

@@ -7,7 +7,7 @@ import { readWorkerResponse, ImportAvailabilityError, WorkerResponseError, Provi
 import { agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck, agencyDirectoryQuery, agencyDirectoryUrl, isAgencyProfileUrl, AGENCY_DIRECTORY_MAX_NODES } from '../_shared/yad2Agencies.ts';
 import { ProviderRateLimitError, rateCooldownRemaining, adaptPaceGap, MAX_PACE_GAP_MS } from '../_shared/brightDataThrottle.ts';
 import { IMPORT_QUEUE_GAP_MS } from '../_shared/importScanPolicy.ts';
-import { developerImportUrl, developerProjectImportRow, developerQueuePhaseAfterPage, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, type DeveloperQueueWork } from '../_shared/yad2DeveloperImport.ts';
+import { developerImportUrl, developerProjectImportRow, developerQueuePhaseAfterPage, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, developerYad2Total, type DeveloperQueueWork } from '../_shared/yad2DeveloperImport.ts';
 import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY } from '../_shared/developerImportRetry.ts';
 import { readAllRows } from '../_shared/readAllRows.ts';
 import { matchingDevelopers, normalizeDeveloperName } from '../_shared/developerIdentity.ts';
@@ -277,8 +277,8 @@ Deno.serve(async req => {
         if(work.pendingUrls.length){c.phase='developer_scanning';await save();return json({ok:true});}
         const savedProjects=await readAllRows((from,to)=>admin.from('developer_projects').select('*').eq('developer_id',String(work.developerId)).order('id').range(from,to));
         const first=savedProjects?.[0];
-        const {error:companyError}=await admin.from('developers').update({first_project_name:first?.name??null,first_project_units:first?.total_units??null,last_synced_at:new Date().toISOString()}).eq('id',work.developerId);if(companyError)throw companyError;
-        const result={developer_id:work.developerId,account_id:work.accountId,company_name:work.developer.company_name,projects:savedProjects?.length??0,units:(savedProjects??[]).reduce((sum,project)=>sum+detailedUnitCount(project),0),expected_projects:work.expectedProjects,source_url:work.url};
+        const {error:companyError}=await admin.from('developers').update({first_project_name:first?.name??null,first_project_units:first?.total_units??null,yad2_total_projects:Math.max(developerYad2Total(work),savedProjects?.length??0),last_synced_at:new Date().toISOString()}).eq('id',work.developerId);if(companyError)throw companyError;
+        const result={developer_id:work.developerId,account_id:work.accountId,company_name:work.developer.company_name,projects:savedProjects?.length??0,units:(savedProjects??[]).reduce((sum,project)=>sum+detailedUnitCount(project),0),expected_projects:work.expectedProjects,yad2_total:Math.max(developerYad2Total(work),savedProjects?.length??0),source_url:work.url};
         c.developerResults=[...(c.developerResults??[]).filter((r:Record<string,any>)=>r.developer_id!==result.developer_id),result];
         c.developerIndex=(c.developerIndex??0)+1;delete c.developerWork;
         c.phase=c.developerUrls[c.developerIndex]?'developer_scanning':c.enrichUrls?.length?'enriching':c.brokers?.length?'validating':'completed';

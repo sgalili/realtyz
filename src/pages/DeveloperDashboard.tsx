@@ -1,3 +1,4 @@
+import { Yad2MoreProjects } from '@/components/developers/Yad2MoreProjects';
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { FullPageLoading } from '@/components/ui/full-page-loading';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
@@ -308,6 +309,7 @@ function DeveloperDashboardContent() {
             <td className="p-2"><div className="flex items-center">{actions(p)}<Button variant="ghost" size="icon-sm" aria-label={`בניינים ויחידות ${p.name}`} aria-expanded={open} onClick={event => { event.stopPropagation(); setExpandedId(open ? null : p.id); }}><ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button></div></td>
           </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1 + (selectionMode ? 1 : 0)} className="p-0"><FixedTablePanel><AnimatedExpansion open={open} autoReveal={false}><div className="min-w-0 space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails enlarged project={p} developer={developerFor(p)} grid={grid} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => postUnit(p, unit)} onEdit={() => { setEditing(p); setMode('manual'); }} selectionMode={selectionMode} selectedUnits={selectedUnits} onToggleUnit={key => toggleSelected(setSelectedUnits, key)} /></div></AnimatedExpansion></FixedTablePanel></td></tr>]; })}
         </tbody></table></HorizontalTableScroll></BoardColumnDragArea>}
+        <Yad2MoreProjects ownerId={ws} onImport={() => setMode('import')} onManual={() => { setEditing(undefined); setMode('manual'); }} />
       </>}
       <Dialog open={mode !== null} onOpenChange={open => { if (!open) close(); }}>
         <DialogContent dir="rtl" className="max-h-[92dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-lg p-4 sm:p-6">

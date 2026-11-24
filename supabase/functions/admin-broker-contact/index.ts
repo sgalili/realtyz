@@ -119,7 +119,7 @@ Deno.serve(async req => {
     const devIds = [...new Set(raw.flatMap(r => r.kind === 'developer' && r.ref ? [r.ref] : []))];
     const bIds = [...new Set(raw.flatMap(r => r.kind === 'broker' && r.ref ? [r.ref] : []))];
     const [devs, projects, profiles, offices, listings] = await Promise.all([
-      chunked(devIds, p => admin.from('developers').select('id,company_name,logo_url,workspace_owner_id,owner_user_id').in('id', p)),
+      chunked(devIds, p => admin.from('developers').select('id,company_name,logo_url,workspace_owner_id,owner_user_id,yad2_total_projects').in('id', p)),
       Promise.all(devIds.map(async developer_id => {
         const { count, error } = await admin.from('developer_projects').select('id', { count: 'exact', head: true }).eq('developer_id', developer_id);
         if (error || count === null) throw error ?? new Error('inventory_count_unavailable');
@@ -149,7 +149,7 @@ Deno.serve(async req => {
     const items = raw.filter(r => !deleted.has(r.id)).map(r => {
       if (r.kind === 'developer') { const d = devById.get(r.ref);
         const p = d?.workspace_owner_id ? devProfileById.get(d.workspace_owner_id) : undefined;
-        return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name || d?.company_name || r.name || '', workspace_owner_id: d?.workspace_owner_id ?? null, public_user_id: d?.owner_user_id ?? d?.workspace_owner_id ?? null, avatar_url: p?.avatar_url ?? null, agency_name: d?.company_name ?? r.name ?? null, logo_url: d?.logo_url ?? null, agency_imported: !!d?.company_name, projects: projectCount.get(r.ref) ?? 0, source_url: r.source_url, imported_at: r.at }; }
+        return { yad2_total: d?.yad2_total_projects ?? null, id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name || d?.company_name || r.name || '', workspace_owner_id: d?.workspace_owner_id ?? null, public_user_id: d?.owner_user_id ?? d?.workspace_owner_id ?? null, avatar_url: p?.avatar_url ?? null, agency_name: d?.company_name ?? r.name ?? null, logo_url: d?.logo_url ?? null, agency_imported: !!d?.company_name, projects: projectCount.get(r.ref) ?? 0, source_url: r.source_url, imported_at: r.at }; }
       const p = profileById.get(r.ref); const o = officeById.get(r.ref); const st = listingStats.get(r.ref);
       return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name ?? r.name ?? '', workspace_owner_id: p?.id ?? null, public_user_id: p?.id ?? null, avatar_url: p?.avatar_url ?? null, logo_url: o?.logo_url ?? null, agency_imported: !!o?.agency_name, agency_name: o?.agency_name ?? null, projects: st?.count ?? 0, yad2_total: yad2TotalBy.get(r.ref) ?? null, source_url: r.source_url ?? st?.yad2 ?? null, imported_at: r.at };
     }).sort((a, b) => String(b.imported_at).localeCompare(String(a.imported_at)));
@@ -198,7 +198,7 @@ Deno.serve(async req => {
     if(brokerReads.some(result=>result.error))return json({error:'לא ניתן לקרוא את פרטי המתווכים כרגע'},503);
     const [{data:profiles},{data:offices},{data:licenses},{data:inventory,error:inventoryError},{data:verified},{data:devRoles}]=brokerReads;
     if (inventoryError || !inventory || inventory.length !== ids.length) return json({ error: 'קריאת ספירת הפרויקטים והדירות נכשלה; יש לרענן ולנסות שוב' }, 500);
-    const { data: devCompanies,error:companyError } = await admin.from('developers').select('workspace_owner_id,company_name,logo_url').in('workspace_owner_id', ids);
+    const { data: devCompanies,error:companyError } = await admin.from('developers').select('workspace_owner_id,company_name,logo_url,yad2_total_projects').in('workspace_owner_id', ids);
     if(companyError)return json({error:'לא ניתן לקרוא את פרטי המתווכים כרגע'},503);
     const { data: whatsappContacts, error: whatsappError } = await admin.from('broker_whatsapp_contacts').select('broker_id,whatsapp_phone,whatsapp_link').in('broker_id', ids);
     if (whatsappError) return json({ error: 'קריאת פרטי WhatsApp נכשלה' }, 500);
@@ -228,6 +228,7 @@ Deno.serve(async req => {
         apartments: Number(counts?.apartments ?? 0),
         yad2_total: Number.isFinite(Number((r as any).yad2_total_listings)) && (r as any).yad2_total_listings !== null ? Number((r as any).yad2_total_listings) : null,
         importing: importingIds.has(r.user_id),
+        yad2_total_projects: (devM.get(r.user_id) as any)?.yad2_total_projects ?? null,
         contact_status: r.contact_status, first_login_at: r.first_login_at, email_consent_at: r.email_consent_at, email_invited_at: r.email_invited_at };
     });
     return json({ brokers });

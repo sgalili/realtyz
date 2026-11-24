@@ -34,7 +34,7 @@ import { firstContactBody } from '../../../supabase/functions/_shared/brokerInvi
 import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
 import { brokerUserError } from '../../../supabase/functions/_shared/brokerRecovery';
 
-export type ContactBroker = { created_at?: string; user_id: string; full_name: string; phone: string | null; whatsapp_phone?: string | null; whatsapp_link?: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; registry_no_match?: boolean; gender?: string | null; drafts: number; yad2_total?: number | null; importing?: boolean; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
+export type ContactBroker = { created_at?: string; user_id: string; full_name: string; phone: string | null; whatsapp_phone?: string | null; whatsapp_link?: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; registry_no_match?: boolean; gender?: string | null; drafts: number; yad2_total?: number | null; importing?: boolean; yad2_total_projects?: number | null; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
 async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> {
   return brokerWhatsAppRequest<T>(fn, body);
@@ -179,7 +179,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
     onSuccess: () => { toast.success('המגדר נשמר'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
-  const details = `${b.projects ?? 0} פרויקטים • ${b.apartments ?? 0} דירות במאגר`;
+  const details = `${importRatioLabel(b.projects, b.yad2_total_projects)} פרויקטים • ${b.apartments ?? 0} דירות במאגר`;
   const [statusSlot, setStatusSlot] = useState<HTMLDivElement | null>(null);
   const phoneControls = !b.is_developer ? <span className="inline-flex min-w-0 items-center"><BrokerNumberEditor brokerId={b.user_id} name={b.full_name} phone={b.phone} kind="phone" />{b.phone && <a href={`tel:+${b.phone}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-primary" aria-label={`חיוג אל ${b.full_name} ${formatPhoneDisplay(b.phone)}`}><Phone className="h-4 w-4" /></a>}</span> : editing ? <>
           <Input autoFocus aria-label={`נייד (WhatsApp) של ${b.full_name}`} className="h-8 w-24 px-2 text-sm sm:w-36 sm:text-base" dir="ltr" inputMode="tel" placeholder="05X-XXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && dirty) save.mutate(); if (e.key === 'Escape') setEditing(false); }} />
@@ -331,7 +331,7 @@ function ImportCount({ item, running }: { item: ImportItem; running: boolean }) 
   const label = item.kind === 'developer' ? 'פרויקטים' : 'נכסים';
   return <span role={running ? 'img' : undefined} aria-label={running ? `${label} נטענים · ${item.projects}` : undefined} className="relative inline-grid h-9 min-w-9 place-items-center px-1">
     {running && <span aria-hidden="true" className="absolute inset-0 animate-spin rounded-full border-2 border-primary/25 border-t-primary motion-reduce:animate-none" />}
-    <span className={`text-sm font-bold tabular-nums ${!running && item.status === 'failed' ? 'text-destructive' : ''}`} title={!running && item.status === 'failed' && item.error ? brokerUserError(item.error) : undefined}>{item.kind === 'broker' ? <span dir="ltr">{importRatioLabel(item.projects, item.yad2_total)}</span> : item.projects}</span>
+    <span className={`text-sm font-bold tabular-nums ${!running && item.status === 'failed' ? 'text-destructive' : ''}`} title={!running && item.status === 'failed' && item.error ? brokerUserError(item.error) : undefined}><span dir="ltr">{importRatioLabel(item.projects, item.yad2_total)}</span></span>
   </span>;
 }
 

@@ -67,7 +67,7 @@ it('shows the count centered inside a loader ring while the import is still runn
   setupWith([{ ...item, status: 'running', projects: 4 }]);
   fireEvent.mouseDown(await screen.findByRole('tab', { name: /^יזמים/ }));
   const ring = await screen.findByRole('img', { name: 'פרויקטים נטענים · 4' });
-  expect(ring.textContent).toBe('4');
+  expect(ring.textContent).toBe('(4)');
   expect(screen.queryByText('בתהליך')).not.toBeInTheDocument();
 });
 

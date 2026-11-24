@@ -4398,6 +4398,7 @@ export type Database = {
           source_url: string | null
           updated_at: string
           workspace_owner_id: string
+          yad2_total_projects: number | null
         }
         Insert: {
           commission_config?: Json
@@ -4417,6 +4418,7 @@ export type Database = {
           source_url?: string | null
           updated_at?: string
           workspace_owner_id: string
+          yad2_total_projects?: number | null
         }
         Update: {
           commission_config?: Json
@@ -4436,6 +4438,7 @@ export type Database = {
           source_url?: string | null
           updated_at?: string
           workspace_owner_id?: string
+          yad2_total_projects?: number | null
         }
         Relationships: [
           {
@@ -13096,6 +13099,7 @@ export type Database = {
       my_demo_view_type: { Args: never; Returns: string }
       my_marketing_company_id: { Args: never; Returns: string }
       my_yad2_import_gap: { Args: { _owner: string }; Returns: Json }
+      my_yad2_project_gap: { Args: { _owner: string }; Returns: Json }
       notify_broker_upgrade: {
         Args: { _id: string; _status: string; _uid: string }
         Returns: undefined
