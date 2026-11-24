@@ -8,12 +8,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, PlugZap, Save } from 'lucide-react';
+import { BookOpen, ChevronDown, Loader2, PlugZap, Save } from 'lucide-react';
+import makeGuide from '../../../docs/grow-make.md?raw';
 import { toast } from 'sonner';
-import { growConfigurationReady } from '../../../supabase/functions/_shared/growPayment';
 
 const defaults = { environment: 'sandbox', business_id: '', verification_phone: '', sending_mode: 'none', subscription_title: '', duration_days: '', benefits: '', enabled: false };
-export function GrowPaymentSettings() {
+export function GrowPaymentSettings({ collapsible = false }: { collapsible?: boolean }) {
+  const [open, setOpen] = useState(!collapsible);
+  const [guide, setGuide] = useState(false);
   const qc = useQueryClient();
   const [form, setForm] = useState(defaults);
   const [busy, setBusy] = useState<'save'|'test'|null>(null);
@@ -34,7 +36,6 @@ export function GrowPaymentSettings() {
     if (form.business_id && !/^\d{9}$/.test(form.business_id)) { toast.error('יש להזין מספר זהות או ח״פ בן 9 ספרות'); return; }
     if (form.verification_phone && !/^05\d{8}$/.test(form.verification_phone)) { toast.error('יש להזין מספר נייד תקין'); return; }
     if (duration !== null && (!Number.isInteger(duration) || duration < 1 || duration > 3650)) { toast.error('יש להזין תקופה תקינה בימים'); return; }
-    if (form.enabled && (!growConfigurationReady({ ...form, duration_days: duration }) || !status.data?.configured || status.data.environment !== form.environment)) { toast.error('נדרש חיבור Make ותנאי מנוי מלאים לפני הפעלה'); return; }
     setBusy('save');
     try {
       const { data: auth } = await supabase.auth.getUser();
@@ -56,8 +57,9 @@ export function GrowPaymentSettings() {
   }
   if (settings.isLoading) return <Loader2 className="h-5 w-5 animate-spin" aria-label="טוען הגדרות" />;
   if (settings.error) return <p role="alert" className="text-destructive">לא ניתן לטעון את הגדרות התשלום</p>;
-  return <section className="mx-auto max-w-3xl space-y-6" dir="rtl">
-    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">תשלומי Grow דרך Make</h2><Badge variant={status.data?.configured ? 'secondary' : 'outline'}>{status.data?.configured ? 'Make מחובר' : status.error ? 'מצב החיבור אינו זמין' : 'Make טרם חובר'}</Badge></div>
+  return <section className={collapsible ? "rounded-lg border bg-card p-4 space-y-5" : "mx-auto max-w-3xl space-y-6"} dir="rtl">
+    <div className="flex flex-wrap items-center justify-between gap-3"><button type="button" className="flex items-center gap-2 text-start" onClick={() => setOpen(o => !o)} aria-expanded={open}><h2 className={collapsible ? "text-base font-semibold" : "text-xl font-semibold"}>הגדרות תשלום · Grow דרך Make</h2>{collapsible && <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />}</button><Badge variant={status.data?.configured ? 'secondary' : 'outline'}>{status.data?.configured ? 'Make מחובר' : status.error ? 'מצב החיבור אינו זמין' : 'Make טרם חובר'}</Badge></div>
+    {open && <>
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="space-y-2"><Label>סביבה</Label><Select value={form.environment} onValueChange={v => set('environment', v)}><SelectTrigger aria-label="סביבת Grow"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="sandbox">Grow Sandbox · בדיקות</SelectItem><SelectItem value="live">Grow · חי</SelectItem></SelectContent></Select></div>
       <div className="space-y-2"><Label>אופן שליחה ברירת מחדל</Label><Select value={form.sending_mode} onValueChange={v => set('sending_mode', v)}><SelectTrigger aria-label="אופן שליחה"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">ללא שליחה</SelectItem><SelectItem value="sms">SMS</SelectItem></SelectContent></Select></div>
@@ -65,13 +67,10 @@ export function GrowPaymentSettings() {
       <div className="space-y-2"><Label htmlFor="grow-phone">נייד לאימות חשבון</Label><Input id="grow-phone" dir="ltr" inputMode="tel" value={form.verification_phone} onChange={e => set('verification_phone', e.target.value)} maxLength={10} /></div>
     </div>
     <p className="text-sm text-muted-foreground">אימות החשבון וקוד האימות מתבצעים ב־Make; שמירת פרטים כאן אינה מחברת חשבון Grow.</p>
-    <div className="border-t pt-5 space-y-4">
-      <h3 className="text-lg font-semibold">מנוי · ₪6,500</h3>
-      <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="grow-title">שם המנוי</Label><Input id="grow-title" value={form.subscription_title} maxLength={150} onChange={e => set('subscription_title', e.target.value)} /></div><div className="space-y-2"><Label htmlFor="grow-duration">תקופת המנוי בימים</Label><Input id="grow-duration" type="number" min={1} max={3650} value={form.duration_days} onChange={e => set('duration_days', e.target.value)} /></div></div>
-      <div className="space-y-2"><Label htmlFor="grow-benefits">הטבות המנוי</Label><Textarea id="grow-benefits" value={form.benefits} maxLength={4000} onChange={e => set('benefits', e.target.value)} /></div>
-      <p className="text-sm text-muted-foreground">חיוב יחיד, ללא חידוש אוטומטי. הפעלה דורשת תנאים מלאים ואישור תשלום; תשלום בדיקה אינו מעניק מנוי פעיל.</p>
-      <Label className="flex items-center gap-3"><Switch checked={form.enabled} onCheckedChange={v => set('enabled', v)} />אפשר רכישת מנוי</Label>
-    </div>
+    <Label className="flex items-center gap-3"><Switch checked={form.enabled} onCheckedChange={v => set('enabled', v)} />הפעלת תשלומים</Label>
     <div className="flex justify-between gap-3"><Button variant="outline" onClick={test} disabled={!!busy || !status.data?.configured}>{busy === 'test' ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}בדיקת חיבור</Button><Button onClick={save} disabled={!!busy}>{busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}שמירה</Button></div>
+    <Button variant="ghost" size="sm" onClick={() => setGuide(g => !g)}><BookOpen className="h-4 w-4" />{guide ? 'הסתרת מדריך החיבור' : 'מדריך חיבור Make ו־Grow'}</Button>
+    {guide && <pre dir="ltr" className="max-h-96 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">{makeGuide}</pre>}
+    </>}
   </section>;
 }

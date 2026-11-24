@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ACTION_META, agorotPerCredit, agorotToCredits, fmtCredits, setCreditsPerIls } from '@/lib/credits';
+import { ACTION_META, agorotPerCredit, agorotToCredits, creditsToAgorot, fmtCredits, setCreditsPerIls } from '@/lib/credits';
 import { CREDIT_RATE_QUERY_KEY, useCreditRate } from '@/hooks/useCreditRate';
 
 type Row = { action_key: string; label_he: string; unit_he: string; price_agorot: number };
@@ -22,6 +22,10 @@ export function ActionPricingCard() {
   });
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [unit, setUnit] = useState<'agorot' | 'credits'>('agorot');
+  const toAgorot = (v: number) => unit === 'credits' ? Math.round(creditsToAgorot(v) * 10000) / 10000 : v;
+  const fromAgorot = (a: number) => unit === 'credits' ? String(Math.round(agorotToCredits(a) * 10000) / 10000) : String(a);
+  const switchUnit = () => { const next = unit === 'agorot' ? 'credits' : 'agorot'; setDraft(d => Object.fromEntries(Object.entries(d).map(([k, v]) => { const a = unit === 'credits' ? creditsToAgorot(Number(v)) : Number(v); return [k, next === 'credits' ? String(Math.round(agorotToCredits(a) * 10000) / 10000) : String(Math.round(a * 10000) / 10000)]; }))); setUnit(next); };
   const rate = useCreditRate();
   const [rateDraft, setRateDraft] = useState(String(rate));
   useEffect(() => setRateDraft(String(rate)), [rate]);
@@ -33,15 +37,15 @@ export function ActionPricingCard() {
     void qc.invalidateQueries({ queryKey: CREDIT_RATE_QUERY_KEY });
     setCreditsPerIls(Number(saved));
   };
-  useEffect(() => setDraft(Object.fromEntries(data.map((r) => [r.action_key, String(r.price_agorot)]))), [data]);
+  useEffect(() => setDraft(Object.fromEntries(data.map((r) => [r.action_key, fromAgorot(Number(r.price_agorot))]))), [data]);
 
   const save = async () => {
     setSaving(true);
     const { data: u } = await supabase.auth.getUser();
     for (const r of data) {
-      const v = Number(draft[r.action_key]);
+      const v = toAgorot(Number(draft[r.action_key]));
       if (!Number.isFinite(v) || v < 0) { toast.error(`מחיר לא תקין: ${r.label_he}`); setSaving(false); return; }
-      if (v === Number(r.price_agorot)) continue;
+      if (Math.abs(v - Number(r.price_agorot)) < 0.0001) continue;
       const { error } = await (supabase.from as any)('action_pricing')
         .update({ price_agorot: v, updated_at: new Date().toISOString(), updated_by: u.user?.id }).eq('action_key', r.action_key);
       if (error) { toast.error('השמירה נכשלה'); setSaving(false); return; }
@@ -54,7 +58,7 @@ export function ActionPricingCard() {
   return (
     <Card dir="rtl">
       <CardHeader>
-        <CardTitle>מחירון פעולות</CardTitle>
+        <div className="flex items-center justify-between gap-2"><CardTitle>מחירון פעולות</CardTitle><Button variant="outline" size="sm" onClick={switchUnit}>{unit === 'agorot' ? 'עריכה בקרדיטים' : 'עריכה באגורות'}</Button></div>
         <CardDescription>₪1 = {rate.toLocaleString('he-IL')} קרדיטים · קרדיט אחד = {agorotPerCredit().toLocaleString('he-IL', { maximumFractionDigits: 4 })} אגורות</CardDescription>
         <div className="flex items-end gap-2 pt-2">
           <label className="flex-1 space-y-1 text-sm font-medium" htmlFor="credits-per-ils">שער המרה: קרדיטים לכל ₪1
@@ -67,18 +71,18 @@ export function ActionPricingCard() {
         {data.map((r) => {
           const Meta = ACTION_META[r.action_key];
           const Icon = Meta?.icon;
-          const v = Number(draft[r.action_key] ?? 0);
+          const v = toAgorot(Number(draft[r.action_key] ?? 0));
           return (
             <div key={r.action_key} className="flex items-center gap-3">
               {Icon && <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${Meta.tone}`}><Icon className="h-4 w-4" /></span>}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{r.label_he}</p>
-                <p className="text-xs text-muted-foreground">ל{r.unit_he} · {fmtCredits(agorotToCredits(v || 0))}</p>
+                <p className="text-xs text-muted-foreground">ל{r.unit_he} · {unit === 'credits' ? `${(v || 0).toLocaleString('he-IL', { maximumFractionDigits: 4 })} אג׳` : fmtCredits(agorotToCredits(v || 0))}</p>
               </div>
               <div className="flex items-center gap-1">
                 <Input dir="ltr" type="number" min={0} step="0.1" className="w-24" value={draft[r.action_key] ?? ''}
                   onChange={(e) => setDraft((d) => ({ ...d, [r.action_key]: e.target.value }))} />
-                <span className="text-xs text-muted-foreground">אג׳</span>
+                <span className="text-xs text-muted-foreground">{unit === 'credits' ? 'קר׳' : 'אג׳'}</span>
               </div>
             </div>
           );

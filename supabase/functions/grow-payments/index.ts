@@ -98,6 +98,25 @@ Deno.serve(async req => {
       if (result?.connected !== true || result?.environment !== environment) return json({ error: 'connection_not_verified' }, 502);
       return json({ connected: true, environment });
     }
+    if (body.action === 'quick_charge') {
+      // Super Admin one-off charge. Card details are entered only on Grow's hosted checkout.
+      if (!superAdmin) return json({ error: 'forbidden' }, 403);
+      const amount = Number(body.amount_ils);
+      if (!Number.isFinite(amount) || amount < 1 || amount > 100000 || Math.round(amount * 100) !== amount * 100) return json({ error: 'invalid_amount' }, 400);
+      const phone = String(body.phone ?? '');
+      if (!/^05\d{8}$/.test(phone)) return json({ error: 'invalid_customer_field', field: 'phone' }, 400);
+      const fullName = String(body.full_name ?? '').trim().slice(0, 120);
+      const title = String(body.title ?? '').trim().slice(0, 150) || 'חיוב TORAFF';
+      if (!Deno.env.get(`${prefix}_URL`) || !Deno.env.get(`${prefix}_API_KEY`) || !Deno.env.get('GROW_MAKE_NOTIFY_SECRET')) return json({ error: 'payment_not_configured' }, 409);
+      stage = 'create_order';
+      const { data: order, error } = await admin.from('grow_payment_orders').insert({ user_id: caller.userId, workspace_owner_id: null, purpose: 'quick_charge', environment, amount_ils: amount, duration_days: 1, title, benefits: '', customer_phone: phone, payment_method: 'card' }).select('id').single();
+      if (error || !order) return json({ error: 'order_creation_failed' }, 503);
+      stage = 'create_link';
+      const result = await callMake(environment, { action: 'create', order_id: order.id, purpose: 'quick_charge', environment, amount_ils: amount, vat_included: true, currency: 'ILS', title, full_name: fullName, phone, payment_method: 'card', sending_mode: settings?.sending_mode ?? 'none', payment_type: 'payments', charge_type: 'regular charge', success_url: `${Deno.env.get('PUBLIC_SITE_URL') ?? 'https://toraff.co.il'}/super-admin?section=finance` });
+      if (typeof result?.payment_url !== 'string' || !validGrowPaymentUrl(result.payment_url)) throw new Error('invalid_payment_url');
+      await admin.from('grow_payment_orders').update({ status: 'link_ready', payment_url: result.payment_url }).eq('id', order.id).eq('status', 'pending');
+      return json({ order_id: order.id, payment_url: result.payment_url, environment });
+    }
     if (body.action !== 'create' && body.action !== 'topup_create' && body.action !== 'developer_create') return json({ error: 'invalid_action' }, 400);
     const isTopup = body.action === 'topup_create';
     const isDeveloper = body.action === 'developer_create';

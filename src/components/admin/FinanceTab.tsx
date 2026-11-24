@@ -1,3 +1,5 @@
+import { GrowPaymentSettings } from '@/components/admin/GrowPaymentSettings';
+import { QuickCardChargeCard } from '@/components/admin/QuickCardChargeCard';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -72,6 +74,8 @@ export function FinanceTab() {
 
   return (
     <div className="space-y-4">
+      <GrowPaymentSettings collapsible />
+      <QuickCardChargeCard />
       <ActionPricingCard />
       <SignupBonusSettings />
       <InviteBonusSettings />

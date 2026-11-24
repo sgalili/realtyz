@@ -2101,6 +2101,20 @@
       "when": 1795531899924,
       "tag": "0299_email_first_contact_default",
       "breakpoints": true
+    },
+    {
+      "idx": 300,
+      "version": "7",
+      "when": 1795532635317,
+      "tag": "0300_group_post_pricing",
+      "breakpoints": true
+    },
+    {
+      "idx": 301,
+      "version": "7",
+      "when": 1795532703296,
+      "tag": "0301_grow_quick_charge",
+      "breakpoints": true
     }
   ]
 }

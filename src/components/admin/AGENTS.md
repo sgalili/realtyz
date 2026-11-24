@@ -22,3 +22,4 @@
 - First contact (email and WhatsApp outreach) is a link-free opt-in naming the broker and their Yad2 address; login link and Rita voice follow only after a positive reply via the outreach journey. Why: anti-spam consent before any account link.
 
 - Vapi, Twilio and ElevenLabs management lives only in the Super Admin "voice" section (VoiceProvidersTab), storing through manage-api-configs; credit/bonus pricing tools live in FinanceTab, not API Settings. Why: one privileged home for platform credentials and pricing.
+- Super Admin quick card charges go through grow-payments quick_charge to Grow's hosted checkout; TORAFF never collects card numbers, and paid quick_charge orders grant nothing. Why: PCI safety and no accidental entitlements.

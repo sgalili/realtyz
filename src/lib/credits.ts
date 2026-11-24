@@ -1,4 +1,4 @@
-import { Bot, Mail, MessageCircle, MessageSquare, Phone, Sparkles, type LucideIcon } from 'lucide-react';
+import { Bot, Mail, MessageCircle, MessageSquare, Phone, Sparkles, Users, type LucideIcon } from 'lucide-react';
 
 /**
  * Single source of truth for credit ⇄ ILS conversion.
@@ -48,6 +48,7 @@ export const ACTION_META: Record<string, { icon: LucideIcon; tone: string }> = {
   email: { icon: Mail, tone: 'bg-accent text-accent-foreground' },
   ai_heavy: { icon: Sparkles, tone: 'bg-warning/15 text-warning' },
   rita_chat: { icon: Bot, tone: 'bg-secondary text-secondary-foreground' },
+  group_post: { icon: Users, tone: 'bg-primary/15 text-primary' },
   ai_call_minute: { icon: Phone, tone: 'bg-destructive/15 text-destructive' },
 };
 
