@@ -334,7 +334,7 @@ export function PageHero() {
   // suffix (Homely/Webtiv/Yad2/etc.) is appended.
   void propertySuffix;
   void isPropertyDetail;
-  const displayTitle = isCampaignsCreate ? "פרסום קמפיין חדש" : isCampaignsCalendar ? "פרסומים מתוזמנים" : brokersOnly && title === "מנגנון העמלות" ? "תמחור וקרדיטים" : title;
+  const displayTitle = isCampaignsCreate ? "פרסום קמפיין חדש" : isCampaignsCalendar ? "פרסומים מתוזמנים" : brokersOnly && (title === "מנגנון העמלות" || location.pathname === '/pricing') ? "תמחור וקרדיטים" : brokersOnly && location.pathname === '/contact' ? 'צרו קשר' : title;
   const [inboxSearchOpen, setInboxSearchOpen] = React.useState(false);
   const inboxSection = searchParams.get('section') === 'community' || searchParams.has('community') ? 'community' : 'leads';
   React.useEffect(() => {

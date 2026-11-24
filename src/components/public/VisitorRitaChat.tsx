@@ -17,23 +17,28 @@ import { RITA_CHAT_GREETING, resizeRitaTextarea } from '@/lib/ritaChatPresentati
 import { RitaUserAvatar } from '@/components/rita/RitaUserAvatar';
 import { ADMIN_REPLY_PREFIX, ritaLiveLog, ritaLivePoll, type LiveMode } from '@/lib/ritaLive';
 import { useBrokersOnly } from '@/hooks/usePlatformMode';
+import { BROKER_VISITOR_GREETING, visitorChatScope } from '@/lib/visitorChatScope';
 
-const KEY = 'toraff-visitor-rita-history';
 // Keeps the newest bubble visible: scrolls the transcript to its bottom whenever a message is added or grows.
 function AutoStickBottom({ trigger }: { trigger: unknown }) {
   const { scrollToBottom } = useStickToBottomContext();
   useEffect(() => { scrollToBottom(); }, [trigger, scrollToBottom]);
   return null;
 }
-function readHistory(): UIMessage[] {
+function readHistory(key: string): UIMessage[] {
   try {
-    const data = JSON.parse(localStorage.getItem(KEY) ?? '[]');
+    const data = JSON.parse(localStorage.getItem(key) ?? '[]');
     return Array.isArray(data) ? data.filter(m => typeof m.id === 'string' && ['user', 'assistant'].includes(m.role) && Array.isArray(m.parts)).slice(-24) : [];
   } catch { return []; }
 }
 
 export function VisitorRitaChat() {
   const brokersOnly = useBrokersOnly();
+  const scope = visitorChatScope(brokersOnly ? 'brokers_only' : 'full_marketplace');
+  return <VisitorRitaConversation key={scope} brokersOnly={brokersOnly} scope={scope} />;
+}
+
+function VisitorRitaConversation({ brokersOnly, scope }: { brokersOnly: boolean; scope: string }) {
   const [expanded, setExpanded] = useState(false);
   // PromptInputTextarea does not forward refs, so reach the textarea through the wrapper instead.
   const inputWrapRef = useRef<HTMLDivElement>(null);
@@ -43,18 +48,26 @@ export function VisitorRitaChat() {
     headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
     prepareSendMessagesRequest: ({ messages }) => ({ body: { presentation: brokersOnly ? 'brokers_only' : 'full_marketplace', messages: messages.slice(-24).map(m => ({ id: m.id, role: m.role, parts: m.parts.filter(p => p.type === 'text').map(p => ({ type: 'text', text: p.text })) })) } }),
   }), [brokersOnly]);
-  const [initial] = useState(readHistory);
-  const { messages, sendMessage, status, error, stop, setMessages } = useChat({ id: 'toraff-visitor', messages: initial, transport,
-    onFinish: ({ message }) => { const t = message.parts.map(p => p.type === 'text' ? p.text : '').join(''); if (t) void ritaLiveLog('assistant', t, true); } });
+  const [initial, setInitial] = useState<UIMessage[]>([]);
+  const [historyReady, setHistoryReady] = useState(false);
+  const { messages, sendMessage, status, error, stop, setMessages } = useChat({ id: scope, messages: initial, transport,
+    onFinish: ({ message }) => { const t = message.parts.map(p => p.type === 'text' ? p.text : '').join(''); if (t) void ritaLiveLog('assistant', t, true, scope); } });
   // A Super Admin may take over the chat: poll for their replies and stop calling Rita while they handle it.
   const modeRef = useRef<LiveMode>('ai');
   const lastAdminAt = useRef<string | undefined>(undefined);
   const [liveStarted, setLiveStarted] = useState(initial.length > 0);
   useEffect(() => {
+    const history = readHistory(scope);
+    setInitial(history);
+    setMessages(history);
+    setLiveStarted(history.length > 0);
+    setHistoryReady(true);
+  }, [scope, setMessages]);
+  useEffect(() => {
     if (!liveStarted) return;
     let stopped = false;
     const tick = async () => {
-      const r = await ritaLivePoll(lastAdminAt.current, true);
+      const r = await ritaLivePoll(lastAdminAt.current, true, scope);
       if (stopped || !r) return;
       modeRef.current = r.mode;
       if (r.messages.length) {
@@ -65,20 +78,21 @@ export function VisitorRitaChat() {
     void tick();
     const t = window.setInterval(tick, 5000);
     return () => { stopped = true; window.clearInterval(t); };
-  }, [liveStarted, setMessages]);
+  }, [liveStarted, setMessages, scope]);
   const submitText = async (text: string) => {
     setLiveStarted(true);
-    const mode = await ritaLiveLog('user', text, true);
+    const mode = await ritaLiveLog('user', text, true, scope);
     modeRef.current = mode;
     if (mode === 'human') { setMessages(prev => [...prev, { id: `u-${Date.now()}`, role: 'user', parts: [{ type: 'text', text }] }]); return; }
     void sendMessage({ text });
   };
   const busy = status === 'submitted' || status === 'streaming';
   useEffect(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(messages.slice(-24))); } catch { /* unavailable storage does not block chat */ }
+    if (!historyReady) return;
+    try { localStorage.setItem(scope, JSON.stringify(messages.slice(-24))); } catch { /* unavailable storage does not block chat */ }
     const el = getTextarea();
     if (el && !el.value) el.style.height = '';
-  }, [messages, busy]);
+  }, [messages, busy, historyReady, scope]);
   // Enter adds a new line; Command/Ctrl + Enter sends.
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     const action = ritaChatKeyAction({ key: e.key, metaKey: e.metaKey, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey, isComposing: e.nativeEvent.isComposing });
@@ -116,7 +130,7 @@ export function VisitorRitaChat() {
     <div ref={convRef} className={expanded ? 'flex min-h-0 flex-1 flex-col' : 'flex min-h-0 flex-col'} style={sized ? { height: chatHeight } : undefined}>
     <Conversation className={expanded || sized ? 'min-h-0 flex-1' : 'max-h-48 min-h-0'}>
       <ConversationContent className="gap-3 px-2 py-2" scrollClassName={expanded || sized ? undefined : 'max-h-48'}>
-        <div className="is-assistant group flex w-full items-start gap-2"><RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" /><MessageContent className="max-w-[78%] rounded-lg bg-muted px-3 py-2 text-xs font-normal">{RITA_CHAT_GREETING}</MessageContent></div>
+        <div className="is-assistant group flex w-full items-start gap-2"><RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" /><MessageContent className="max-w-[78%] rounded-lg bg-muted px-3 py-2 text-xs font-normal">{brokersOnly ? BROKER_VISITOR_GREETING : RITA_CHAT_GREETING}</MessageContent></div>
         {messages.map(message => {
           const mine = message.role === 'user';
           return <div key={message.id} className={cn('group flex w-full max-w-[92%] items-start gap-2', mine ? 'is-user mr-auto flex-row-reverse' : 'is-assistant ml-auto')}>

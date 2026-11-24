@@ -30,13 +30,35 @@ const ROUTE_TITLES: Record<string, string> = {
   '/terms': 'תנאי שימוש', '/privacy-policy': 'מדיניות פרטיות',
 };
 
+const BROKER_VISITOR_DESCRIPTIONS: Record<string, string> = {
+  '/about-toraff': 'הכירו את TORAFF למתווכים: נכסים, ייבוא מיד2, לידים, ריטה, קמפיינים, מטלות וחתימות דיגיטליות.',
+  '/faq': 'תשובות על סביבת העבודה למתווכים, התחברות בקוד, מרחב הדגמה, ניהול נכסים ולידים וקרדיטים.',
+  '/terms': 'תנאי השימוש בכלי TORAFF למתווכים: הרשאות משרד, נכסים, ריטה, קמפיינים, חתימות וקרדיטים.',
+  '/privacy-policy': 'כיצד TORAFF מעבדת ומגינה על נתוני המשרד, הלקוחות, הלידים והשיחות בסביבת העבודה למתווכים.',
+  '/commission-mechanism': 'תמחור וקרדיטים ב-TORAFF למתווכים: חיוב לפי שימוש, השלמה חודשית, טעינת ארנק ושקיפות לפני ביצוע פעולה.',
+  '/pricing': 'מידע על תמחור וקרדיטים לכלי העבודה למתווכים ב-TORAFF.',
+  '/contact': 'צרו קשר עם TORAFF לעזרה בהתחברות, בריטה ובכלי ניהול המשרד למתווכים.',
+};
+
 export function platformPageMetadata(mode: PlatformMode | undefined, pathname: string, canonicalPath = pathname) {
   const presentation = platformPresentation(mode);
   const path = pathname === '/' ? '/' : pathname.replace(/\/$/, '');
-  const label = ROUTE_TITLES[path];
+  const brokersOnly = mode !== 'full_marketplace';
+  const label = ROUTE_TITLES[path] ?? (brokersOnly ? ({ '/commission-mechanism': 'תמחור וקרדיטים', '/pricing': 'תמחור שירותים וקרדיטים', '/contact': 'צרו קשר' } as Record<string, string>)[path] : undefined);
   return {
     ...presentation,
+    description: brokersOnly ? BROKER_VISITOR_DESCRIPTIONS[path] ?? presentation.description : presentation.description,
     title: label ? `${label} | ${presentation.title}` : presentation.title,
     canonical: `https://toraff.co.il${canonicalPath === '/' ? '/' : canonicalPath.replace(/\/$/, '')}`,
   };
+}
+
+/** Leaf-route fallback; PlatformMetadata applies the current public mode after hydration. */
+export function visitorRouteHead(path: string) {
+  const metadata = platformPageMetadata(undefined, path);
+  return { meta: [
+    { title: metadata.title }, { name: 'description', content: metadata.description },
+    { property: 'og:title', content: metadata.title }, { property: 'og:description', content: metadata.description },
+    { property: 'og:type', content: 'website' }, { name: 'twitter:card', content: 'summary' },
+  ] };
 }

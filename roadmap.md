@@ -1,5 +1,10 @@
 # Roadmap
 
+## Visitor content audit November 24
+- [x] Added broker-only About slides and shared FAQ page/dialog data; clarified broker pricing/terms/privacy and contact copy, hid guest public-publisher CTA, normalized guest signup intent. Broker /pricing now opens public credit information; marketplace wallet redirect, copy and actions retained. Visitor leaf metadata updated; root-only placeholder social images removed.
+- [x] Rita greeting/public broker context aligned with direct office leads, no per-lead charge, approved campaigns, draft imports and read-only demo; separate mode transcript/live tokens retain marketplace history without crossing contexts. Deployed existing visitor-rita; no private data/tools/permissions added.
+- [x] 67 app tests and 5 Rita boundary tests passed; build OK. All guest destinations checked at 411x801, both content modes verified at 1280x1800 with intercepted public settings only, marketplace transcript preserved/excluded correctly, actual broker demo/pricing navigation and accessibility verified. Real anonymous Rita replied with broker-only tools and no per-lead fee; no runtime errors. Contact delivery not exercised, no global settings or existing records changed; frontend requires publishing.
+
 ## Scanner read-only health November 24
 - [x] Read-only queues/events/deployed reservation confirm 176 ready, 1 awaiting reply until 07:53 UTC, 3 saved, 5 manual; 6/20 attempts, fresh worker, zero send errors and no expired active leases. Historical lookup failures: 51 cancelled, 3 stale-worker, 224 not_found. No mutations or scanner control actions.
 - [x] Existing panel/row dialog now distinguish quota, serial reply wait, pacing, disconnect, stale worker, refresh failures and persisted failure reasons. Scanner status reads the serial blocker globally as well as per-row; no queue/pacing/write logic changed. Deployed existing scanner handler.

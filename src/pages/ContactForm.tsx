@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { normalizePhoneForStorage } from '@/lib/formatPhone';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 
 const ContactForm = () => {
+  const brokersOnly = useBrokersOnly();
   const [form, setForm] = useState({ full_name: '', phone_number: '', email: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -41,9 +43,9 @@ const ContactForm = () => {
 
   if (submitted) {
     return (
-      <div className="listing-landing-shell min-h-screen flex items-center justify-center p-4" dir="rtl">
-        <div className="listing-top-wave" aria-hidden="true" />
-        <Card className="listing-landing-card max-w-md w-full text-center border-primary/20">
+      <div className={brokersOnly ? 'mx-auto flex w-full max-w-xl items-center justify-center px-5 py-8' : 'listing-landing-shell min-h-screen flex items-center justify-center p-4'} dir="rtl">
+        {!brokersOnly && <div className="listing-top-wave" aria-hidden="true" />}
+        <Card className={brokersOnly ? 'w-full border-0 text-center shadow-none' : 'listing-landing-card max-w-md w-full text-center border-primary/20'}>
           <CardContent className="py-12 space-y-4">
             <div className="h-16 w-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
               <CheckCircle2 className="h-8 w-8 text-primary" />
@@ -57,12 +59,12 @@ const ContactForm = () => {
   }
 
   return (
-    <div className="listing-landing-shell min-h-screen flex items-center justify-center p-4" dir="rtl">
-      <div className="listing-top-wave" aria-hidden="true" />
-      <Card className="listing-landing-card max-w-md w-full animate-enter">
+    <div className={brokersOnly ? 'mx-auto flex w-full max-w-xl items-center justify-center px-5 py-8' : 'listing-landing-shell min-h-screen flex items-center justify-center p-4'} dir="rtl">
+      {!brokersOnly && <div className="listing-top-wave" aria-hidden="true" />}
+      <Card className={brokersOnly ? 'w-full border-0 shadow-none' : 'listing-landing-card max-w-md w-full animate-enter'}>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl text-primary">צור קשר</CardTitle>
-          <CardDescription>השאר פרטים ונחזור אליך בהקדם</CardDescription>
+          <CardTitle className="text-xl text-primary">{brokersOnly ? 'צרו קשר עם TORAFF' : 'צור קשר'}</CardTitle>
+          <CardDescription>{brokersOnly ? 'שאלות על ניהול המשרד, ריטה או התחברות? נשמח לעזור.' : 'השאר פרטים ונחזור אליך בהקדם'}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -80,7 +82,7 @@ const ContactForm = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="message">הודעה</Label>
-              <Textarea id="message" placeholder="ספר לנו במה נוכל לעזור..." value={form.message} onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))} maxLength={1000} rows={4} />
+              <Textarea id="message" placeholder={brokersOnly ? 'במה נוכל לעזור למשרד שלכם?' : 'ספר לנו במה נוכל לעזור...'} value={form.message} onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))} maxLength={1000} rows={4} />
             </div>
             <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary-glow" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Send className="h-4 w-4 ml-2" />}

@@ -7,7 +7,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
-import { FAQ_ROLE_LABELS, GENERAL_FAQS, ROLE_FAQS, faqRoleFor, type FaqItem } from '@/components/faq/faqData';
+import { faqPresentation, faqRoleFor, type FaqItem } from '@/components/faq/faqData';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 
 /** Global event any entry point (intro slides, help menu, footer) dispatches to open the FAQ. */
 export const FAQ_OPEN_EVENT = 'toraf-open-faq';
@@ -36,13 +37,14 @@ function FaqAccordion({ items, prefix }: { items: FaqItem[]; prefix: string }) {
 function useRoleFaqs() {
   const { user } = useAuth();
   const { roles, loading } = useUserRole();
-  const roleKey = user && !loading ? faqRoleFor(roles) : null;
-  return { roleKey, roleFaqs: roleKey ? ROLE_FAQS[roleKey] : null };
+  const brokersOnly = useBrokersOnly();
+  const roleKey = !brokersOnly && user && !loading ? faqRoleFor(roles) : null;
+  return faqPresentation(brokersOnly, roleKey);
 }
 
 /** Standalone FAQ content for the /faq page. */
 export function FaqContent() {
-  const { roleKey, roleFaqs } = useRoleFaqs();
+  const { roleLabel, roleFaqs, generalFaqs } = useRoleFaqs();
   const [params, setParams] = useSearchParams();
   const [heroTabsHost, setHeroTabsHost] = useState<HTMLElement | null>(null);
   useEffect(() => {
@@ -60,21 +62,18 @@ export function FaqContent() {
       {heroTabsHost && createPortal(
         <TabsList className="grid h-12 w-full grid-cols-2 rounded-lg bg-primary-foreground/15 text-primary-foreground">
           <TabsTrigger value="general" className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:ring-0 data-[state=active]:bg-primary-foreground data-[state=active]:text-primary">שאלות כלליות</TabsTrigger>
-          <TabsTrigger value="role" className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:ring-0 data-[state=active]:bg-primary-foreground data-[state=active]:text-primary">{FAQ_ROLE_LABELS[roleKey!]}</TabsTrigger>
+          <TabsTrigger value="role" className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:ring-0 data-[state=active]:bg-primary-foreground data-[state=active]:text-primary">{roleLabel}</TabsTrigger>
         </TabsList>,
         heroTabsHost,
       )}
-      <TabsContent value="general"><FaqAccordion items={GENERAL_FAQS} prefix="g" /></TabsContent>
+      <TabsContent value="general"><FaqAccordion items={generalFaqs} prefix="g" /></TabsContent>
       <TabsContent value="role"><FaqAccordion items={roleFaqs} prefix="r" /></TabsContent>
-    </Tabs> : <FaqAccordion items={GENERAL_FAQS} prefix="g" />}
+    </Tabs> : <FaqAccordion items={generalFaqs} prefix="g" />}
   </div>;
 }
 
 export function FaqDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const { user } = useAuth();
-  const { roles, loading } = useUserRole();
-  const roleKey = user && !loading ? faqRoleFor(roles) : null;
-  const roleFaqs = roleKey ? ROLE_FAQS[roleKey] : null;
+  const { roleLabel, roleFaqs, generalFaqs } = useRoleFaqs();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -95,10 +94,10 @@ export function FaqDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           <Tabs defaultValue="general" dir="rtl" className="flex min-h-0 flex-1 flex-col">
             <TabsList className="grid w-full shrink-0 grid-cols-2">
               <TabsTrigger value="general" className="text-[15px] focus-visible:ring-0">שאלות כלליות</TabsTrigger>
-              <TabsTrigger value="role" className="text-[15px] focus-visible:ring-0">{FAQ_ROLE_LABELS[roleKey!]}</TabsTrigger>
+              <TabsTrigger value="role" className="text-[15px] focus-visible:ring-0">{roleLabel}</TabsTrigger>
             </TabsList>
             <TabsContent value="general" className="min-h-0 flex-1 overflow-y-auto overscroll-contain pe-1">
-              <FaqAccordion items={GENERAL_FAQS} prefix="g" />
+              <FaqAccordion items={generalFaqs} prefix="g" />
             </TabsContent>
             <TabsContent value="role" className="min-h-0 flex-1 overflow-y-auto overscroll-contain pe-1">
               <FaqAccordion items={roleFaqs} prefix="r" />
@@ -106,7 +105,7 @@ export function FaqDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           </Tabs>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pe-1">
-            <FaqAccordion items={GENERAL_FAQS} prefix="g" />
+            <FaqAccordion items={generalFaqs} prefix="g" />
           </div>
         )}
       </DialogContent>
