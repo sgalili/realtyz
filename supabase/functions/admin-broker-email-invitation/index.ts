@@ -3,7 +3,7 @@ import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { brokerFirstName, propertyExample, BROKER_EMAIL_BATCH_MAX } from '../_shared/brokerInvitationEmail.ts';
 import { loadAttachment, attachmentBase64, markAttachmentSent } from '../_shared/invitationAttachment.ts';
-import { demoInvitationLink, invitationLink, publicSiteOrigin } from '../_shared/importInvitationPolicy.ts';
+import { demoInvitationLink, demoTypeForRoles, invitationLink, publicSiteOrigin } from '../_shared/importInvitationPolicy.ts';
 import { coldInvitationBody } from '../_shared/brokerInvitationTemplate.ts';
 
 // Email only to brokers whose consent a Super Admin recorded; never to scraped contacts without consent.
@@ -80,7 +80,8 @@ Deno.serve(async req => {
     try {
       const { data: roleRows, error: roleError } = await admin.from('user_roles').select('role').eq('user_id', r.user_id);
       if (roleError) throw new Error('קריאת סוג המשתמש נכשלה');
-      const demo = input.demo ?? (roleRows ?? []).some(role => ['developer','marketing_company','property_owner','property_seeker','affiliate'].includes(String(role.role)));
+      const recipientType = demoTypeForRoles((roleRows ?? []).map(role => String(role.role)));
+      const demo = input.demo ?? (recipientType !== null && recipientType !== 'broker');
       const link = demo ? demoInvitationLink(site.origin, (roleRows ?? []).map(role => String(role.role))) : invitationLink(site.origin, r.user_id, r.invitation_link_token);
       const message = input.message ?? coldInvitationBody(mc?.contact_gender ?? dc?.contact_gender ?? r.p.gender, (roleRows ?? []).map(role => String(role.role)), 'email').replace('{brokerName}', firstName).replace('{authLink}', link);
       const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({

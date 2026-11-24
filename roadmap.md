@@ -1,5 +1,10 @@
 # Roadmap
 
+## Discovery and invitation flow sweep November 24
+- [x] Read row/editor/bulk/timers, user-table/create-user invitations, email/official templates, Auth/publisher/upgrade OTP, public and legacy demo paths, scanner Worker/webhook and live claim/reserve/promote/finish/reply/cancel/follow-up functions. Campaign and import timers already use timestamps; follow-ups only queue and never send automatically.
+- [x] Added explicit contact clear/readback; fresh-code retry after expired/consumed OTP or failed session continuation; publisher propagates final sign-in failure; all broker invitation entry points use the personal-link choice; legacy email renderer aligned. Public demo rejects sample writes without changing sample data. Server now continues single/bulk no-match discovery on the same authorized source independently of mounted cards, respecting pause/contacts/dedup. Settled history, roles, quotas and settings unchanged.
+- [x] 77 focused tests passed; authorized mobile status/manual controls and guest refusal/retry/public sample inventory verified. Changed Cloud handlers deployed, build OK. No real message, import, contact edit or queue jump triggered; successful real OTP delivery/session and a new real background continuation remain unverified without a consenting recipient/approved scan. New WhatsApp default still requires Meta approval.
+
 ## Live discovery and invitation flow November 24
 - [x] Timestamp-anchored 1000ms countdown, active spinner, clickable status/manual editor and audited Super Admin queue promotion; serial reply deadline included in ETA, no quota/pacing bypass.
 - [x] Equal 8px gaps verified above/between tabs; first broker invitation copy and personal links updated. Previous sent templates/history preserved; new default WhatsApp text requires Meta approval.

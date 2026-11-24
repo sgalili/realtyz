@@ -1139,8 +1139,9 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
         {(fields.publisherType !== 'broker' || isBroker || brokerLicenseSchema.safeParse(guestLicense).success) && <WhatsAppOtpVerify smsOnly title="אימות ב-SMS" onEmailFallback={() => { setOtpOpen(false); pendingAuthPublish.current = null; authThenConfirm.current = false; setOpen(false); navigate('/auth', { state: { tab: 'signup', returnTo: window.location.pathname } }); }} defaultPhone={fields.contactWhatsapp} description="נשלח אליך קוד בן 4 ספרות ב-SMS. לאחר האימות החשבון ייפתח והמודעה תפורסם מיד." onVerified={async (result) => {
           const brokerFlow = fields.publisherType === 'broker' && !isBroker;
           if (brokerFlow && pendingAuthPublish.current) { pendingAuthPublish.current = { ...pendingAuthPublish.current, fields: { ...pendingAuthPublish.current.fields, brokerLicense: guestLicense } }; awaitingCertificate.current = true; }
-          const { error } = result.session ? await supabase.auth.setSession(result.session) : result.token_hash ? (await supabase.auth.verifyOtp({ token_hash: result.token_hash, type: 'magiclink' }).then(r => r.error ? supabase.auth.verifyOtp({ token_hash: result.token_hash!, type: 'email' }) : r)) : { error: new Error('missing session') };
-          if (error) { pendingAuthPublish.current = null; awaitingCertificate.current = false; toast.error('האימות הצליח אך הכניסה נכשלה. נסו שוב.'); return; }
+          const tokenHash = result.token_hash;
+          const { error } = result.session ? await supabase.auth.setSession(result.session) : tokenHash ? (await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'magiclink' }).then(r => r.error ? supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' }) : r)) : { error: new Error('missing session') };
+          if (error) { awaitingCertificate.current = false; throw new Error('האימות הצליח אך הכניסה נכשלה. נסו שוב.'); }
           if (!brokerFlow) { setOtpOpen(false); return; }
           // Broker license is checked against the official registry, then a matching certificate photo is mandatory.
           try { await verifyBrokerLicense(guestLicense, 'verify'); await refetchRoles(); setGuestStage('certificate'); }

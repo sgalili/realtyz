@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, MessageCircle, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { OtpFailureActions } from './OtpFailureActions';
+import { otpNeedsNewCode } from '@/lib/otpRetryPolicy';
 
 type Props = {
   /** Pre-filled Israeli phone (05X-XXXXXXX or 9725XXXXXXXX). */
@@ -64,6 +65,7 @@ export function WhatsAppOtpVerify({
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [channel, setChannel] = useState<'whatsapp' | 'sms'>('whatsapp');
+  const [needsNewCode, setNeedsNewCode] = useState(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -90,6 +92,7 @@ export function WhatsAppOtpVerify({
     }
     setChannel(data?.channel === 'sms' ? 'sms' : 'whatsapp');
     setSent(true);
+    setNeedsNewCode(false); setCode('');
     setCooldown(RESEND_SECONDS);
     toast.success(data?.channel === 'sms' ? 'הקוד נשלח ב-SMS' : 'הקוד נשלח בוואטסאפ');
     } catch { setError('שליחת הקוד נכשלה. אפשר לנסות שוב.'); }
@@ -110,13 +113,15 @@ export function WhatsAppOtpVerify({
       body: { action: brokerVerification ? 'broker_verify' : 'verify', phone: normalized, code: code.replace(/\D/g, '') },
     });
     if (fnError || data?.error) {
-      setError(String(data?.error ?? fnError?.message ?? 'האימות נכשל'));
+      const detail = data ?? await (fnError as { context?: Response } | null)?.context?.json().catch(() => null);
+      setNeedsNewCode(otpNeedsNewCode(detail?.code));
+      setError(String(detail?.error ?? fnError?.message ?? 'האימות נכשל'));
       return;
     }
     verified = true;
     toast.success('האימות הושלם');
     await onVerified?.({ phone: normalized, token_hash: data?.token_hash, session: data?.session });
-    } catch { setError(verified ? 'האימות הצליח, אך לא ניתן להשלים את הפעולה כרגע. אפשר לנסות שוב.' : 'האימות נכשל. אפשר לנסות שוב.'); }
+    } catch { setNeedsNewCode(otpNeedsNewCode(undefined, verified)); setError(verified ? 'האימות הצליח, אך לא ניתן להשלים את הפעולה כרגע. יש לבקש קוד חדש.' : 'האימות נכשל. אפשר לנסות שוב.'); }
     finally { setBusy(false); }
   };
 
@@ -135,7 +140,7 @@ export function WhatsAppOtpVerify({
           <AlertDescription className="text-xs">{error}</AlertDescription>
         </Alert>
       )}
-      {error && <OtpFailureActions disabled={busy} onRetry={() => { if (sent) { setError(null); setCode(''); } else void send(smsOnly ? 'sms' : channel); }} />}
+      {error && <OtpFailureActions disabled={busy || (needsNewCode && cooldown > 0)} retryLabel={needsNewCode ? cooldown > 0 ? `קוד חדש בעוד ${cooldown}` : 'בקשת קוד חדש' : 'ניסיון נוסף'} onRetry={() => { if (sent && !needsNewCode) { setError(null); setCode(''); } else void send(smsOnly ? 'sms' : channel); }} />}
 
       <div className="space-y-1">
         <Label className="text-xs">{smsOnly ? 'מספר טלפון' : 'מספר וואטסאפ'}</Label>
@@ -175,7 +180,7 @@ export function WhatsAppOtpVerify({
           </>
         ) : (
           <>
-            <Button size="sm" disabled={busy || code.length !== 4} onClick={verify} className="gap-2">
+            <Button size="sm" disabled={busy || needsNewCode || code.length !== 4} onClick={verify} className="gap-2">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
               אמת קוד
             </Button>

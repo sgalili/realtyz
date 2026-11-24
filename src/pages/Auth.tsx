@@ -10,6 +10,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { clearPendingSignupRole, clearPostSignupWelcome } from '@/lib/signupRole';
 import { clearSmsSignup, formatAuthMobile, israeliMobile, saveSmsSignup, smsSignupSchema } from '@/lib/smsSignup';
 import { OtpFailureActions } from '@/components/auth/OtpFailureActions';
+import { otpNeedsNewCode } from '@/lib/otpRetryPolicy';
 
 // Gray, unbolded placeholder; black bold typed text; no border/ring on focus.
 const fieldClass = 'h-12 min-w-0 text-lg md:text-lg font-normal text-foreground placeholder:text-lg placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0';
@@ -32,6 +33,7 @@ const Auth = () => {
   const [resendSeconds, setResendSeconds] = useState(0);
   const [attempts, setAttempts] = useState(0);
   const [failure, setFailure] = useState<string | null>(null);
+  const [needsNewCode, setNeedsNewCode] = useState(false);
   const [delivery, setDelivery] = useState<'sms' | 'whatsapp'>(invitedBroker ? 'whatsapp' : 'sms');
   const mobile = israeliMobile.safeParse(phone);
   const profile = smsSignupSchema.safeParse({ firstName, lastName, gender, phone });
@@ -72,7 +74,7 @@ const Auth = () => {
         throw new Error(message ?? 'לא ניתן לשלוח קוד כרגע. נסו שוב.');
       }
       if (signup && profile.success) saveSmsSignup(profile.data);
-      setCodeSent(true); setOtp(''); setAttempts(0); setResendSeconds(60);
+      setCodeSent(true); setOtp(''); setAttempts(0); setNeedsNewCode(false); setResendSeconds(60);
       setDelivery(data?.channel === 'sms' || !invitedBroker ? 'sms' : 'whatsapp');
       localStorage.setItem(PENDING_OTP_KEY, JSON.stringify({ phone, signup, gender, sentAt: Date.now() }));
       toast.success(invitedBroker && data?.channel !== 'sms' ? 'קוד האימות נשלח בוואטסאפ' : 'קוד האימות נשלח ב-SMS');
@@ -80,14 +82,17 @@ const Auth = () => {
     finally { setLoading(false); }
   };
   const verify = async (code = otp) => {
-    if (!mobile.success || code.length !== 4 || loading || attempts >= 3) return;
+    if (!mobile.success || code.length !== 4 || loading || needsNewCode || attempts >= 3) return;
     setLoading(true);
     setFailure(null);
     try {
       const { data, error } = await supabase.functions.invoke('whatsapp-auth', { body: { action: 'verify', phone: `+${mobile.data}`, code, ...(brokerId ? { broker_id: brokerId } : {}) } });
       if (error || data?.error) {
         let message = data?.error as string | undefined;
-        try { if (!message && error && 'context' in error) message = (await (error as { context: Response }).context.json())?.error; } catch { /* keep default */ }
+        let detail = data;
+        try { if (!detail && error && 'context' in error) detail = await (error as { context: Response }).context.json(); } catch { /* keep default */ }
+        message = message ?? detail?.error;
+        setNeedsNewCode(otpNeedsNewCode(detail?.code));
         throw new Error(message ?? 'קוד האימות אינו תקין');
       }
       // The server verifies OTP; there are no client master-code or alternate-provider paths.
@@ -95,7 +100,7 @@ const Auth = () => {
         : data?.token_hash ? await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'magiclink' })
         : { error: new Error('הכניסה נכשלה. נסו שוב.') };
       if (result.error && data?.token_hash) result = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' });
-      if (result.error) throw result.error;
+      if (result.error) { setNeedsNewCode(true); throw result.error; }
       localStorage.removeItem(PENDING_OTP_KEY);
       // Strict guard: an account that already holds a real role never sees registration.
       let established = !!data?.existing_account;
@@ -125,10 +130,10 @@ const Auth = () => {
       <div className="min-h-0 w-full overflow-y-auto overscroll-contain">
         {codeSent ? <div className="space-y-5 text-center">
           <p className="-mt-6 text-base text-muted-foreground">נשלח למספר <span dir="ltr" className="font-medium text-foreground">{phone}</span> <button type="button" className="ms-1 text-sm text-primary underline underline-offset-2" onClick={switchPhone}>החלפה</button></p>
-          <InputOTP maxLength={4} value={otp} onChange={raw => { const value = raw.replace(/\D/g, '').slice(0, 4); setOtp(value); if (value.length === 4) void verify(value); }} pasteTransformer={text => { const d = text.replace(/\D/g, ''); return d.length > 4 ? d.slice(-4) : d; }} inputMode="numeric" autoComplete="one-time-code" containerClassName="justify-center" dir="ltr" disabled={loading || attempts >= 3}>
+          <InputOTP maxLength={4} value={otp} onChange={raw => { const value = raw.replace(/\D/g, '').slice(0, 4); setOtp(value); if (value.length === 4) void verify(value); }} pasteTransformer={text => { const d = text.replace(/\D/g, ''); return d.length > 4 ? d.slice(-4) : d; }} inputMode="numeric" autoComplete="one-time-code" containerClassName="justify-center" dir="ltr" disabled={loading || needsNewCode || attempts >= 3}>
             <InputOTPGroup className="flex-row-reverse gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-[38px] font-bold text-primary focus-visible:outline-none focus-visible:ring-0 aria-[current=true]:ring-0" />)}</InputOTPGroup>
           </InputOTP>
-          <Button type="button" className="w-full text-[17px]" disabled={loading || otp.length !== 4 || attempts >= 3} onClick={() => void verify()}>{loading ? 'מאמת...' : 'אימות הקוד'}</Button>
+          <Button type="button" className="w-full text-[17px]" disabled={loading || needsNewCode || otp.length !== 4 || attempts >= 3} onClick={() => void verify()}>{loading ? 'מאמת...' : 'אימות הקוד'}</Button>
           <Button type="button" variant="link" disabled={loading || resendSeconds > 0} onClick={() => void sendCode()}>{resendSeconds > 0 ? `שליחה חוזרת בעוד ${resendSeconds}` : 'שלחו לי קוד שוב'}</Button>
         </div> : <form onSubmit={sendCode} className="space-y-3">
           {signup && <div className="grid grid-cols-2 gap-3">
@@ -141,7 +146,7 @@ const Auth = () => {
           </div>
           {ready && <Button type="submit" disabled={loading} className="h-12 w-full text-xl font-bold">{loading ? 'שולח...' : invitedBroker ? 'שלחו לי קוד בוואטסאפ' : 'שלחו לי קוד ב-SMS'}</Button>}
         </form>}
-        {failure && <div className="mt-4 space-y-3"><p role="alert" className="text-center text-sm text-destructive">{failure}</p><OtpFailureActions disabled={loading || (codeSent && attempts >= 3 && resendSeconds > 0)} retryLabel={codeSent && attempts >= 3 ? resendSeconds > 0 ? `קוד חדש בעוד ${resendSeconds}` : 'בקשת קוד חדש' : 'ניסיון נוסף'} onRetry={() => { if (codeSent && attempts < 3) { setFailure(null); setOtp(''); } else void sendCode(); }} /></div>}
+        {failure && <div className="mt-4 space-y-3"><p role="alert" className="text-center text-sm text-destructive">{failure}</p><OtpFailureActions disabled={loading || (codeSent && (needsNewCode || attempts >= 3) && resendSeconds > 0)} retryLabel={codeSent && (needsNewCode || attempts >= 3) ? resendSeconds > 0 ? `קוד חדש בעוד ${resendSeconds}` : 'בקשת קוד חדש' : 'ניסיון נוסף'} onRetry={() => { if (codeSent && !needsNewCode && attempts < 3) { setFailure(null); setOtp(''); } else void sendCode(); }} /></div>}
       </div>
     </div>
     {!codeSent && <div className="absolute inset-x-0 bottom-[68px] flex justify-center">

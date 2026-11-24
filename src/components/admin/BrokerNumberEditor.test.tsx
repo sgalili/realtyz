@@ -29,6 +29,18 @@ it('manual WhatsApp saves only the separate contact, never the primary phone',as
   await waitFor(()=>expect(state.invoke).toHaveBeenCalledWith('broker-whatsapp-worker',{body:{action:'save_contact',broker_id:'broker',phone:'0502222222'}}));
   expect(state.invoke.mock.calls.some(([fn])=>fn==='admin-broker-contact')).toBe(false);
 });
+it('explicit clear updates the shared contact immediately without changing the login phone', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData(['broker-whatsapp-job','broker'],{job:null,contact:{whatsapp_phone:'972502222222'}});
+  state.invoke.mockImplementation((_fn,{body}) => Promise.resolve(body.action === 'save_contact' ? {data:{phone:null}} : {data:{job:null,contact:null}}));
+  render(<QueryClientProvider client={client}><BrokerWhatsAppContact brokerId="broker" name="Dana" phone="972502222222" /></QueryClientProvider>);
+  fireEvent.click(screen.getByRole('button',{name:'עריכת וואטסאפ של Dana'}));
+  fireEvent.change(screen.getByRole('textbox'),{target:{value:''}});
+  fireEvent.click(screen.getByRole('button',{name:'ניקוי המספר'}));
+  await waitFor(() => expect(client.getQueryData<{contact:null}>(['broker-whatsapp-job','broker'])?.contact).toBeNull());
+  expect(state.invoke).toHaveBeenCalledWith('broker-whatsapp-worker',{body:{action:'save_contact',broker_id:'broker',phone:''}});
+  expect(state.invoke.mock.calls.some(([fn])=>fn==='admin-broker-contact')).toBe(false);
+});
 it('automatic telephone detection suggests a value and waits for explicit save',async()=>{
   setup('phone');state.invoke.mockImplementation((_fn,{body})=>Promise.resolve({data:body.action==='enqueue'?{job:{id:'job',status:'pending'}}:{job:{id:'job',status:'not_found',discovered_phone:'972502222222'}},error:null}));
   fireEvent.click(screen.getByRole('button',{name:'הוספת טלפון של Dana'}));

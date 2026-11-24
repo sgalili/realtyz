@@ -13,8 +13,19 @@ it('catches a rejected license continuation after OTP without leaving verificati
   fireEvent.change(code, { target: { value: '2468' } });
   fireEvent.click(screen.getByRole('button', { name: /^(אמת|אימות) קוד$/ }));
   await waitFor(() => expect(continuation).toHaveBeenCalledTimes(1));
-  await waitFor(() => expect(screen.getByRole('button', { name: /^(אמת|אימות) קוד$/ })).toBeEnabled());
+  await waitFor(() => expect(screen.getByRole('button', { name: /^(אמת|אימות) קוד$/ })).toBeDisabled());
   expect(screen.getByRole('alert')).toBeVisible();
+});
+it('blocks replaying an expired challenge and leaves the verified continuation uncalled', async () => {
+  state.invoke.mockResolvedValueOnce({ data: { channel: 'sms' } }).mockResolvedValueOnce({ data: { error: 'expired', code: 'otp_expired' } });
+  const continuation = vi.fn();
+  render(<WhatsAppOtpVerify smsOnly defaultPhone="0502222222" onVerified={continuation} />);
+  fireEvent.click(screen.getByRole('button',{name:/קוד ב-SMS$/}));
+  fireEvent.change(await screen.findByPlaceholderText('1234'),{target:{value:'1111'}});
+  fireEvent.click(screen.getByRole('button',{name:/^(אמת|אימות) קוד$/}));
+  await screen.findByRole('alert');
+  expect(screen.getByRole('button',{name:/^(אמת|אימות) קוד$/})).toBeDisabled();
+  expect(continuation).not.toHaveBeenCalled();
 });
 it('releases the send control on a rejected request without invoking continuation', async () => {
   state.invoke.mockRejectedValue(new Error('offline'));

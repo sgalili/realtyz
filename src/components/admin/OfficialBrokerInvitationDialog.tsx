@@ -98,7 +98,7 @@ export function OfficialBrokerInvitationDialog({ broker, triggerLabel, triggerCl
     <Button variant={triggerLabel ? 'default' : 'ghost'} size={triggerLabel ? 'default' : 'icon'} className={triggerLabel ? 'h-11 text-base' : triggerClassName ?? 'h-8 w-8'} aria-label="שליחת הזמנה רשמית ב־WhatsApp" title={hasSavedWhatsApp ? 'שליחת הזמנה רשמית ב־WhatsApp' : 'נדרש מספר וואטסאפ אישי שמור; טלפון הכניסה אינו מספיק'} disabled={!hasSavedWhatsApp || whatsappEligibility.isFetching} onClick={() => { setOpen(true); setSent(false); }}><Send className="h-4 w-4 shrink-0" />{triggerLabel}</Button>
     <Dialog open={open} onOpenChange={value => { setOpen(value); if (!value && sent) void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); }}><DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
       <DialogHeader><DialogTitle>הזמנה ב־WhatsApp ל־{broker.full_name || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">שליחה בתבנית Meta מאושרת</DialogDescription></DialogHeader>
-      {open && <OfficialBrokerInvitationPanel broker={broker} onClose={() => setOpen(false)} onSent={() => setSent(true)} />}
+      {open && <OfficialBrokerInvitationPanel broker={broker} useDiscoveredWhatsApp onClose={() => setOpen(false)} onSent={() => setSent(true)} />}
     </DialogContent></Dialog>
   </>;
 }

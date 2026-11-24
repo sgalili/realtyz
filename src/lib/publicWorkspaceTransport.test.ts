@@ -25,11 +25,14 @@ describe('isolated registered-screen simulation', () => {
     expect(store.projects).toHaveLength(4);
     expect(store.projects.every(project=>store.developers.some(d=>d.id===project.developer_id)&&project.apartments.length===4)).toBe(true);
   });
-  it('updates only the local task store and does not grant administrative or payment access', async () => {
+  it('keeps sample tasks read-only and does not grant administrative or payment access', async () => {
     const store=createPublicWorkspaceData('broker');
     const id=store.tables.scheduled_items[0].id;
-    await simulationQuery(store,'scheduled_items').update({title:'בדיקת נכס לדוגמה'}).eq('id',id);
-    expect(store.tables.scheduled_items[0].title).toBe('בדיקת נכס לדוגמה');
+    const before = JSON.stringify(store.tables.scheduled_items);
+    expect((await simulationQuery(store,'scheduled_items').update({title:'בדיקת נכס לדוגמה'}).eq('id',id)).status).toBe(403);
+    expect((await simulationQuery(store,'scheduled_items').delete().eq('id',id)).status).toBe(403);
+    expect((await simulationQuery(store,'scheduled_items').insert({title:'new sample'})).status).toBe(403);
+    expect(JSON.stringify(store.tables.scheduled_items)).toBe(before);
     expect((await simulationQuery(store,'user_roles').insert({role:'super_admin'})).status).toBe(403);
     expect(simulationRpc(store,'publish_developer_project').status).toBe(403);
     expect(simulationRpc(store,'subscribe_to_plan').status).toBe(403);

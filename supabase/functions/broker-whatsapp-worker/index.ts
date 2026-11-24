@@ -3,6 +3,7 @@ import { z } from 'npm:zod@3';
 import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
 import { validWorkerCredential } from '../_shared/externalImportWorker.ts';
 import { brokerWhatsAppRetry, inspectBrokerWhatsApp, discoverBrokerTelephone, normalizeBrokerWhatsApp } from '../_shared/brokerWhatsApp.ts';
+import { continueBrokerScanner } from '../_shared/brokerScannerContinuation.ts';
 
 const scope = { worker_id: z.string().min(1).max(100), job_id: z.string().uuid(), lease_token: z.string().uuid() };
 const schema = z.discriminatedUnion('action', [
@@ -13,7 +14,7 @@ const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('start_batch') }).strict(),
   z.object({ action: z.literal('cancel_batch'), batch_id: z.string().uuid() }).strict(),
   z.object({ action: z.literal('enqueue_missing'), batch_id: z.string().uuid(), after: z.string().uuid().optional(), broker_ids: z.array(z.string().uuid()).min(1).max(5000).optional() }).strict(),
-  z.object({ action: z.literal('save_contact'), broker_id: z.string().uuid(), phone: z.string().min(5).max(25) }).strict(),
+  z.object({ action: z.literal('save_contact'), broker_id: z.string().uuid(), phone: z.string().max(25) }).strict(),
   z.object({ action: z.literal('heartbeat'), ...scope }).strict(),
   z.object({ action: z.literal('claim'), worker_id: scope.worker_id }).strict(),
   z.object({ action: z.literal('result'), ...scope, html: z.string().max(4000000) }).strict(),
@@ -154,13 +155,20 @@ Deno.serve(async req => {
     }
     if (input.action === 'save_contact') {
       if(caller?.kind!=='user')return json({error:'forbidden'},403);
-      const phone=normalizeBrokerWhatsApp(input.phone);
-      if(!phone)return json({error:'יש להזין נייד ישראלי תקין'},400);
+      const clearing = input.phone.trim() === '';
+      const phone=clearing ? null : normalizeBrokerWhatsApp(input.phone);
+      if(!clearing && !phone)return json({error:'יש להזין נייד ישראלי תקין'},400);
       const {data: broker,error: be}=await admin.from('admin_broker_onboarding').select('user_id').eq('user_id',input.broker_id).not('import_source','is',null).maybeSingle();
       const {data: demo,error: de}=await admin.from('demo_view_accounts').select('user_id').eq('user_id',input.broker_id).maybeSingle();
       const {data: roles,error: re}=await admin.from('user_roles').select('role').eq('user_id',input.broker_id);
       if(be||de||re)throw be??de??re;
       if(!broker||demo||roles?.some(r=>['developer','marketing_company'].includes(r.role)))return json({error:'forbidden'},403);
+      if (clearing) {
+        const {error}=await admin.from('broker_whatsapp_contacts').delete().eq('broker_id',input.broker_id).eq('workspace_owner_id',input.broker_id);
+        if(error)throw error;
+        await admin.from('audit_logs').insert({actor_id:caller.userId,action:'super_admin.broker_whatsapp_manual_clear',target_table:'broker_whatsapp_contacts',target_id:input.broker_id,details:{manual:true}});
+        return json({ok:true,phone:null});
+      }
       const {data: shared,error: se}=await admin.from('broker_whatsapp_shared_numbers').select('whatsapp_phone').eq('whatsapp_phone',phone).maybeSingle();
       if(se)throw se;
       if(shared)return json({error:'זה מספר WhatsApp משותף של יד2 ולא של המתווך'},400);
@@ -180,7 +188,7 @@ Deno.serve(async req => {
       return json({ job: data?.[0] ?? null });
     }
     if (input.action === 'result' || input.action === 'failure') {
-      const { data: job, error: je } = await admin.from('broker_whatsapp_jobs').select('attempts,source_url').eq('id', input.job_id).single();
+      const { data: job, error: je } = await admin.from('broker_whatsapp_jobs').select('id,attempts,source_url,broker_id,listing_id,created_by').eq('id', input.job_id).single();
       if (je) throw je;
       if(input.action==='result') {
         const telephone=discoverBrokerTelephone(input.html, job.source_url);
@@ -190,6 +198,10 @@ Deno.serve(async req => {
       const extraction = input.action === 'result' ? inspectBrokerWhatsApp(input.html, job.source_url) : null;
       const contact = extraction?.contact;
       const { data, error } = await admin.rpc('finish_broker_whatsapp_discovery', { _id: input.job_id, _token: input.lease_token, _worker: input.worker_id, _phone: contact?.phone ?? null, _error: input.action === 'failure' ? input.error : null, _retry_seconds: input.action === 'failure' ? brokerWhatsAppRetry(input.status, job.attempts, input.retry_after) : 0 });
+      if (!error && input.action === 'result' && !contact?.phone) {
+        try { await continueBrokerScanner(admin, job); }
+        catch { console.error('broker_scanner_continuation_failed',{job_id:job.id}); }
+      }
       if (error) throw error;
       if (extraction) console.log('[broker-whatsapp-extraction]', { job_id: input.job_id, main_count: extraction.mainCount, candidates: extraction.candidates, reason: extraction.reason, saved: !!contact && data?.ok === true && !data?.shared, shared: !!data?.shared });
       return json({ ...data, extraction: extraction ? { main_count: extraction.mainCount, candidates: extraction.candidates, reason: data?.shared ? 'shared_whatsapp_number' : extraction.reason } : undefined });

@@ -367,7 +367,7 @@ const resolveWorkspaceOwnerForPhone = async (admin: any, phone: string): Promise
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-
+  let challengeConsumed = false;
   try {
     let body: Record<string, unknown>;
     try {
@@ -645,10 +645,11 @@ Deno.serve(async (req) => {
         brokerUserId = auth.user.id;
       }
       const { data: consumed, error: consumeError } = await admin.from("whatsapp_login_otps").update({ consumed_at: new Date().toISOString() }).eq("id", otpRow.id).is('consumed_at', null).select('id');
-      if (consumeError || !consumed?.length) return json({ error: 'הקוד כבר נוצל' }, 400);
+      if (consumeError || !consumed?.length) return json({ error: 'הקוד כבר נוצל', code: 'otp_consumed' }, 400);
+      challengeConsumed = true;
       if (brokerUserId) {
         const { error: phoneError } = await admin.auth.admin.updateUserById(brokerUserId, { phone: `+${phone}`, phone_confirm: true });
-        if (phoneError) return json({ error: 'לא ניתן לשייך את הטלפון לחשבון זה' }, 403);
+        if (phoneError) return json({ error: 'לא ניתן לשייך את הטלפון לחשבון זה', code: 'otp_consumed' }, 403);
         const { error: evidenceError } = await admin.from('broker_sms_verifications').upsert({ user_id: brokerUserId, phone_number: phone, verified_at: new Date().toISOString() });
         if (evidenceError) throw evidenceError;
         return json({ success: true, account_verified: true });
@@ -670,6 +671,6 @@ Deno.serve(async (req) => {
       errorMessage: error instanceof Error ? error.message : "Unhandled whatsapp-auth error",
       context: { error: safeErrorDetails(error), env: envPresence() },
     });
-    return json({ error: error instanceof Error ? `שגיאת שרת: ${error.message}` : "שגיאת שרת" }, 500);
+    return json({ error: error instanceof Error ? `שגיאת שרת: ${error.message}` : "שגיאת שרת", ...(challengeConsumed ? { code: 'otp_consumed' } : {}) }, 500);
   }
 });

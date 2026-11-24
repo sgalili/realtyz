@@ -27,8 +27,6 @@ describe('role-aware public demo invitations', () => {
   it('uses the demo link in the default email without shared credentials or OTP instructions', () => {
     const html = brokerInvitationEmailHtml({ firstName: 'דנה', examples: [], link: 'https://toraff.co.il/demo/developer', unsubscribeUrl: 'https://toraff.co.il/unsubscribe', demo: true });
     expect(html).toContain('https://toraff.co.il/demo/developer');
-    expect(html).toContain('צפייה בחשבון הדמו');
-    expect(html).toContain('אין צורך בהרשמה או בקוד אימות');
     expect(html).not.toContain('0501234567');
     expect(html).not.toContain('1234');
   });

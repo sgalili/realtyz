@@ -1,5 +1,6 @@
 # User credit management
 - Scanner countdowns anchor to meaningful server queue/deadline changes, never the ticking clock; promotion is audited, Super Admin-only and changes priority without altering creation dates or bypassing serial sends/quota. Why: real progress without false dispatch promises.
+- HTML discovery results continue to the scanner server-side for both single and bulk jobs using the same saved source/creator, while paused lines and saved contacts block continuation. Why: leaving a card must not strand discovery or launch duplicate inquiries.
 - Import status and history share useAdminImportJobs; count activity matches persisted workspace/source identity and enrichment completion, not aggregate history status. Why: one poll stream and a ring only on the item actually loading inventory.
 - Import views remain mounted within the current authorized admin/tenant scope during section switches; session storage restores only UI selections/expansion, never data or privileges. Why: instant returns without retaining another tenant's results.
 - Use Super Admin-only exact-balance RPCs with per-account row locks, configured server conversion and audited ledger deltas; reject stale expected balances. Why: no role escalation, lost charges or unaudited funds.

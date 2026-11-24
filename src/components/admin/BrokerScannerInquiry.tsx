@@ -34,7 +34,7 @@ export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsAp
   }, [job?.id, job?.status, job?.reply_deadline, job?.lease_until, job?.send_reserved_at, job?.next_source_at, queued, st?.next_send_at, st?.daily_cap, st?.jitter_min_seconds, st?.jitter_max_seconds, status.data?.queue_ahead, status.data?.used_today, status.data?.outstanding_until]);
   const lookupStarted = useMemo(() => Date.now(), [brokerId, lookupStatus]);
   const promote = useMutation({ mutationFn: async () => { const result = await scannerCall({ action: 'promote', job_id: job?.id }); if (result.ok !== true) throw new Error(result.error ?? 'לא ניתן לקדם את הפנייה כרגע'); return result; }, onSuccess: () => { toast.success('הפנייה קודמה לראש התור'); void qc.invalidateQueries({ queryKey: ['broker-wa-scanner-job'] }); }, onError: (error: Error) => toast.error(error.message) });
-  if (hasWhatsApp || status.data?.contact || (!job && !lookupStatus)) return null;
+  if (hasWhatsApp || status.data?.contact || (!lookupStatus && (!job || job.status === 'completed'))) return null;
   const blocked = queued && st ? scannerBlockReason(st, now) : null;
   const label = job ? scannerLabels[job.status] ?? job.status : lookupStatus === 'running' ? 'מאתר מספר במודעה' : 'ממתין לקריאת המודעה';
   const tip = `${label}${blocked ? ` · ${blocked}` : ''}${job?.last_error ? ` · ${job.last_error}` : ''}`;

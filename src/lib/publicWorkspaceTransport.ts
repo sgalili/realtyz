@@ -11,10 +11,7 @@ export function simulationQuery(store: PublicWorkspaceData, table: string) {
   const chain = new Proxy(target, { get(_t, key) {
     if (key === 'then') return (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => {
       if (mutation) {
-        if (!store.tables[table] || ['user_roles', 'payment_methods', 'credit_wallets'].includes(table)) return Promise.resolve(denied()).then(resolve, reject);
-        if (mutation.kind === 'delete') store.tables[table] = store.tables[table].filter(row => !rows.includes(row));
-        else if (mutation.kind === 'update') rows.forEach(row => Object.assign(row, mutation?.value));
-        else { rows = (Array.isArray(mutation.value) ? mutation.value : [mutation.value]).filter(Boolean).map(row => ({ id: crypto.randomUUID(), workspace_owner_id: store.owner, ...row })); store.tables[table].push(...rows); }
+        return Promise.resolve(denied()).then(resolve, reject);
       }
       return Promise.resolve(result(head ? null : single ? rows[0] ?? null : rows, rows.length)).then(resolve, reject);
     };
