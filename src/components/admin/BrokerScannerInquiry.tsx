@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, ArrowUpToLine, Loader2 } from 'lucide-react';
@@ -12,7 +13,7 @@ export const scannerLabels: Record<string, string> = { pending_source: 'ממתי
 const live = ['pending_source','reading_source','ready','sending','awaiting_reply'];
 
 /** Status-only: the magnifying-glass discovery queues scanner inquiries. Hidden once a personal number is saved. */
-export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsApp, lookupStatus, lookupError }: { brokerId: string; name?: string; hasWhatsApp: boolean; lookupStatus?: string; lookupError?: string | null }) {
+export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsApp, lookupStatus, lookupError, statusSlot }: { brokerId: string; name?: string; hasWhatsApp: boolean; lookupStatus?: string; lookupError?: string | null; statusSlot?: HTMLElement | null }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const status = useQuery({ queryKey: ['broker-wa-scanner-job', brokerId], retry: false, enabled: !hasWhatsApp, queryFn: () => scannerCall({ action: 'status', broker_id: brokerId }),
@@ -44,8 +45,10 @@ export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsAp
   const time = formatCountdown(target ? target - now : now - lookupStarted);
   return <>
     <Button variant="ghost" className={`h-8 shrink-0 justify-start gap-1 whitespace-nowrap px-1 text-xs tabular-nums ${blocked ? 'text-destructive' : 'text-muted-foreground'}`} title={tip} aria-label={`פרטי גילוי וואטסאפ של ${name}`} onClick={() => setOpen(true)}>
-      {job?.status === 'needs_manual' ? <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" /> : <span dir="ltr">{ticking ? time : label}</span>}{ticking && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-lead-whatsapp motion-reduce:animate-none" />}
+      {ticking ? <span dir="ltr">{time}</span> : <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />}{ticking && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-lead-whatsapp motion-reduce:animate-none" />}
     </Button>
+    {/* Status text never sits inside the contact row; it renders on the card's own status line below. */}
+    {!ticking && statusSlot && createPortal(<p className={`text-xs ${blocked ? 'text-destructive' : 'text-muted-foreground'}`}>{label}{blocked ? ` · ${blocked}` : ''}</p>, statusSlot)}
     <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" className="max-w-sm text-right"><DialogHeader><DialogTitle>גילוי וואטסאפ · {name}</DialogTitle><DialogDescription>{label}</DialogDescription></DialogHeader>
       <p role="status" className="text-sm">{blocked ?? (status.data?.outstanding && queued ? 'הקו ממתין לתשובה לפנייה קודמת' : 'מצב הפנייה מתעדכן אוטומטית')}</p>
       {ticking && <p className="text-sm text-muted-foreground">{target ? job?.status === 'awaiting_reply' ? 'הזמן שנותר לקבלת תשובה' : 'הזמן המשוער לשלב הבא' : 'זמן שחלף באיתור'}: <span dir="ltr" className="inline-block tabular-nums">{time}</span>{target > 0 && now >= target && <span className="block">ממתין לעדכון מהסריקה</span>}</p>}

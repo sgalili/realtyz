@@ -173,6 +173,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
     onError: (e: Error) => toast.error(e.message),
   });
   const details = `${b.projects ?? 0} פרויקטים • ${b.apartments ?? 0} דירות במאגר`;
+  const [statusSlot, setStatusSlot] = useState<HTMLDivElement | null>(null);
   const phoneControls = !b.is_developer ? <span className="inline-flex min-w-0 items-center"><BrokerNumberEditor brokerId={b.user_id} name={b.full_name} phone={b.phone} kind="phone" />{b.phone && <a href={`tel:+${b.phone}`} className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-primary" aria-label={`חיוג אל ${b.full_name} ${formatPhoneDisplay(b.phone)}`}><Phone className="h-4 w-4" /></a>}</span> : editing ? <>
           <Input autoFocus aria-label={`נייד (WhatsApp) של ${b.full_name}`} className="h-8 w-24 px-2 text-sm sm:w-36 sm:text-base" dir="ltr" inputMode="tel" placeholder="05X-XXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && dirty) save.mutate(); if (e.key === 'Escape') setEditing(false); }} />
           <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8" aria-label="שמירת נייד" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>
@@ -196,10 +197,11 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
       </div>
       <div data-broker-row="contacts" className={b.is_developer ? "flex max-w-full flex-wrap items-center gap-0" : "flex min-w-0 max-w-full flex-nowrap items-center gap-x-1 gap-y-0"}>
         {phoneControls}
-        {!b.is_developer && <BrokerWhatsAppContact brokerId={b.user_id} name={b.full_name} phone={b.whatsapp_phone} />}
+        {!b.is_developer && <BrokerWhatsAppContact brokerId={b.user_id} name={b.full_name} phone={b.whatsapp_phone} statusSlot={statusSlot} />}
         <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} />
         <Button size="icon" variant="ghost" className={`h-8 w-8 shrink-0 text-destructive ${b.is_developer ? '' : 'ms-auto'}`} aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>
       </div>
+      {!b.is_developer && <div ref={setStatusSlot} data-broker-row="status" className="-mt-1 empty:hidden" />}
     </div>
     {b.is_developer && <div data-broker-row="office" className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">
       <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground sm:text-base" title={details}>{details}</p>
