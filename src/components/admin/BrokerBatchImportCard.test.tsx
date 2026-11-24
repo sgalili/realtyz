@@ -42,9 +42,12 @@ it('starts collapsed even when a previous session expanded the same job', () => 
 it('toggles repeat on and off for the same active job without altering saved counts', async () => {
   state.rpc.mockImplementation(async (_name: string, args: {_enabled: boolean}) => { state.job.repeat_enabled = args._enabled; return {error:null}; });
   render(<BrokerBatchImportCard />);
-  fireEvent.click(screen.getByRole('button', {name:'הפעלת חזרתיות'}));
-  await waitFor(()=>expect(screen.getByRole('button', {name:'כיבוי חזרתיות'})).toBeEnabled());
-  fireEvent.click(screen.getByRole('button', {name:'כיבוי חזרתיות'}));
+  // The icon always asks for confirmation before changing repeat mode.
+  fireEvent.click(screen.getByRole('button', {name:'חזרתיות כבויה'}));
+  fireEvent.click(await screen.findByRole('button', {name:'הפעלת חזרתיות'}));
+  await waitFor(()=>expect(screen.getByRole('button', {name:'חזרתיות פעילה'})).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', {name:'חזרתיות פעילה'}));
+  fireEvent.click(await screen.findByRole('button', {name:'כיבוי חזרתיות'}));
   await waitFor(()=>expect(state.rpc).toHaveBeenCalledTimes(2));
   expect(state.rpc.mock.calls).toEqual([['set_import_repeat',{_id:'job-1',_enabled:true}],['set_import_repeat',{_id:'job-1',_enabled:false}]]);
   expect(state.job).toMatchObject({id:'job-1',brokers_done:2,listings_done:8,stage:'importing'});

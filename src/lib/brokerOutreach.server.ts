@@ -1,6 +1,7 @@
 import { shortBrokerDemoCall } from './brokerOutreachPolicy';
 import type { Json } from '@/integrations/supabase/types';
 import { IVR_DEFAULT_VOICES, IVR_MODEL_ID, IVR_VOICE_SETTINGS } from '../../supabase/functions/_shared/ivrVoices';
+import { invitationLink, publicSiteOrigin } from '../../supabase/functions/_shared/importInvitationPolicy';
 import { loadBrokerRitaContext, generateBrokerRitaScript } from './brokerRitaContext.server';
 
 type Admin = (typeof import('@/integrations/supabase/client.server'))['supabaseAdmin'];
@@ -131,6 +132,9 @@ export async function sendBrokerVoice(admin: Admin, brokerId: string) {
   const {data:contact,error:ce}=emailReply?{data:null,error:null}:await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id',brokerId).eq('workspace_owner_id',brokerId).single();
   const {data:p,error:pe}=await admin.from('profiles').select('full_name,gender,email').eq('id',brokerId).single();
   if(ce||pe)throw ce??pe;
+  // The login link is sent only now, after the broker replied positively to the first contact.
+  const {data:onboarding}=await admin.from('admin_broker_onboarding').select('invitation_link_token').eq('user_id',brokerId).maybeSingle();
+  const loginLink=onboarding?.invitation_link_token?invitationLink(publicSiteOrigin(process.env['PUBLIC_SITE_URL']??''),brokerId,onboarding.invitation_link_token):null;
   const {data:claim,error:claimError}=await admin.from('broker_outreach_journeys').update({voice_status:'generating'}).eq('broker_id',brokerId).eq('voice_status','pending').is('opted_out_at',null).select('broker_id').maybeSingle();
   if(claimError)throw claimError;if(!claim)return;
   try {
@@ -155,12 +159,13 @@ export async function sendBrokerVoice(admin: Admin, brokerId: string) {
       const gatewayKey=process.env['LOVABLE_API_KEY'];const resendKey=process.env['RESEND_API_KEY'];
       if(!gatewayKey||!resendKey)throw new Error('חיבור המייל אינו זמין');
       let binary='';for(const value of audio)binary+=String.fromCharCode(value);
-      const response=await fetch('https://connector-gateway.lovable.dev/resend/emails',{method:'POST',headers:{Authorization:`Bearer ${gatewayKey}`,'X-Connection-Api-Key':resendKey,'Content-Type':'application/json'},body:JSON.stringify({from:`TORAFF <${process.env['RESEND_FROM_EMAIL']??'join@toraff.co.il'}>`,to:[p.email],subject:'הסבר קצר מריטה על TORAFF',text:'תודה על ההתעניינות. מצורפת הודעה קולית קצרה מריטה. אפשר להשיב בכל שאלה, או להשיב ״הסרה״ כדי שלא לקבל הודעות המשך.',attachments:[{filename:'rita-toraff.mp3',content:btoa(binary)}]}),signal:AbortSignal.timeout(15_000)});
+      const response=await fetch('https://connector-gateway.lovable.dev/resend/emails',{method:'POST',headers:{Authorization:`Bearer ${gatewayKey}`,'X-Connection-Api-Key':resendKey,'Content-Type':'application/json'},body:JSON.stringify({from:`TORAFF <${process.env['RESEND_FROM_EMAIL']??'join@toraff.co.il'}>`,to:[p.email],subject:'הסבר קצר מריטה על TORAFF',text:`תודה על ההתעניינות. מצורפת הודעה קולית קצרה מריטה.${loginLink?`\n\nכניסה לחשבון האישי שלך:\n${loginLink}`:''}\n\nאפשר להשיב בכל שאלה, או להשיב ״הסרה״ כדי שלא לקבל הודעות המשך.`,attachments:[{filename:'rita-toraff.mp3',content:btoa(binary)}]}),signal:AbortSignal.timeout(15_000)});
       const raw=await response.text();if(!response.ok){console.error('[broker-outreach-email-audio]',response.status,raw.slice(0,1000));throw new Error(`שליחת ההקלטה במייל נכשלה (${response.status})`);}
       const body=JSON.parse(raw) as {id?:string};if(!body.id)throw new Error('המייל לא החזיר מזהה הודעה');messageId=body.id;
     }else{
       if(!contact?.whatsapp_phone)throw new Error('לא נשמר מספר וואטסאפ אישי');
       messageId=await officialOutreachSend(admin,j.created_by,{phone_number:contact.whatsapp_phone,audio_url:signed.signedUrl});
+      if(loginLink){try{await officialOutreachSend(admin,j.created_by,{phone_number:contact.whatsapp_phone,message:`תודה על ההתעניינות! כאן אפשר להיכנס לחשבון האישי שלך ב-TORAFF:\n${loginLink}\n\nלהסרה מהודעות המשך אפשר להשיב ״הסרה״.`});}catch(linkError){console.error('[broker-outreach-link]',linkError instanceof Error?linkError.message:linkError);}}
     }
     const {error:saveError}=await admin.from('broker_outreach_journeys').update({voice_status:'accepted',voice_message_id:messageId,last_error:null}).eq('broker_id',brokerId);if(saveError)throw saveError;
     await outreachEvent(admin,brokerId,'voice_accepted',{message_id:messageId});

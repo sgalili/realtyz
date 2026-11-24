@@ -3,6 +3,7 @@ import { SlidersHorizontal, X } from 'lucide-react';
 import { useSearchParams } from '@/lib/router-compat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { adminHistoryFromParams, saveSuperAdminViewState, type AdminHistoryTab } from '@/lib/superAdminViewState';
+import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
 import { BrokerBatchImportCard } from './BrokerBatchImportCard';
 import { BrokerContactQueueCard, usePendingInvitations, useImportHistoryRows, useSendHistoryRows } from './BrokerContactQueueCard';
 import { threadInvitationHistory } from '@/lib/invitationHistory';
@@ -18,6 +19,7 @@ export function BrokerImportWorkspace() {
   const sends = useSendHistoryRows();
   const importCount = imports.data?.items.filter(item => item.workspace_owner_id).length ?? 0;
   const sendCount = threadInvitationHistory(sends.data?.items ?? []).length;
+  const importRunning = useAdminImportJobs().data?.[0]?.status === 'running';
   const [searchOpen, setSearchOpen] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [search, setSearch] = useState(emptyImportSearch);
@@ -59,8 +61,8 @@ export function BrokerImportWorkspace() {
       <div data-import-tabs className="sticky -top-[20px] z-20 -mx-[15px] -mt-5 bg-background px-[15px] py-2">
         <TabsList secondary className="grid w-full min-w-0 grid-cols-3">
           <TabsTrigger value="pending" className="px-1 text-base">ממתינים ({pendingCount ?? 0})</TabsTrigger>
-          <TabsTrigger value="imports" className="px-1 text-base">ייבוא ({importCount})</TabsTrigger>
-          <TabsTrigger value="sends" className="px-1 text-base">שליחות ({sendCount})</TabsTrigger>
+          <TabsTrigger value="sends" className="px-1 text-base">נשלחו ({sendCount})</TabsTrigger>
+          <TabsTrigger value="imports" className="gap-1.5 px-1 text-base">{importRunning && <span aria-label="ייבוא פעיל" className="h-2 w-2 shrink-0 rounded-full bg-success" />}ייבוא ({importCount})</TabsTrigger>
         </TabsList>
       </div>
       <BrokerBatchImportCard visible={activeTab === 'imports'} />

@@ -4,18 +4,21 @@ import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { brokerFirstName, propertyExample, BROKER_EMAIL_BATCH_MAX } from '../_shared/brokerInvitationEmail.ts';
 import { loadAttachment, attachmentBase64, markAttachmentSent } from '../_shared/invitationAttachment.ts';
 import { demoInvitationLink, demoTypeForRoles, invitationLink, publicSiteOrigin } from '../_shared/importInvitationPolicy.ts';
-import { coldInvitationBody } from '../_shared/brokerInvitationTemplate.ts';
+import { coldInvitationBody, firstContactBody, fillFirstContact } from '../_shared/brokerInvitationTemplate.ts';
+
+const OFFICIAL_WA = '972537983832';
+const waStart = (firstName: string) => `https://wa.me/${OFFICIAL_WA}?text=${encodeURIComponent(`היי, כאן ${firstName || 'מתווך'}. אשמח לשמוע עוד על TORAFF`)}`;
 
 // Email only to brokers whose consent a Super Admin recorded; never to scraped contacts without consent.
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('summary') }),
   z.object({ action: z.literal('consent'), broker_id: z.string().uuid(), note: z.string().trim().min(3).max(300), revoke: z.boolean().optional() }),
-  z.object({ action: z.literal('send_batch'), broker_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX), message: z.string().trim().min(10).max(4000).optional(), demo: z.boolean().optional(), subject: z.string().trim().min(1).max(200).optional(), attachment_id: z.string().uuid().nullable().optional(), outreach:z.boolean().default(false) }),
+  z.object({ action: z.literal('send_batch'), broker_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX), message: z.string().trim().min(10).max(4000).optional(), demo: z.boolean().optional(), subject: z.string().trim().min(1).max(200).optional(), attachment_id: z.string().uuid().nullable().optional(), outreach:z.boolean().default(false), first_contact: z.boolean().default(false) }),
 ]);
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const escHtml = (v: string) => v.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
 // Super Admin-edited body: escaped plain text only, always followed by the selected demo/sign-in link and unsubscribe.
-const customEmailHtml = (msg: string, link: string, unsubscribeUrl: string, demo: boolean) => `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"></head><body style="margin:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#1f2937"><div style="max-width:560px;margin:0 auto;padding:28px 22px;text-align:right;line-height:1.7;font-size:16px"><div style="font-weight:700;font-size:20px;color:#0f2a4a;margin-bottom:18px">TORAFF</div>${msg.split(/\n{2,}/).map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('')}<p style="margin:8px 0 26px"><a href="${escHtml(link)}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-weight:700">${demo ? 'לחצו כאן לצפייה במרחב ההדגמה' : 'לחצו כאן כדי לצפות'}</a></p><p style="margin:0;color:#6b7280;font-size:13px"><a href="${escHtml(unsubscribeUrl)}" style="color:#6b7280">הסרה מרשימת התפוצה</a></p></div></body></html>`;
+const customEmailHtml = (msg: string, link: string, unsubscribeUrl: string, demo: boolean) => `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"></head><body style="margin:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#1f2937"><div style="max-width:560px;margin:0 auto;padding:28px 22px;text-align:right;line-height:1.7;font-size:16px"><div style="font-weight:700;font-size:20px;color:#0f2a4a;margin-bottom:18px">TORAFF</div>${msg.split(/\n{2,}/).map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('')}<p style="margin:8px 0 26px"><a href="${escHtml(link)}" style="display:inline-block;background:${link.startsWith('https://wa.me/') ? '#16a34a' : '#1d4ed8'};color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-weight:700">${link.startsWith('https://wa.me/') ? 'שליחת הודעה בוואטסאפ' : demo ? 'לחצו כאן לצפייה במרחב ההדגמה' : 'לחצו כאן כדי לצפות'}</a></p><p style="margin:0;color:#6b7280;font-size:13px"><a href="${escHtml(unsubscribeUrl)}" style="color:#6b7280">הסרה מרשימת התפוצה</a></p></div></body></html>`;
 const page = (msg: string) => new Response(`<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><body style="font-family:Arial;text-align:center;padding:60px">${msg}</body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 
 Deno.serve(async req => {
@@ -82,21 +85,25 @@ Deno.serve(async req => {
       const { data: roleRows, error: roleError } = await admin.from('user_roles').select('role').eq('user_id', r.user_id);
       if (roleError) throw new Error('קריאת סוג המשתמש נכשלה');
       const recipientType = demoTypeForRoles((roleRows ?? []).map(role => String(role.role)));
-      const demo = input.demo ?? (recipientType !== null && recipientType !== 'broker');
-      const link = demo ? demoInvitationLink(site.origin, (roleRows ?? []).map(role => String(role.role))) : invitationLink(site.origin, r.user_id, r.invitation_link_token);
-      const message = input.message ?? coldInvitationBody(mc?.contact_gender ?? dc?.contact_gender ?? r.p.gender, (roleRows ?? []).map(role => String(role.role)), 'email').replace('{brokerName}', firstName).replace('{authLink}', link);
+      const firstContact = input.first_contact;
+      const demo = firstContact ? false : input.demo ?? (recipientType !== null && recipientType !== 'broker');
+      const yad2 = firstContact ? (await admin.from('listings').select('address,city').eq('workspace_owner_id', r.user_id).eq('source', 'yad2').not('address', 'is', null).order('created_at', { ascending: false }).limit(1).maybeSingle()).data : null;
+      const address = yad2?.address ? [yad2.address, yad2.city].filter(Boolean).join(', ') : null;
+      // First contact carries no login or demo link: the button opens a WhatsApp chat to the official number.
+      const link = firstContact ? waStart(firstName) : demo ? demoInvitationLink(site.origin, (roleRows ?? []).map(role => String(role.role))) : invitationLink(site.origin, r.user_id, r.invitation_link_token);
+      const message = firstContact ? fillFirstContact(input.message ?? firstContactBody('email'), firstName, address) : input.message ?? coldInvitationBody(mc?.contact_gender ?? dc?.contact_gender ?? r.p.gender, (roleRows ?? []).map(role => String(role.role)), 'email').replace('{brokerName}', firstName).replace('{authLink}', link);
       const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({
         from: `TORAFF <${Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il'}>`, reply_to: Deno.env.get('RESEND_FROM_EMAIL') || 'join@toraff.co.il', to: [r.p.email], subject: sentSubject,
         html: customEmailHtml(message, link, unsubscribeUrl, demo),
         headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
-        tags: [{ name: 'type', value: demo ? 'demo_invitation' : 'broker_invitation' }], ...(attachments ? { attachments } : {}),
+        tags: [{ name: 'type', value: firstContact ? 'first_contact' : demo ? 'demo_invitation' : 'broker_invitation' }], ...(attachments ? { attachments } : {}),
       }) });
       const raw = await res.text();
       if (!res.ok) throw new Error(`[${res.status}]: ${raw}`);
       const messageId = JSON.parse(raw).id ?? null;
       if(input.outreach&&messageId){const {error:journeyError}=await admin.from('broker_outreach_journeys').update({outreach_message_id:messageId,outreach_channel:'email',stage:'outreach_accepted'}).eq('broker_id',r.user_id);if(journeyError)throw journeyError;}
       await admin.from('admin_broker_onboarding').update({ email_message_id: messageId }).eq('user_id', r.user_id);
-      await admin.from('broker_invitation_emails').insert({ broker_id: r.user_id, created_by: caller.userId, to_email: r.p.email, subject: sentSubject, body_text: message ?? `ברירת מחדל${examples.length ? `\n${examples.join('\n')}` : ''}`, links: [{ label: demo ? 'צפייה בחשבון הדמו' : 'כניסה לנכסים שלי', url: link }, { label: 'הסרה מרשימת התפוצה', url: unsubscribeUrl }, ...attachLink], message_id: messageId, is_demo: demo });
+      await admin.from('broker_invitation_emails').insert({ broker_id: r.user_id, created_by: caller.userId, to_email: r.p.email, subject: sentSubject, body_text: message ?? `ברירת מחדל${examples.length ? `\n${examples.join('\n')}` : ''}`, links: [{ label: firstContact ? 'פתיחת שיחת וואטסאפ' : demo ? 'צפייה בחשבון הדמו' : 'כניסה לנכסים שלי', url: link }, { label: 'הסרה מרשימת התפוצה', url: unsubscribeUrl }, ...attachLink], message_id: messageId, is_demo: demo });
       if (attachmentId) await markAttachmentSent(admin, attachmentId);
       results.push({ broker_id: r.user_id, status: 'sent' });
     } catch (e) {

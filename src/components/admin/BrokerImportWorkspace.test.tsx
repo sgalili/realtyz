@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { BrokerImportWorkspace } from './BrokerImportWorkspace';
 
 vi.mock('@/hooks/useSuperAdminGate', () => ({ useSuperAdminGate: () => ({ enabled: true, uid: 'admin' }) }));
+vi.mock('@/hooks/useAdminImportJobs', () => ({ useAdminImportJobs: () => ({ data: [] }) }));
 vi.mock('./BrokerBatchImportCard', () => ({ BrokerBatchImportCard: () => <div>סטטוס הייבוא</div> }));
 vi.mock('./BrokerContactQueueCard', () => ({ usePendingInvitations: () => ({ data: { brokers: [] } }), useImportHistoryRows: () => ({ data: { items: [] } }), useSendHistoryRows: () => ({ data: { items: [] } }), BrokerContactQueueCard: ({ view }: { view: string }) => <div data-testid="active-import-view">{view}</div> }));
 
@@ -16,7 +17,7 @@ function setup(entry = '/') {
 it('starts with pending invitations below the status and exactly three tabs in the requested order', () => {
   setup();
   expect(screen.getByText('סטטוס הייבוא')).toBeTruthy();
-  expect(screen.getAllByRole('tab').map(tab => tab.textContent)).toEqual(['ממתינים (0)', 'ייבוא (0)', 'שליחות (0)']);
+  expect(screen.getAllByRole('tab').map(tab => tab.textContent)).toEqual(['ממתינים (0)', 'נשלחו (0)', 'ייבוא (0)']);
   expect(screen.getByTestId('active-import-view').textContent).toBe('pending');
 });
 

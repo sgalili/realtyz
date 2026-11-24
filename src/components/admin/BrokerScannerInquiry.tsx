@@ -43,7 +43,7 @@ export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsAp
   const tip = `${label}${blocked ? ` · ${blocked}` : ''}${errorText ? ` · ${errorText}` : ''}`;
   const time = formatCountdown(target ? target - now : now - lookupStarted);
   return <>
-    <Button variant="ghost" className={`h-8 min-w-24 shrink-0 justify-between gap-3 whitespace-nowrap px-1 text-xs tabular-nums ${blocked ? 'text-destructive' : 'text-muted-foreground'}`} title={tip} aria-label={`פרטי גילוי וואטסאפ של ${name}`} onClick={() => setOpen(true)}>
+    <Button variant="ghost" className={`h-8 shrink-0 justify-start gap-1 whitespace-nowrap px-1 text-xs tabular-nums ${blocked ? 'text-destructive' : 'text-muted-foreground'}`} title={tip} aria-label={`פרטי גילוי וואטסאפ של ${name}`} onClick={() => setOpen(true)}>
       <span dir="ltr">{ticking ? time : label}</span>{ticking && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-lead-whatsapp motion-reduce:animate-none" />}
     </Button>
     <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" className="max-w-sm text-right"><DialogHeader><DialogTitle>גילוי וואטסאפ · {name}</DialogTitle><DialogDescription>{label}</DialogDescription></DialogHeader>

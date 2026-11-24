@@ -222,7 +222,8 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   // Which sub-option of the minimalist create-ad screen is expanded.
   const [importOption, setImportOption] = useState<'yad2' | 'mine' | null>(null);
   const [fields, setFields] = useState<PublicListingDraftFields>(EMPTY_PUBLIC_LISTING_DRAFT);
-  const showImportChoices = brokerInventoryChoices(ownerRoles, isBroker, readyProperties?.length ?? 0) && fields.publisherType === 'broker';
+  const brokersOnlyImport = useBrokersOnly();
+  const showImportChoices = !brokersOnlyImport && brokerInventoryChoices(ownerRoles, isBroker, readyProperties?.length ?? 0) && fields.publisherType === 'broker';
   const roleNeedsOwnerDeclaration = publisherRequiresOwnership(fields.publisherType, pricingOnly);
   const [files, setFiles] = useState<File[]>([]);
   const [mediaOrder, setMediaOrder] = useState<string[]>([]);
@@ -1181,7 +1182,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
             setSeeker(false); setRolePicked(false); setImportSlide(false);
           }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
-            {pricingOnly ? <span>מחיר והגדרת תגמולים</span> : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
+            {pricingOnly ? <span>מחיר והגדרת תגמולים</span> : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : brokersOnlyImport ? 'הוספת נכס' : STEP_TITLES[step]}
           </DialogTitle>
           {pricingOnly && <p className="text-sm text-muted-foreground">{(fields.importedListing as { property_title?: string } | undefined)?.property_title || [addressLine, fields.city].filter(Boolean).join(', ')}</p>}
         </DialogHeader>

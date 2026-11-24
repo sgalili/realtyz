@@ -29,7 +29,7 @@ import { BrokerScannerPanel, scannerCall } from './BrokerScannerPanel';
 import { emptyImportSearch, matchesImportSearch, newestImportsFirst, type ImportSearch } from '@/lib/adminImportPresentation';
 import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
 import { activeImportHistoryIds } from '@/lib/importHistoryActivity';
-import { coldInvitationBody } from '../../../supabase/functions/_shared/brokerInvitationTemplate';
+import { firstContactBody } from '../../../supabase/functions/_shared/brokerInvitationTemplate';
 import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
 import { brokerUserError } from '../../../supabase/functions/_shared/brokerRecovery';
 
@@ -40,7 +40,7 @@ async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> 
 }
 
 const DEFAULT_SUBJECT = 'TORAFF · המערכת היחידה שכל מתווך חייב';
-const DEFAULT_EMAIL = (name: string) => coldInvitationBody(null, [], 'email').replace('{brokerName}', name).replace('{authLink}', '').trim();
+const DEFAULT_EMAIL = (name: string) => firstContactBody('email').replace('{brokerName}', name);
 
 function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; contactPhone?: string | null; contactName?: string | null }) {
   // Greeting and title use the actual recipient: the saved contact person when set, otherwise the account holder.
@@ -51,7 +51,6 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
   const [email, setEmail] = useState(b.email ?? '');
   const [body, setBody] = useState(() => DEFAULT_EMAIL(recipientFirst));
   const bodyTouched = useRef(false);
-  const [demo, setDemo] = useState(!!b.is_developer);
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [attachmentId, setAttachmentId] = useState<string | null>(null);
   // Same gender-matched default wording as the WhatsApp template, filled with the recipient's first name.
@@ -59,7 +58,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
   useEffect(() => {
     const t = sharedText.data?.email_recipient;
     if (!t || bodyTouched.current) return;
-    setBody(t.replace(/\{brokerName\}|\[שם פרטי\]/g, recipientFirst).replace(/\s*\{authLink\}\s*/, '\n').trim());
+    setBody(t.replace(/\{brokerName\}|\[שם פרטי\]/g, recipientFirst).trim());
   }, [sharedText.data, recipientFirst]);
   const saveEmail = useMutation({
     mutationFn: () => invoke('admin-broker-contact', { action: 'save', user_id: b.user_id, email: email.trim() }),
@@ -67,7 +66,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
     onError: (e: Error) => toast.error(e.message),
   });
   const send = useMutation({
-    mutationFn: () => invoke<{ sent: number; results?: { status: string; error?: string }[] }>('admin-broker-email-invitation', { action: 'send_batch', broker_id: b.user_id, limit: 1, message: body.trim(), demo, subject: subject.trim() || DEFAULT_SUBJECT, attachment_id: attachmentId }),
+    mutationFn: () => invoke<{ sent: number; results?: { status: string; error?: string }[] }>('admin-broker-email-invitation', { action: 'send_batch', broker_id: b.user_id, limit: 1, message: body.trim(), first_contact: true, subject: subject.trim() || DEFAULT_SUBJECT, attachment_id: attachmentId }),
     onSuccess: d => { if (d.sent) { toast.success('המייל נשלח'); setOpen(false); } else { const r = d.results?.[0]; toast.error(r?.status === 'skipped' ? 'המייל לא נשלח: כבר נשלחה הזמנה או שהחשבון כבר נכנס' : `המייל לא נשלח${r?.error ? `: ${brokerUserError(r.error)}` : ''}`); } void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-contact-history'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -85,7 +84,6 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
     <Dialog open={open} onOpenChange={v => { if (!send.isPending) setOpen(v); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
         <DialogHeader><DialogTitle>הזמנה במייל ל{recipientName || 'מתווך'}</DialogTitle><DialogDescription className="sr-only">שליחת הזמנה במייל בלבד</DialogDescription></DialogHeader>
-        <div className="mt-3"><InvitationAttachmentPicker value={attachmentId} onChange={setAttachmentId} recipientRole={contactPhone ? 'marketing_company' : b.is_developer ? 'developer' : 'broker'} /></div>
         <div className="space-y-3">
         <div className="flex gap-2">
           <Input aria-label="כתובת אימייל" className="h-11 text-base" dir="ltr" type="email" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} />
@@ -94,11 +92,9 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
         {b.email && !b.email_consent_at && <div className="flex items-center gap-2 text-sm text-muted-foreground">נדרשת הסכמה מתועדת לפני שליחה:<BrokerEmailConsentButton broker={{ id: b.user_id, full_name: b.full_name, email: b.email }} state={{ email_consent_at: b.email_consent_at, email_unsubscribed_at: null, email_invited_at: b.email_invited_at }} /></div>}
         <label className="block space-y-1"><span className="text-sm font-medium">כותרת המייל</span><Input aria-label="כותרת המייל" className="h-11 text-base" maxLength={200} value={subject} onChange={e => setSubject(e.target.value)} /></label>
         <Textarea aria-label="נוסח המייל" className="min-h-[200px] text-base" value={body} onChange={e => { bodyTouched.current = true; setBody(e.target.value); }} />
-        <p className="text-sm text-muted-foreground">{demo ? 'קישור הדמו וקישור ההסרה מתווספים אוטומטית בסוף המייל.' : 'קישור הכניסה לנכסים וקישור ההסרה מתווספים אוטומטית בסוף המייל.'}</p>
-        {demo && sharedText.data?.demo_link && <a href={sharedText.data.demo_link} target="_blank" rel="noopener noreferrer" className="inline-block text-sm text-primary underline">פתיחת מרחב ההדגמה</a>}
-        <label className="flex items-center gap-2 text-base"><input type="checkbox" className="h-4 w-4" checked={demo} onChange={e => setDemo(e.target.checked)} />שלח קישור לחשבון דמו לצפייה בלבד</label>
-        {demo && <p className="text-sm text-muted-foreground">הקישור יותאם אוטומטית לסוג המשתמש, ללא הרשמה או קוד אימות. אם הסוג אינו ידוע, הנמען יבחר אותו לפני הכניסה לדמו.</p>}
-        {b.email_invited_at && !demo && <p className="text-sm text-muted-foreground">הזמנה כבר נשלחה באימייל למתווך זה.</p>}
+        <InvitationAttachmentPicker compact value={attachmentId} onChange={setAttachmentId} recipientRole={contactPhone ? 'marketing_company' : b.is_developer ? 'developer' : 'broker'} />
+        <p className="text-sm text-muted-foreground">כפתור לפתיחת שיחת וואטסאפ איתנו וקישור הסרה מתווספים אוטומטית. כתובת הנכס ממודעת יד2 נכנסת אוטומטית במקום {'{propertyAddress}'}.</p>
+        {b.email_invited_at && <p className="text-sm text-muted-foreground">כבר נשלחה פנייה במייל למתווך זה.</p>}
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
           <Button variant="outline" disabled={send.isPending} onClick={() => setOpen(false)}>ביטול</Button>
           <Button disabled={send.isPending} onClick={() => void trySend()}>{send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}שליחה</Button>
@@ -198,7 +194,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
         </div>
         {!b.is_developer && <div className="flex min-w-0 max-w-[45%] items-center justify-end gap-2">{b.city && <span className="min-w-0 break-words text-sm text-muted-foreground sm:text-base">{b.city}</span>}<OfficeNameField b={b} /></div>}
       </div>
-      <div data-broker-row="contacts" className={b.is_developer ? "flex max-w-full flex-wrap items-center gap-0" : "flex max-w-full flex-wrap items-center gap-x-1 gap-y-0"}>
+      <div data-broker-row="contacts" className={b.is_developer ? "flex max-w-full flex-wrap items-center gap-0" : "flex min-w-0 max-w-full flex-nowrap items-center gap-x-1 gap-y-0"}>
         {phoneControls}
         {!b.is_developer && <BrokerWhatsAppContact brokerId={b.user_id} name={b.full_name} phone={b.whatsapp_phone} />}
         <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} />

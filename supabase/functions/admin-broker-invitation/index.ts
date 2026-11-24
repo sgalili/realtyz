@@ -1,7 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
-import { coldInvitationBody, invitationTextFor, invitationTargetPhone, officialBrokerPhone, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName } from '../_shared/brokerInvitationTemplate.ts';
+import { coldInvitationBody, firstContactBody, invitationTextFor, invitationTargetPhone, officialBrokerPhone, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName } from '../_shared/brokerInvitationTemplate.ts';
 import { loadAttachment, attachmentSignedUrl, markAttachmentSent } from '../_shared/invitationAttachment.ts';
 import { publicSiteOrigin, invitationLink, demoInvitationLink } from '../_shared/importInvitationPolicy.ts';
 
@@ -71,7 +71,7 @@ Deno.serve(async req => {
   }
   const { data: saved } = await admin.from('broker_invitation_template_texts').select('gender,body');
   const savedFor = (g: unknown) => invitationTextFor(saved?.find(r => r.gender === (g === 'female' ? 'female' : 'male'))?.body, g, roles);
-  if (input.action === 'texts') return json({ male: savedFor('male'), female: savedFor('female'), ...(input.broker_id ? { recipient: savedFor(gender), email_recipient: coldInvitationBody(gender, roles, 'email'), recipient_gender: gender === 'female' ? 'female' : 'male', demo_link: demoLink } : {}) });
+  if (input.action === 'texts') return json({ male: savedFor('male'), female: savedFor('female'), ...(input.broker_id ? { recipient: savedFor(gender), email_recipient: firstContactBody('email'), recipient_gender: gender === 'female' ? 'female' : 'male', demo_link: demoLink } : {}) });
   if (input.action === 'save_text') {
     if (input.gender !== 'male' && input.gender !== 'female') return json({ error: 'יש לבחור נוסח לגברים או לנשים' }, 400);
     try {
@@ -92,7 +92,7 @@ Deno.serve(async req => {
     if(!j?.enabled||!j.message_consent_at||j.opted_out_at)return json({error:'נדרשת הסכמה מתועדת להפעלת מסלול הפנייה'},409);
     if(!listing?.address||!listing.city)return json({error:'אין כתובת ועיר מאומתות ממודעת יד2 לפנייה האישית'},409);
     outreachAddress=[listing.address,listing.city].join(', ');
-    text='שלום {brokerName}, ראינו את המודעה שלך בכתובת {{2}}. אנחנו TORAFF, מערכת למתווכים שמרכזת נכסים, פניות, משימות וקמפיינים. אפשר להתרשם ללא תשלום: {{3}}. אם מעניין לשמוע הסבר קצר מריטה, אפשר להשיב ״מעוניין״ או ״מעוניינת״. להסרה מהודעות המשך יש להשיב ״הסרה״.';
+    text='היי {brokerName}, ראיתי את המודעה שלך ב{{2}} ורציתי לשאול בקצרה: האם יהיה לך מעניין לשמוע על ערכת כלים מתקדמת למתווכים, שמרכזת נכסים, לידים, וואטסאפ וקמפיינים במקום אחד? אם כן, אפשר להשיב ״כן״ ונשלח פרטים. אם לא מתאים, אפשר להשיב ״הסרה״ ולא נפנה שוב. שי גלילי, TORAFF';
   }
   let body: string;
   try { body = input.outreach ? text.replace('{brokerName}','{{1}}') : templateBody(text); } catch (e) { return json({ error: e instanceof Error ? e.message : 'Invalid template' }, 400); }
@@ -119,9 +119,9 @@ Deno.serve(async req => {
     let template = live.data?.find((t: { name: string; language: string }) => t.name === name && t.language === BROKER_TEMPLATE_LANGUAGE);
     if (template && template.components?.find((c: { type: string }) => c.type === 'BODY')?.text !== body) return json({ error: 'נוסח Meta אינו תואם לתצוגה. יש לרענן לפני שליחה.' }, 409);
     if ((input.action === 'register' || input.action === 'save_text') && !template) {
-      template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [input.outreach ? ['ישראל','הרצל 10, תל אביב','https://toraff.co.il/demo/broker'] : templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/auth'] : ['ישראל ישראלי']] } }] });
+      template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [input.outreach ? ['ישראל','הרצל 10, תל אביב'] : templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/auth'] : ['ישראל ישראלי']] } }] });
     }
-    if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text:input.outreach?text.replace('{{2}}',outreachAddress??'').replace('{{3}}','{authLink}'):text, sender: '972537983832', demo_link: demoLink });
+    if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text:input.outreach?text.replace('{{2}}',outreachAddress??''):text, sender: '972537983832', demo_link: demoLink });
     if (!input.broker_id || !input.request_id || !input.consent) return json({ error: 'נדרשים מתווך, מזהה שליחה ואישור הסכמת הנמען' }, 400);
     if (template?.status !== 'APPROVED') return json({ error: 'התבנית טרם אושרה ב-Meta', status: template?.status ?? 'NOT_REGISTERED' }, 409);
     const { data: broker, error: brokerError } = await admin.from('profiles').select('id,full_name,phone').eq('id', input.broker_id).single();
@@ -154,7 +154,7 @@ Deno.serve(async req => {
       if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');
       const link = demo ? demoLink : invitationLink(site.origin, broker.id, onboarding.invitation_link_token);
       if (!link) throw new Error('Missing invitation link');
-      sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: (contact?.name || broker.full_name)?.trim().split(/\s+/)[0] || 'מתווך' }, ...(input.outreach ? [{type:'text',text:outreachAddress??''},{type:'text',text:link}] : templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });
+      sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: (contact?.name || broker.full_name)?.trim().split(/\s+/)[0] || 'מתווך' }, ...(input.outreach ? [{type:'text',text:outreachAddress??''}] : templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });
     } catch (e) {
       await admin.from('broker_invitation_sends').update({ status: 'unknown' }).eq('request_id', input.request_id);
       throw e;

@@ -11,7 +11,7 @@ type Attachment = { id: string; file_name: string; size_bytes: number | null; cr
 const MAX = 20 * 1024 * 1024;
 
 /** Super Admin attachment chooser: one select (executive summaries by user type + other files), one upload action. */
-export function InvitationAttachmentPicker({ value, onChange, recipientRole }: { value: string | null; onChange: (id: string | null) => void; recipientRole?: SummaryRole | null }) {
+export function InvitationAttachmentPicker({ value, onChange, recipientRole, compact = false }: { value: string | null; onChange: (id: string | null) => void; recipientRole?: SummaryRole | null; compact?: boolean }) {
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
   const touched = useRef(false);
@@ -60,10 +60,10 @@ export function InvitationAttachmentPicker({ value, onChange, recipientRole }: {
   const selected = files.find(a => a.id === value);
   const others = files.filter(a => !a.summary_role);
   return <div onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={e => { e.preventDefault(); setDrag(false); void upload(e.dataTransfer.files?.[0]); }}
-    className={`space-y-2 rounded-md border border-dashed p-3 ${drag ? 'bg-accent' : ''}`}>
+    className={compact ? `space-y-2 ${drag ? 'bg-accent' : ''}` : `space-y-2 rounded-md border border-dashed p-3 ${drag ? 'bg-accent' : ''}`}>
     <div className="flex items-center gap-2">
       <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-      <Select value={value ?? ''} onValueChange={v => choose(v || null)}>
+      <Select value={value ?? ''} onValueChange={v => { if (v === '__add_files') { input.current?.click(); return; } choose(v || null); }}>
         <SelectTrigger aria-label="קובץ מצורף" className="h-10 min-w-0 flex-1"><SelectValue placeholder="ללא קובץ מצורף" /></SelectTrigger>
         <SelectContent dir="rtl">
           <SelectGroup><SelectLabel>תקצירי מנהלים</SelectLabel>
@@ -72,13 +72,14 @@ export function InvitationAttachmentPicker({ value, onChange, recipientRole }: {
               : <SelectItem key={r.value} value={`missing-${r.value}`} disabled>תקציר {r.label} · טרם הועלה</SelectItem>; })}
           </SelectGroup>
           {others.length > 0 && <SelectGroup><SelectLabel>קבצים נוספים</SelectLabel>{others.map(a => <SelectItem key={a.id} value={a.id}>{a.file_name}</SelectItem>)}</SelectGroup>}
+          {compact && <SelectItem value="__add_files" className="font-semibold text-primary">{busy ? 'מעלה קובץ...' : 'הוספת קבצים'}</SelectItem>}
         </SelectContent>
       </Select>
       {value && <Button type="button" size="icon" variant="ghost" aria-label="הסרת הקובץ המצורף" onClick={() => choose(null)}><X className="h-4 w-4" /></Button>}
       <input ref={input} type="file" className="hidden" onChange={e => void upload(e.target.files?.[0])} />
-      <Button type="button" size="icon" variant="outline" disabled={busy} aria-label="העלאת קובץ (אפשר גם לגרור לכאן)" title="העלאת קובץ (אפשר גם לגרור לכאן)" onClick={() => input.current?.click()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}</Button>
+      {!compact && <Button type="button" size="icon" variant="outline" disabled={busy} aria-label="העלאת קובץ (אפשר גם לגרור לכאן)" title="העלאת קובץ (אפשר גם לגרור לכאן)" onClick={() => input.current?.click()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}</Button>}
     </div>
-    {selected && <Select value={selected.summary_role ?? 'none'} onValueChange={v => void setSummaryRole(v as SummaryRole | 'none')}>
+    {!compact && selected && <Select value={selected.summary_role ?? 'none'} onValueChange={v => void setSummaryRole(v as SummaryRole | 'none')}>
       <SelectTrigger aria-label="שיוך הקובץ כתקציר מנהלים" className="h-9 text-sm"><SelectValue /></SelectTrigger>
       <SelectContent dir="rtl"><SelectItem value="none">לא משמש כתקציר מנהלים</SelectItem>{SUMMARY_ROLES.map(r => <SelectItem key={r.value} value={r.value}>תקציר מנהלים עבור {r.label}</SelectItem>)}</SelectContent>
     </Select>}

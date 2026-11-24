@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { validImportParameters } from '../../../supabase/functions/_shared/brokerImportQueue';
 import { agencyUrl } from '../../../supabase/functions/_shared/yad2Agencies';
 import { developerImportUrl } from '@/lib/developerImportUrl';
@@ -58,6 +59,7 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
   const [repeatBusy, setRepeatBusy] = useState(false);
   const [repeatDraft, setRepeatDraft] = useState(false);
   const [error, setError] = useState('');
+  const [repeatConfirm, setRepeatConfirm] = useState(false);
   const qc = useQueryClient();
   const { data: jobs } = useAdminImportJobs();
   const current = jobs?.[0];
@@ -164,9 +166,14 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
   const canToggle = Boolean(current && !automaticallyRecovering && (current.status === 'running' || (current.status === 'paused' && checkpoint?.pauseReason === 'user')));
   const stopControl = canToggle ? <Button variant="ghost" size="icon" className="h-12 w-12 shrink-0 border-0 bg-transparent shadow-none" aria-label={automaticallyRecovering ? 'המשך אוטומטי' : current?.status === 'running' ? 'עצירה' : 'המשך'} title={automaticallyRecovering ? 'המשך אוטומטי' : current?.status === 'running' ? 'עצירה' : 'המשך'} disabled={!canToggle || busy || (checkpoint?.waitReason === 'rate_limit' && waitSeconds > 0 && current?.status !== 'running')} onClick={() => void action(current?.status === 'running' ? 'pause' : 'resume')}>{automaticallyRecovering ? <Loader2 className="!h-7 !w-7 animate-spin" /> : current?.status === 'running' ? <Pause className="!h-7 !w-7" /> : <Play className="!h-7 !w-7" />}</Button> : null;
   const importButton = <Button variant="ghost" size="icon" className="h-12 w-12 shrink-0 border-0 bg-transparent shadow-none" aria-label="איתור וייבוא" title="איתור וייבוא" onClick={() => { setError(''); setTarget(10); setMin(3); setMax(10); setOpen(true); }}><ScanSearch className="!h-7 !w-7" /></Button>;
-  const repeatButton = <Button type="button" variant="ghost" size="icon" className={`h-10 w-10 shrink-0 border-0 shadow-none ${repeatEnabled ? 'bg-muted text-foreground' : 'text-muted-foreground'}`} aria-label={repeatEnabled ? 'כיבוי חזרתיות' : 'הפעלת חזרתיות'} title={repeatEnabled ? 'כיבוי חזרתיות' : 'הפעלת חזרתיות'} aria-pressed={repeatEnabled} disabled={repeatBusy || !gate.enabled} onClick={() => void setRepeat(!repeatEnabled)}>{repeatBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Repeat2 className="h-5 w-5" />}</Button>;
+  const repeatButton = <Button type="button" variant="ghost" size="icon" className={`h-10 w-10 shrink-0 border-0 bg-transparent shadow-none hover:bg-transparent ${repeatEnabled ? 'text-foreground' : 'text-muted-foreground'}`} aria-label={repeatEnabled ? 'חזרתיות פעילה' : 'חזרתיות כבויה'} title={repeatEnabled ? 'חזרתיות פעילה' : 'חזרתיות כבויה'} aria-pressed={repeatEnabled} disabled={repeatBusy || !gate.enabled} onClick={() => setRepeatConfirm(true)}>{repeatBusy ? <Loader2 className="!h-6 !w-6 animate-spin" /> : <Repeat2 className="!h-6 !w-6" />}</Button>;
+  const repeatDialog = <AlertDialog open={repeatConfirm} onOpenChange={setRepeatConfirm}><AlertDialogContent dir="rtl" className="text-right">
+    <AlertDialogHeader><AlertDialogTitle className="text-right">{repeatEnabled ? 'לכבות חזרתיות?' : 'להפעיל חזרתיות?'}</AlertDialogTitle>
+      <AlertDialogDescription className="text-right text-base">{repeatEnabled ? 'הריצה הנוכחית תסתיים כרגיל, ולא תתחיל ריצה חוזרת נוספת.' : 'בסיום כל ריצה תתחיל ריצה חדשה עם אותן הגדרות, עד שתכבה את החזרתיות. ההתקדמות הקיימת נשמרת.'}</AlertDialogDescription></AlertDialogHeader>
+    <AlertDialogFooter className="flex-row justify-between gap-2 sm:justify-between"><AlertDialogCancel className="mt-0">ביטול</AlertDialogCancel><AlertDialogAction onClick={() => void setRepeat(!repeatEnabled)}>{repeatEnabled ? 'כיבוי חזרתיות' : 'הפעלת חזרתיות'}</AlertDialogAction></AlertDialogFooter>
+  </AlertDialogContent></AlertDialog>;
   return <section dir="rtl" className="text-right">
-    <div hidden={!visible && !runActive} className="space-y-2 py-2">
+    <div hidden={!visible} className="space-y-2 py-2">
     {notice && <p className="text-base text-muted-foreground">{notice}</p>}
     <div role="status" className="space-y-2 rounded-md border border-border/70 p-2">
       {completed && <p className="text-xs text-muted-foreground">ייבוא אחרון · {importRunTime(completed.updated_at)}</p>}
@@ -208,12 +215,13 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
           <CountField id="project-limit" label="עד כמה פרויקטים ליזם" value={expectedProjects} min={1} max={100} onChange={setExpectedProjects} />
         </> : <>
           {autoDiscovery && <><CountField id="broker-target" label="מספר מתווכים רצוי" value={target} min={1} max={100} onChange={setTarget} /><CountField id="broker-min" label="מינימום נכסים פעילים למתווך" value={min} min={1} max={max} onChange={setMin} /></>}
-          <CountField id="broker-max" label="עד כמה נכסים למתווך" value={useLinks ? linkLimit : max} min={useLinks ? 1 : min} max={50} onChange={useLinks ? setLinkLimit : setMax} />
+          <CountField id="broker-max" label="מספר נכסים לייבוא" value={useLinks ? linkLimit : max} min={useLinks ? 1 : min} max={50} onChange={useLinks ? setLinkLimit : setMax} />
         </>}
         {error && <p role="alert" className="text-base text-destructive">{error}</p>}
-        <div className="flex justify-between gap-2"><Button className="text-base" variant="outline" onClick={() => setOpen(false)}>ביטול</Button><Button className="text-base" disabled={busy || (!runActive && Boolean(current?.lease_until && Date.parse(current.lease_until) > now)) || (useLinks && (invalidCount > 0 || mismatchedCount > 0)) || (!autoDiscovery && !links.trim()) || (mode === 'brokers' && autoDiscovery && !validImportParameters(target, min, max))} onClick={async () => { if (runActive && !window.confirm('להפסיק את הייבוא הפעיל ולהתחיל ייבוא חדש? הטיוטות והפרויקטים שכבר נשמרו לא יימחקו.')) return; if (current?.status === 'running') { setBusy(true); const { data, error } = await supabase.functions.invoke('admin-broker-import-queue', { body: { action: 'pause', job_id: current.id } }); setBusy(false); if (error || data?.error) { setError('לא ניתן היה לעצור את הייבוא הפעיל; ייבוא חדש לא התחיל'); return; } } void action(useLinks ? 'start_urls' : mode === 'developers' ? 'start_auto_developers' : 'start'); }}><ScanSearch className="h-5 w-5" />{busy ? 'מתחיל…' : runActive ? 'עצור והתחל' : 'התחלת ייבוא'}</Button></div>
+        <div className="flex justify-between gap-2"><Button className="text-base" variant="outline" onClick={() => setOpen(false)}>ביטול</Button><div className="flex items-center gap-1">{!useLinks && repeatButton}<Button className="text-base" disabled={busy || (!runActive && Boolean(current?.lease_until && Date.parse(current.lease_until) > now)) || (useLinks && (invalidCount > 0 || mismatchedCount > 0)) || (!autoDiscovery && !links.trim()) || (mode === 'brokers' && autoDiscovery && !validImportParameters(target, min, max))} onClick={async () => { if (runActive && !window.confirm('להפסיק את הייבוא הפעיל ולהתחיל ייבוא חדש? הטיוטות והפרויקטים שכבר נשמרו לא יימחקו.')) return; if (current?.status === 'running') { setBusy(true); const { data, error } = await supabase.functions.invoke('admin-broker-import-queue', { body: { action: 'pause', job_id: current.id } }); setBusy(false); if (error || data?.error) { setError('לא ניתן היה לעצור את הייבוא הפעיל; ייבוא חדש לא התחיל'); return; } } void action(useLinks ? 'start_urls' : mode === 'developers' ? 'start_auto_developers' : 'start'); }}><ScanSearch className="h-5 w-5" />{busy ? 'מתחיל…' : runActive ? 'עצור והתחל' : 'התחלת ייבוא'}</Button></div></div>
       </div>
     </DialogContent></Dialog>
+    {repeatDialog}
   </section>;
 }
 

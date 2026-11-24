@@ -1,4 +1,19 @@
 export const BROKER_TEMPLATE_LANGUAGE = 'he';
+/** Short first-contact opt-in message (no links, no demo). {propertyAddress} is filled from the broker's own Yad2 listing. */
+export function firstContactBody(channel: 'whatsapp' | 'email' = 'email') {
+  return `היי {brokerName},
+
+ראיתי את המודעה שלך ב{propertyAddress} ורציתי לשאול בקצרה: האם יהיה לך מעניין לשמוע על ערכת כלים מתקדמת למתווכים, שמרכזת נכסים, לידים, וואטסאפ וקמפיינים במקום אחד?
+
+${channel === 'email' ? 'אם כן, הכי פשוט לשלוח לנו הודעת וואטסאפ קצרה בלחיצה על הכפתור למטה, ונמשיך משם.' : 'אם כן, אפשר להשיב ״כן״ ונשלח פרטים.'}
+אם לא מתאים, אפשר להשיב ״הסרה״ ולא נפנה שוב.
+
+שי גלילי
+TORAFF`;
+}
+export const fillFirstContact = (text: string, firstName: string, address: string | null) =>
+  text.replace(/\{brokerName\}|\[שם פרטי\]/g, firstName).replace(/ ?ב\{propertyAddress\}/, address ? ` ב${address}` : '');
+
 export function coldInvitationBody(gender: unknown, roles: readonly string[] = [], channel: 'whatsapp' | 'email' = 'whatsapp') {
   const broker = !roles.some(r => ['marketing_company','developer','property_owner','property_seeker','affiliate'].includes(r)) || roles.some(r => ['agent','lead_agent','managing_broker','junior_agent'].includes(r));
   if (broker) return `היי {brokerName},

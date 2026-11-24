@@ -125,6 +125,14 @@ function PropertiesHeroAddButton() {
         {!brokersOnly && <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent("public-publisher:open"))} className="gap-2">
           <Megaphone className="h-4 w-4" /> הוספה מיד2 או ידנית (פרסום חינם)
         </DropdownMenuItem>}
+        {brokersOnly ? <>
+          <DropdownMenuItem onClick={() => dispatch("yad2")} className="gap-2">
+            <Link2 className="h-4 w-4" /> ייבוא מיד2
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => dispatch("manual")} className="gap-2">
+            <Plus className="h-4 w-4" /> הזנה ידנית
+          </DropdownMenuItem>
+        </> : <>
         <DropdownMenuItem onClick={() => dispatch("manual")} className="gap-2">
           <Plus className="h-4 w-4" /> הוספת נכס ידנית
         </DropdownMenuItem>
@@ -134,7 +142,8 @@ function PropertiesHeroAddButton() {
         <DropdownMenuItem onClick={() => dispatch("import")} className="gap-2">
           <FileSpreadsheet className="h-4 w-4" /> יבוא נכסים מאקסל
         </DropdownMenuItem>
-        {connected && <DropdownMenuItem onClick={() => dispatch("homely")} className="gap-2">
+        </>}
+        {connected && !brokersOnly && <DropdownMenuItem onClick={() => dispatch("homely")} className="gap-2">
           <FileSpreadsheet className="h-4 w-4" /> סנכרון מלא מהומלי
         </DropdownMenuItem>}
       </DropdownMenuContent>
