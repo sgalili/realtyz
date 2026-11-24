@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowUpToLine, Loader2 } from 'lucide-react';
+import { AlertCircle, ArrowUpToLine, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -44,7 +44,7 @@ export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsAp
   const time = formatCountdown(target ? target - now : now - lookupStarted);
   return <>
     <Button variant="ghost" className={`h-8 shrink-0 justify-start gap-1 whitespace-nowrap px-1 text-xs tabular-nums ${blocked ? 'text-destructive' : 'text-muted-foreground'}`} title={tip} aria-label={`פרטי גילוי וואטסאפ של ${name}`} onClick={() => setOpen(true)}>
-      <span dir="ltr">{ticking ? time : label}</span>{ticking && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-lead-whatsapp motion-reduce:animate-none" />}
+      {job?.status === 'needs_manual' ? <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" /> : <span dir="ltr">{ticking ? time : label}</span>}{ticking && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-lead-whatsapp motion-reduce:animate-none" />}
     </Button>
     <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" className="max-w-sm text-right"><DialogHeader><DialogTitle>גילוי וואטסאפ · {name}</DialogTitle><DialogDescription>{label}</DialogDescription></DialogHeader>
       <p role="status" className="text-sm">{blocked ?? (status.data?.outstanding && queued ? 'הקו ממתין לתשובה לפנייה קודמת' : 'מצב הפנייה מתעדכן אוטומטית')}</p>
