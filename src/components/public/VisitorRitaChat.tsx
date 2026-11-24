@@ -17,7 +17,7 @@ import { RITA_CHAT_GREETING, resizeRitaTextarea } from '@/lib/ritaChatPresentati
 import { RitaUserAvatar } from '@/components/rita/RitaUserAvatar';
 import { ADMIN_REPLY_PREFIX, ritaLiveLog, ritaLivePoll, type LiveMode } from '@/lib/ritaLive';
 import { useBrokersOnly } from '@/hooks/usePlatformMode';
-import { BROKER_VISITOR_GREETING, visitorChatScope } from '@/lib/visitorChatScope';
+import { BROKER_VISITOR_GREETING, brokerVisitorEntryLinks, visitorChatScope } from '@/lib/visitorChatScope';
 
 // Keeps the newest bubble visible: scrolls the transcript to its bottom whenever a message is added or grows.
 function AutoStickBottom({ trigger }: { trigger: unknown }) {
@@ -137,7 +137,7 @@ function VisitorRitaConversation({ brokersOnly, scope }: { brokersOnly: boolean;
             {mine
               ? <RitaUserAvatar className="mt-0.5 h-7 w-7 shrink-0 border border-border" />
               : <RitaAvatar className="mt-0.5 h-7 w-7 shrink-0" />}
-            <MessageContent className="rounded-lg bg-muted px-3 py-2 text-xs group-[.is-user]:ml-0 group-[.is-user]:bg-primary group-[.is-user]:text-primary-foreground">{message.parts.map((part, i) => part.type === 'text' ? <MessageResponse key={i}>{part.text}</MessageResponse> : null)}</MessageContent>
+            <MessageContent className="rounded-lg bg-muted px-3 py-2 text-xs group-[.is-user]:ml-0 group-[.is-user]:bg-primary group-[.is-user]:text-primary-foreground">{message.parts.map((part, i) => part.type === 'text' ? brokersOnly && !mine ? <div key={i}><MessageResponse>{part.text}</MessageResponse><BrokerVisitorNextSteps text={part.text} /></div> : <MessageResponse key={i}>{part.text}</MessageResponse> : null)}</MessageContent>
           </div>;
         })}
         {status === 'submitted' && <Shimmer>ריטה חושבת…</Shimmer>}
@@ -166,4 +166,15 @@ function VisitorRitaConversation({ brokersOnly, scope }: { brokersOnly: boolean;
     </div>
     <Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className="flex h-[85dvh] max-w-2xl flex-col" dir="rtl">{messages.length > 0 && <Button variant="ghost" size="icon" className="absolute end-3 top-3 z-50 h-8 w-8" aria-label="איפוס שיחת ריטה" disabled={busy} onClick={() => { if (window.confirm('למחוק את שיחת ריטה שנשמרה בדפדפן?')) setMessages([]); }}><Trash2 className="h-4 w-4" /></Button>}<DialogHeader><DialogTitle className="flex items-center gap-3"><RitaAvatar className="h-10 w-10" />ריטה</DialogTitle><DialogDescription>נעים להכיר</DialogDescription></DialogHeader>{expanded && content}</DialogContent></Dialog>
   </>;
+}
+
+/** Keep approved next steps usable even when streaming Markdown omits relative anchors. */
+function BrokerVisitorNextSteps({ text }: { text: string }) {
+  const links = Array.from(brokerVisitorEntryLinks(text).matchAll(/\[([^\]\n]+)\]\((https:\/\/toraff\.co\.il\/(?:auth\?mode=(?:signup|login)|demo\/broker\/properties))\)/g));
+  return <div className="flex flex-wrap gap-2">{links.map(match => {
+    const label = match[1];
+    const href = match[2];
+    if (!label || !href) return null;
+    return <Button key={href} asChild variant="link" className="h-auto min-h-9 px-0 text-sm"><a href={href}>{label}</a></Button>;
+  })}</div>;
 }
