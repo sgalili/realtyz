@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { BrightDataUsageDialog } from '@/components/BrightDataUsageDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,6 +57,7 @@ export function ListingPortalsCard() {
   const [homelyStatus, setHomelyStatus] = useState<string>('not_configured');
   const [shown, setShown] = useState<Record<string, boolean>>({});
   const [bdBalance, setBdBalance] = useState<BrightDataBalance | null>(null);
+  const [bdUsageOpen, setBdUsageOpen] = useState(false);
   const [bdLoading, setBdLoading] = useState(false);
 
   const refreshBrightDataBalance = useCallback(async () => {
@@ -297,7 +299,11 @@ export function ListingPortalsCard() {
                 ))}
               </div>
               {p.id === 'yad2' && (
-                <BrightDataBalanceWidget data={bdBalance} loading={bdLoading} onRefresh={refreshBrightDataBalance} />
+                <>
+                  <BrightDataBalanceWidget data={bdBalance} loading={bdLoading} onRefresh={refreshBrightDataBalance} />
+                  <Button size="sm" variant="outline" className="w-fit" onClick={() => setBdUsageOpen(true)}>פעילות Bright Data בזמן אמת</Button>
+                  <BrightDataUsageDialog open={bdUsageOpen} onOpenChange={setBdUsageOpen} />
+                </>
               )}
               <div className="flex justify-start gap-2">
                 <Button size="sm" onClick={() => savePortal(p)} disabled={saving === p.id} className="gap-2">

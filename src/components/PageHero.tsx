@@ -45,7 +45,6 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { RealtyzWave } from "@/components/RealtyzWave";
 import { PublicListingPublisher } from "@/components/public/PublicListingPublisher";
-import { BrightDataHeroPill } from "@/components/BrightDataHeroPill";
 import { AiResponseToggle } from "@/components/AiResponseToggle";
 // CreditBalancePill moved to /billing (Packages & Payments page).
 import { Button } from "@/components/ui/button";
@@ -308,7 +307,6 @@ export function PageHero() {
   const { preferences: affiliatePrefs } = useAffiliatePreferences();
   const automationAnyOn = Boolean(affiliatePrefs.rita_auto_mode || affiliatePrefs.auto_funnel_enabled);
   const access = usePropertyPageAccess();
-  const canSeeBalance = access.providerDiagnostics;
   const title = resolvePageTitle(location.pathname);
   const isFaqPage = location.pathname === '/faq';
   const isProfilePage = location.pathname.startsWith('/profile');
@@ -423,7 +421,6 @@ export function PageHero() {
             <AiResponseToggle />
           )}
           {/* Yad2 scraping balance — owners / super admins, and ONLY on /properties. */}
-          {canSeeBalance && location.pathname.startsWith("/properties") && <BrightDataHeroPill />}
           {isPublicBoard && user && canSeeMyAds && (
             <Button
               asChild

@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { hasMoreOnYad2, importRatioLabel } from '@/lib/importRatio';
 
-/** Shown under My Properties only when Yad2 holds more of this workspace's ads than were imported. */
+/** Always shown under My Properties; adds the imported/total ratio when Yad2 holds more ads. */
 export function Yad2MoreButton({ ownerId }: { ownerId: string | null | undefined }) {
   const brokersOnly = useBrokersOnly();
   const { data } = useQuery({
@@ -18,12 +18,12 @@ export function Yad2MoreButton({ ownerId }: { ownerId: string | null | undefined
       return (data ?? null) as { imported?: number; total?: number | null } | null;
     },
   });
-  if (!data || !hasMoreOnYad2(data.imported, data.total)) return null;
+  const more = !!data && hasMoreOnYad2(data.imported, data.total);
   const dispatch = (action: 'manual' | 'yad2' | 'import') => window.dispatchEvent(new CustomEvent('properties:add', { detail: { action } }));
   return <div className="flex justify-center py-4">
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="h-11 gap-2 text-base"><Plus className="h-4 w-4" />הוספת נכסים <span dir="ltr" className="tabular-nums text-muted-foreground">{importRatioLabel(data.imported, data.total)}</span></Button>
+        <Button className="h-12 gap-2 rounded-full px-6 text-base font-semibold shadow-md"><Plus className="h-5 w-5" strokeWidth={2.5} />הוסף נכסים{more && data ? <span dir="ltr" className="tabular-nums opacity-80">{importRatioLabel(data.imported, data.total)}</span> : null}</Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="center">
         <DropdownMenuItem className="gap-2" onClick={() => dispatch('yad2')}><Link2 className="h-4 w-4" />ייבוא מיד2</DropdownMenuItem>
