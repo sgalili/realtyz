@@ -57,10 +57,10 @@ export function ScheduleViewToggle({
       <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label="מצב תצוגה">
         <Button
           size="icon"
-          variant="outline"
+          variant="ghost"
           aria-label={view === 'list' ? 'מעבר לתצוגת לוח שנה' : 'מעבר לתצוגת רשימה'}
           title={view === 'list' ? 'לוח שנה' : 'רשימה'}
-          className="h-10 w-10 rounded-md bg-background shadow-none"
+          className="h-10 w-10 shrink-0 rounded-md border-0 shadow-none"
           onClick={() => onViewChange(view === 'list' ? 'calendar' : 'list')}
         >
           {view === 'list' ? <CalendarDays className="h-5 w-5" /> : <List className="h-5 w-5" />}

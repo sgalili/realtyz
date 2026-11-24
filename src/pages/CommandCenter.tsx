@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ScheduledToursCard, useScheduledToursCount } from '@/components/dashboard/ScheduledToursCard';
 import { NewTourDialog } from '@/components/dashboard/NewTourDialog';
@@ -39,6 +39,7 @@ import {
   Phone,
   Plus,
   Trash2,
+  ChevronLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import TaskFormDialog, { localDefaultDue, type TaskFormValues } from '@/components/tasks/TaskFormDialog';
@@ -424,22 +425,9 @@ function ProfessionalCommandCenter() {
         {/* Tabs first, then the "add new" button below them. Desktop keeps an
             exact 50px gap under the tabs; mobile stays as it was. */}
         <div className="mb-4 flex flex-col items-center justify-center gap-[25px] md:gap-0">
-          <div className="mx-auto flex w-full max-w-2xl items-center gap-2">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)} className="min-w-0 flex-1">
-            <TabsList className="grid h-[44px] w-full gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/40 p-1" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
-
-              {visibleTabs.map((key) => (
-                <TabsTrigger key={key} value={key} style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 min-w-0 rounded-lg px-2 py-2 font-semibold transition data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
-                  {TAB_LABEL[key]
-                    ? TABS_WITHOUT_COUNT.has(key)
-                      ? TAB_LABEL[key]
-                      : `${TAB_LABEL[key]} (${counts[key]})`
-                    : ''}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-          {(tab === 'tasks' || tab === 'tours' || tab === 'calls') && (
+          <div dir="rtl" className="mx-auto flex w-full max-w-2xl items-center gap-2">
+          <ScrollableTabsRow tab={tab} setTab={setTab} visibleTabs={visibleTabs} counts={counts} />
+          {tab !== 'leads' && tab !== 'demos' && (
             <ScheduleViewToggle view={tab === 'calls' ? callView : taskView} onViewChange={tab === 'calls' ? setCallView : setTaskView} monthCursor={taskMonth} onMonthChange={setTaskMonth} />
           )}
           </div>
@@ -463,7 +451,7 @@ function ProfessionalCommandCenter() {
           </div>
         ) : (
           <div className="space-y-3">
-            {tab !== 'notes' && (tab === 'calls' ? callView : taskView) === 'calendar' ? (
+            {(tab === 'calls' ? callView : taskView) === 'calendar' ? (
               <ScheduleMonthGrid
                 items={visible.map((t) => ({
                   id: `${t.source}-${t.id}`,
@@ -475,7 +463,7 @@ function ProfessionalCommandCenter() {
                 onMonthChange={setTaskMonth}
                 openDay={taskDay}
                 onOpenDay={setTaskDay}
-                emptyLabel={tab === 'calls' ? 'אין שיחות ביום שנבחר' : 'אין משימות ביום שנבחר'}
+                emptyLabel={tab === 'calls' ? 'אין שיחות ביום שנבחר' : tab === 'notes' ? 'אין הערות ביום שנבחר' : 'אין משימות ביום שנבחר'}
                 renderItem={(item) => (
                   <ul className="space-y-2" key={item.id}>{renderTaskCard(item.task)}</ul>
                 )}
@@ -576,5 +564,43 @@ function EditTaskDialog({
       initial={initial}
       onSubmit={submit}
     />
+  );
+}
+
+/** Single-row tabs that scroll horizontally, with a fade and arrow cue on the left (RTL scroll direction). */
+function ScrollableTabsRow({ tab, setTab, visibleTabs, counts }: {
+  tab: SectionTab; setTab: (t: SectionTab) => void; visibleTabs: SectionTab[]; counts: Record<string, number>;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  const update = () => {
+    const el = ref.current; if (!el) return;
+    // In RTL scrollLeft is 0 at start and negative toward the end.
+    setMore(el.scrollWidth - el.clientWidth - Math.abs(el.scrollLeft) > 4);
+  };
+  useEffect(() => {
+    update();
+    const el = ref.current; if (!el) return;
+    const ro = new ResizeObserver(update); ro.observe(el);
+    return () => ro.disconnect();
+  }, [visibleTabs.length]);
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>('[data-state="active"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [tab]);
+  return (
+    <Tabs value={tab} onValueChange={(v) => setTab(v as SectionTab)} className="relative min-w-0 flex-1">
+      <div ref={ref} onScroll={update} className="overflow-x-auto rounded-xl border border-border/60 bg-muted/40 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <TabsList className="flex h-[44px] w-max min-w-full justify-start gap-1 bg-transparent p-1">
+          {visibleTabs.map((key) => (
+            <TabsTrigger key={key} value={key} style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 font-semibold transition data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm md:flex-1">
+              {TABS_WITHOUT_COUNT.has(key) ? TAB_LABEL[key] : `${TAB_LABEL[key]} (${counts[key] ?? 0})`}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </div>
+      <div aria-hidden className={`pointer-events-none absolute inset-y-px left-px flex w-10 items-center justify-start rounded-l-xl bg-gradient-to-r from-muted via-muted/80 to-transparent pl-1 transition-opacity duration-200 ${more ? 'opacity-100' : 'opacity-0'}`}>
+        <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+      </div>
+    </Tabs>
   );
 }
