@@ -31,6 +31,7 @@ import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { RecruitmentDashboard } from '@/components/dashboard/RecruitmentDashboard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { ilsToCredits } from '@/lib/credits';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAppMode } from '@/hooks/useAppMode';
 import { activityAudience } from '@/lib/activityAudience';
@@ -285,6 +286,30 @@ const RealEstateDashboard = () => {
     refetchInterval: 60_000,
   });
 
+  /* ───── Cockpit counters (workspace scoped) ───── */
+  const { data: cockpit } = useQuery({
+    queryKey: ['dashboard-cockpit', user?.id, ownerId],
+    enabled: !!user?.id && !!ownerId,
+    queryFn: async () => {
+      const db = supabase as any;
+      const [leads, campaigns, tasks, wallet] = await Promise.all([
+        db.from('leads').select('id', { count: 'exact', head: true }).eq('workspace_owner_id', ownerId),
+        db.from('campaigns').select('id', { count: 'exact', head: true }).eq('workspace_owner_id', ownerId),
+        db.from('scheduled_items').select('id', { count: 'exact', head: true }).eq('workspace_owner_id', ownerId).eq('user_id', user!.id).eq('status', 'pending'),
+        db.from('credit_wallets').select('balance_ils').eq('user_id', user!.id).maybeSingle(),
+      ]);
+      return {
+        leads: leads.count ?? 0,
+        campaigns: campaigns.count ?? 0,
+        tasks: tasks.count ?? 0,
+        credits: Math.floor(ilsToCredits(Number(wallet.data?.balance_ils ?? 0))),
+      };
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+  const recentReplies = (activityFeed ?? []).filter((item) => item.type === 'reply').length;
+
   const dealProgressPct = Math.min(
     100,
     Math.round(((closedDeals ?? 0) / Math.max(1, MONTHLY_DEAL_GOAL)) * 100),
@@ -300,16 +325,17 @@ const RealEstateDashboard = () => {
         </p>
         <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
           {[
-            { icon: Building2, label: 'הנכסים שלי', to: '/properties', tone: 'nav-properties' },
-            { icon: Users, label: 'לידים', to: '/lead-crm', tone: 'nav-tasks' },
-            { icon: MessageCircle, label: 'צ׳אטים', to: '/inbox', tone: 'nav-chats' },
-            { icon: Megaphone, label: 'קמפיינים', to: '/campaigns', tone: 'nav-posts' },
-            { icon: ClipboardList, label: 'מטלות', to: '/command-center', tone: 'nav-deals' },
-            { icon: Wallet, label: 'קרדיטים', to: '/wallet', tone: 'success' },
-          ].map(({ icon: Icon, label, to, tone }) => (
-            <button key={to} type="button" onClick={() => navigate(to)} className="flex flex-col items-center gap-1.5 rounded-xl bg-background/95 px-2 py-3 text-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <span className="grid h-9 w-9 place-items-center rounded-full" style={{ background: `hsl(var(--${tone}) / 0.12)`, color: `hsl(var(--${tone}))` }}><Icon className="h-5 w-5" /></span>
-              <span className="text-xs font-semibold">{label}</span>
+            { icon: Building2, label: 'הנכסים שלי', to: '/properties', tone: 'nav-properties', count: activeListings },
+            { icon: Users, label: 'לידים', to: '/lead-crm', tone: 'nav-tasks', count: cockpit?.leads },
+            { icon: MessageCircle, label: 'צ׳אטים', to: '/inbox', tone: 'nav-chats', count: recentReplies },
+            { icon: Megaphone, label: 'קמפיינים', to: '/campaigns', tone: 'nav-posts', count: cockpit?.campaigns },
+            { icon: ClipboardList, label: 'מטלות', to: '/command-center', tone: 'nav-deals', count: cockpit?.tasks },
+            { icon: Wallet, label: 'קרדיטים', to: '/wallet', tone: 'success', count: cockpit?.credits },
+          ].map(({ icon: Icon, label, to, tone, count }) => (
+            <button key={to} type="button" onClick={() => navigate(to)} className="relative flex flex-col items-center gap-1.5 overflow-hidden rounded-2xl bg-background px-2 pb-3 pt-4 text-foreground shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" style={{ borderTop: `4px solid hsl(var(--${tone}))` }}>
+              <span className="grid h-12 w-12 place-items-center rounded-2xl" style={{ background: `hsl(var(--${tone}) / 0.15)`, color: `hsl(var(--${tone}))` }}><Icon className="h-7 w-7" strokeWidth={2.25} /></span>
+              <span className="text-2xl font-extrabold leading-none tabular-nums" style={{ color: `hsl(var(--${tone}))` }}>{count === undefined ? '·' : count.toLocaleString('he-IL')}</span>
+              <span className="text-xs font-bold">{label}</span>
             </button>
           ))}
         </div>
@@ -324,7 +350,9 @@ const RealEstateDashboard = () => {
         id="kpis"
         title="מדדים מרכזיים"
         description="נכסים, לידים, פגישות ועסקאות"
-        icon={<Building2 className="h-4 w-4 text-primary" />}
+        icon={<Trophy />}
+        tone="primary"
+        badge={activeListings ?? undefined}
       >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
         <KpiCard
@@ -371,7 +399,9 @@ const RealEstateDashboard = () => {
         id="activity-and-neighborhoods"
         title="פעילות נדל״ן והתפלגות שכונות"
         description="פניות, סיורים, חוזים ותגובות לידים"
-        icon={<Home className="h-4 w-4 text-primary" />}
+        icon={<Home />}
+        tone="nav-chats"
+        badge={activityFeed?.length}
       >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
@@ -461,10 +491,10 @@ const RealEstateDashboard = () => {
       {/* Listing management is hidden in broker-recruitment mode */}
       {listingsEnabled && (
         <>
-          <CollapsibleSection id="pending-listings" title="נכסים שזוהו אוטומטית" description="אישור, עריכה או מחיקה של נכסים שהופקו על ידי ה-AI">
+          <CollapsibleSection id="pending-listings" title="נכסים שזוהו אוטומטית" description="אישור, עריכה או מחיקה של נכסים שהופקו על ידי ה-AI" icon={<Sparkles />} tone="nav-properties">
             <PendingListingsCard />
           </CollapsibleSection>
-          <CollapsibleSection id="match-progress" title="התאמות לידים ונכסים" description="מצב ההתאמות בין לידים לנכסים">
+          <CollapsibleSection id="match-progress" title="התאמות לידים ונכסים" description="מצב ההתאמות בין לידים לנכסים" icon={<Users />} tone="success">
             <MatchProgressCard />
           </CollapsibleSection>
           {!brokersOnly && <CollapsibleSection id="listing-visibility" title="ניהול חשיפת נכסים" description="נכסים מקודמים ומודגשים">
@@ -480,7 +510,9 @@ const RealEstateDashboard = () => {
         id="market-alerts"
         title="התראות שוק"
         description="אירועים שדורשים את תשומת הלב שלך כעת"
-        icon={<AlertCircle className="h-4 w-4 text-warning" />}
+        icon={<AlertCircle />}
+        tone="warning"
+        badge={marketAlerts?.length}
       >
       <Card>
         <CardContent className="pt-4">

@@ -16,6 +16,10 @@ interface CollapsibleSectionProps {
   title: string;
   description?: string;
   icon?: ReactNode;
+  /** Semantic color token name used for the icon badge and accent edge. */
+  tone?: string;
+  /** Live counter shown on the header. */
+  badge?: ReactNode;
   defaultOpen?: boolean;
   className?: string;
   children: ReactNode;
@@ -26,6 +30,8 @@ export function CollapsibleSection({
   title,
   description,
   icon,
+  tone,
+  badge,
   defaultOpen = false,
   className,
   children,
@@ -35,20 +41,21 @@ export function CollapsibleSection({
   useEffect(() => { if (defaultOpen) setOpen(true); }, [defaultOpen, setOpen]);
 
   return (
-    <section className={cn('rounded-xl border border-border/60 bg-card/40', className)} dir="rtl">
+    <section className={cn('overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm', tone && 'border-s-4', className)} style={tone ? { borderInlineStartColor: `hsl(var(--${tone}))` } : undefined} dir="rtl">
       <Button variant="ghost"
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className="w-full flex items-center gap-3 px-4 py-3 text-right hover:bg-muted/40 transition-colors rounded-xl"
       >
-        {icon}
+        {tone ? <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl [&_svg]:!h-6 [&_svg]:!w-6" style={{ background: `hsl(var(--${tone}) / 0.14)`, color: `hsl(var(--${tone}))` }}>{icon}</span> : icon}
         <span className="flex-1 min-w-0">
-          <span className="block text-sm font-semibold text-foreground truncate">{title}</span>
+          <span className="block text-base font-bold text-foreground truncate">{title}</span>
           {description && (
-            <span className="block text-[11px] text-muted-foreground truncate">{description}</span>
+            <span className="block text-xs text-muted-foreground truncate">{description}</span>
           )}
         </span>
+        {badge !== undefined && badge !== null && <span className="shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums" style={tone ? { background: `hsl(var(--${tone}) / 0.14)`, color: `hsl(var(--${tone}))` } : undefined}>{badge}</span>}
         <ChevronDown
           className={cn('h-4 w-4 text-muted-foreground transition-transform', open && 'rotate-180')}
         />

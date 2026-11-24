@@ -8,7 +8,7 @@ import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { shouldShowWelcome, WELCOME_REOPEN_EVENT } from '@/lib/welcomePreference';
-import { Bot, Zap, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu } from 'lucide-react';
+import { Bot, Zap, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu, LayoutDashboard } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -511,7 +511,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
-              {brokersOnly ? <HomeActivityPill /> : <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />}
+              {brokersOnly ? <Link to="/dashboard" aria-label="לוח בקרה" title="לוח בקרה" className="grid h-10 w-10 place-items-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><LayoutDashboard className="h-6 w-6" /></Link> : <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />}
             </div>
             </div>
           </header>
