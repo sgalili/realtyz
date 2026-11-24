@@ -8,8 +8,8 @@ import { useSuperAdminGate } from '@/hooks/useSuperAdminGate';
 import { supabase } from '@/integrations/supabase/client';
 import { scannerWorkerState, workerStateLabels } from '@/lib/brokerScannerState';
 
-export type ScannerSettings = { enabled: boolean; paused: boolean; pause_reason: string | null; daily_cap: number; jitter_min_seconds: number; jitter_max_seconds: number; start_hour: number; end_hour: number; error_threshold: number; connected?: boolean; webhook_ready?: boolean; worker_seen_at?: string | null; worker_rejected_at?: string | null; config_checked_at?: string | null };
-export type ScannerStatus = { settings: ScannerSettings; credentials_ready: boolean; used_today: number; manual_replies: number; job?: { id: string; status: string; last_error: string | null } | null; contact?: { whatsapp_phone: string } | null };
+export type ScannerSettings = { enabled: boolean; paused: boolean; pause_reason: string | null; daily_cap: number; jitter_min_seconds: number; jitter_max_seconds: number; start_hour: number; end_hour: number; error_threshold: number; next_send_at?: string | null; connected?: boolean; webhook_ready?: boolean; worker_seen_at?: string | null; worker_rejected_at?: string | null; config_checked_at?: string | null };
+export type ScannerStatus = { settings: ScannerSettings; credentials_ready: boolean; used_today: number; manual_replies: number; queue_ahead?: number; outstanding?: boolean; job?: { id: string; status: string; last_error: string | null } | null; contact?: { whatsapp_phone: string } | null };
 export async function scannerCall(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('broker-whatsapp-scanner', { body });
   if (data?.error) throw new Error(data.error === 'scanner_operation_failed' ? 'הבדיקה מול Green API נכשלה; נסו שוב בעוד דקה' : data.error);
