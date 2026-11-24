@@ -6,7 +6,7 @@ import { useLeadProfileAccess } from '@/hooks/useLeadProfileAccess';
 import QuickMessageCard from '@/components/messaging/QuickMessageCard';
 
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation } from '@/lib/router-compat';
 import { supabase } from '@/lib/supabaseClient';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -673,7 +673,7 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
   const queryClient = useQueryClient();
 
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Debounce search input
@@ -1853,7 +1853,7 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
       )}
 
       {/* Data Table */}
-      {!embeddedLeadId && <Card className="border-border/50 shadow-sm">
+      {!embeddedLeadId && <Card className="border-border/50 shadow-xs">
         <CardHeader className="px-[5px] pb-3 pt-3">
           <div className="flex flex-col gap-3">
             {/* Lead kind pills (multi-select, relevant to the signed-in account type) */}
@@ -1901,7 +1901,7 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
                 <button
                   type="button"
                   onClick={() => setFiltersOpen((open) => !open)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
                   aria-label="סינון וייצוא"
                 >
                   <Filter className="h-4 w-4" />

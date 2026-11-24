@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from '@/lib/router-compat';
 import { afterEach, describe, expect, it } from 'vitest';
 import Terms from '@/pages/Terms';
 import CommissionMechanism from '@/pages/CommissionMechanism';

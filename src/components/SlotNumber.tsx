@@ -13,7 +13,7 @@ interface Props {
 export function SlotNumber({ value, className, duration = 900 }: Props) {
   const [display, setDisplay] = useState(value);
   const fromRef = useRef(value);
-  const rafRef = useRef<number>();
+  const rafRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (value === display) return;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from '@/lib/router-compat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { adminHistoryFromParams, saveSuperAdminViewState, type AdminHistoryTab } from '@/lib/superAdminViewState';
 import { BrokerBatchImportCard } from './BrokerBatchImportCard';

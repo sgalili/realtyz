@@ -70,8 +70,8 @@ export const normalizeExtensionGroups = (input: any): ExtensionGroup[] => {
   const seen = new Set<string>();
   return arr
     .map(normalizeOne)
-    .filter((g): g is ExtensionGroup => !!g)
-    .filter((g) => (seen.has(g.group_id) ? false : (seen.add(g.group_id), true)));
+    .filter((g: ExtensionGroup | null | undefined): g is ExtensionGroup => !!g)
+    .filter((g: ExtensionGroup) => (seen.has(g.group_id) ? false : (seen.add(g.group_id), true)));
 };
 
 /**

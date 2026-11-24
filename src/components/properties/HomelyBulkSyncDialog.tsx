@@ -29,7 +29,7 @@ type HomelyProperty = {
   photos?: string[];
   documents?: string[];
   property_type?: string;
-  transaction_type?: 'sale' | 'rent';
+  transaction_type?: 'sale' | 'rent' | null;
   agent?: string;
   sivug?: string;
   raw: unknown;
@@ -535,7 +535,7 @@ function PropertySyncRow({ property: p, checked, onToggle }: { property: HomelyP
       className={`flex items-start gap-2 sm:gap-3 rounded-lg border p-2 sm:p-3 cursor-pointer transition-colors text-right ${checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'}`}
     >
       <Checkbox checked={checked} onCheckedChange={onToggle} className="mt-1 shrink-0" />
-      <div className="relative h-12 w-16 sm:h-14 sm:w-20 rounded-md bg-muted overflow-hidden flex-shrink-0">
+      <div className="relative h-12 w-16 sm:h-14 sm:w-20 rounded-md bg-muted overflow-hidden shrink-0">
         {photo ? (
           <img src={photo} alt="" className="h-full w-full object-cover" loading="lazy" onError={() => markBroken(photo)} />
         ) : (

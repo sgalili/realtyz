@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from '@/lib/router-compat';
 import { RealtyzWave } from '@/components/RealtyzWave';
 
 /**

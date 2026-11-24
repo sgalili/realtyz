@@ -45,7 +45,7 @@ const ConversationAnalytics = () => {
         {activityMetrics.map((metric) => {
           const Icon = METRIC_ICONS[metric.key] ?? MessageSquareText;
           return (
-            <Card key={metric.label} className="border-primary/15 bg-card shadow-sm">
+            <Card key={metric.label} className="border-primary/15 bg-card shadow-xs">
               <CardContent className="flex items-center justify-between gap-4 p-5">
                 <div className="space-y-1 text-right">
                   <p className="text-xs font-semibold text-muted-foreground">{metric.label}</p>

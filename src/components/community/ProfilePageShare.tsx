@@ -57,7 +57,7 @@ export function ProfilePageShare({ path, title, agency = false }: { path: string
 
   return createPortal(
     <>
-      <Button ref={button} size="icon" variant="ghost" aria-label={label} title="שיתוף" onClick={() => void share()} className="fixed right-4 top-4 z-40 h-11 w-11 rounded-full bg-background text-foreground shadow-sm">
+      <Button ref={button} size="icon" variant="ghost" aria-label={label} title="שיתוף" onClick={() => void share()} className="fixed right-4 top-4 z-40 h-11 w-11 rounded-full bg-background text-foreground shadow-xs">
         <Share2 className="h-[22px] w-[22px]" />
       </Button>
       <Dialog open={open} onOpenChange={next => { setOpen(next); if (!next) setCopied(false); }}>

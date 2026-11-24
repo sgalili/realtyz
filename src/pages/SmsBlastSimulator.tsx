@@ -17,7 +17,7 @@ import confetti from 'canvas-confetti';
 import { Mail, MessageCircle, Radio, Send, Smartphone, Sparkles, WalletCards, Zap, CheckCircle2, Users, MessageSquare, Coins, Shield, ShieldCheck, AlertTriangle, Clock, List, Filter, FileSpreadsheet, X, Mic, AudioWaveform, AudioLines, Paperclip, Image as ImageIcon, FileText, Film, Square, StopCircle, Linkedin, Instagram, Send as TelegramIcon, Plug, ChevronDown, Settings2, PhoneCall, Check, Twitter, Youtube, Facebook } from 'lucide-react';
 import { TikTokOfficial } from '@/components/social/brand-icons/TikTokOfficial';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from '@/lib/router-compat';
 import { VoiceComposer, type VoicePayload } from '@/components/VoiceComposer';
 import { supabase } from '@/integrations/supabase/client';
 import { audienceFromIdentity, extractWhatsAppNumbers, personalizationTagsFor } from '@/lib/waTemplateCatalog';
@@ -1304,7 +1304,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
                         {checked && isConnected && (
                           <span
-                            className="absolute top-2 right-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
+                            className="absolute top-2 right-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs"
                             aria-label="נבחר"
                           >
                             <Check className="h-3.5 w-3.5" strokeWidth={3} />
@@ -1313,7 +1313,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
                         {checked && isConnected && aiPerChannel[channel.id]?.enabled && (
                           <span
-                            className="absolute top-2 left-2 inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm"
+                            className="absolute top-2 left-2 inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs"
                             aria-label="AI פעיל"
                             title={`Auto-Pilot · ${aiPerChannel[channel.id]?.tone ?? ''}`}
                           >
@@ -1660,7 +1660,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                             <button
                               type="button"
                               onClick={() => removeAttachment(att.id)}
-                              className="absolute -top-2 -left-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow hover:bg-destructive/90"
+                              className="absolute -top-2 -left-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90"
                               aria-label="הסר קובץ"
                             >
                               <X className="h-3 w-3" />

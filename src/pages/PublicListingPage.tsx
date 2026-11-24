@@ -19,7 +19,7 @@ import type { LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { fmtILS } from '@/lib/formatCurrency';
 import { attributeCards } from '@/components/public/propertyAttributes';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from '@/lib/router-compat';
 import { useQuery } from '@tanstack/react-query';
 import { Bed, Building2, Heart, Layers, Loader2, Ruler, X } from 'lucide-react';
 import PropertyGallerySlider from '@/components/public/PropertyGallerySlider';
@@ -45,6 +45,7 @@ import PublicAdHeading from '@/components/public/PublicAdHeading';
 import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { isUnavailableListingError } from '@/lib/publicListingLookup';
+import { sqlNull } from '@/lib/sqlNull';
 
 export type PublicListing = {
   id: string | null;
@@ -272,7 +273,7 @@ function PublicListingContent() {
     const key = `realtyz:listing-view:${slug}`;
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, '1');
-    void supabase.rpc('track_listing_referral_view', { _id_or_slug: slug, _code: new URLSearchParams(window.location.search).get('ref') });
+    void supabase.rpc('track_listing_referral_view', { _id_or_slug: slug, _code: sqlNull(new URLSearchParams(window.location.search).get('ref')) });
   }, [slug]);
   const [refCode, setRefCode] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -480,9 +481,9 @@ function PublicListingContent() {
             {data.id && <PropertyContactActions listingId={data.id} title={data.title} dealType={data.dealType} premsg={data.premsg} options={data.contactOptions} compact formAsButton singleRow showShare={false} shareUrl={shareUrl} />}
 
             {/* Small source link for Yad2-imported ads — fits the existing spacing without growing the page. */}
-            {false && data.yad2AdUrl && (
+            {false && data?.yad2AdUrl && (
               <p className="-mb-1 text-center text-[11px] leading-none">
-                <a href={data.yad2AdUrl} target="_blank" rel="noopener noreferrer" title="מודעת המקור (גלוי רק לך)" className="text-muted-foreground hover:underline">מודעת המקור</a>
+                <a href={data?.yad2AdUrl ?? undefined} target="_blank" rel="noopener noreferrer" title="מודעת המקור (גלוי רק לך)" className="text-muted-foreground hover:underline">מודעת המקור</a>
               </p>
             )}
           </CardContent>

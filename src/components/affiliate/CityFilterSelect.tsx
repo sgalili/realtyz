@@ -69,7 +69,7 @@ export function CityFilterSelect({
           aria-expanded={open}
           aria-label="אזור"
           onClick={() => setOpen((value) => !value)}
-          className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-[18px] shadow-sm transition-colors hover:bg-muted/50"
+          className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-[18px] shadow-xs transition-colors hover:bg-muted/50"
         >
           <span className={`truncate ${nationwide ? 'text-muted-foreground' : ''}`}>{label}</span>
           <ChevronDown aria-hidden className={`h-4 w-4 shrink-0 opacity-50 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />

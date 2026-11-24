@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { NavLink } from 'react-router-dom';
+import { NavLink } from '@/lib/router-compat';
 import { toast } from 'sonner';
 import { ShieldCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';

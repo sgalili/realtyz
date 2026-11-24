@@ -41,7 +41,7 @@ export function CollapsibleSection({
   useEffect(() => { if (defaultOpen) setOpen(true); }, [defaultOpen, setOpen]);
 
   return (
-    <section className={cn('overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm', tone && 'border-s-4', className)} style={tone ? { borderInlineStartColor: `hsl(var(--${tone}))` } : undefined} dir="rtl">
+    <section className={cn('overflow-hidden rounded-2xl border border-border/60 bg-card shadow-xs', tone && 'border-s-4', className)} style={tone ? { borderInlineStartColor: `hsl(var(--${tone}))` } : undefined} dir="rtl">
       <Button variant="ghost"
         type="button"
         onClick={() => setOpen((v) => !v)}

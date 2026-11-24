@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { useQuery } from '@tanstack/react-query';
 import { Building2, CalendarClock, MessageCircle, Megaphone, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';

@@ -575,7 +575,7 @@ export const IvrBroadcastPanel = () => {
       className={cn(
         'flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-[17px] font-semibold transition-colors border',
         source === id
-          ? 'bg-[#0f1b3d] text-white border-[#0f1b3d] shadow-sm'
+          ? 'bg-[#0f1b3d] text-white border-[#0f1b3d] shadow-xs'
           : 'bg-background text-[#0f1b3d] border-[#0f1b3d]/15 hover:bg-muted/40',
       )}
     >

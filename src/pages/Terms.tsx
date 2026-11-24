@@ -1,6 +1,6 @@
 import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { BrokersTerms } from '@/components/legal/BrokersOnlyLegal';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router-compat';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { LegalPageLayout, LegalSection } from '@/components/public/LegalPageLayout';
 import UnlicensedPartnerCommissionNote from '@/components/public/UnlicensedPartnerCommissionNote';

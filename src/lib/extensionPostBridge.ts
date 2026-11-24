@@ -139,8 +139,8 @@ export const normalizeExtensionPosts = (input: any): ExtensionPost[] => {
   const seen = new Set<string>();
   return arr
     .map(normalizeOne)
-    .filter((p): p is ExtensionPost => !!p)
-    .filter((p) => (seen.has(p.post_id) ? false : (seen.add(p.post_id), true)));
+    .filter((p: ExtensionPost | null | undefined): p is ExtensionPost => !!p)
+    .filter((p: ExtensionPost) => (seen.has(p.post_id) ? false : (seen.add(p.post_id), true)));
 };
 
 /**

@@ -3,7 +3,7 @@
  * Shows every note attached to a property in FULL, with edit and delete.
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router-compat';
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';

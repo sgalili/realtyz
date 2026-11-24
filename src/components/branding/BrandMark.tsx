@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router-compat';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { resolveWorkspaceIdentity } from '@/lib/workspaceIdentity';

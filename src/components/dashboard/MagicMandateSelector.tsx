@@ -164,7 +164,7 @@ export function MagicMandateSelector({ open, onComplete }: MagicMandateSelectorP
                   </SliderPrimitive.Track>
                   <SliderPrimitive.Thumb
                     aria-label="יעד עסקאות"
-                    className="block h-6 w-6 rounded-full border-2 border-primary bg-background shadow-lg ring-offset-background transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 hover:scale-110 disabled:pointer-events-none disabled:opacity-50"
+                    className="block h-6 w-6 rounded-full border-2 border-primary bg-background shadow-lg ring-offset-background transition-transform focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 hover:scale-110 disabled:pointer-events-none disabled:opacity-50"
                   />
                 </SliderPrimitive.Root>
                 <div className="mt-1.5 flex justify-between text-[10px] font-medium text-muted-foreground" dir="rtl">

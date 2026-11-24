@@ -62,14 +62,14 @@ export default function OurClients() {
     {!dev && (clients.isLoading ? <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /> : clients.isError ? <p role="alert" className="text-destructive">החשבון אינו משויך לחברת שיווק.</p>
       : !filteredClients.length ? <p className="py-16 text-center text-muted-foreground">לא נמצאו יזמים</p>
       : <div className={grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-2'}>{filteredClients.map(c =>
-        <button key={c.id} type="button" onClick={() => open(c)} className={cn('flex w-full min-w-0 items-center gap-3 rounded-lg border bg-card p-3 text-right shadow-sm transition-shadow hover:shadow-md', grid && 'flex-col items-start')}>
+        <button key={c.id} type="button" onClick={() => open(c)} className={cn('flex w-full min-w-0 items-center gap-3 rounded-lg border bg-card p-3 text-right shadow-xs transition-shadow hover:shadow-md', grid && 'flex-col items-start')}>
           <DeveloperLogo name={c.name} logoUrl={c.logo_url} className={grid ? 'h-20 w-20' : 'h-12 w-12'} />
           <div className="min-w-0"><p className="truncate text-[19px] font-bold">{c.name || 'יזם'}</p><p className="text-sm text-muted-foreground">{c.projects} פרויקטים · {c.units} דירות</p></div>
         </button>)}</div>)}
 
     {dev && (projects.isLoading ? <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /> : projects.isError ? <p role="alert" className="text-destructive">טעינת הפרויקטים נכשלה</p>
       : !filteredProjects.length ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו פרויקטים מתאימים</p>
-      : <div className={grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-3'}>{filteredProjects.map(p => { const isOpen = expandedId === p.id; const deal = projectDeal(p); const photos = developerProjectImages(p); return <article key={p.id} className={cn('flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md', isOpen && grid && 'sm:col-span-2 lg:col-span-3')}>
+      : <div className={grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-3'}>{filteredProjects.map(p => { const isOpen = expandedId === p.id; const deal = projectDeal(p); const photos = developerProjectImages(p); return <article key={p.id} className={cn('flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card shadow-xs transition-shadow hover:shadow-md', isOpen && grid && 'sm:col-span-2 lg:col-span-3')}>
         <div className="p-3"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3"><h3 className="min-w-0 [overflow-wrap:anywhere] text-[19px] font-bold leading-snug">{p.name}</h3>{priceLabel(p.price_from) && <p className={cn('shrink-0 whitespace-nowrap text-[17px] font-bold', deal === 'rent' ? 'text-sale' : 'text-success')}>{priceLabel(p.price_from)}</p>}</div><p className="mt-1 truncate text-sm text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</p></div>
         {grid && <PropertyGallerySlider photos={photos} alt={p.name} overlay={<span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">{PROJECT_STATUS[p.status] ?? p.status}</span>} />}
         <div className="flex flex-1 flex-col gap-3 p-4">

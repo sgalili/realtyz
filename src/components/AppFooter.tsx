@@ -1,5 +1,5 @@
 import { useBrokersOnly } from '@/hooks/usePlatformMode';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router-compat';
 import { Accessibility } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AccessibilityMenu } from '@/components/accessibility/AccessibilityMenu';

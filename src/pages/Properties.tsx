@@ -13,7 +13,7 @@ import ManagedBoardTable from '@/components/properties/ManagedBoardTable';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link } from '@/lib/router-compat';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1025,7 +1025,7 @@ export default function Properties() {
                 }}
                 placeholder={yad2Status?.tone === 'busy' ? 'סורק פרטים…' : filterChips.length ? 'הוסף מילות חיפוש…' : 'חיפוש נכסים'}
                 aria-label="חיפוש נכסים"
-                className="h-7 min-w-0 flex-1 bg-transparent text-right text-sm outline-none placeholder:text-muted-foreground"
+                className="h-7 min-w-0 flex-1 bg-transparent text-right text-sm outline-hidden placeholder:text-muted-foreground"
                 dir="rtl"
                />
               <Button
@@ -1376,7 +1376,7 @@ function ResultCard({
           <button
             type="button"
             onClick={(e) => { stop(e); setExpanded((v) => !v); }}
-            className="absolute top-2 right-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm"
+            className="absolute top-2 right-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-xs"
             title={`${photoCount} תמונות`}
             aria-label={`${photoCount} תמונות`}
           >
@@ -1390,7 +1390,7 @@ function ResultCard({
             type="button"
             onClick={pullAllImages}
             disabled={pulling}
-            className="absolute bottom-2 right-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur-sm hover:bg-black/80 disabled:opacity-60"
+            className="absolute bottom-2 right-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur-xs hover:bg-black/80 disabled:opacity-60"
             title="טען את כל התמונות"
             aria-label="טען את כל התמונות"
           >
@@ -1408,7 +1408,7 @@ function ResultCard({
               onClick={goPrev}
               aria-label="תמונה קודמת"
               title="תמונה קודמת"
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/70 hover:bg-background text-foreground shadow-sm backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity z-10"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/70 hover:bg-background text-foreground shadow-xs backdrop-blur-xs flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity z-10"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -1417,11 +1417,11 @@ function ResultCard({
               onClick={goNext}
               aria-label="תמונה הבאה"
               title="תמונה הבאה"
-              className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/70 hover:bg-background text-foreground shadow-sm backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity z-10"
+              className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/70 hover:bg-background text-foreground shadow-xs backdrop-blur-xs flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity z-10"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/70 text-foreground text-[10px] font-semibold tabular-nums px-2 py-0.5 shadow-sm backdrop-blur-sm z-10">
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/70 text-foreground text-[10px] font-semibold tabular-nums px-2 py-0.5 shadow-xs backdrop-blur-xs z-10">
               {index + 1} / {photos.length}
             </div>
           </>
@@ -1438,17 +1438,17 @@ function ResultCard({
           </Badge>
         )}
         {isNewListing(result) ? (
-          <Badge className="absolute top-11 left-3 z-10 border-0 bg-[#FF7A00] text-white shadow-sm">
+          <Badge className="absolute top-11 left-3 z-10 border-0 bg-[#FF7A00] text-white shadow-xs">
             חדש
           </Badge>
         ) : isOldListing(result) ? (
-          <Badge className="absolute top-11 left-3 z-10 border-0 bg-slate-500 text-white shadow-sm">
+          <Badge className="absolute top-11 left-3 z-10 border-0 bg-slate-500 text-white shadow-xs">
             ותיק
           </Badge>
         ) : null}
 
         {importing && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm z-20">
+          <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-xs z-20">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Loader2 className="h-4 w-4 animate-spin" /> מייבא למאגר…
             </div>
@@ -1769,9 +1769,9 @@ export function ResultTable({
                     return (
                       <span className="inline-flex items-center gap-1.5 min-w-0">
                         {isNewListing(r) ? (
-                          <span className="shrink-0 rounded-full bg-[#FF7A00] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm">חדש</span>
+                          <span className="shrink-0 rounded-full bg-[#FF7A00] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-xs">חדש</span>
                         ) : isOldListing(r) ? (
-                          <span className="shrink-0 rounded-full bg-slate-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm">ותיק</span>
+                          <span className="shrink-0 rounded-full bg-slate-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-xs">ותיק</span>
                         ) : null}
                         <span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">{link}</span>
                       </span>

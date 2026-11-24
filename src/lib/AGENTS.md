@@ -1,0 +1,2 @@
+- Rent shows "₪X / לחודש" via src/lib/propertyPrice.ts.
+- Media dedup uses host/path hashes; Yad2 reuses validated own public cache, not other hosts. Why: safe reuse.

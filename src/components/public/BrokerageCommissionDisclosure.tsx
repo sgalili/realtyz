@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router-compat';
 
 export const BROKERAGE_COMMISSION_TITLE = 'עמלות תיווך ותנאי שירות';
 type Props = { audience?: 'buyer' | 'renter' | 'seller' | 'landlord' | null };

@@ -43,7 +43,7 @@ const DialogContent = React.forwardRef<
       {...props}
       data-site-dialog
     >
-      <DialogPrimitive.Close className="sticky top-0 z-50 -mb-11 flex h-11 w-11 items-center justify-center justify-self-end bg-transparent border-none shadow-none text-muted-foreground opacity-90 transition-opacity hover:opacity-100 hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none">
+      <DialogPrimitive.Close className="sticky top-0 z-50 -mb-11 flex h-11 w-11 items-center justify-center justify-self-end bg-transparent border-none shadow-none text-muted-foreground opacity-90 transition-opacity hover:opacity-100 hover:bg-transparent focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none">
         <X className="h-[18px] w-[18px]" />
         <span className="sr-only">סגירה</span>
       </DialogPrimitive.Close>

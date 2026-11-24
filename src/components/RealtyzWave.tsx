@@ -29,7 +29,7 @@ interface Props {
   seed?: number;
   /** Optional className for outer container */
   className?: string;
-  /** Optional drop-shadow */
+  /** Optional drop-shadow-sm */
   glow?: boolean;
   /** Pixel offset from top/bottom edge (default -1) */
   offset?: number;

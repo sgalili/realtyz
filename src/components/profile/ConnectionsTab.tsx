@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { InventoryToolSoftLock } from '@/components/InventoryCollection';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from '@/lib/router-compat';
 import { ChevronDown, Mail, MessageSquare, Phone, Settings2 } from 'lucide-react';
 import { WorkspaceMailboxCard, useWorkspaceMailbox } from '@/components/profile/WorkspaceMailboxCard';
 import { BrandIcon } from '@/components/BrandIcon';
@@ -115,7 +115,7 @@ function ConnectionSection({
   return (
     <div
       dir="rtl"
-      className="rounded-xl border bg-card text-right shadow-sm"
+      className="rounded-xl border bg-card text-right shadow-xs"
       style={restricted ? { borderColor: 'hsl(0 72% 51%)' } : undefined}
     >
       <button

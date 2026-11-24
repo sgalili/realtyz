@@ -1,6 +1,6 @@
 import { MONTHLY_FREE_CREDITS_DEFAULT, useMonthlyFreeCredits } from '@/hooks/useMonthlyFreeCredits';
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';

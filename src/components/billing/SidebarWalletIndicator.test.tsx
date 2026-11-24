@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SidebarWalletIndicator } from './SidebarWalletIndicator';
 
 const mocks = vi.hoisted(() => ({ navigate: vi.fn(), mobile: vi.fn(), desktop: vi.fn(), count: 0, admin: false }));
-vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
+vi.mock('@/lib/router-compat', () => ({ useNavigate: () => mocks.navigate }));
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: mocks.count }) }));
 vi.mock('@/hooks/useSubscription', () => ({ useCreditWallet: () => ({ data: { balance: 200 }, isLoading: false }) }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => 'workspace' }));

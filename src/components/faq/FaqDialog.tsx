@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from '@/lib/router-compat';
 import { CircleHelp } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -21,7 +21,7 @@ function FaqAccordion({ items, prefix }: { items: FaqItem[]; prefix: string }) {
     <Accordion type="single" collapsible className="w-full">
       {items.map((item, i) => (
         <AccordionItem key={`${prefix}-${i}`} value={`${prefix}-${i}`}>
-          <AccordionTrigger className="text-right text-[17px] font-semibold leading-snug focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
+          <AccordionTrigger className="text-right text-[17px] font-semibold leading-snug focus-visible:outline-hidden focus-visible:ring-0 focus-visible:ring-offset-0">
             {item.q}
           </AccordionTrigger>
           <AccordionContent className="text-[16px] leading-relaxed text-foreground/80">

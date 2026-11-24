@@ -142,7 +142,7 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
             aria-label={title}
             aria-expanded={open}
             title={title}
-            className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0 text-[11px] font-medium text-primary tabular-nums transition-colors hover:bg-primary/20 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0 text-[11px] font-medium text-primary tabular-nums transition-colors hover:bg-primary/20 hover:border-primary/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
             {busy ? (
               <Loader2 className="h-3 w-3 animate-spin" />
             ) : running ? (

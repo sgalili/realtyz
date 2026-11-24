@@ -9,7 +9,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FullPageLoading } from '@/components/ui/full-page-loading';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/lib/router-compat';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

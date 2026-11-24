@@ -26,7 +26,7 @@ export function PageLoadingRegion({ as = 'div', children, ...props }: HTMLAttrib
     data-page-loading-region=""
     aria-busy={context.visible || undefined}
   >
-    <div className="page-loading-content" aria-hidden={context.visible || undefined} {...(context.visible ? { inert: '' } : {})}>
+    <div className="page-loading-content" aria-hidden={context.visible || undefined} {...(context.visible ? { inert: true } : {})}>
       {children}
     </div>
   </Component>;
@@ -42,8 +42,8 @@ export function FullPageLoadingProvider({ children, enabled = true }: { children
   const [bounds, setBounds] = useState<LoadingBounds | null>(null);
   const count = useRef(0);
   const startedAt = useRef<number | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
-  const showTimer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const showTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const shown = useRef(false);
   const register = useCallback(() => {
     if (!allowed) return () => {};
@@ -127,7 +127,7 @@ export function FullPageLoadingProvider({ children, enabled = true }: { children
   const active = allowed && visible;
   return <PageLoadingEnabledContext.Provider value={allowed}><PageLoadingContext.Provider value={register}>
     <PageLoadingRegionContext.Provider value={{ setHost, visible: active }}>
-      <div className="page-loading-content" aria-busy={active && !host} aria-hidden={active && !host ? true : undefined} {...(active && !host ? { inert: '' } : {})}>{children}</div>
+      <div className="page-loading-content" aria-busy={active && !host} aria-hidden={active && !host ? true : undefined} {...(active && !host ? { inert: true } : {})}>{children}</div>
       {active && createPortal(<div
         className={`toraff-page-loading-overlay${fading ? ' toraff-page-loading-overlay-exiting' : ''}`}
         style={overlayStyle}

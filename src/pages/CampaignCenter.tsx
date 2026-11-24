@@ -28,7 +28,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { shortenName } from "@/lib/shortenName";
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from '@/lib/router-compat';
 import { useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -2348,7 +2348,7 @@ const InlineComposer = ({
 
 
   return (
-    <div className={cn(editorMode ? "min-w-0 space-y-4" : "rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm space-y-4", "[&_input:not([type=checkbox])]:!text-[18px] md:[&_input:not([type=checkbox])]:!text-base [&_textarea]:!text-base [&_textarea]:resize-y")} dir="rtl">
+    <div className={cn(editorMode ? "min-w-0 space-y-4" : "rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-xs space-y-4", "[&_input:not([type=checkbox])]:!text-[18px] md:[&_input:not([type=checkbox])]:!text-base [&_textarea]:!text-base [&_textarea]:resize-y")} dir="rtl">
       {/* Header row removed — title lives in the page hero; history is in the hero icon */}
 
 
@@ -2386,7 +2386,7 @@ const InlineComposer = ({
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-2 max-h-80 overflow-auto" dir="rtl">
+            <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-2 max-h-80 overflow-auto" dir="rtl">
               <Input
                 value={listingQuery}
                 onChange={(e) => setListingQuery(e.target.value)}
@@ -2606,7 +2606,7 @@ const InlineComposer = ({
                         type="button"
                         onClick={() => setPreviewImageUrl(att.url ?? null)}
                         className={cn(
-                          'block overflow-hidden rounded-none bg-muted focus:outline-none focus:ring-1 focus:ring-primary',
+                          'block overflow-hidden rounded-none bg-muted focus:outline-hidden focus:ring-1 focus:ring-primary',
                           box,
                           isCover ? 'border-2 border-primary' : 'border border-border',
                         )}
@@ -2856,7 +2856,7 @@ const InlineComposer = ({
                 className={cn(
                   'inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition',
                   hasBody
-                    ? 'bg-card text-[hsl(217,80%,18%)] border-[hsl(217,80%,18%)]/30 hover:bg-[hsl(217,80%,18%)]/5 shadow-sm'
+                    ? 'bg-card text-[hsl(217,80%,18%)] border-[hsl(217,80%,18%)]/30 hover:bg-[hsl(217,80%,18%)]/5 shadow-xs'
                     : 'bg-muted text-muted-foreground/80 border-transparent cursor-not-allowed',
                 )}
               >
@@ -2871,14 +2871,14 @@ const InlineComposer = ({
                 className={cn(
                   'relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition border',
                   hasBody
-                    ? 'bg-card text-[hsl(217,80%,18%)] border-[hsl(217,80%,18%)]/30 hover:bg-[hsl(217,80%,18%)]/5 shadow-sm'
+                    ? 'bg-card text-[hsl(217,80%,18%)] border-[hsl(217,80%,18%)]/30 hover:bg-[hsl(217,80%,18%)]/5 shadow-xs'
                     : 'bg-muted text-muted-foreground/80 border-transparent cursor-not-allowed',
                   recurrenceBubble && hasBody && 'border-[hsl(217,80%,18%)]/60',
                 )}
               >
                 <CalendarIcon className="h-4 w-4" />
                 {recurrenceBubble && (
-                  <span className="absolute -top-2 -right-1 rounded-full bg-[hsl(217,80%,18%)] px-1.5 text-[10px] font-bold leading-[16px] text-white shadow">
+                  <span className="absolute -top-2 -right-1 rounded-full bg-[hsl(217,80%,18%)] px-1.5 text-[10px] font-bold leading-[16px] text-white shadow-sm">
                     {recurrenceBubble}
                   </span>
                 )}
@@ -2889,7 +2889,7 @@ const InlineComposer = ({
                   onClick={() => setGroupPickerOpen(true)}
                   title="בחירת קבוצות לפרסום"
                   aria-label="בחירת קבוצות לפרסום"
-                  className="relative inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
+                  className="relative inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-xs transition hover:bg-[hsl(217,80%,18%)]/5"
                 >
                   <Users className="h-4 w-4" />
                   {groupIds.length > 0 && (
@@ -3157,7 +3157,7 @@ const FullRepostEditor = ({ request, brandName, socialProfiles, onClose }: {
       const blockedIds = new Set(((groupRows ?? []) as any[]).filter((g) => g.is_blocked).map((g) => String(g.group_id).replace(/^ext:/, '')));
       const ids = [...new Set(payload.group_ids.map((id) => id.replace(/^ext:/, '')))].filter((id) => !blockedIds.has(id));
       const jobs = await Promise.all(ids.map(async (id, index) => {
-        const name = groupRows?.find((g) => g.group_id.replace(/^ext:/, '') === id)?.group_name
+        const name = groupRows?.find((g: { group_id: string; group_name?: string | null }) => g.group_id.replace(/^ext:/, '') === id)?.group_name
           || request.jobs.find((j) => j.payload?.job?.groupUrl?.includes(`/groups/${id}`))?.payload?.job?.groupName || id;
         let text = payload.body;
         if (ids.length > 1 && payload.group_text_variation) {
@@ -3233,8 +3233,8 @@ const StackedComposerSection = ({
       <header className="flex items-center gap-2">
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background">
           <BrandIcon
-            name={channel.brand}
-            className={cn('h-4 w-4', BRAND_COLOR[channel.brand] ?? 'text-muted-foreground')}
+            name={channel.brand!}
+            className={cn('h-4 w-4', BRAND_COLOR[channel.brand!] ?? 'text-muted-foreground')}
           />
         </span>
         <span className="text-sm font-semibold text-foreground">{channel.label}</span>
@@ -6125,7 +6125,7 @@ const PublishedFeed = ({
       if (!bodyKey(e.text)) continue;
       const gid = String(e.groupUrl || '').match(/groups\/([^/?#]+)/)?.[1] || '';
       const cur = extGroups.get(key) || {
-        text: e.sourceText || e.text,
+        text: (e.sourceText || e.text) as string,
         images: Array.isArray(e.images) ? e.images : [],
         groupIds: [] as string[],
         scheduledTime: Number(e.scheduledTime) || Date.now(),
@@ -6234,7 +6234,7 @@ const PublishedFeed = ({
               className={cn(
                 'relative flex h-9 items-center justify-center rounded-lg px-[6px] py-[6px] font-semibold transition',
                 subTab === t.v
-                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -6460,7 +6460,7 @@ const PublishedFeed = ({
           <div key={r.id} className="w-full min-w-0 max-w-full">
           <article
             key={r.id}
-            className={cn("w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-border bg-card", inGroupOverlay !== true && "shadow-sm")}
+            className={cn("w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-border bg-card", inGroupOverlay !== true && "shadow-xs")}
             dir={dirAttr}
           >
             <header
@@ -6777,7 +6777,7 @@ const PublishedFeed = ({
             <AnimatedExpansion open={inGroupOverlay !== true && seriesOpen && isSeries && !!seriesSlots}>
               <div id={`campaign-series-${r.id}`} role="region" aria-label="קמפיינים בקבוצות"
                 className="mx-2 mb-2 min-w-0 space-y-2 rounded-lg border border-border bg-muted/60 p-2 sm:mx-3 sm:mb-3 sm:space-y-3 sm:p-3" dir="rtl">
-                {seriesSlots?.map((slot) => renderFeedCard(slot, undefined, true))}
+                {seriesSlots?.map((slot: CampaignRow) => renderFeedCard(slot, undefined, true))}
               </div>
             </AnimatedExpansion>
           </article>
@@ -7476,7 +7476,7 @@ const DraftCollapsibleCard = ({
               ? `${status.images} תמונות`
               : 'ממתין';
   return (
-    <div className="rounded-2xl border border-border/60 bg-card shadow-sm" dir="rtl">
+    <div className="rounded-2xl border border-border/60 bg-card shadow-xs" dir="rtl">
       <div className="flex w-full items-center gap-2 px-4 py-3">
         <button
           type="button"
@@ -7531,7 +7531,7 @@ const DraftCollapsibleCard = ({
             'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-bold transition',
             published || !status?.canPublish
               ? 'cursor-not-allowed bg-muted text-muted-foreground/80'
-              : 'bg-[hsl(217,80%,18%)] text-white shadow-sm hover:bg-[hsl(217,80%,14%)]',
+              : 'bg-[hsl(217,80%,18%)] text-white shadow-xs hover:bg-[hsl(217,80%,14%)]',
           )}
         >
           <Megaphone className="h-3.5 w-3.5" />
@@ -8642,9 +8642,9 @@ const CampaignCenter = () => {
               countdownIso={r.sent_at}
               details={r._seriesSlots && (
                 <ul className="mt-2 max-h-64 overflow-y-auto divide-y divide-border">
-                  {r._seriesSlots.map((slot) => <li key={slot.id} className="flex items-center justify-between gap-2 py-2 text-xs text-muted-foreground">
+                  {r._seriesSlots.map((slot: CampaignRow) => <li key={slot.id} className="flex items-center justify-between gap-2 py-2 text-xs text-muted-foreground">
                     <span className="min-w-0 truncate">{slot.message_body?.split('\n')[0] || slot.campaign_name}</span>
-                    <span className="shrink-0">{new Date(slot.sent_at).toLocaleString('he-IL')} · בתור</span>
+                    <span className="shrink-0">{new Date(slot.sent_at as string).toLocaleString('he-IL')} · בתור</span>
                   </li>)}
                 </ul>
               )}
@@ -8909,7 +8909,7 @@ const CampaignCenter = () => {
                       onClick={() => setDeleteAllOpen(true)}
                       title="מחק את כל הטיוטות"
                       aria-label="מחק את כל הטיוטות"
-                      className="inline-flex items-center justify-center rounded-xl border border-destructive/30 bg-card px-4 py-3 text-destructive shadow-sm transition hover:bg-destructive/10"
+                      className="inline-flex items-center justify-center rounded-xl border border-destructive/30 bg-card px-4 py-3 text-destructive shadow-xs transition hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -8918,7 +8918,7 @@ const CampaignCenter = () => {
                       onClick={() => setBulkGlobalScheduleOpen(true)}
                       title="תזמון קמפיין גלובלי לכל הטיוטות"
                       aria-label="תזמון קמפיין גלובלי לכל הטיוטות"
-                      className="relative inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
+                      className="relative inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-xs transition hover:bg-[hsl(217,80%,18%)]/5"
                     >
 
                       <CalendarIcon className="h-4 w-4" />
@@ -8932,7 +8932,7 @@ const CampaignCenter = () => {
                         onClick={() => setBulkGroupPickerOpen(true)}
                         title="בחירת קבוצות לכל הטיוטות"
                         aria-label="בחירת קבוצות לכל הטיוטות"
-                        className="relative inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-sm transition hover:bg-[hsl(217,80%,18%)]/5"
+                        className="relative inline-flex items-center justify-center rounded-xl border border-[hsl(217,80%,18%)]/30 bg-card px-4 py-3 text-[hsl(217,80%,18%)] shadow-xs transition hover:bg-[hsl(217,80%,18%)]/5"
                       >
                         <Users className="h-4 w-4" />
                         <span className="absolute -top-1 -left-1 min-w-[18px] rounded-full bg-[hsl(217,80%,18%)] px-1 text-[10px] font-bold leading-[18px] text-white" dir="ltr">

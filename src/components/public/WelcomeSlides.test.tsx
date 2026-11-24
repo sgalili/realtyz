@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fireEvent, render as rtlRender, screen } from "@testing-library/react";
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from '@/lib/router-compat';
 import type { ReactElement } from 'react';
 import { WelcomeSlides } from "@/components/public/WelcomeSlides";
 const render = (element: ReactElement) => rtlRender(<MemoryRouter>{element}</MemoryRouter>);

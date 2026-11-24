@@ -1,7 +1,7 @@
 // Reusable share control for property results — cards, table rows, preview
 // dialog and batch selection all mint the same secure landing-page link.
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppMode } from '@/hooks/useAppMode';
 import { useUserRole } from '@/hooks/useUserRole';

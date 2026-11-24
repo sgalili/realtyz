@@ -734,7 +734,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
                   <PopoverContent
                     align="start"
                     side="bottom"
-                    className="p-0 w-[--radix-popover-trigger-width]"
+                    className="p-0 w-[var(--radix-popover-trigger-width)]"
                     dir="rtl"
                     onOpenAutoFocus={(e) => e.preventDefault()}
                   >

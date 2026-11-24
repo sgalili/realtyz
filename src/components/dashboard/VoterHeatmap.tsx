@@ -58,7 +58,7 @@ function StaticMapFallback({ mapboxToken, cityClusters }: { mapboxToken: string;
           className="w-full h-[300px] object-cover"
           loading="lazy"
         />
-        <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur-sm rounded px-2 py-1 text-[10px] text-muted-foreground">
+        <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur-xs rounded px-2 py-1 text-[10px] text-muted-foreground">
           מפה סטטית - הדפדפן אינו תומך ב-WebGL
         </div>
       </div>

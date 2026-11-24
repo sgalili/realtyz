@@ -15,5 +15,5 @@ export function ProfilePageClose({ onClose }: { onClose: () => void }) {
     window.addEventListener('resize', update);
     return () => { observer.disconnect(); window.removeEventListener('resize', update); };
   }, []);
-  return createPortal(<Button ref={button} size="icon" variant="ghost" aria-label="סגירה וחזרה לדף הקודם" title="סגירה" onClick={onClose} className="fixed left-4 top-4 z-40 h-11 w-11 rounded-full bg-background text-foreground shadow-sm"><X className="h-[22px] w-[22px]" /></Button>, document.body);
+  return createPortal(<Button ref={button} size="icon" variant="ghost" aria-label="סגירה וחזרה לדף הקודם" title="סגירה" onClick={onClose} className="fixed left-4 top-4 z-40 h-11 w-11 rounded-full bg-background text-foreground shadow-xs"><X className="h-[22px] w-[22px]" /></Button>, document.body);
 }

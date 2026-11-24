@@ -1,7 +1,7 @@
 import { useWalkthrough } from '@/lib/appWalkthrough';
 import { useAppMode } from '@/hooks/useAppMode';
 import { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from '@/lib/router-compat';
 import {
   Activity, BadgePercent, Building, Building2, CheckSquare2, ChevronLeft,
   ChevronRight, Compass, Globe2, Handshake, HelpCircle, Home,

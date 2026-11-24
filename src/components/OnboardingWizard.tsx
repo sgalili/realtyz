@@ -313,7 +313,7 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
         {/* Step 1 */}
         {step === 1 && (
           <div className="space-y-4">
-            <div className="rounded-lg border border-primary/30 bg-background p-5 text-center shadow-sm">
+            <div className="rounded-lg border border-primary/30 bg-background p-5 text-center shadow-xs">
               <Label className="text-lg font-black text-foreground">כמה עסקאות אתם רוצים להשיג?</Label>
               <div className="mt-3">
                 <SliderBlock label="" value={mandateTarget} onChange={setMandateTarget} min={1} max={15} suffix=" עסקאות" />
@@ -536,7 +536,7 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
               </div>
             )}
             {!generatingBrief && brief && briefStats && (
-              <StrategyBriefCard brief={brief} stats={briefStats} candidate={candidate} />
+              <StrategyBriefCard brief={brief!} stats={briefStats!} candidate={candidate} />
             )}
             {!generatingBrief && !brief && (
               <div className="text-center py-8">

@@ -1,6 +1,6 @@
 // Standalone board-row actions extracted from the share menu.
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { ExternalLink, Loader2, Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';

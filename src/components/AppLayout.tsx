@@ -3,7 +3,7 @@ import { platformPresentation } from '@/lib/platformPresentation';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { FaqHost } from '@/components/faq/FaqDialog';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from '@/lib/router-compat';
 import { Input } from '@/components/ui/input';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
@@ -512,7 +512,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
-              {brokersOnly ? <Link to="/dashboard" aria-label="לוח בקרה" title="לוח בקרה" className="grid h-10 w-10 place-items-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><LayoutDashboard className="h-6 w-6" /></Link> : <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />}
+              {brokersOnly ? <Link to="/dashboard" aria-label="לוח בקרה" title="לוח בקרה" className="grid h-10 w-10 place-items-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"><LayoutDashboard className="h-6 w-6" /></Link> : <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />}
             </div>
             </div>
           </header>

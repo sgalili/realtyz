@@ -79,7 +79,7 @@ export default function OwnerProperties() {
           {listings.map((listing) => {
             const photos = ownerListingPhotos(listing);
             return (
-              <article key={listing.id} className="overflow-hidden rounded-xl border bg-card shadow-sm">
+              <article key={listing.id} className="overflow-hidden rounded-xl border bg-card shadow-xs">
                 {photos[0] ? (
                   <img src={photos[0]} alt={listing.property_title ?? 'נכס'} className="h-40 w-full object-cover" />
                 ) : (

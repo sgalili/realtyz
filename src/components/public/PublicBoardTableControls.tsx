@@ -4,7 +4,7 @@ import { SortableContext, useSortable, horizontalListSortingStrategy, sortableKe
 import { CSS } from '@dnd-kit/utilities';
 import { ArrowDown, ArrowUp, Columns3, GripVertical, HelpCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from '@/lib/router-compat';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
@@ -45,7 +45,7 @@ function sortValue(card: PublicCard, id: BoardColumnId): string | number | null 
     case 'address': return [card.street, card.neighborhood, card.city].filter(Boolean).join(', ') || null;
     case 'commissions': return null;
     case 'publisher': { const a = (card as { attribution?: { office_name?: string | null; broker_name?: string | null } }).attribution; return a?.office_name || a?.broker_name || null; }
-    default: return card[id];
+    default: return (card as unknown as Record<string, string | number | null>)[id] ?? null;
   }
 }
 export function usePublicBoardColumns<T = PublicCard>(identity: string, rows: T[], configuration?: { columns: { id: BoardColumnId; label: string }[]; value: (row: T, id: BoardColumnId) => string | number | null }) {

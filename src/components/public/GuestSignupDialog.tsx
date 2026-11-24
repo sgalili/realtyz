@@ -1,6 +1,6 @@
 // Shown to unauthenticated guests when they tap a restricted board action
 // (share, publish, favorite, ...). Offers a prominent free-registration CTA.
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';

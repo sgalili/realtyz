@@ -9,7 +9,7 @@
  * the page content. On small screens it stays single-row but compresses
  * the title (truncate) so the controls always fit.
  */
-import { useLocation } from 'react-router-dom';
+import { useLocation } from '@/lib/router-compat';
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/$/, title: 'משימות' },
@@ -67,7 +67,7 @@ export function PageToolbar() {
   return (
     <div
       dir="rtl"
-      className="w-full border-b border-border bg-card/60 backdrop-blur-sm print:hidden"
+      className="w-full border-b border-border bg-card/60 backdrop-blur-xs print:hidden"
     >
       <div className="flex h-12 items-center justify-between gap-2 px-3 sm:px-6">
         {/* Nav opens from the profile avatar in the header — no burger button */}

@@ -22,14 +22,14 @@ interface State {
 const FRIENDLY_MESSAGE = 'משהו השתבש, מנסה להתחבר מחדש...';
 
 class ErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false, retrying: false, retryCount: 0 };
+  override state: State = { hasError: false, retrying: false, retryCount: 0 };
   private retryTimer: number | null = null;
 
   static getDerivedStateFromError(): Partial<State> {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
+  override componentDidCatch(error: Error, info: ErrorInfo) {
     logClientError({
       source: this.props.source,
       message: error.message || 'Unknown error',
@@ -44,7 +44,7 @@ class ErrorBoundary extends Component<Props, State> {
     }
   }
 
-  componentWillUnmount() {
+  override componentWillUnmount() {
     if (this.retryTimer) window.clearTimeout(this.retryTimer);
   }
 
@@ -56,7 +56,7 @@ class ErrorBoundary extends Component<Props, State> {
     }));
   };
 
-  render() {
+  override render() {
     if (!this.state.hasError) return this.props.children;
     if (this.props.fallback) return this.props.fallback;
 

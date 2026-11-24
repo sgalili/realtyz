@@ -8,7 +8,7 @@ vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ roles: state.roles
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: { editable: state.editable, details: { daily_lead_cap: 12 } }, isLoading: false, isError: false }) }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: state.user }) }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => 'workspace' }));
-vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn(), useLocation: () => ({ pathname: '/', search: '' }) }));
+vi.mock('@/lib/router-compat', () => ({ useNavigate: () => vi.fn(), useLocation: () => ({ pathname: '/', search: '' }) }));
 vi.mock('./RewardDialog', () => ({ RewardDialog: () => <div role="dialog"><label>הגדרות לידים<input aria-label="מחיר ליד" /></label></div> }));
 vi.mock('@/hooks/useAffiliateLicense', () => ({ useAffiliateLicense: () => ({ level4Unlocked: state.level4Unlocked }) }));
 const listing = { tier1_amount: 100, tier2_amount: 150, tier3_amount: 0, tier4_amount: 10000 } as MarketplaceListing;

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MessageCircle, Phone, Search, Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import ContactAvatar from '@/components/contacts/ContactAvatar';
 import { officialWaLink } from '@/lib/officialWa';
 import { fmtCredits, ilsToCredits } from '@/lib/credits';

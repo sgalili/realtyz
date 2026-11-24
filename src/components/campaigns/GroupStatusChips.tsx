@@ -225,7 +225,7 @@ export function GroupStatusChips({
 }
 
 /** One group: full name opens the post; truncated names add a chevron popover with a post link. */
-function SingleGroupPill({ name, url, status }: { name: string; url: string; status: ReactNode }) {
+function SingleGroupPill({ name, url, status }: { name: string; url: string | null; status: ReactNode }) {
   const textRef = useRef<HTMLSpanElement>(null);
   const [truncated, setTruncated] = useState(false);
   useLayoutEffect(() => {
@@ -252,7 +252,7 @@ function SingleGroupPill({ name, url, status }: { name: string; url: string; sta
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" dir="rtl" className="w-[min(20rem,calc(100vw-2rem))] p-3 text-sm" onClick={(e) => e.stopPropagation()}>
-            <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 break-words text-primary hover:underline">
+            <a href={url ?? undefined} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 break-words text-primary hover:underline">
               <span className="min-w-0 flex-1">{name}</span>
               <ExternalLink className="mt-0.5 h-4 w-4 shrink-0" />
             </a>

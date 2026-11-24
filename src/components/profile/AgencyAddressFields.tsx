@@ -49,7 +49,7 @@ function NationalCombobox({ label, value, placeholder, disabled, options, loadin
           />
         </div>
       </PopoverTrigger>
-      <PopoverContent dir="rtl" align="start" collisionPadding={16} onOpenAutoFocus={event => event.preventDefault()} className={`max-h-72 overflow-y-auto p-1 ${menuClassName ?? 'w-[--radix-popover-trigger-width]'}`}>
+      <PopoverContent dir="rtl" align="start" collisionPadding={16} onOpenAutoFocus={event => event.preventDefault()} className={`max-h-72 overflow-y-auto p-1 ${menuClassName ?? 'w-[var(--radix-popover-trigger-width)]'}`}>
         {loading && <div role="status" className="flex items-center justify-center gap-2 px-3 py-4 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />טוען תוצאות…</div>}
         {!loading && error && <p role="alert" className="px-3 py-4 text-center text-sm text-destructive">שירות הכתובות אינו זמין כרגע</p>}
         {!loading && !error && options.length === 0 && <p className="px-3 py-4 text-center text-sm text-muted-foreground">לא נמצאו תוצאות</p>}

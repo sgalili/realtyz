@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useAuth } from '@/hooks/useAuth';

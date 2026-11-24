@@ -1,6 +1,6 @@
 import { usePersonalLanguage } from '@/i18n/personalLanguage';
 import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole, userRolesQueryKey } from '@/hooks/useUserRole';

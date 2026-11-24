@@ -1,5 +1,5 @@
 import { useRef, useState, type TouchEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { Building2, Network, Bot, Megaphone, UserRound, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 

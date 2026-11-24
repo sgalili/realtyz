@@ -7,7 +7,7 @@ import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { BrandIcon } from '@/components/BrandIcon';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -592,7 +592,7 @@ function ScrollableTabsRow({ tab, setTab, visibleTabs, counts }: {
       <div ref={ref} onScroll={update} className="overflow-x-auto rounded-xl border border-border/60 bg-muted/40 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <TabsList className="flex h-[44px] w-max min-w-full justify-start gap-1 bg-transparent p-1">
           {visibleTabs.map((key) => (
-            <TabsTrigger key={key} value={key} style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 font-semibold transition data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm md:flex-1">
+            <TabsTrigger key={key} value={key} style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 font-semibold transition data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs md:flex-1">
               {TABS_WITHOUT_COUNT.has(key) ? TAB_LABEL[key] : `${TAB_LABEL[key]} (${counts[key] ?? 0})`}
             </TabsTrigger>
           ))}

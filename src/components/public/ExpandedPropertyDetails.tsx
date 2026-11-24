@@ -14,7 +14,7 @@ import BrokerAttribution from '@/components/properties/BrokerAttribution';
 import PropertyCommissionIcons, { type RewardFacts } from './PropertyCommissionIcons';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { isUnavailableListingError } from '@/lib/publicListingLookup';
 import PropertyGallerySlider from './PropertyGallerySlider';
@@ -283,10 +283,10 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
           <div className="relative overflow-hidden rounded-xl border">
             <iframe title="מפת הנכס" src={embedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-56 w-full border-0" />
             <div className="absolute left-2 top-2 flex flex-col gap-1">
-              <a href={wazeUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 rounded-md border bg-card px-2 py-0.5 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted">
+              <a href={wazeUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 rounded-md border bg-card px-2 py-0.5 text-xs font-semibold text-foreground shadow-xs transition-colors hover:bg-muted">
                 <Navigation className="h-3.5 w-3.5 text-primary" />ניווט בוויז
               </a>
-              <a href={gmapsUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 rounded-md border bg-card px-2 py-0.5 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted">
+              <a href={gmapsUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 rounded-md border bg-card px-2 py-0.5 text-xs font-semibold text-foreground shadow-xs transition-colors hover:bg-muted">
                 <MapPin className="h-3.5 w-3.5 text-success" />גוגל מפות
               </a>
             </div>

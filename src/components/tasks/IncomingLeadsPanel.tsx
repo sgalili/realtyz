@@ -5,7 +5,7 @@
  * scheduled demo of the ACTIVE workspace so the whole intake queue is handled
  * in one place instead of on the dashboard.
  */
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';

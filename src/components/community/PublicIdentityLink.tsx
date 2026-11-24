@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router-compat';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -31,5 +31,5 @@ export function PublicIdentityLink({ userId, office = false, exactOffice = false
   if (!userId) return <span className={className}>{children}</span>;
   const to = exactOffice ? `/agency/${encodeURIComponent(userId)}` : identityPath(userId, rosterSize);
   void office;
-  return <Link to={to} aria-label={label} className={cn('rounded-sm underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', className)} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>{children}</Link>;
+  return <Link to={to} aria-label={label} className={cn('rounded-sm underline-offset-2 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring', className)} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>{children}</Link>;
 }

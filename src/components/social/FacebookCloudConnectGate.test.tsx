@@ -9,7 +9,7 @@ vi.mock('@/hooks/useMetaPageBinding', () => ({ useMetaPageBinding: () => ({ data
 vi.mock('@/lib/cloudSession', () => ({ getCloudSessionState: mocks.state }));
 vi.mock('@/lib/cloudGroupDiscovery', () => ({ fetchGroupsViaCloud: mocks.sync }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: mocks.invoke } } }));
-vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
+vi.mock('@/lib/router-compat', () => ({ useNavigate: () => mocks.navigate }));
 vi.mock('@/i18n/personalLanguage', () => ({ usePersonalLanguage: () => ({ gender: 'male', command: (v: string) => v, text: (forms: { male: string }) => forms.male }), localizeControlNode: (v: unknown) => v }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 import { FacebookCloudConnectGate } from './FacebookCloudConnectGate';

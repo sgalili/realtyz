@@ -346,7 +346,7 @@ const AIContentGenerator = () => {
                                 const { data: latest } = await supabase
                                   .from('ai_content_logs')
                                   .select('id')
-                                  .eq('created_by', user?.id)
+                                  .eq('created_by', user?.id as string)
                                   .order('created_at', { ascending: false })
                                   .limit(1)
                                   .maybeSingle();

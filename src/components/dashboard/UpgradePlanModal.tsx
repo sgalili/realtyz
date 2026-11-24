@@ -1,5 +1,5 @@
 import { ArrowUpRight, Check, Mic, ShieldCheck, Sparkles, Users, Zap } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 

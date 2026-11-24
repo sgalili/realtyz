@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidateLiveData } from '@/lib/liveSync';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from '@/lib/router-compat';
 import { supabase } from '@/integrations/supabase/client';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { Button } from '@/components/ui/button';
@@ -285,7 +285,7 @@ export function SidebarIntelInput() {
       {/* WhatsApp-style composer: pill input + circular action button */}
       <div className="flex items-end gap-1.5">
         {/* Input pill (right side in RTL) with paperclip inside */}
-        <div className="flex-1 rounded-[23px] p-px shadow-sm bg-gradient-to-br from-[hsl(0_0%_45%)] to-[hsl(0_0%_60%)]">
+        <div className="flex-1 rounded-[23px] p-px shadow-xs bg-gradient-to-br from-[hsl(0_0%_45%)] to-[hsl(0_0%_60%)]">
           <div className="flex items-end gap-1 bg-background rounded-[22px] px-2 py-1 min-h-[40px]">
           <button
             type="button"

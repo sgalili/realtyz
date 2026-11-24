@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Building2, Check, ChevronsUpDown, User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';

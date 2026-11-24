@@ -97,7 +97,7 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
 
   const navigationButtons = navTarget ? (
     <div className="absolute left-2 top-2 z-10 flex flex-col gap-1">
-      <Button asChild variant="outline" size="sm" className="h-7 bg-card px-2 text-xs shadow-sm">
+      <Button asChild variant="outline" size="sm" className="h-7 bg-card px-2 text-xs shadow-xs">
         <a
           href={selected ? `https://waze.com/ul?ll=${selected.latitude},${selected.longitude}&navigate=yes` : `https://waze.com/ul?q=${navTargetEncoded}&navigate=yes`}
           target="_blank"
@@ -106,7 +106,7 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
           <Navigation className="h-3.5 w-3.5 text-primary" /> ניווט בוויז
         </a>
       </Button>
-      <Button asChild variant="outline" size="sm" className="h-7 bg-card px-2 text-xs shadow-sm">
+      <Button asChild variant="outline" size="sm" className="h-7 bg-card px-2 text-xs shadow-xs">
         <a
           href={`https://www.google.com/maps/dir/?api=1&destination=${navTargetEncoded}`}
           target="_blank"

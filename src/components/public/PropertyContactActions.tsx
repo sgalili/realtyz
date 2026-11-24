@@ -1,6 +1,6 @@
 import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { useEffect, useState, type CSSProperties } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { ClipboardList, Copy, Handshake, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';

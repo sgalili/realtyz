@@ -51,7 +51,7 @@ export default function PdfInlineViewer({
           canvas.style.width = '100%';
           canvas.style.height = 'auto';
           canvas.style.display = 'block';
-          canvas.className = 'rounded-md border border-slate-200 bg-white shadow-sm';
+          canvas.className = 'rounded-md border border-slate-200 bg-white shadow-xs';
           const ctx = canvas.getContext('2d')!;
           await page.render({ canvasContext: ctx, viewport }).promise;
           if (cancelled) return;

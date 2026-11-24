@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Megaphone, ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { ResultTable } from '@/pages/Properties';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,7 +21,7 @@ export default function PartnerProjectInventory({ records, grid }: { records: Pa
         {record.result.price != null && <strong>₪{record.result.price.toLocaleString('he-IL')}</strong>}
         <DeveloperCommissionBadges project={record.project} unit={record.unit} />
         <div className="flex justify-between"><Button variant="ghost" onClick={() => setOpened(record)}><ChevronLeft className="h-4 w-4" />פרטים</Button><Button size="icon" variant="outline" aria-label="יצירת קמפיין" title="יצירת קמפיין" onClick={() => post(record)}><Megaphone className="h-4 w-4" /></Button></div>
-      </CardContent></Card>)}</div> : <ResultTable results={records.map(record => ({ ...record.result, localId: undefined }))} importingKey={null} hideDefaultActions showPropertyNotes={false} propertyHref={() => null} propertyTitle={result => result.title}
+      </CardContent></Card>)}</div> : <ResultTable results={records.map(record => ({ ...record.result, localId: null }))} importingKey={null} hideDefaultActions showPropertyNotes={false} propertyHref={() => null} propertyTitle={result => result.title}
       onSelect={result => setOpened(records.find(record => record.result.key === result.key) ?? null)}
       commissionCell={result => { const record = records.find(record => record.result.key === result.key); return record ? <DeveloperCommissionBadges project={record.project} unit={record.unit} /> : null; }}
       endActions={result => { const record = records.find(record => record.result.key === result.key); return record ? <Button size="icon" variant="outline" aria-label="יצירת קמפיין" title="יצירת קמפיין" onClick={event => { event.stopPropagation(); post(record); }}><Megaphone className="h-4 w-4" /></Button> : null; }} />}

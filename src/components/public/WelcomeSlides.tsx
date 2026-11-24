@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { dismissWelcome, welcomeDismissed } from '@/lib/welcomePreference';
 import { openFaq } from '@/components/faq/FaqDialog';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 
 type Accent = 'gold' | 'red' | 'sky';
 const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span className={`welcome-accent-${tone}`}>{children}</span>;

@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useUserRole } from '@/hooks/useUserRole';
+import { sqlNull } from '@/lib/sqlNull';
 
 const STATUS: Record<string, string> = {
   received: 'התקבלה', initial_review: 'בבדיקה ראשונית', upheld: 'התקבלה – הוחזר', rejected: 'נדחתה',
@@ -51,7 +52,7 @@ export default function LeadDisputesPanel() {
     if (!action) return;
     setBusy(true);
     let res;
-    if (action.kind === 'open') res = await supabase.rpc('open_lead_dispute', { _charge_id: action.charge.id, _reason: reason, _details: text || null });
+    if (action.kind === 'open') res = await supabase.rpc('open_lead_dispute', { _charge_id: action.charge.id, _reason: reason, _details: sqlNull(text || null) });
     else if (action.kind === 'appeal') res = await supabase.rpc('appeal_lead_dispute', { _id: action.dispute.id, _reason: text });
     else if (action.kind === 'decide') res = await supabase.rpc('decide_lead_dispute', { _id: action.dispute.id, _upheld: !!upheld, _note: text });
     else res = await supabase.rpc('decide_lead_appeal', { _id: action.dispute.id, _upheld: !!upheld, _note: text });

@@ -16,7 +16,7 @@ export function Bar3DChart({ data, height = 200 }: Bar3DProps) {
           <div key={i} className="flex flex-col items-center gap-1 flex-1">
             <span className="text-xs font-bold text-foreground">{d.value}</span>
             <div className="relative w-full max-w-[40px]">
-              {/* 3D shadow */}
+              {/* 3D shadow-sm */}
               <div
                 className="absolute inset-0 rounded-t-md opacity-30"
                 style={{

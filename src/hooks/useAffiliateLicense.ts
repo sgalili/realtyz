@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { verifyBrokerLicense } from '@/lib/brokerLicense';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { sqlNull } from '@/lib/sqlNull';
 
 export type LicenseStatus = 'none' | 'pending' | 'verified' | 'rejected';
 
@@ -54,7 +55,7 @@ export function useAffiliateLicense() {
     queryKey: ['partner-closing-access', user?.id, activeWorkspaceId, 'workspace-official-license'],
     enabled: !!user?.id && !!activeWorkspaceId && !workspaceLoading,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('can_view_closing_prices', { _workspace_owner_id: activeWorkspaceId });
+      const { data, error } = await supabase.rpc('can_view_closing_prices', { _workspace_owner_id: sqlNull(activeWorkspaceId) });
       if (error) throw error;
       return data === true;
     },
@@ -94,7 +95,7 @@ export function useAffiliateLicense() {
       await verifyBrokerLicense(input.licenseNumber, 'verify');
       const { data, error } = await supabase.rpc('submit_affiliate_license', {
         _license_number: input.licenseNumber,
-        _holder_name: input.holderName ?? null,
+        _holder_name: sqlNull(input.holderName ?? null),
       });
       if (error) throw error;
       const result = (data ?? null) as { ok?: boolean; error?: string } | null;

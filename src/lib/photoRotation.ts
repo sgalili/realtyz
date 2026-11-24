@@ -2,6 +2,7 @@ export type PhotoRotationScope =
   | { type: 'workspace'; workspaceOwnerId: string; label: string }
   | { type: 'listing'; listingId: string; label: string }
   | { type: 'project-unit'; projectId: string; unitId: string; buildingId?: string | null; label: string };
+import { sqlNull } from '@/lib/sqlNull';
 
 export type PhotoRotationResult = { listings: number; projects: number; apartments: number; total: number };
 
@@ -14,7 +15,7 @@ export function rotateFirstTwo<T>(items: T[]): T[] {
 export function photoRotationRpcArgs(scope: PhotoRotationScope) {
   if (scope.type === 'workspace') return { _scope: 'workspace' as const, _workspace_owner_id: scope.workspaceOwnerId };
   if (scope.type === 'listing') return { _scope: 'listing' as const, _listing_id: scope.listingId };
-  return { _scope: 'project_unit' as const, _project_id: scope.projectId, _unit_id: scope.unitId, _building_id: scope.buildingId ?? null };
+  return { _scope: 'project_unit' as const, _project_id: scope.projectId, _unit_id: scope.unitId, _building_id: sqlNull(scope.buildingId ?? null) };
 }
 
 export function photoRotationConfirmation(scope: PhotoRotationScope) {

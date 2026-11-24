@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow, startOfDay, subDays } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -275,9 +275,9 @@ function KpiCard({
                 }
               : undefined
           }
-          className={`relative overflow-hidden border border-border/80 bg-card shadow-sm ${
+          className={`relative overflow-hidden border border-border/80 bg-card shadow-xs ${
             to
-              ? 'cursor-pointer transition-all hover:border-primary/50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+              ? 'cursor-pointer transition-all hover:border-primary/50 hover:shadow-md focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
               : ''
           }`}
         >
@@ -286,7 +286,7 @@ function KpiCard({
               type="button"
               aria-label="מידע על המדד"
               onClick={(e) => e.stopPropagation()}
-              className="absolute left-2 top-2 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="absolute left-2 top-2 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             >
               <HelpCircle className="h-4 w-4" />
             </button>

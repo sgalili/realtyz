@@ -4,7 +4,7 @@
 // commission lands here. No CRM, no office tooling: sign up, get the affiliate
 // role, and land straight in the affiliate portal.
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,6 +16,7 @@ import { Building2, Handshake, Sparkles, TrendingUp } from 'lucide-react';
 import { publicUrl } from '@/lib/publicUrl';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AFFILIATE_TERMS_VERSION } from '@/hooks/useAffiliateLicense';
+import { sqlNull } from '@/lib/sqlNull';
 
 const PERKS = [
   { icon: Building2, title: 'מאגר נכסים משותף', text: 'נכסים למכירה ולהשכרה שמתווכים פתחו לשיווק דיגיטלי על ידכם.' },
@@ -50,8 +51,8 @@ export default function AffiliateSignup() {
   const finish = async () => {
     // Idempotent: grants the affiliate role and upserts the payout profile.
     await supabase.rpc('register_as_affiliate', {
-      _display_name: fullName.trim() || null,
-      _phone: phone.trim() || null,
+      _display_name: sqlNull(fullName.trim() || null),
+      _phone: sqlNull(phone.trim() || null),
     });
     if (termsAccepted) {
       await supabase.rpc('accept_affiliate_terms', { _version: AFFILIATE_TERMS_VERSION });

@@ -20,7 +20,7 @@ const baseContact = {
   contact_gender: null,
 };
 
-function renderLine(contact: Partial<typeof baseContact>) {
+function renderLine(contact: Partial<Omit<typeof baseContact, 'contact_gender'>> & { contact_gender?: string | null }) {
   render(<QueryClientProvider client={new QueryClient()}><MarketingContactLine ownerId="owner-1" devName="יזם" contact={{ ...baseContact, ...contact }} /></QueryClientProvider>);
 }
 

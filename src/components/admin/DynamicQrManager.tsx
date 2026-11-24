@@ -170,7 +170,7 @@ export function DynamicQrManager() {
           <CardDescription>{"\n"}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
-          <div className="w-full max-w-[340px] rounded-lg border border-border bg-card p-3 shadow-sm">
+          <div className="w-full max-w-[340px] rounded-lg border border-border bg-card p-3 shadow-xs">
             <QRCodeCanvas
               ref={canvasRef}
               value={QR_URL}

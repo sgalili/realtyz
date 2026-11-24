@@ -1,0 +1,1324 @@
+{
+ "functions": [
+  {
+   "name": "account-self-delete",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "admin-broker-batch-import",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "admin-broker-contact",
+   "classification": "called by other backend functions",
+   "signal": "invoked by admin-broker-registry-batch",
+   "outcome": "left"
+  },
+  {
+   "name": "admin-broker-email-invitation",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "admin-broker-import-queue",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "admin-broker-invitation",
+   "classification": "internal-only",
+   "signal": "called from 4 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "admin-broker-registry-batch",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "admin-broker-registry-name",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "affiliate-map-properties",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "ai-agent",
+   "classification": "called by other backend functions",
+   "signal": "invoked by public-lead-gate",
+   "outcome": "left"
+  },
+  {
+   "name": "auth-email-hook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "auto-engagement-process",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "autopilot-queue-drain",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "book-meeting",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "book-property-tour",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "brightdata-balance",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "brightdata-usage",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "broker-whatsapp-scanner",
+   "classification": "external caller",
+   "signal": "called from worker-whatsapp",
+   "outcome": "left"
+  },
+  {
+   "name": "broker-whatsapp-scanner-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "broker-whatsapp-worker",
+   "classification": "external caller",
+   "signal": "called from worker-whatsapp",
+   "outcome": "left"
+  },
+  {
+   "name": "cache-post-media",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "calendar-autosync",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "calendar-availability",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "calendar-schedule-action",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "calibrate-persona-style",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "call-homely-api",
+   "classification": "called by other backend functions",
+   "signal": "invoked by generate-outreach-message",
+   "outcome": "left"
+  },
+  {
+   "name": "check-broker-certificate",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "city-alert-request",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "client-portal",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "closing-doc-reminder-cron",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "cloud-group-poster",
+   "classification": "external caller",
+   "signal": "called from cloud-runner",
+   "outcome": "left"
+  },
+  {
+   "name": "cloud-social-inbox",
+   "classification": "external caller",
+   "signal": "called from cloud-runner",
+   "outcome": "left"
+  },
+  {
+   "name": "community-broadcast",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "compute-lead-score",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "create-property-share",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "crm-json-import",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "demo-booking-notify",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "demo-session",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "developer-import-jobs",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "dispatch-campaign",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "draft-property-share",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "elevenlabs-agent-sync",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "elevenlabs-call-token",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "elevenlabs-call-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "elevenlabs-voice-clone",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "elevenlabs-voice-manage",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "email-auth",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "engagement-greetings",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "enrich-lead-web",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "enrich-owner-profile",
+   "classification": "called by other backend functions",
+   "signal": "invoked by homely-fetch-property",
+   "outcome": "left"
+  },
+  {
+   "name": "escalation-alert",
+   "classification": "called by other backend functions",
+   "signal": "invoked by ai-agent",
+   "outcome": "left"
+  },
+  {
+   "name": "executive-summary",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "ext-group-guard",
+   "classification": "external caller",
+   "signal": "called from extension",
+   "outcome": "left"
+  },
+  {
+   "name": "ext-metrics",
+   "classification": "external caller",
+   "signal": "called from extension",
+   "outcome": "left"
+  },
+  {
+   "name": "ext-queue-claim",
+   "classification": "external caller",
+   "signal": "called from extension",
+   "outcome": "left"
+  },
+  {
+   "name": "ext-queue-report",
+   "classification": "external caller",
+   "signal": "called from extension",
+   "outcome": "left"
+  },
+  {
+   "name": "external-import-worker",
+   "classification": "external caller",
+   "signal": "called from worker",
+   "outcome": "left"
+  },
+  {
+   "name": "extract-pdf-properties",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "extract-property",
+   "classification": "called by other backend functions",
+   "signal": "invoked by ai-agent",
+   "outcome": "left"
+  },
+  {
+   "name": "facebook-groups-fetch",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "fb-comments-backfill",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "fb-engagement-daily-digest",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "fb-engagement-draft",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "fb-group-manager",
+   "classification": "external caller",
+   "signal": "called from cloud-runner",
+   "outcome": "left"
+  },
+  {
+   "name": "fb-groups-import",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "fb-personal-connect",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "fb-post-status-sync",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "fb-recent-posts",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "fb-session-vault",
+   "classification": "external caller",
+   "signal": "called from cloud-runner",
+   "outcome": "left"
+  },
+  {
+   "name": "fetch-missing-post-media",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "fetch-property-all-images",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "fetch-social-avatar",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "fetch-wa-avatars",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "filter-listing-media",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "finalize-text",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "generate-closing-doc",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "generate-content",
+   "classification": "called by other backend functions",
+   "signal": "invoked by scheduled-post-dispatcher",
+   "outcome": "left"
+  },
+  {
+   "name": "generate-embedding",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "generate-outreach-message",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "global-ai-ingest",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "gologin-admin",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "google-oauth-config",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "google-oauth-exchange",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "gov-nadlan-lookup",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "greenapi-session",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "greenapi-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "greenapi-webhook-sync",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "grow-lead-billing",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "grow-payments",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "handle-email-suppression",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "handle-email-unsubscribe",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "homely-daily-sync",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "homely-fetch-property",
+   "classification": "called by other backend functions",
+   "signal": "invoked by ai-agent",
+   "outcome": "left"
+  },
+  {
+   "name": "homely-leads",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "homely-push-lead",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "homely-search",
+   "classification": "internal-only",
+   "signal": "called from 4 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "homely-verify-login",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "homely-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "import-invitation-click",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "ingest-system-rule",
+   "classification": "called by other backend functions",
+   "signal": "invoked by master-research",
+   "outcome": "left"
+  },
+  {
+   "name": "ivr-broadcast",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "kb-chat",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "kb-gemini-studio",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "kb-ingest",
+   "classification": "called by other backend functions",
+   "signal": "invoked by wa-kb-webhook",
+   "outcome": "left"
+  },
+  {
+   "name": "kb-ingest-link",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "kb-query",
+   "classification": "called by other backend functions",
+   "signal": "invoked by ai-agent",
+   "outcome": "left"
+  },
+  {
+   "name": "lead-first-whatsapp",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "lead-followup-drip",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "learn-from-edit",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "lease-expiry-reminders",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "license-status-notify",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "linkedin-oauth-exchange",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "listings-metadata-backfill",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "madlan-search",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "manage-api-configs",
+   "classification": "internal-only",
+   "signal": "called from 5 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "master-research",
+   "classification": "called by other backend functions",
+   "signal": "invoked by ai-agent",
+   "outcome": "left"
+  },
+  {
+   "name": "match-and-alert",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "match-listings",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "mcp",
+   "classification": "MCP server",
+   "signal": "MCP handler",
+   "outcome": "left"
+  },
+  {
+   "name": "meeting-reminder-cron",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "meta-comments-sync",
+   "classification": "called by other backend functions",
+   "signal": "invoked by auto-engagement-process",
+   "outcome": "left"
+  },
+  {
+   "name": "meta-comments-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "meta-dm-send",
+   "classification": "called by other backend functions",
+   "signal": "invoked by send-message",
+   "outcome": "left"
+  },
+  {
+   "name": "meta-dm-sync",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "meta-dm-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "meta-insights",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "meta-page-connect",
+   "classification": "internal-only",
+   "signal": "called from 6 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "meta-publish",
+   "classification": "called by other backend functions",
+   "signal": "invoked by scheduled-post-dispatcher",
+   "outcome": "left"
+  },
+  {
+   "name": "meta-wa-health",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "meta-wa-register",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "meta-wa-templates",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "meta-wa-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "mirror-external-image",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "monitor-social-connections",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "neighborhood-perks",
+   "classification": "called by other backend functions",
+   "signal": "invoked by suggest-comment-reply",
+   "outcome": "left"
+  },
+  {
+   "name": "notify-agent",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "notify-signup-admin",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "onboarding-draft",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "outreach-suggest",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "owner-crm-sync",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "parse-listing-text",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "places-autocomplete",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "preview-master-auth",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "preview-transactional-email",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "process-activity-queue",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "process-email-queue",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "properties-scheduled-sync",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "public-lead-gate",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "public-listing-view",
+   "classification": "called by other backend functions",
+   "signal": "invoked by generate-content",
+   "outcome": "left"
+  },
+  {
+   "name": "public-listings-board",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "railway-worker-gateway",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "resend-email-sender",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "resend-inbound-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "resolve-live-image",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "resolve-post-og-image",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "retry-ai-call",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "rita-conversation",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "rita-live",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "run-automation",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "scheduled-post-dispatcher",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "scrape-yad2",
+   "classification": "called by other backend functions",
+   "signal": "invoked by ai-agent",
+   "outcome": "left"
+  },
+  {
+   "name": "send-closing-doc",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "send-message",
+   "classification": "internal-only",
+   "signal": "called from 4 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "send-referral",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "send-strategic-pdf-whatsapp",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "send-telegram",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "send-transactional-email",
+   "classification": "called by other backend functions",
+   "signal": "invoked by account-self-delete",
+   "outcome": "left"
+  },
+  {
+   "name": "send-whatsapp",
+   "classification": "called by other backend functions",
+   "signal": "invoked by account-self-delete",
+   "outcome": "left"
+  },
+  {
+   "name": "share-property-view",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "shortlink-create",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "shortlink-resolve",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "sign-closing-doc",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "simulate-lead-enquiry",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "smart-link",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "sms-019-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "sms-inbound-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "spin-group-post",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "strategy-brief",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "suggest-comment-reply",
+   "classification": "called by other backend functions",
+   "signal": "invoked by auto-engagement-process",
+   "outcome": "left"
+  },
+  {
+   "name": "super-admin-create-user",
+   "classification": "called by other backend functions",
+   "signal": "invoked by admin-broker-batch-import",
+   "outcome": "left"
+  },
+  {
+   "name": "super-admin-delete-users",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "sync-all-facebook-post-images",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "sync-owner-wa-avatar",
+   "classification": "internal-only",
+   "signal": "called from 5 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "system-health-watchdog",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "telegram-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "test-sms-connection",
+   "classification": "internal-only",
+   "signal": "called from 3 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "test-social-connection",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "test-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "tour-confirm",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "tour-feedback-followup",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "tour-notify",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "tour-reminders",
+   "classification": "cron target",
+   "signal": "scheduled job reference or scheduler-style name",
+   "outcome": "left"
+  },
+  {
+   "name": "transcribe-audio",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "trial-autopilot-dispatch",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "trial-inbound-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "usage-track",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "vapi-call-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "vapi-outbound-call",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "vapi-tool-handler",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "vapi-verify-credentials",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "verify-broker-license",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "verify-google-credentials",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "verify-google-identity",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "verify-linkedin-credentials",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "visitor-rita",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "wa-kb-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "wa-media",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "wba-diagnose",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "webtiv-homely-sync",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "whatsapp-auth",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "whatsapp-webhook",
+   "classification": "webhook receiver",
+   "signal": "webhook/callback name or signature verification",
+   "outcome": "left"
+  },
+  {
+   "name": "yad2-ad-status",
+   "classification": "internal-only",
+   "signal": "called from 2 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "yad2-agency-import",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "yad2-developer-import",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "yad2-market-pulse",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "yad2-page-sections",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "yad2-search",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  },
+  {
+   "name": "yad2-unlocker",
+   "classification": "called by other backend functions",
+   "signal": "invoked by admin-broker-batch-import",
+   "outcome": "left"
+  },
+  {
+   "name": "yad2-verify-login",
+   "classification": "unknown",
+   "signal": "no internal call sites",
+   "outcome": "left"
+  },
+  {
+   "name": "youtube-publish",
+   "classification": "internal-only",
+   "signal": "called from 1 src/ files",
+   "outcome": "left"
+  }
+ ]
+}

@@ -19,7 +19,7 @@ import { closingLevelClass, closingRewardLevel } from '@/lib/leadPriceRanges';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import type { ReactNode } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from '@/lib/router-compat';
 import { ClipboardList, Phone, Trophy, Lock, Sparkles, ChevronDown } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import { PricingCardHelp } from './PricingCardHelp';
@@ -74,7 +74,7 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
           <Button type="button" variant="ghost" onClick={join} className="h-auto w-full justify-start gap-3 whitespace-normal p-0 text-start hover:bg-transparent">
             <row.Icon className={`h-8 w-8 shrink-0 ${knownZero(row.key, row.amount) ? 'lead-no-fee' : row.tone}`} />
             <span className="min-w-0 flex-1 text-lg font-bold leading-snug">{row.label}</span>
-            {knownZero(row.key, row.amount) ? <bdi dir="ltr" className="lead-no-fee shrink-0 text-base">{fmtILS(0)}</bdi> : <span className="flex shrink-0 items-center gap-1"><bdi dir="ltr" aria-hidden className={`select-none text-2xl font-extrabold opacity-60 blur-sm ${row.tone}`}>{row.fake}</bdi><Lock className="h-4 w-4 text-muted-foreground" /></span>}
+            {knownZero(row.key, row.amount) ? <bdi dir="ltr" className="lead-no-fee shrink-0 text-base">{fmtILS(0)}</bdi> : <span className="flex shrink-0 items-center gap-1"><bdi dir="ltr" aria-hidden className={`select-none text-2xl font-extrabold opacity-60 blur-xs ${row.tone}`}>{row.fake}</bdi><Lock className="h-4 w-4 text-muted-foreground" /></span>}
           </Button>
         </Card>)}
       </div>

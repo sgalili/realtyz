@@ -8,7 +8,7 @@ import { generateSocialDraft } from '@/lib/socialDraftGeneration';
 // with a `scheduled_at` timestamp.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { Repeat, Users, ChevronLeft, X, Loader2, MapPin } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';

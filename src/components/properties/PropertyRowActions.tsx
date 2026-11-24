@@ -2,7 +2,7 @@
 // Shared by the workspace table and the public board's owner-only expansion.
 import { returnState } from "@/lib/returnNav";
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { ExternalLink, Handshake, Heart, Loader2, Megaphone, MoreVertical, Pencil, Share2, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';

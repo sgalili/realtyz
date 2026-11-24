@@ -1,0 +1,484 @@
+{
+ "customizations": [
+  {
+   "token": "--font-sans",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--font-heading",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--font-display",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--font-hebrew",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--font-serif",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-gender-male",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-gender-female",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-border",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-input",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-ring",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-ring-offset-background",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-background",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-primary",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-primary-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-primary-glow",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-secondary",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-secondary-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-destructive",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-destructive-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-muted",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-muted-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-accent",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-accent-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-popover",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-popover-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-card",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-card-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-sidebar",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-sidebar-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-sidebar-primary",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-sidebar-primary-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-sidebar-accent",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-sidebar-accent-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-sidebar-border",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-sidebar-ring",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-lead-form",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-lead-whatsapp",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-lead-phone",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-lead-closing",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-success",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-success-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-warning",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-warning-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-whatsapp-header",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-whatsapp-header-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-whatsapp-chat",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-whatsapp-footer",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-whatsapp-bubble-out",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-whatsapp-bubble-in",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-whatsapp-accent",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-social-whatsapp",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-social-sms",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-social-instagram",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-social-telegram",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-social-messenger",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-social-linkedin",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-social-tiktok",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-social-signal",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-social-x",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-social-facebook",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-social-email",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-social-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-deal-blue",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-deal-blue-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-deal-blue-soft",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-sale",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-sale-foreground",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-brand-navy",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-brand-blue",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-brand-deep",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-brand-gold",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-brand-gold-soft",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-brand-silver",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-brand-cream",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-gold",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-gold-deep",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--color-gold-soft",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--radius-lg",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--radius-md",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--radius-sm",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--shadow-soft",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--shadow-elegant",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--shadow-gold",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--spacing-section",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--spacing-section-sm",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--animate-accordion-down",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--animate-accordion-up",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--animate-fade-in",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--animate-scale-in",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--animate-pulse-ring",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--animate-count-up",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--animate-slide-down-smooth",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "--animate-slide-up-smooth",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "container (center, 2rem padding, 1400px)",
+   "source": "tailwind.config.ts",
+   "reappliedIn": "src/styles.css"
+  },
+  {
+   "token": "src/index.css custom properties, layers, keyframes and rules (full body)",
+   "source": "src/index.css",
+   "reappliedIn": "src/styles.css"
+  }
+ ]
+}

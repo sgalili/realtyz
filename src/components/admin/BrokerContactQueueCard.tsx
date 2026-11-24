@@ -13,7 +13,7 @@ import { recipientGroup, type RecipientGroup } from '@/lib/invitationSummaries';
 import { BrokerEmailConsentButton } from './BrokerEmailInvitations';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { useSuperAdminGate as useAdminGate } from '@/hooks/useSuperAdminGate';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';

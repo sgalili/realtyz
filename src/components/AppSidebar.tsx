@@ -25,7 +25,7 @@ import {
 import type { ComponentType } from 'react';
 import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from '@/lib/router-compat';
 import { returnState } from '@/lib/returnNav';
 import { useAuth } from '@/hooks/useAuth';
 import { SidebarWalletIndicator } from '@/components/billing/SidebarWalletIndicator';

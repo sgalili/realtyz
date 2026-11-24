@@ -9,7 +9,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { ListingVisibilityToggle } from '@/components/listings/ListingVisibilityToggle';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router-compat';
 
 interface LiveListing {
   id: string;

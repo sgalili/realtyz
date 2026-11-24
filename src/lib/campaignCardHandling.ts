@@ -42,7 +42,7 @@ export function collapseCampaignCards<T extends CardRow>(rows: T[]): Array<T & {
   }).sort(stableCardCompare);
 }
 
-export function groupPostDestination(result: { post_url?: string; post_id?: string; postId?: string } | undefined, group: string): string | null {
+export function groupPostDestination(result: { post_url?: string; post_id?: string; postId?: string } | undefined, group: string | null): string | null {
   const url = result?.post_url;
   if (url && /^https?:\/\/(?:[\w-]+\.)?(?:facebook\.com|fb\.com)\//i.test(url)) return url;
   const groupUrl = fbGroupUrl(group);

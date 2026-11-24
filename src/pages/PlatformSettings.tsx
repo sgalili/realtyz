@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlatformSettings, type PlatformSettings as Settings } from '@/hooks/usePlatformSettings';
 import { useUserRole } from '@/hooks/useUserRole';
-import { Navigate } from 'react-router-dom';
+import { Navigate } from '@/lib/router-compat';
 import { toast } from 'sonner';
 import { Settings2, Lock } from 'lucide-react';
 

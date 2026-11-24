@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router-compat';
 import { Sparkles, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
@@ -19,7 +19,7 @@ export function TrialBadge() {
     <div className="hidden md:flex items-center gap-2 ms-2">
       <div
         className={cn(
-          'flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur-sm transition-colors',
+          'flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur-xs transition-colors',
           expired
             ? 'border-destructive/40 bg-destructive/10 text-destructive'
             : 'border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground',

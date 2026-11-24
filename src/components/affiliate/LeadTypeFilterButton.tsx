@@ -326,7 +326,7 @@ export default function LeadTypeFilterButton({
               ) : null}
               {false && show('neighborhood') && neighborhoods.length ? (
                 <div className="space-y-1">
-                  <Select value={property.neighborhood} onValueChange={(value) => patch({ neighborhood: value })}>
+                  <Select value={property?.neighborhood} onValueChange={(value) => patch({ neighborhood: value })}>
                     <SelectTrigger aria-label="שכונה" className="h-10 text-[18px]"><SelectValue placeholder="שכונה" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">שכונה</SelectItem>

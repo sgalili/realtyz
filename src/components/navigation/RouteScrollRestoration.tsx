@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from '@/lib/router-compat';
 
 const scrollKey = (key: string) => `realtyz:route-scroll:${key}`;
 const ownerSelector = '.realtyz-main-surface, [data-table-scroll], [data-route-scroll]';

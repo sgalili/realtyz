@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import VoterAvatar from '@/components/VoterAvatar';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   new: { label: 'חדש', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },

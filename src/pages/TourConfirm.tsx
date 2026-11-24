@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FullPageLoading } from '@/components/ui/full-page-loading';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/lib/router-compat';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CalendarCheck2, Loader2 } from 'lucide-react';

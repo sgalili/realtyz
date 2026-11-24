@@ -26,7 +26,7 @@ export function ProfilePropertyList({ cards, expandedId, onExpand, favoriteIds, 
         const fav = favoriteIds.has(card.id);
         const toggle = () => onExpand(open ? null : card.id);
         return [
-          <tr key={card.id} data-row-id={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <tr key={card.id} data-row-id={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
             <td className="p-2 text-foreground"><div className="w-[min(18rem,max(6.5rem,calc(100vw-14rem)))] min-w-0 max-w-[18rem] break-words [overflow-wrap:anywhere] sm:w-96 sm:max-w-[24rem]"><PublicCardSummary card={card} dense showBroker={false} showCommissions={false} /></div></td>
             <td className={cn('whitespace-nowrap p-2 text-[17px] font-bold', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{formatRentalPrice(card.price, card.deal_type)}</td>
             <td className="p-2"><PropertyCommissionIcons table listingId={card.id} raw={{ reward_types: card.reward_types, closing_level: card.closing_level, reward_levels: card.reward_levels }} /></td>

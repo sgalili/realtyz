@@ -6,7 +6,7 @@ import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { returnState } from "@/lib/returnNav";
 import { ensureMetadataImport, isListingMetadataImported } from '@/lib/propertyFullSync';
-import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from '@/lib/router-compat';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -62,6 +62,7 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { formatIsoDate } from '@/lib/listingDates';
 import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
+import { sqlNull } from '@/lib/sqlNull';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -304,7 +305,8 @@ export default function PropertyDetail() {
     // never hide metadata that has already been persisted.
     staleTime: 0,
     refetchOnMount: 'always',
-    initialData: () => snapshotToDetail(propertySnapshot),
+    // The import snapshot carries the same fields as the database row, as loose JSON.
+    initialData: () => snapshotToDetail(propertySnapshot) as never,
     initialDataUpdatedAt: 0,
     queryFn: async () => {
       const { data: row } = await supabase
@@ -779,7 +781,7 @@ export default function PropertyDetail() {
         ...form.extra_features,
       ].filter((v): v is string => !!v);
       const { error } = await supabase.from('listings').update({
-        property_title: form.title || null,
+        property_title: sqlNull(form.title || null),
         city: form.city || null,
         neighborhood: form.neighborhood || null,
         address: form.address || null,
@@ -1381,7 +1383,7 @@ export default function PropertyDetail() {
           while the property content scrolls underneath. */}
       <div className={`property-action-bar sticky ${editMode ? 'top-3' : 'top-[-10px]'} z-30 flex min-h-10 items-center justify-between gap-2 pointer-events-none`}>
         <span aria-hidden className="flex-1" />
-        <div className="relative top-[15px] pointer-events-auto flex max-w-full flex-wrap items-center justify-end gap-2 rounded-md border border-border/70 bg-background/95 px-2 py-1 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/85">
+        <div className="relative top-[15px] pointer-events-auto flex max-w-full flex-wrap items-center justify-end gap-2 rounded-md border border-border/70 bg-background/95 px-2 py-1 shadow-xs backdrop-blur supports-[backdrop-filter]:bg-background/85">
         {!editMode ? (
           <>
 
@@ -1519,7 +1521,7 @@ export default function PropertyDetail() {
                       disabled={!editMode && pullingImages}
                       aria-label="התמונה הקודמת"
                       title="התמונה הקודמת"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <ChevronRight className="h-5 w-5" />
                     </button>
@@ -1529,7 +1531,7 @@ export default function PropertyDetail() {
                       disabled={!editMode && pullingImages}
                       aria-label="התמונה הבאה"
                       title="התמונה הבאה"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <ChevronLeft className="h-5 w-5" />
                     </button>
@@ -1543,7 +1545,7 @@ export default function PropertyDetail() {
 
                     {/* Non-blocking image loader: progress only, no click-blocking scrim. */}
                     {!editMode && pullingImages && (
-                      <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-background/90 p-1.5 shadow ring-1 ring-border">
+                      <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-background/90 p-1.5 shadow-sm ring-1 ring-border">
                         <ProgressRing value={imageProgress} size={44} strokeWidth={4} />
                       </span>
                     )}
@@ -1584,7 +1586,7 @@ export default function PropertyDetail() {
                       tabIndex={0}
                       onClick={(e) => { e.stopPropagation(); setPhotos((list) => list.filter((_, index) => index !== i)); }}
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setPhotos((list) => list.filter((_, index) => index !== i)); } }}
-                      className="absolute left-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-destructive shadow"
+                      className="absolute left-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-destructive shadow-sm"
                       aria-label="מחק תמונה"
                       title="מחק תמונה"
                     >

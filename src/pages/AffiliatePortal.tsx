@@ -9,7 +9,7 @@ import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ClearFilterButton } from '@/components/ui/clear-filter-button';
 import LeftoverLeadsDialog from '@/components/affiliate/LeftoverLeadsDialog';
 import LeadPricingDialog from '@/components/affiliate/LeadPricingDialog';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from '@/lib/router-compat';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -372,7 +372,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
           <button
             type="button"
             onClick={(e) => { stop(e); setExpanded((v) => !v); }}
-            className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm"
+            className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-xs"
             title={`${photos.length} תמונות`}
             aria-label={`${photos.length} תמונות`}
           >
@@ -387,7 +387,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
               type="button"
               onClick={goPrev}
               aria-label="תמונה קודמת"
-              className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-background/70 text-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background focus:opacity-100 group-hover:opacity-100"
+              className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-background/70 text-foreground opacity-0 shadow-xs backdrop-blur-xs transition-opacity hover:bg-background focus:opacity-100 group-hover:opacity-100"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -395,11 +395,11 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
               type="button"
               onClick={goNext}
               aria-label="תמונה הבאה"
-              className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-background/70 text-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background focus:opacity-100 group-hover:opacity-100"
+              className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-background/70 text-foreground opacity-0 shadow-xs backdrop-blur-xs transition-opacity hover:bg-background focus:opacity-100 group-hover:opacity-100"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <div className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-background/70 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-foreground shadow-sm backdrop-blur-sm">
+            <div className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-background/70 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-foreground shadow-xs backdrop-blur-xs">
               {index + 1} / {photos.length}
             </div>
           </>
@@ -630,12 +630,12 @@ function AffiliateKpiCard({
   return (
     <TooltipProvider delayDuration={120}>
       <UiTooltip>
-        <Card dir="rtl" className="relative overflow-hidden border border-border/80 bg-card shadow-sm">
+        <Card dir="rtl" className="relative overflow-hidden border border-border/80 bg-card shadow-xs">
           <TooltipTrigger asChild>
             <button
               type="button"
               aria-label="מידע על המדד"
-              className="absolute left-2 top-2 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="absolute left-2 top-2 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             >
               <HelpCircle className="h-4 w-4" />
             </button>

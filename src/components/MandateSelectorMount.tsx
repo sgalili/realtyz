@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from '@/lib/router-compat';
 import { StrategicGrowthSlider } from '@/components/dashboard/StrategicGrowthSlider';
 
 /**

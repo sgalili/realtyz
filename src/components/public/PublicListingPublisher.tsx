@@ -39,7 +39,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 // everything, sign up through /auth, and have the listing auto-published on return.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, Film, HelpCircle, ImagePlus, Info, LayoutGrid, Loader2, Pencil, Trophy, X } from 'lucide-react';
 import { ClipboardList as LeadFormIcon, Phone as LeadPhoneIcon } from 'lucide-react';
@@ -85,6 +85,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { celebratePublication, preparePublicationSound } from '@/lib/publicationCelebration';
 import { missingAdFields, missingPublishFields, draftPricingPayload } from '@/lib/adRecovery';
 import { PROPERTY_TYPE_OPTIONS, PROPERTY_CONDITION_OPTIONS, PROPERTY_FLOOR_OPTIONS } from '@/lib/propertyFormOptions';
+import { sqlNull } from '@/lib/sqlNull';
 
 const isVideoUrl = (s: unknown) => typeof s === 'string' && /\.(mp4|webm|mov|m3u8|m4v)(\?|#|$)/i.test(s);
 const importedVideoUrls = (src: any): string[] => Array.from(new Set([...(Array.isArray(src?.videos) ? src.videos : []), ...(Array.isArray(src?.media_videos) ? src.media_videos : []), ...(src?.video_url ? [src.video_url] : []), ...(Array.isArray(src?.photos) ? src.photos.filter(isVideoUrl) : [])].filter((v: unknown): v is string => typeof v === 'string' && v.length > 0)));
@@ -311,7 +312,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   }, [open, knownPublisherRole, rolePicked, step, importSlide, reviewMode, pricingOnly]);
   // After sign-in, reopen the import screen and continue a guest's pending Yad2 import.
   const resumedImport = useRef(false);
-  const importYad2Ref = useRef<(value?: string) => Promise<void>>();
+  const importYad2Ref = useRef<((value?: string) => Promise<void>) | undefined>(undefined);
   useEffect(() => {
     if (resumedImport.current || !user?.id || !activeWorkspaceId || workspaceLoading) return;
     const pending = readPendingYad2Import();
@@ -365,7 +366,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
   useEffect(() => () => previews.forEach(({ url }) => URL.revokeObjectURL(url)), [previews]);
 
-  const [openLeads, setOpenLeads] = useState<Record<string, boolean>>(() => pricingOnly ? { Form: true, Whatsapp: true, Phone: true } : {});
+  const [openLeads, setOpenLeads] = useState<Record<string, boolean>>((): Record<string, boolean> => pricingOnly ? { Form: true, Whatsapp: true, Phone: true } : {});
   const [closingOpen, setClosingOpen] = useState(pricingOnly);
   // Lead cards always render under the price (rent prices have ≤4 digits).
   const showRewards = true;
@@ -442,16 +443,16 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           }
         }
         if (!draftFields.brokerLicenseReview) {
-          const { error } = await supabase.rpc('register_as_broker', { _display_name: draftFields.contactName.trim() || null });
+          const { error } = await supabase.rpc('register_as_broker', { _display_name: sqlNull(draftFields.contactName.trim() || null) });
           if (error) throw error;
           await refetchRoles();
         }
        } else if (draftFields.publisherType === 'developer' && !isDeveloper && activeWorkspaceId === user.id) {
         // Roles are refreshed on the next visit so the open wizard is not redirected mid-publication.
-        const { error } = await supabase.rpc('register_as_developer' as any, { _display_name: draftFields.contactName.trim() || null });
+        const { error } = await supabase.rpc('register_as_developer' as any, { _display_name: sqlNull(draftFields.contactName.trim() || null) });
         if (error) throw error;
        } else if (draftFields.publisherType === 'private' && !isPropertyOwner && activeWorkspaceId === user.id) {
-        const { error } = await supabase.rpc('register_as_property_owner', { _display_name: draftFields.contactName.trim() || null });
+        const { error } = await supabase.rpc('register_as_property_owner', { _display_name: sqlNull(draftFields.contactName.trim() || null) });
         if (error) throw error;
         await refetchRoles();
       }
@@ -688,7 +689,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           const { error } = await supabase.from('listings').update({
             ...pricing, asking_price: Number(fields.price),
             features: { ...(fields.importedListing?.features && !Array.isArray(fields.importedListing.features) ? fields.importedListing.features : { amenity_labels: fields.importedListing?.features ?? [] }), ...pricing.features },
-          }).eq('id', fields.listingId).eq('workspace_owner_id', targetWorkspace).select('id').single();
+          }).eq('id', fields.listingId!).eq('workspace_owner_id', targetWorkspace).select('id').single();
           if (error) throw error;
         },
         // The write is committed: confirm and dismiss the editor before caches refresh,
@@ -922,7 +923,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                         <TooltipProvider delayDuration={150}>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button type="button" aria-label="פירוט על הזכויות לנכס שמיובא" className="mt-0.5 shrink-0 rounded-full text-muted-foreground/70 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                              <button type="button" aria-label="פירוט על הזכויות לנכס שמיובא" className="mt-0.5 shrink-0 rounded-full text-muted-foreground/70 transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
                                 <Info className="h-3.5 w-3.5" />
                               </button>
                             </TooltipTrigger>
@@ -1053,7 +1054,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
               {showRewards && <>
               <div className="flex items-center justify-between gap-2"><h3 className="text-base font-semibold">תגמולים לפי סוג פנייה</h3><Button type="button" variant="ghost" size="icon" className="ms-auto h-12 w-12 shrink-0 text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} title={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} aria-expanded={allExpanded} onClick={toggleAllCards}><LayoutGrid className="h-[33px] w-[33px]" /></Button></div>
               <div className="space-y-4 text-base">
-              <ClosingFeeSlider publisherCard className="pricing-closing-card rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm" dualMode unrestricted={pricingOnly && isSuperAdmin} open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); set('closingConfirmed', true); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); set('closingConfirmed', true); }} />
+              <ClosingFeeSlider publisherCard className="pricing-closing-card rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-xs" dualMode unrestricted={pricingOnly && isSuperAdmin} open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); set('closingConfirmed', true); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); set('closingConfirmed', true); }} />
                 {LEAD_TYPES.map(({ key, tier, label }) => {
                   const price = Number(fields[`commission${key}`]) || 0;
                   const active = price > 0;

@@ -143,7 +143,7 @@ const ServiceCard = ({
   const connected = isConnected ?? !!config?.is_active;
   const enabled = isServiceEnabled(serviceKey, connected);
   return (
-    <AccordionItem value={value} className="border border-border/50 bg-card overflow-hidden first:rounded-t-lg last:rounded-b-lg data-[state=open]:border-border/80 data-[state=open]:shadow-sm data-[state=open]:relative data-[state=open]:z-10">
+    <AccordionItem value={value} className="border border-border/50 bg-card overflow-hidden first:rounded-t-lg last:rounded-b-lg data-[state=open]:border-border/80 data-[state=open]:shadow-xs data-[state=open]:relative data-[state=open]:z-10">
       <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20 [&>svg]:hidden">
         <div className="flex items-center gap-3 w-full">
           <Icon className={`h-5 w-5 shrink-0 ${iconColor} ${!enabled ? 'opacity-40' : ''}`} />

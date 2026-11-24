@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { Star, Loader2 } from 'lucide-react';
 import { X } from 'lucide-react';
 import { ChatFavoriteButton } from './ChatFavoriteButton';

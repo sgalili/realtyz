@@ -5,7 +5,7 @@
 // and Green API for WhatsApp QR sessions. This page only forwards there so old
 // deep links (/social-connect?connect=facebook) keep working.
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from '@/lib/router-compat';
 import { FullPageLoading } from '@/components/ui/full-page-loading';
 
 export default function SocialConnect() {

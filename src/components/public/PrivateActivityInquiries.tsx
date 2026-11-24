@@ -17,5 +17,5 @@ export default function PrivateActivityInquiries() {
   });
   if (query.isLoading) return <p role="status" className="py-8 text-center">טוען פניות…</p>;
   if (query.isError) return <p role="alert" className="py-8 text-center">לא ניתן לטעון את הפניות <Button variant="link" onClick={() => void query.refetch()}>ניסיון נוסף</Button></p>;
-  return <div className="divide-y">{query.data?.length ? query.data.map(row => <div key={row.id} className="flex items-center justify-between gap-2 py-3 text-sm"><span>{row.full_name || 'פנייה'}</span><time className="text-muted-foreground">{new Date(row.created_at).toLocaleDateString('he-IL')}</time></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין פניות</p>}</div>;
+  return <div className="divide-y">{query.data?.length ? query.data.map(row => <div key={row.id} className="flex items-center justify-between gap-2 py-3 text-sm"><span>{row.full_name || 'פנייה'}</span><time className="text-muted-foreground">{new Date(row.created_at ?? 0).toLocaleDateString('he-IL')}</time></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין פניות</p>}</div>;
 }

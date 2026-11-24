@@ -15,7 +15,7 @@ const tabs = [
 export function BrainTabs({ value, onChange }: { value: BrainTab; onChange: (tab: BrainTab) => void }) {
   return <div role="tablist" aria-label="מאגר הידע" className="flex gap-1 p-1 rounded-lg bg-muted">
     {tabs.map(({ id, label, icon: Icon }) => <Button key={id} role="tab" aria-selected={value === id} variant="ghost" onClick={() => onChange(id)}
-      className={cn('h-auto min-w-0 flex-1 gap-1.5 px-2 py-2 text-xs font-medium rounded-md', value === id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+      className={cn('h-auto min-w-0 flex-1 gap-1.5 px-2 py-2 text-xs font-medium rounded-md', value === id ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground')}>
       <Icon className="h-3.5 w-3.5 shrink-0" />{label}
     </Button>)}
   </div>;

@@ -264,7 +264,7 @@ export function IsraelSvgMap({ selectedDistrict, onDistrictClick, tickerPulse = 
       </div>
 
       {/* Legend */}
-      <div className="absolute bottom-3 right-3 flex gap-3 text-[9px] text-slate-400 bg-slate-900/80 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/[0.06]">
+      <div className="absolute bottom-3 right-3 flex gap-3 text-[9px] text-slate-400 bg-slate-900/80 backdrop-blur-xs rounded-lg px-3 py-1.5 border border-white/[0.06]">
         {(['green', 'yellow', 'orange', 'red'] as const).map(c => (
           <span key={c} className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full" style={{ background: choroplethColors[c].fill, boxShadow: `0 0 6px ${choroplethColors[c].glow}` }} />
@@ -275,7 +275,7 @@ export function IsraelSvgMap({ selectedDistrict, onDistrictClick, tickerPulse = 
 
       {/* Selected info */}
       {selectedDistrict && DEMO_DISTRICTS[selectedDistrict] && (
-        <div className="absolute top-3 right-3 bg-slate-900/90 backdrop-blur-sm border border-primary/30 rounded-lg px-3 py-2 text-right animate-fade-in" dir="rtl">
+        <div className="absolute top-3 right-3 bg-slate-900/90 backdrop-blur-xs border border-primary/30 rounded-lg px-3 py-2 text-right animate-fade-in" dir="rtl">
           <p className="text-xs font-bold text-primary">{DEMO_DISTRICTS[selectedDistrict].label}</p>
           <p className="text-[10px] text-slate-400 mt-0.5">
             {DEMO_DISTRICTS[selectedDistrict].supporters.toLocaleString()} תומכים מתוך {DEMO_DISTRICTS[selectedDistrict].totalVoters.toLocaleString()}

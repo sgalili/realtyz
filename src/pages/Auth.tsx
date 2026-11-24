@@ -6,14 +6,14 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { toast } from '@/i18n/personalToast';
 import { ArrowRight, User, UserRound, X } from 'lucide-react';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from '@/lib/router-compat';
 import { clearPendingSignupRole, clearPostSignupWelcome } from '@/lib/signupRole';
 import { clearSmsSignup, formatAuthMobile, israeliMobile, saveSmsSignup, smsSignupSchema } from '@/lib/smsSignup';
 import { OtpFailureActions } from '@/components/auth/OtpFailureActions';
 import { otpNeedsNewCode } from '@/lib/otpRetryPolicy';
 
 // Gray, unbolded placeholder; black bold typed text; no border/ring on focus.
-const fieldClass = 'h-12 min-w-0 text-lg md:text-lg font-normal text-foreground placeholder:text-lg placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0';
+const fieldClass = 'h-12 min-w-0 text-lg md:text-lg font-normal text-foreground placeholder:text-lg placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-0 focus-visible:ring-offset-0';
 
 const PENDING_OTP_KEY = 'toraff-pending-sms-otp';
 const PENDING_OTP_TTL_MS = 5 * 60 * 1000;
@@ -131,7 +131,7 @@ const Auth = () => {
         {codeSent ? <div className="space-y-5 text-center">
           <p className="-mt-6 text-base text-muted-foreground">נשלח למספר <span dir="ltr" className="font-medium text-foreground">{phone}</span> <button type="button" className="ms-1 text-sm text-primary underline underline-offset-2" onClick={switchPhone}>החלפה</button></p>
           <InputOTP maxLength={4} value={otp} onChange={raw => { const value = raw.replace(/\D/g, '').slice(0, 4); setOtp(value); if (value.length === 4) void verify(value); }} pasteTransformer={text => { const d = text.replace(/\D/g, ''); return d.length > 4 ? d.slice(-4) : d; }} inputMode="numeric" autoComplete="one-time-code" containerClassName="justify-center" dir="ltr" disabled={loading || needsNewCode || attempts >= 3}>
-            <InputOTPGroup className="flex-row-reverse gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-[38px] font-bold text-primary focus-visible:outline-none focus-visible:ring-0 aria-[current=true]:ring-0" />)}</InputOTPGroup>
+            <InputOTPGroup className="flex-row-reverse gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-[38px] font-bold text-primary focus-visible:outline-hidden focus-visible:ring-0 aria-[current=true]:ring-0" />)}</InputOTPGroup>
           </InputOTP>
           <Button type="button" className="w-full text-[17px]" disabled={loading || needsNewCode || otp.length !== 4 || attempts >= 3} onClick={() => void verify()}>{loading ? 'מאמת...' : 'אימות הקוד'}</Button>
           <Button type="button" variant="link" disabled={loading || resendSeconds > 0} onClick={() => void sendCode()}>{resendSeconds > 0 ? `שליחה חוזרת בעוד ${resendSeconds}` : 'שלחו לי קוד שוב'}</Button>

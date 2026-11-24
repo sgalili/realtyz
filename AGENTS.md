@@ -28,8 +28,6 @@
 - My Ads stats use workspace-authorized RPCs; favorites are user-scoped, paginated and public-safe, served only by src/hooks/useListingFavorites.ts so hearts and the owner menu share one list. Why: one favorite state.
 - Yad2 checks exact workspace records before daily claims; cache reads keep edits and source timestamps (no sliding freshness). Cache/scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely needs verified workspace status. Counters use completed-search snapshots.
 - Yad2 keeps original publisher snapshots, source buckets and scoped DOM evidence; never null-overwrites or classifies from related ads; license needs evidence.
-- Media dedup uses host/path hashes; Yad2 reuses validated own public cache, not other hosts. Why: safe reuse.
-- Multi-select lists use src/components/ui/multi-select-controls.tsx. Why: consistency.
 - Partner rewards freeze into immutable listing_reward_snapshots on pick; charges use the snapshot. Trust scores are server-computed (compute_trust_score), super_admin-overridable, audited.
 - Reward displays share ordered indicators and the existing pricing dialog; zero states use explicit public reward flags or authorized numeric values, never missing/redacted amounts. Table prices reuse partner net calculations and server closing entitlement. Public projections expose presence flags, with all closing amounts (including nested feature values) server-redacted. Submission fees and closing payouts resolve the workspace-matched immutable snapshot; public publication validates price and closing fee. Closing reward color uses the shared `.closing-level-*` classes (`closingLevelClass`/`closingRewardLevel` mirror the server level); an icon keeps that color while its non-price hint stays gray. Why: guest-safe, immutable rates.
 - Listing lifecycle advances forward-only via advance_listing_stage; daily cron pauses partner distribution after 3 unanswered checks until confirm_listing_availability.
@@ -56,7 +54,6 @@
 - Global instructions use global_ai_documents/private global-ai-training with Super Admin checks; global_ai_config is legacy only. Brains share BrainResources title-free text entry and derived filenames; global library comes first. Why: one library without tenant leaks.
 - Public/managed inventory reuse LeadTypeFilterButton and predicates with role-aware fields; managed filters anchor below search with bounded scroll and no focus scrolling. Why: consistent, isolated filtering.
 - Public publisher projections share classification-aware names from source evidence or server user_roles for manual ads; unknown identities stay private. Board eligibility still requires positive price, configured rewards and a non-generic publisher, filtering without deletion. Why: consistent attribution without exposing private people.
-- Rent shows "₪X / לחודש" via src/lib/propertyPrice.ts.
 - Broker upgrades require SMS, registry/certificate/name match or explicit user+license admin approval; shared entitlement/status RPCs keep manual approval distinct and revoke it before license removal. Why: equal access without borrowed approvals.
 - Workspace handoffs hide cache, discard stale requests and remount publishers; tenant UI uses owner roles. Servers validate callers. Why: no leaks.
 - Inventory promotion shares pricing-save and pause-impact confirmations (properties/AGENTS.md), owner roles and scoped readback; creation/import stay private. Why: no consent bypass or tenant leaks.
@@ -64,3 +61,4 @@
 - Registry keeps raw names for certificate checks and canonical display name/city for locked profiles; returns saved identity and activation separately. Same-identity order corrections only; fetch stays failed-auto-fetch Super Admin review. Partner uses current account consent/roles, skips existing-profile provisioning. Why: no identity bypass or false activation.
 - Edge fns gate callers via _shared/authz.ts (service/cron secret/user+scope, Meta sigs). Why: apikey isn't trust.
 - Platform mode: platform_system_settings/usePlatformMode. Why: one switch.
+- TanStack Start: src/app holds guards/providers, pages render client-side, /demo is a router rewrite, links use router-compat. Why: same guards, demo isolation.

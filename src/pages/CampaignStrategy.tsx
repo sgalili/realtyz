@@ -163,7 +163,7 @@ export default function CampaignStrategy() {
                   onChange={e => updateMandateTarget(e.target.value)}
                   inputMode="numeric"
                   maxLength={2}
-                  className="h-12 w-20 border-x border-input bg-transparent text-center text-2xl font-bold outline-none"
+                  className="h-12 w-20 border-x border-input bg-transparent text-center text-2xl font-bold outline-hidden"
                 />
                 <Button type="button" variant="ghost" size="icon" className="h-12 w-14 rounded-none text-lg" onClick={() => stepMandateTarget(1)} aria-label="הוסף עסקה">
                   <Plus className="h-5 w-5" />

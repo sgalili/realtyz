@@ -1,7 +1,7 @@
 import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { Table } from '@/components/ui/table';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from '@/lib/router-compat';
 import { useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';

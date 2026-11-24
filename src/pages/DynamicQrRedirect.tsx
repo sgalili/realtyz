@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/lib/router-compat';
 import { supabase } from '@/integrations/supabase/client';
 import { DEFAULT_DYNAMIC_QR_DESTINATION, safeDynamicQrDestination } from '@/lib/dynamicQr';
 

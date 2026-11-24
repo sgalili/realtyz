@@ -80,14 +80,14 @@ type OAuthError = {
  * never a blank white page.
  */
 class CallbackCrashBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
-  state = { error: null as Error | null };
+  override state = { error: null as Error | null };
   static getDerivedStateFromError(error: Error) {
     return { error };
   }
-  componentDidCatch(error: Error, info: ErrorInfo) {
+  override componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[oauth-callback] render crash', error, info.componentStack?.slice(0, 1000));
   }
-  render() {
+  override render() {
     if (!this.state.error) return this.props.children;
     return (
       <div dir="rtl" className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">

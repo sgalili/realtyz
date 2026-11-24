@@ -1,6 +1,6 @@
 import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { Accessibility, ChevronDown, CircleHelp, Eye, Info, LogIn, Menu, MessageCircle, Scale, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -62,7 +62,7 @@ export function VisitorMenu({ onSignup }: { onSignup: () => void }) {
       style={box ? { top: box.top, height: box.height, bottom: 'auto' } : undefined}
       overlayStyle={box ? { top: box.top } : undefined}
       closeStyle={box ? { position: 'fixed', top: box.close.top, left: box.close.left, right: 'auto' } : undefined}
-      closeClassName="z-[60] flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-foreground opacity-100 shadow-sm hover:bg-muted"
+      closeClassName="z-[60] flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-foreground opacity-100 shadow-xs hover:bg-muted"
       closeAriaLabel="סגירת התפריט"
       className="right-0 flex w-[calc(100%-28px)] max-w-sm flex-col gap-0 overflow-visible p-0"
     >

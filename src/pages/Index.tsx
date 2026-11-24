@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -332,7 +332,7 @@ const RealEstateDashboard = () => {
             { icon: ClipboardList, label: 'מטלות', to: '/command-center', tone: 'nav-deals', count: cockpit?.tasks },
             { icon: Wallet, label: 'קרדיטים', to: '/wallet', tone: 'success', count: cockpit?.credits },
           ].map(({ icon: Icon, label, to, tone, count }) => (
-            <button key={to} type="button" onClick={() => navigate(to)} className="relative flex flex-col items-center gap-1.5 overflow-hidden rounded-2xl bg-background px-2 pb-3 pt-4 text-foreground shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" style={{ borderTop: `4px solid hsl(var(--${tone}))` }}>
+            <button key={to} type="button" onClick={() => navigate(to)} className="relative flex flex-col items-center gap-1.5 overflow-hidden rounded-2xl bg-background px-2 pb-3 pt-4 text-foreground shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" style={{ borderTop: `4px solid hsl(var(--${tone}))` }}>
               <span className="grid h-12 w-12 place-items-center rounded-2xl" style={{ background: `hsl(var(--${tone}) / 0.15)`, color: `hsl(var(--${tone}))` }}><Icon className="h-7 w-7" strokeWidth={2.25} /></span>
               <span className="text-2xl font-extrabold leading-none tabular-nums" style={{ color: `hsl(var(--${tone}))` }}>{count === undefined ? '·' : count.toLocaleString('he-IL')}</span>
               <span className="text-xs font-bold">{label}</span>
@@ -635,8 +635,8 @@ function KpiCard({
                 }
               : undefined
           }
-          className={`relative overflow-hidden border border-border/80 bg-card shadow-sm before:absolute before:inset-x-0 before:top-0 before:h-1 ${accentStripe} ${
-            to ? 'cursor-pointer transition-all hover:border-primary/50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring' : ''
+          className={`relative overflow-hidden border border-border/80 bg-card shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-1 ${accentStripe} ${
+            to ? 'cursor-pointer transition-all hover:border-primary/50 hover:shadow-md focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring' : ''
           }`}
         >
           <TooltipTrigger asChild>
@@ -644,7 +644,7 @@ function KpiCard({
               type="button"
               aria-label="מידע על המדד"
               onClick={(e) => e.stopPropagation()}
-              className="absolute left-2 top-2 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="absolute left-2 top-2 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             >
               <HelpCircle className="h-4 w-4" />
             </button>

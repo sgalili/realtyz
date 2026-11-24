@@ -778,7 +778,7 @@ export function ManualConfigModal({ open, platform, displayName, isConnected, on
               type="button"
               onClick={handleOneClickOAuth}
               disabled={oneClickBusy || verifying_any}
-              className="w-full h-11 text-[13px] font-semibold bg-white text-[#1f1f1f] border border-border/60 hover:bg-white/95 shadow-sm flex items-center justify-center gap-2"
+              className="w-full h-11 text-[13px] font-semibold bg-white text-[#1f1f1f] border border-border/60 hover:bg-white/95 shadow-xs flex items-center justify-center gap-2"
             >
               {oneClickBusy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

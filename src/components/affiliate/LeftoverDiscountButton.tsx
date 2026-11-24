@@ -48,7 +48,7 @@ export default function LeftoverDiscountButton({ referralId, inline = false }: {
         <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
           {(['percent', 'fixed'] as const).map((t) => (
             <Button variant="ghost" key={t} type="button" onClick={() => setType(t)}
-              className={`rounded-md py-1 text-sm ${type === t ? 'bg-background font-semibold shadow-sm' : 'text-muted-foreground'}`}>
+              className={`rounded-md py-1 text-sm ${type === t ? 'bg-background font-semibold shadow-xs' : 'text-muted-foreground'}`}>
               {t === 'percent' ? 'אחוז %' : 'סכום ₪'}
             </Button>
           ))}

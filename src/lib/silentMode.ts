@@ -13,11 +13,11 @@ const blockAudioContext = (contextName: 'AudioContext' | 'webkitAudioContext') =
       this.suspend().catch(() => undefined);
     }
 
-    resume() {
+    override resume() {
       return this.suspend();
     }
 
-    createOscillator() {
+    override createOscillator() {
       const oscillator = super.createOscillator();
       oscillator.start = () => undefined;
       return oscillator;

@@ -11,7 +11,7 @@ import { useBrokersOnly } from '@/hooks/usePlatformMode';
  * Mounted once at the layout level to avoid per-route hero "jumps".
  */
 import * as React from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "@/lib/router-compat";
 import {
   Plus,
   FileSpreadsheet,

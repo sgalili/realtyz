@@ -39,7 +39,7 @@ const BRAND: Record<SocialChannel | 'whatsapp', { bg: string; label: string }> =
 
 const brandPill = (name: keyof typeof BRAND) => (
   <span
-    className="ms-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-white shrink-0 shadow-sm"
+    className="ms-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-white shrink-0 shadow-xs"
     style={{ backgroundColor: BRAND[name].bg }}
   >
     <BrandIcon name={name === 'x' ? 'x' : name} className="h-5 w-5 max-h-5 max-w-5" />
@@ -195,7 +195,7 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
         <DropdownMenuTrigger asChild disabled={loading}>
           <button
             type="button"
-            className="relative shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50 group"
+            className="relative shrink-0 rounded-full focus:outline-hidden focus:ring-2 focus:ring-primary/50 group"
             aria-label="ערוך תמונת פרופיל"
             title="לחץ לניהול תמונת הפרופיל"
           >

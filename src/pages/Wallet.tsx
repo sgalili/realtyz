@@ -36,7 +36,7 @@ export default function Wallet() {
   const ws = useActiveWorkspaceOwnerId();
   const qc = useQueryClient();
   const savedGrowCard = useQuery({ queryKey: ['grow-saved-card', ws], enabled: !!ws, queryFn: async () => {
-    const { data, error } = await supabase.from('grow_saved_cards').select('workspace_owner_id,last4,brand,revoked_at').eq('workspace_owner_id', ws).maybeSingle();
+    const { data, error } = await supabase.from('grow_saved_cards').select('workspace_owner_id,last4,brand,revoked_at').eq('workspace_owner_id', ws!).maybeSingle();
     if (error) throw error;
     return data;
   }});

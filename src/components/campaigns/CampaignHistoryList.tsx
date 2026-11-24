@@ -69,7 +69,7 @@ export function CampaignHistoryList() {
         const first = Array.isArray(r.media_urls) ? r.media_urls[0] : null;
         const img = typeof first === 'string' ? first : first?.url;
         return (
-          <div key={r.id} className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
+          <div key={r.id} className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-xs">
             {img ? <img src={img} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" loading="lazy" /> : null}
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">

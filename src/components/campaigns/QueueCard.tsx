@@ -87,7 +87,7 @@ export function QueueCard({
   const countdown = useCountdown(status === 'scheduled' ? countdownIso : null);
 
   return (
-    <article className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden" dir="rtl">
+    <article className="rounded-2xl border border-border/60 bg-card shadow-xs overflow-hidden" dir="rtl">
       <div className="p-4 space-y-2 cursor-pointer" onClick={() => setOpen((v) => !v)}>
         {/* Row 1: thumbnail + title only */}
         <div className="flex items-center gap-3">

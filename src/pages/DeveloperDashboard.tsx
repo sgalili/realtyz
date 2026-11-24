@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { FullPageLoading } from '@/components/ui/full-page-loading';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from '@/lib/router-compat';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, ChevronDown, ExternalLink, FileDown, Layers, Loader2, Pencil, Trash2, Megaphone, Globe, Settings2, LayoutGrid, List } from 'lucide-react';
 import { toast } from 'sonner';
@@ -46,6 +46,7 @@ import { Images } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDemoViewStatus } from '@/components/demo/DemoViewBar';
 import { canRotateFirstTwoPhotos } from '@/lib/photoRotation';
+import { sqlNull } from '@/lib/sqlNull';
 
 const projectImages = developerProjectImages;
 const priceLabel = (price: number | null) => price && price > 0 ? `החל מ־₪${Number(price).toLocaleString('he-IL')}` : '';
@@ -231,7 +232,7 @@ function DeveloperDashboardContent() {
         if (selectedProjects.has(project.id)) continue;
         for (const unit of savedProjectHierarchy(project).apartments) {
           if (!selectedUnits.has(projectUnitSelectionKey(project.id, unit))) continue;
-          const { data, error } = await supabase.rpc('admin_rotate_first_two_photos', { _scope: 'project_unit', _project_id: project.id, _unit_id: unit.source_unit_id, _building_id: unit.building_id ?? null });
+          const { data, error } = await supabase.rpc('admin_rotate_first_two_photos', { _scope: 'project_unit', _project_id: project.id, _unit_id: unit.source_unit_id, _building_id: sqlNull(unit.building_id ?? null) });
           if (error) throw error; total += Number((data as { total?: number })?.total ?? 0);
         }
       }
@@ -283,7 +284,7 @@ function DeveloperDashboardContent() {
           <div className="flex flex-wrap items-center gap-2">{selectionMode && selectedCount > 0 && canRotate && <Button variant="outline" disabled={bulkRotate.isPending} onClick={() => { if (confirm(`להעביר את 2 התמונות הראשונות לסוף ב־${selectedProjects.size} פרויקטים ו־${selectedUnits.size} דירות שנבחרו?`)) bulkRotate.mutate(); }}>{bulkRotate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />}העבר 2 תמונות ראשונות לסוף</Button>}{selectionMode && selectedCount > 0 && <Button variant="outline" className="text-destructive" disabled={bulkRemove.isPending} onClick={() => { if (confirm(`למחוק ${selectedProjects.size} פרויקטים ו־${selectedUnits.size} דירות?`)) bulkRemove.mutate(); }}>{bulkRemove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}מחיקה מרובה</Button>}<Button variant="outline" onClick={selectionMode && selectedCount ? openBulkPricing : () => openPricing()}><span aria-hidden className="text-base font-bold leading-none">₪</span>הגדרת עמלות ותגמולים</Button></div>
         </div>
         {filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו פרויקטים מתאימים</p> : grid ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(p => { const open = expandedId === p.id; const deal = projectDeal(p); return <article key={p.id} className={cn('flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md', open && 'sm:col-span-2 lg:col-span-3')}>
+          {filtered.map(p => { const open = expandedId === p.id; const deal = projectDeal(p); return <article key={p.id} className={cn('flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card shadow-xs transition-shadow hover:shadow-md', open && 'sm:col-span-2 lg:col-span-3')}>
             <div className="flex flex-wrap items-start gap-2 p-3"><div className="min-w-0 w-full"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3"><h2 className="min-w-0 whitespace-normal [overflow-wrap:anywhere] text-[19px] font-bold leading-snug">{p.name}</h2>{priceLabel(p.price_from) && <p className={cn('shrink-0 whitespace-nowrap text-[17px] font-bold', deal === 'rent' ? 'text-sale' : 'text-success')}>{priceLabel(p.price_from)}</p>}</div><p className="mt-1 truncate text-sm text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</p></div>{selectionMode && <SelectBox checked={selectedProjects.has(p.id)} onChange={() => toggleSelected(setSelectedProjects, p.id)} label={`בחירת הפרויקט ${p.name}`} />}{actions(p)}</div>
             <div className="px-3 pb-2"><ProjectStatusCell project={p} hasImages={projectImages(p).length > 0} stage={PROJECT_STATUS[p.status] ?? p.status} /></div>
             <PropertyGallerySlider photos={projectImages(p)} alt={p.name} overlay={<span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">{PROJECT_STATUS[p.status] ?? p.status}</span>} />
@@ -296,7 +297,7 @@ function DeveloperDashboardContent() {
             </div>
           </article>; })}
         </div> : <BoardColumnDragArea controls={columns}><HorizontalTableScroll className="board-full listing-results-scroll board-head-sticky flex-1 rounded-none border-0"><table className="w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{selectionMode && <th className="w-8 p-2"><span className="sr-only">בחירה</span></th>}{columns.visible.map((id) => <BoardColumnHeader key={id} id={id} controls={columns} />)}<th className="p-2"><BoardColumnMenu controls={columns} /></th></tr></thead><tbody>
-          {columns.sorted.flatMap(p => { const open = expandedId === p.id; const deal = projectDeal(p); const hierarchy = savedProjectHierarchy(p); return [<tr key={p.id} tabIndex={0} aria-expanded={open} onClick={() => setExpandedId(open ? null : p.id)} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? null : p.id); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          {columns.sorted.flatMap(p => { const open = expandedId === p.id; const deal = projectDeal(p); const hierarchy = savedProjectHierarchy(p); return [<tr key={p.id} tabIndex={0} aria-expanded={open} onClick={() => setExpandedId(open ? null : p.id)} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? null : p.id); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
             {selectionMode && <td className="p-2"><SelectBox checked={selectedProjects.has(p.id)} onChange={() => toggleSelected(setSelectedProjects, p.id)} label={`בחירת הפרויקט ${p.name}`} /></td>}
             {columns.visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'price' && 'text-right whitespace-nowrap font-bold max-sm:sticky max-sm:left-0 max-sm:z-[3] max-sm:bg-card', id === 'price' && (deal === 'rent' ? 'text-sale' : 'text-success'))}>
               {id === 'photo' ? projectImages(p)[0] ? <img src={projectImages(p)[0]} alt="" className="h-12 w-12 rounded object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded bg-muted"><Building2 className="h-5 w-5 text-muted-foreground" /></div>

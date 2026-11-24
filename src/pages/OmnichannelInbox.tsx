@@ -15,7 +15,7 @@ import { useInboxFavorites } from '@/hooks/useInboxFavorites';
 import { InboxFavoritesDialog } from '@/components/inbox/InboxFavoritesDialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useState, useRef, useEffect, useMemo, cloneElement, type ReactElement } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from '@/lib/router-compat';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CheckCheck, FolderInput } from 'lucide-react';
 import { Search, X, SlidersHorizontal, Send, Bot, MessageSquare, MessageCircle, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Star, Trash2, Mail, Plug, Inbox as InboxIcon, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -135,8 +135,8 @@ const ChannelIcon = ({ channel, size = 'sm' }: { channel: string | null; size?: 
   const boxClass = size === 'lg' ? 'h-7 w-7' : size === 'md' ? 'h-6 w-6' : 'h-4 w-4';
   const iconClass = size === 'lg' ? 'h-4 w-4' : size === 'md' ? 'h-3.5 w-3.5' : 'h-2.5 w-2.5';
   return (
-    <span title={cfg.label} className={`${boxClass} inline-flex shrink-0 items-center justify-center rounded-md ${cfg.bgClass} text-social-foreground shadow-sm`}>
-      {cfg.brand ? <BrandIcon name={cfg.brand} className={iconClass} /> : (typeof cfg.icon!.type === 'string' ? cfg.icon : cloneElement(cfg.icon!, { className: iconClass }))}
+    <span title={cfg.label} className={`${boxClass} inline-flex shrink-0 items-center justify-center rounded-md ${cfg.bgClass} text-social-foreground shadow-xs`}>
+      {cfg.brand ? <BrandIcon name={cfg.brand} className={iconClass} /> : (typeof cfg.icon!.type === 'string' ? cfg.icon : cloneElement(cfg.icon as ReactElement<{ className?: string }>, { className: iconClass }))}
     </span>
   );
 };
@@ -317,7 +317,7 @@ const OmnichannelInbox = () => {
     refetchInterval: 3000,
     queryFn: async () => {
       const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: false });
-      const map = new Map<string, typeof data[0]>();
+      const map = new Map<string, NonNullable<typeof data>[number]>();
       data?.forEach((msg) => {
         if (msg.lead_id && !map.has(msg.lead_id)) map.set(msg.lead_id, msg);
       });
@@ -1192,7 +1192,7 @@ const OmnichannelInbox = () => {
                     <button
                       type="button"
                       onClick={(event) => { event.stopPropagation(); openLeadPublicProfile(voter.id); }}
-                      className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      className="shrink-0 rounded-full focus:outline-hidden focus:ring-2 focus:ring-primary/50"
                       title="פתיחת פרופיל ציבורי"
                       aria-label="פתיחת פרופיל ציבורי"
                     >
@@ -1246,7 +1246,7 @@ const OmnichannelInbox = () => {
                   <button
                     type="button"
                     onClick={() => openLeadPublicProfile(selectedVoterId)}
-                    className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="shrink-0 rounded-full focus:outline-hidden focus:ring-2 focus:ring-ring"
                     title="פתיחת פרופיל ציבורי"
                     aria-label="פתיחת פרופיל ציבורי"
                   >
@@ -1279,7 +1279,7 @@ const OmnichannelInbox = () => {
               <ScrollArea className="min-w-0 flex-1 overflow-x-hidden p-2 sm:p-4 whatsapp-chat-bg">
                 <div className="mx-auto w-full min-w-0 max-w-3xl space-y-2 overflow-x-hidden px-1 pb-3 sm:px-2">
                   {chatMessages?.length === 0 && (
-                    <p className="rounded-lg bg-whatsapp-bubble-in/80 px-3 py-2 text-center text-sm text-muted-foreground shadow-sm">אין הודעות עדיין</p>
+                    <p className="rounded-lg bg-whatsapp-bubble-in/80 px-3 py-2 text-center text-sm text-muted-foreground shadow-xs">אין הודעות עדיין</p>
                   )}
                   {chatMessages?.map((msg, idx) => {
                     const isOutbound = msg.direction === 'outbound';
@@ -1310,7 +1310,7 @@ const OmnichannelInbox = () => {
                       </button>
                     );
                     const bubbleNode = (
-                      <div className={`relative flex flex-col min-w-0 max-w-[calc(100%-2.75rem)] gap-0 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word] rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isOutbound ? 'bg-muted text-foreground rounded-ee-sm' : 'bg-primary text-primary-foreground rounded-es-sm'}`}>
+                      <div className={`relative flex flex-col min-w-0 max-w-[calc(100%-2.75rem)] gap-0 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word] rounded-lg px-3 py-2 shadow-xs sm:max-w-[72%] ${isOutbound ? 'bg-muted text-foreground rounded-ee-sm' : 'bg-primary text-primary-foreground rounded-es-sm'}`}>
                         {msg.id === lastAiMessageId && selectedVoterId && (
                           <UndoLastAiMessage
                             messageId={msg.id as string}
@@ -1376,7 +1376,7 @@ const OmnichannelInbox = () => {
               <div className="border-t border-border/50 bg-whatsapp-footer p-2 sm:p-3">
                 {/* Autopilot pill — the switch sits on the right (RTL start) and
                     carries the robot icon inside its knob. */}
-                <div className="mb-2 flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-1.5 text-whatsapp-header shadow-sm">
+                <div className="mb-2 flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-1.5 text-whatsapp-header shadow-xs">
                   <Switch
                     checked={chatAutopilotOn}
                     disabled={!selectedVoterId}
@@ -1413,13 +1413,13 @@ const OmnichannelInbox = () => {
                     <button
                       type="button"
                       onClick={() => attachmentInputRef.current?.click()}
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-whatsapp-bubble-in text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-whatsapp-bubble-in text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground"
                       title="צירוף קובץ"
                       aria-label="צירוף קובץ"
                     >
                       <Paperclip className="h-4 w-4" />
                     </button>
-                    <div className="flex min-w-0 flex-1 items-center gap-1 rounded-full bg-whatsapp-bubble-in ps-2 pe-3 shadow-sm">
+                    <div className="flex min-w-0 flex-1 items-center gap-1 rounded-full bg-whatsapp-bubble-in ps-2 pe-3 shadow-xs">
                       <Select value={sendChannel} onValueChange={setSendChannel}>
                         <SelectTrigger
                           className="h-9 w-9 shrink-0 justify-center rounded-md border border-border bg-transparent p-0 shadow-none hover:bg-muted/60 focus:ring-0 [&>svg:last-child]:hidden"
@@ -1431,7 +1431,7 @@ const OmnichannelInbox = () => {
                             return cfg.brand ? (
                               <BrandIcon name={cfg.brand} className={`h-5 w-5 ${cfg.textClass}`} />
                             ) : (
-                              <span className={cfg.textClass}>{cloneElement(cfg.icon!, { className: 'h-5 w-5' })}</span>
+                              <span className={cfg.textClass}>{cloneElement(cfg.icon as ReactElement<{ className?: string }>, { className: 'h-5 w-5' })}</span>
                             );
                           })()}
                         </SelectTrigger>

@@ -4,7 +4,7 @@ import { AgencyAddressFields } from '@/components/profile/AgencyAddressFields';
 import { AgencyDescriptionField } from '@/components/profile/AgencyDescriptionField';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from '@/lib/router-compat';
 import { createPortal } from 'react-dom';
 import { CompleteProfileBanner, type ProfileSavedDetail } from '@/components/profile/CompleteProfileBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -115,7 +115,7 @@ function ProfileFieldRow({
   return (
     <div
       dir="rtl"
-      className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm"
+      className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-xs"
     >
       <Icon className={cn('h-4 w-4 shrink-0', iconClass ?? 'text-primary')} />
       <span className="text-base font-semibold text-muted-foreground shrink-0">{label}:</span>
@@ -459,7 +459,7 @@ function PersonalTab() {
         <ProfileArrayRows rows={whatsapps} setRows={setWhatsapps} icon={MessageCircle} label="וואטסאפ" formatter={formatIsraeliPhone} onSave={rows => saveField('whatsapps', rows)} saving={savingField !== null} />
         <ProfileArrayRows rows={phones} setRows={setPhones} icon={Phone} label="טלפון" formatter={formatIsraeliPhone} onSave={rows => saveField('phones', rows)} saving={savingField !== null} />
 
-        {verifiedLicenseLocked ? <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
+        {verifiedLicenseLocked ? <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-xs">
           <MapPin className="h-4 w-4 shrink-0 text-primary" aria-hidden />
           <span className="shrink-0 text-base font-semibold text-muted-foreground">עיר:</span>
           <span className="min-w-0 flex-1 break-words text-base font-bold" aria-label="עיר לפי פנקס המתווכים">{city || '—'}</span>
@@ -501,16 +501,16 @@ function PersonalTab() {
 
         {showBrokerFields && isOwnProfile && licenseSuspended && <div role="alert" className="border border-destructive bg-destructive/10 p-3 text-destructive">מספר הרישיון אינו תקף או אינו מופיע בפנקס המתווכים המורשים. הרשאות התיווך הושעו עד לאימות רישיון תקף.</div>}
         {verifiedLicenseLocked || licenseState.approved ? (
-          <div dir="rtl" className="flex flex-nowrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
+          <div dir="rtl" className="flex flex-nowrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-xs">
             <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
             <span className="shrink-0 text-base font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
             <div className="min-w-[90px] flex-1 basis-24">
               <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label={licenseState.approved ? 'מספר רישיון תיווך מאושר' : 'מספר רישיון תיווך מאומת'}>{storedLicense}</span>
             </div>
-            {licenseState.approved && !licenseState.verified ? <BrokerRegistryNameButton compact presentation="approved" ownAccount={isOwnProfile} disabled={savingField!==null||hydratedFor!==profileOwnerId} userId={profileOwnerId} license={storedLicense} onUpdated={(saved, active) => {
+            {licenseState.approved && !licenseState.verified ? <BrokerRegistryNameButton compact presentation="approved" ownAccount={isOwnProfile} disabled={savingField!==null||hydratedFor!==profileOwnerId} userId={profileOwnerId!} license={storedLicense} onUpdated={(saved, active) => {
               setFullName(saved.full_name);setCity(saved.city??'');setLockedBrokerName(saved.full_name);setStoredLicense(saved.broker_license_number);setEvidenceLicense(saved.broker_license_number);setIdentityLocked(true);setLicenseLiveVerified(active??licenseLiveVerified);
               savedContacts.current={...savedContacts.current,fullName:saved.full_name,city:saved.city??''};
-              window.dispatchEvent(new CustomEvent<{profileOwnerId:string}>('realtyz:profile-saved',{detail:{profileOwnerId}}));
+              window.dispatchEvent(new CustomEvent<{profileOwnerId:string}>('realtyz:profile-saved',{detail:{profileOwnerId:profileOwnerId!}}));
               window.dispatchEvent(new Event('realtyz:license-verified'));void queryClient.invalidateQueries();
             }} /> : <span role="status" className={cn('flex shrink-0 items-center gap-1 text-sm font-semibold', licenseState.verified || licenseState.approved ? 'text-success' : 'text-muted-foreground')}>
               {licenseState.verified || licenseState.approved ? <BadgeCheck className="h-4 w-4" aria-hidden /> : <Clock className="h-4 w-4" aria-hidden />}
@@ -521,7 +521,7 @@ function PersonalTab() {
             </Button>
           </div>
         ) : showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : (
-          <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
+          <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-xs">
             <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
             <span className="shrink-0 text-base font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
             <div className="min-w-[90px] flex-1 basis-24">

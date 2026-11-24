@@ -336,7 +336,7 @@ export default function KnowledgeBase() {
                         type="button"
                         onClick={() => setGeminiMode(m.id)}
                         className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
-                          geminiMode === m.id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
+                          geminiMode === m.id ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground'
                         }`}
                       >
                         {m.label}

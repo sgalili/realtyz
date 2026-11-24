@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,7 +51,7 @@ export default function LiveActivity() {
         </div>
       </div>
 
-      <Card className="border-border/70 bg-background shadow-sm">
+      <Card className="border-border/70 bg-background shadow-xs">
         <CardContent className="p-3 sm:p-4">
           <div className="space-y-2">
             {events.map((evt) => {

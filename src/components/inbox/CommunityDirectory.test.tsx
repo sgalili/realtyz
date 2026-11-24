@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from '@/lib/router-compat';
 import { CommunityDirectory } from './CommunityDirectory';
 
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'dir-user' } }) }));

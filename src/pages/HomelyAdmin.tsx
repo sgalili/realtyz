@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ShieldOff, ShieldCheck, RefreshCw, AlertTriangle } from "lucide-react";
+import { sqlNull } from '@/lib/sqlNull';
 
 type Broker = {
   user_id: string;
@@ -60,7 +61,7 @@ export default function HomelyAdmin() {
       const { error } = await supabase.rpc("set_homely_broker_disabled", {
         _user_id: vars.user_id,
         _disabled: vars.disabled,
-        _reason: vars.reason ?? null,
+        _reason: sqlNull(vars.reason ?? null),
       });
       if (error) throw error;
     },

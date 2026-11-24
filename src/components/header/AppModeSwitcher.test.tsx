@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { AppModeSwitcher } from './AppModeSwitcher';
 const state = vi.hoisted(() => ({ accepted: true, rpc: vi.fn(), setMode: vi.fn(), navigate: vi.fn() }));
 vi.mock('@/i18n/personalLanguage', async importOriginal => ({ ...await importOriginal<typeof import('@/i18n/personalLanguage')>(), usePersonalLanguage: () => ({ gender: 'male', command: (value: string) => value }) }));
-vi.mock('react-router-dom', () => ({ useNavigate: () => state.navigate }));
+vi.mock('@/lib/router-compat', () => ({ useNavigate: () => state.navigate }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'broker' } }) }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isAffiliate: false, loading: false, error: false }), userRolesQueryKey: (id: string) => ['user-roles', id] }));
 vi.mock('@/hooks/useWorkspace', () => ({ useWorkspace: () => ({ loading: false, activeWorkspaceId: 'broker' }) }));

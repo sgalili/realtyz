@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, cleanup, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from '@/lib/router-compat';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ImportHistory } from './BrokerContactQueueCard';
 import type { ImportActivityJob } from '@/lib/importHistoryActivity';
@@ -71,7 +71,7 @@ it('shows the count centered inside a loader ring while the import is still runn
   expect(screen.queryByText('בתהליך')).not.toBeInTheDocument();
 });
 
-it('transfers the ring to the next broker without changing either saved numeric count', async () => {
+it('transfers the ring-3 to the next broker without changing either saved numeric count', async () => {
   state.jobs = [{ id: 'job', status: 'running', stage: 'importing', checkpoint: { execution: 'external', activeBroker: { broker_id: 'owner-a' } } }];
   const refresh = setupWith([{ ...item, id: 'row-a', kind: 'broker', name: 'Broker A', workspace_owner_id: 'owner-a', public_user_id: 'owner-a', projects: 7 }, { ...item, id: 'row-b', kind: 'broker', name: 'Broker B', workspace_owner_id: 'owner-b', public_user_id: 'owner-b', projects: 12 }]);
   expect(await screen.findByRole('img', { name: 'נכסים נטענים · 7' })).toHaveTextContent('7');

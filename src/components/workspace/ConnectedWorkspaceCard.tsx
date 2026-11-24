@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { ArrowLeftRight, Building2, Camera, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,7 +63,7 @@ export function ConnectedWorkspaceCard() {
 
   return (
     <>
-      <div dir="rtl" className="relative rounded-2xl border bg-card p-4 text-right shadow-sm">
+      <div dir="rtl" className="relative rounded-2xl border bg-card p-4 text-right shadow-xs">
         <button
           type="button"
           onClick={openSelector}
@@ -88,7 +88,7 @@ export function ConnectedWorkspaceCard() {
                 </div>
               )}
             </div>
-            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground shadow">
+            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
               <Camera className="h-3 w-3" />
             </span>
           </div>

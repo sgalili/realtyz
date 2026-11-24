@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from '@/lib/router-compat';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const MyAds = lazy(() => import('./MyAds'));

@@ -1,5 +1,5 @@
 import { ProfilePageClose } from '@/components/community/ProfilePageClose';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from '@/lib/router-compat';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import VoterAvatar from '@/components/VoterAvatar';

@@ -186,7 +186,7 @@ function InfoTip({
         <button
           type="button"
           aria-label={label}
-          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40"
         >
           <Info className="h-3.5 w-3.5" />
         </button>
@@ -506,14 +506,14 @@ function CalculatorBody() {
           </p>
 
           {/* Election toggle */}
-          <div className="mx-auto mt-5 inline-flex items-center gap-1 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 p-1 shadow-sm backdrop-blur-sm">
+          <div className="mx-auto mt-5 inline-flex items-center gap-1 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 p-1 shadow-xs backdrop-blur-xs">
             <button
               type="button"
               onClick={() => setElection('national')}
               className={cn(
                 'rounded-full px-4 py-1.5 text-xs font-bold transition-all',
                 !isPrimaries
-                  ? 'bg-primary-foreground text-primary shadow-sm'
+                  ? 'bg-primary-foreground text-primary shadow-xs'
                   : 'text-primary-foreground/80 hover:text-primary-foreground',
               )}
             >
@@ -525,7 +525,7 @@ function CalculatorBody() {
               className={cn(
                 'rounded-full px-4 py-1.5 text-xs font-bold transition-all',
                 isPrimaries
-                  ? 'bg-primary-foreground text-primary shadow-sm'
+                  ? 'bg-primary-foreground text-primary shadow-xs'
                   : 'text-primary-foreground/80 hover:text-primary-foreground',
               )}
             >
@@ -560,7 +560,7 @@ function CalculatorBody() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
               id="calc-command"
-              className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-7"
+              className="rounded-2xl border border-border bg-card p-6 shadow-xs sm:p-7"
             >
               <header className="mb-4 flex items-center gap-2">
                 <Calculator className="h-5 w-5 text-primary" />
@@ -578,7 +578,7 @@ function CalculatorBody() {
                     onClick={() => handleMandatesChange(Math.max(mandatesMin, mandates - 1))}
                     disabled={mandates <= mandatesMin}
                     aria-label={`הקטן יעד ${unitPlural}`}
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-background text-primary shadow-sm transition-all hover:border-primary hover:bg-primary/10 active:scale-95 disabled:opacity-30 sm:h-14 sm:w-14"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-background text-primary shadow-xs transition-all hover:border-primary hover:bg-primary/10 active:scale-95 disabled:opacity-30 sm:h-14 sm:w-14"
                   >
                     <Minus className="h-5 w-5" strokeWidth={2.5} />
                   </button>
@@ -593,14 +593,14 @@ function CalculatorBody() {
                       handleMandatesChange(Math.min(mandatesMax, Math.max(mandatesMin, raw)));
                     }}
                     aria-label={`יעד ${unitPlural}`}
-                    className="realtyz-num-input w-[3ch] min-w-[2ch] rounded-md bg-transparent text-center text-[42px] font-black tabular-nums text-foreground outline-none focus:ring-2 focus:ring-primary/40 sm:text-[52px]"
+                    className="realtyz-num-input w-[3ch] min-w-[2ch] rounded-md bg-transparent text-center text-[42px] font-black tabular-nums text-foreground outline-hidden focus:ring-2 focus:ring-primary/40 sm:text-[52px]"
                   />
                   <button
                     type="button"
                     onClick={() => handleMandatesChange(Math.min(mandatesMax, mandates + 1))}
                     disabled={mandates >= mandatesMax}
                     aria-label={`הגדל יעד ${unitPlural}`}
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-background text-primary shadow-sm transition-all hover:border-primary hover:bg-primary/10 active:scale-95 disabled:opacity-30 sm:h-14 sm:w-14"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-background text-primary shadow-xs transition-all hover:border-primary hover:bg-primary/10 active:scale-95 disabled:opacity-30 sm:h-14 sm:w-14"
                   >
                     <Plus className="h-5 w-5" strokeWidth={2.5} />
                   </button>
@@ -751,7 +751,7 @@ function CalculatorBody() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-7"
+            className="rounded-2xl border border-border bg-card p-6 shadow-xs sm:p-7"
           >
             <header className="mb-3 flex items-center gap-2">
               <RotatingChannelIcon size={19} />
@@ -1131,7 +1131,7 @@ function ResourceFeatureCard({
   icon, title, value, note,
 }: { icon: ReactNode; title: string; value: string; note: string }) {
   return (
-    <div className="group rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md">
+    <div className="group rounded-xl border border-border bg-card p-4 shadow-xs transition-all hover:border-primary/30 hover:shadow-md">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
           {icon}
@@ -1177,7 +1177,7 @@ function ResourceSlider({
             )}
           >
             <span className={cn(
-              'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
+              'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-xs transition-transform',
               enabled ? 'translate-x-0.5' : 'translate-x-[18px]',
             )} />
           </button>

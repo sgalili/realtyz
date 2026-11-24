@@ -106,7 +106,7 @@ export default function UndoLastAiMessage({
         <button
           type="button"
           disabled={busy}
-          className="absolute -top-2 -left-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          className="absolute -top-2 -left-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-xs transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           aria-label="ביטול ההודעה האחרונה של ה-AI"
           title="בטל ובקש ניסוח חדש"
         >

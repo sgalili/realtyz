@@ -88,7 +88,7 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
           <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent dir="rtl" collisionPadding={12} className="flex max-h-[var(--radix-popover-content-available-height)] w-[--radix-popover-trigger-width] flex-col overflow-hidden p-0" align="end">
+      <PopoverContent dir="rtl" collisionPadding={12} className="flex max-h-[var(--radix-popover-content-available-height)] w-[var(--radix-popover-trigger-width)] flex-col overflow-hidden p-0" align="end">
         {!editingOther && <>
         <div className="border-b p-2">
           <Input

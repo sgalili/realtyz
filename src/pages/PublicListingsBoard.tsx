@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from '@/lib/router-compat';
 import { FullPageLoading, FullPageLoadingProvider, PageLoadingRegion } from '@/components/ui/full-page-loading';
 import { BadgeCheck, GripVertical, Heart, LayoutGrid, List, Search, Send, X } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
@@ -374,7 +374,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
                   <Search className="h-4 w-4" />
                 </Button>
                 {searchOpen ? (
-                  <button type="button" aria-label="סגירת החיפוש" onClick={() => setSearchOpen(false)} className="absolute -top-1 -right-1 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
+                  <button type="button" aria-label="סגירת החיפוש" onClick={() => setSearchOpen(false)} className="absolute -top-1 -right-1 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full border border-border bg-background text-foreground shadow-xs">
                     <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
                   </button>
                 ) : appliedFilterCount > 0 ? <span aria-label={`${appliedFilterCount} סינונים פעילים`} className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">{appliedFilterCount}</span> : null}
@@ -419,7 +419,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
                       // their final height is known; do not start a competing scroll here.
                     };
                     return [
-                      <tr key={card.id} id={`row-${card.id}`} data-row-id={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className={cn('cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', dragGhost?.overId === card.id && 'bg-primary/10 ring-1 ring-inset ring-primary/50')}>
+                      <tr key={card.id} id={`row-${card.id}`} data-row-id={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className={cn('cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring', dragGhost?.overId === card.id && 'bg-primary/10 ring-1 ring-inset ring-primary/50')}>
                         {visibleColumns.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'price' && 'max-sm:sticky max-sm:left-0 max-sm:z-[3] max-sm:bg-card', id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
                           {id === 'photo' ? (
                           <div className="relative w-12">

@@ -51,7 +51,7 @@ export function DemoModeToggle({ className, variant = 'pill' }: DemoModeTogglePr
           className={cn(
             'h-6 w-11 [--switch-thumb-size:1.125rem] [--switch-thumb-translate:1.375rem]',
             'data-[state=checked]:bg-success data-[state=unchecked]:bg-primary-foreground/25',
-            'border border-primary-foreground/30 shadow-sm',
+            'border border-primary-foreground/30 shadow-xs',
           )}
         />
       </span>

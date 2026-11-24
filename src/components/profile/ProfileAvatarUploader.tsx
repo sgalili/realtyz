@@ -99,7 +99,7 @@ export function ProfileAvatarUploader({ profileOwnerId, gender = null }: { profi
       const { error: profErr } = await supabase
         .from('profiles')
         .update({ avatar_url: signed.signedUrl } as any)
-        .eq('id', profileOwnerId);
+        .eq('id', profileOwnerId!);
       if (profErr) throw profErr;
 
 
@@ -125,7 +125,7 @@ export function ProfileAvatarUploader({ profileOwnerId, gender = null }: { profi
       const { error } = await supabase
         .from('profiles')
         .update({ avatar_url: null } as any)
-        .eq('id', profileOwnerId);
+        .eq('id', profileOwnerId!);
       if (error) throw error;
 
       setAvatarPath(null);
@@ -150,7 +150,7 @@ export function ProfileAvatarUploader({ profileOwnerId, gender = null }: { profi
           disabled={busy}
           aria-label={avatarUrl ? 'החלפת תמונת פרופיל' : 'העלאת תמונת פרופיל'}
           title={avatarUrl ? 'החלפת תמונת פרופיל' : 'העלאת תמונת פרופיל'}
-          className="group relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background p-0 transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+          className="group relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background p-0 transition hover:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
         >
           {avatarUrl ? (
             <img src={avatarUrl} alt="תמונת פרופיל" className="h-full w-full object-cover" />

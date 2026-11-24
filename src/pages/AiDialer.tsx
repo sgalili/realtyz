@@ -163,7 +163,7 @@ export default function AiDialer() {
             className={cn(
               "flex items-center gap-2 h-11 px-5 rounded-xl text-sm font-semibold border transition-colors",
               tab === "outbound"
-                ? "bg-[#0a1430] text-white border-[#0a1430] shadow-sm"
+                ? "bg-[#0a1430] text-white border-[#0a1430] shadow-xs"
                 : "bg-background text-[#0f1b3d] border-[#0f1b3d]/15 hover:bg-muted/40",
             )}>
             <PhoneCall className="h-4 w-4" /> שיחות יוצאות
@@ -172,7 +172,7 @@ export default function AiDialer() {
             className={cn(
               "flex items-center gap-2 h-11 px-5 rounded-xl text-sm font-semibold border transition-colors",
               tab === "analytics"
-                ? "bg-[#0a1430] text-white border-[#0a1430] shadow-sm"
+                ? "bg-[#0a1430] text-white border-[#0a1430] shadow-xs"
                 : "bg-background text-[#0f1b3d] border-[#0f1b3d]/15 hover:bg-muted/40",
             )}>
             <BarChart3 className="h-4 w-4" /> ניתוח שיחות
@@ -306,7 +306,7 @@ export default function AiDialer() {
                       {editingPill ? (
                         <input autoFocus value={pillLabel || `רשימה נטענה · ${targets.length} לידים`}
                           onChange={(e) => setPillLabel(e.target.value)} onBlur={() => setEditingPill(false)}
-                          className="bg-transparent border-b border-[#0f1b3d]/30 text-right outline-none" />
+                          className="bg-transparent border-b border-[#0f1b3d]/30 text-right outline-hidden" />
                       ) : (
                         pillLabel || `רשימה נטענה · ${targets.length} לידים`
                       )}

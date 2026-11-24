@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { communityProfilePath } from '@/pages/CommunityProfilePage';
 
 /** Public profiles are a dedicated page; this keeps existing callers working by navigating there. */

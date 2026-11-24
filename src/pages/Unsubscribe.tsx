@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from '@/lib/router-compat';
 import { CheckCircle2, MailX } from 'lucide-react';
 
 /**
@@ -64,7 +64,7 @@ export default function Unsubscribe() {
             <button
               type="button"
               onClick={() => setConfirmed(true)}
-              className="w-full rounded-md bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-sm transition hover:opacity-90"
+              className="w-full rounded-md bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-xs transition hover:opacity-90"
             >
               אשר/י הסרה
             </button>

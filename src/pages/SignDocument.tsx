@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { FullPageLoading } from '@/components/ui/full-page-loading';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/lib/router-compat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';

@@ -1,11 +1,9 @@
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 
-// Browser layout observers are not implemented by jsdom.
-globalThis.ResizeObserver = class {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-} as typeof ResizeObserver;
+Object.defineProperty(window, "scrollTo", {
+  writable: true,
+  value: () => {},
+});
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,
@@ -20,3 +18,10 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+// Browser layout observers are not implemented by jsdom.
+globalThis.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as typeof ResizeObserver;

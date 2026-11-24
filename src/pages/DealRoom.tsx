@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate } from '@/lib/router-compat';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -776,7 +776,7 @@ export default function DealRoom() {
             <section
               key={col.key}
               className={cn(
-                'flex flex-col rounded-xl border bg-card/40 backdrop-blur-sm',
+                'flex flex-col rounded-xl border bg-card/40 backdrop-blur-xs',
                 isOpen && 'min-h-[60vh]',
               )}
             >
@@ -984,7 +984,7 @@ export default function DealRoom() {
                             }}
                             className={`text-right rounded-md border p-2.5 text-xs leading-relaxed transition ${
                               active
-                                ? 'border-primary bg-primary/10 text-foreground shadow-sm'
+                                ? 'border-primary bg-primary/10 text-foreground shadow-xs'
                                 : 'border-border bg-background hover:border-primary/40 hover:bg-muted/40 text-muted-foreground'
                             }`}
                             aria-pressed={active}
@@ -1031,7 +1031,7 @@ export default function DealRoom() {
                     onChange={(e) => setSmartReply(e.target.value)}
                     rows={10}
                     autoFocus
-                    className="w-full rounded-md border-2 border-primary/40 bg-background p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                    className="w-full rounded-md border-2 border-primary/40 bg-background p-3 text-sm leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-ring resize-none"
                     placeholder="ערוך את התשובה שלך…"
                   />
                 )}

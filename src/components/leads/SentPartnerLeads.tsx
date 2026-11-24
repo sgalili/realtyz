@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { Send } from 'lucide-react';
 import { useMySubmissions, SUBMISSION_STATUS_LABELS, SETTLEMENT_LABELS } from '@/hooks/useAffiliate';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';

@@ -330,7 +330,7 @@ const LiveConversations = () => {
         </div>
       )}
 
-      <div className="mt-5 overflow-hidden rounded-xl border border-primary/15 bg-card shadow-sm">
+      <div className="mt-5 overflow-hidden rounded-xl border border-primary/15 bg-card shadow-xs">
         {/* Search */}
         <div className="p-3 border-b border-primary/10 bg-card/80">
           <div className="relative">
@@ -418,7 +418,7 @@ const LiveConversations = () => {
                                   <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${isAI ? 'bg-primary/15' : 'bg-accent/30'}`}>
                                     {isAI ? <RitaAvatar className="h-8 w-8 border-0 ring-0" /> : <User className="h-4 w-4 text-accent-foreground" />}
                                   </div>
-                                  <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
+                                  <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-xs ${
                                     isAI
                                       ? 'bg-primary/10 border border-primary/20 text-foreground rounded-tr-sm'
                                       : 'bg-accent/25 border border-accent/40 text-foreground rounded-tl-sm'

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ call: vi.fn(), navigate: vi.fn(), open: vi.fn(), connected: true, invoke: vi.fn(), purge: vi.fn() }));
 vi.mock('@/hooks/useCloudSession', () => ({ useCloudSessionConnected: () => mocks.connected, CLOUD_SESSION_KEY: 'cloud-session-state' }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: mocks.invoke } } }));
-vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
+vi.mock('@/lib/router-compat', () => ({ useNavigate: () => mocks.navigate }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => 'workspace-a' }));
 vi.mock('@/hooks/useMetaPageBinding', () => ({ useMetaPageBinding: () => ({ data: { pageId: 'one', pageName: 'One' } }), useRefreshMetaPageBinding: () => () => {} }));
 vi.mock('@/hooks/useFacebookHealth', () => ({ useRefreshFacebookHealth: () => () => {} }));

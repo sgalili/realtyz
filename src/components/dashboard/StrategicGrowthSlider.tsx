@@ -216,7 +216,7 @@ export function StrategicGrowthSlider() {
         >
         {/* === SELECTOR PANEL (silver, fixed size — never collapses) === */}
         <div
-          className="realtyz-growth-selector relative overflow-hidden rounded-xl border border-primary/15 px-5 py-4 shadow-sm"
+          className="realtyz-growth-selector relative overflow-hidden rounded-xl border border-primary/15 px-5 py-4 shadow-xs"
           style={{
             background:
               'linear-gradient(180deg, hsl(210 27% 99%) 0%, hsl(var(--brand-silver)) 55%, hsl(214 20% 86%) 100%)',
@@ -233,7 +233,7 @@ export function StrategicGrowthSlider() {
                 onClick={() => { bumpExpanded(); increment(); }}
                 disabled={projected >= max}
                 aria-label={`הגדל יעד ${unitsLabel}`}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-background/90 text-primary shadow-sm transition-all duration-200 hover:bg-primary hover:text-primary-foreground hover:shadow active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-background/90 text-primary shadow-xs transition-all duration-200 hover:bg-primary hover:text-primary-foreground hover:shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <Plus className="h-[18px] w-[18px]" strokeWidth={2.5} />
               </button>
@@ -250,13 +250,13 @@ export function StrategicGrowthSlider() {
                 }}
                 aria-expanded={expanded && !closing}
                 aria-label={expanded && !closing ? 'כווץ פירוט יעד' : 'הרחב פירוט יעד'}
-                className="flex items-baseline gap-2 leading-none rounded-lg px-2 py-1 transition-colors hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="flex items-baseline gap-2 leading-none rounded-lg px-2 py-1 transition-colors hover:bg-primary/5 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <span className="text-[22px] font-bold text-primary/85" style={{ marginInlineStart: '10px' }}>יעד</span>
                 <span
                   key={projected}
                   style={{ width: `${String(projected).length}ch` }}
-                  className="inline-block text-center animate-fade-in font-mono text-[44px] font-bold tabular-nums text-primary drop-shadow-sm"
+                  className="inline-block text-center animate-fade-in font-mono text-[44px] font-bold tabular-nums text-primary drop-shadow-xs"
                 >
                   {projected}
                 </span>
@@ -270,7 +270,7 @@ export function StrategicGrowthSlider() {
                 onClick={() => { bumpExpanded(); decrement(); }}
                 disabled={projected <= min}
                 aria-label={`הקטן יעד ${unitsLabel}`}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-background/90 text-primary shadow-sm transition-all duration-200 hover:bg-primary hover:text-primary-foreground hover:shadow active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-background/90 text-primary shadow-xs transition-all duration-200 hover:bg-primary hover:text-primary-foreground hover:shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <Minus className="h-[18px] w-[18px]" strokeWidth={2.5} />
               </button>

@@ -18,6 +18,7 @@ import { publicUrl } from '@/lib/publicUrl';
 import { fmtILS } from '@/lib/formatCurrency';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 import { pricingEditWorkspace } from '@/lib/pricingSave';
+import { sqlNull } from '@/lib/sqlNull';
 
 export type RewardType = 'fixed' | 'percent';
 
@@ -263,8 +264,8 @@ export function useRegisterAffiliate() {
   return useMutation({
     mutationFn: async (input: { displayName?: string; phone?: string }) => {
       const { error } = await supabase.rpc('register_as_affiliate', {
-        _display_name: input.displayName ?? null,
-        _phone: input.phone ?? null,
+        _display_name: sqlNull(input.displayName ?? null),
+        _phone: sqlNull(input.phone ?? null),
       });
       if (error) throw error;
     },

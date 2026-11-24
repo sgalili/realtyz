@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { UserPlus, Bot, MessageSquare, Send, MapPin, PhoneCall, TrendingUp, MessageCircle, Instagram, Facebook, Music2, type LucideIcon } from 'lucide-react';
 import { DEMO_CAMPAIGNS, DEMO_VOTERS } from '@/lib/demoData';
@@ -123,7 +123,7 @@ export function LiveActivityFeed({ compact = false, floating = false }: { compac
               type="button"
               key={evt.id}
               onClick={() => handleNavigate(evt.path)}
-              className={`flex w-full items-center gap-2 text-right text-xs px-2.5 py-1.5 rounded-lg bg-muted/30 border border-border/30 transition-all duration-500 hover:bg-primary/5 hover:border-primary/20 active:bg-primary/10 active:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${i === 0 ? 'animate-fade-in' : ''}`}
+              className={`flex w-full items-center gap-2 text-right text-xs px-2.5 py-1.5 rounded-lg bg-muted/30 border border-border/30 transition-all duration-500 hover:bg-primary/5 hover:border-primary/20 active:bg-primary/10 active:border-primary/30 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/30 ${i === 0 ? 'animate-fade-in' : ''}`}
             >
               <Icon className={`h-3.5 w-3.5 shrink-0 ${evt.color}`} />
               <span className="flex-1 truncate text-foreground text-[15px]">{evt.text}</span>
@@ -135,7 +135,7 @@ export function LiveActivityFeed({ compact = false, floating = false }: { compac
       <button
         type="button"
         onClick={() => handleNavigate('/live-activity')}
-        className="mt-3 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 active:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+        className="mt-3 w-full rounded-md border border-primary/20 bg-background px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 active:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/30"
       >
         הצג את כל הפעילות
       </button>

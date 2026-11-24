@@ -47,7 +47,7 @@ export function BrokerScannerPanel({ prioritySort = false, onPrioritySort }: { p
   if (!s) return <p className="text-sm text-destructive">לא ניתן לקרוא את מצב קו הסריקה</p>;
   const field = (key: keyof ScannerSettings, label: string, min: number, max: number) => <label className="flex items-center gap-1 text-sm">{label}<Input type="number" min={min} max={max} className="h-8 w-16" value={value(key)} onChange={e => setDraft(d => ({ ...d, [key]: Number(e.target.value) }))} /></label>;
   const active = s.enabled && !s.paused;
-  const ready = !!(s.connected && s.webhook_ready && status.data.credentials_ready);
+  const ready = !!(s.connected && s.webhook_ready && status.data?.credentials_ready);
   const w = scannerWorkerState(s);
   const stateText = active ? 'פעיל' : ready ? 'מחובר · מושהה' : reasons[s.pause_reason ?? ''] ?? 'מנותק';
   // One control: active → pause; otherwise resume (which re-checks the connection before activating).
@@ -56,7 +56,7 @@ export function BrokerScannerPanel({ prioritySort = false, onPrioritySort }: { p
     <div className="flex items-center gap-2 text-sm">
       <Button variant="ghost" className="h-auto min-w-0 flex-1 gap-1 p-0 font-semibold" aria-expanded={open} onClick={() => setOpen(o => !o)}><span className="truncate">סריקת מספרי וואטסאפ</span><ChevronDown className={`h-4 w-4 shrink-0 ${open ? 'rotate-180' : ''}`} /></Button>
       <span className={`truncate text-xs ${active ? 'text-lead-whatsapp' : 'text-muted-foreground'}`}>{stateText}</span>
-      <span className="tabular-nums text-xs text-muted-foreground" dir="ltr" title="פניות היום">{status.data.used_today}/{s.daily_cap}</span>
+      <span className="tabular-nums text-xs text-muted-foreground" dir="ltr" title="פניות היום">{status.data?.used_today}/{s.daily_cap}</span>
       <div className="ms-auto flex shrink-0 items-center [&>button]:h-8 [&>button]:w-8">
         <Button size="icon" variant="ghost" aria-label={plugLabel} title={plugLabel} disabled={act.isPending} className={active ? 'text-lead-whatsapp' : 'text-muted-foreground'} onClick={() => setConfirm(active ? 'pause' : 'resume')}>{act.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : active ? <Plug className="h-4 w-4" /> : <Unplug className="h-4 w-4" />}</Button>
         <BulkBrokerWhatsAppScan />
@@ -64,12 +64,12 @@ export function BrokerScannerPanel({ prioritySort = false, onPrioritySort }: { p
         {onPrioritySort && <Button size="icon" variant="ghost" aria-label="מיון לפי התקדמות גילוי וואטסאפ" title="בתהליך, הושלמו, ממתינים" aria-pressed={prioritySort} className={prioritySort ? 'text-primary' : 'text-muted-foreground'} onClick={onPrioritySort}><ArrowDownWideNarrow className="h-4 w-4" /></Button>}
       </div>
     </div>
-    {open && (!status.data.credentials_ready || w !== 'connected') && <p className="text-xs text-destructive">{[!status.data.credentials_ready && 'חסרים פרטי קו', w !== 'connected' && workerStateLabels[w]].filter(Boolean).join(' · ')}</p>}
+    {open && (!status.data?.credentials_ready || w !== 'connected') && <p className="text-xs text-destructive">{[!status.data?.credentials_ready && 'חסרים פרטי קו', w !== 'connected' && workerStateLabels[w]].filter(Boolean).join(' · ')}</p>}
     {result && <p role="status" aria-live="polite" className={`text-xs ${result.ok ? 'text-lead-whatsapp' : 'text-destructive'}`}>{result.text}</p>}
     {open && registryResult && <p role="status" aria-live="polite" className="text-xs text-muted-foreground">{registryResult}</p>}
     <ScannerActionConfirm open={confirm !== null} onOpenChange={value => { if (!value) setConfirm(null); }} title={confirm === 'pause' ? 'השהיית קו הסריקה' : confirm === 'configure' ? 'שמירת הגדרות הקו' : 'חיבור והפעלת קו הסריקה'} description={confirm === 'pause' ? 'להשהות את הקו? המשימות יישמרו וימשיכו לאחר הפעלה מחדש.' : confirm === 'configure' ? 'לשמור את ההגדרות? הקו יושהה עד הפעלה מחדש.' : `להפעיל את הקו עם מכסה של ${s.daily_cap} פניות ביום? הפניות הממתינות ימשיכו ברקע.`} confirmLabel={confirm === 'pause' ? 'השהיית הסריקה' : confirm === 'configure' ? 'שמירת ההגדרות' : 'הפעלת הסריקה'} pending={act.isPending} onConfirm={() => { if (confirm) act.mutate(confirm === 'configure' ? { action: confirm, daily_cap: value('daily_cap'), jitter_min_seconds: value('jitter_min_seconds'), jitter_max_seconds: value('jitter_max_seconds'), error_threshold: value('error_threshold') } : { action: confirm }); }} />
     {open && <div className="space-y-2 border-t pt-2">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><span role="status">הושלמו {status.data.overview?.done ?? 0} מתוך {status.data.overview?.total ?? 0}</span><span>מספר הקו: <span dir="ltr" className="inline-block tabular-nums">{s.scanner_phone ? formatPhoneDisplay(s.scanner_phone) : 'לא זוהה'}</span></span></div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><span role="status">הושלמו {status.data?.overview?.done ?? 0} מתוך {status.data?.overview?.total ?? 0}</span><span>מספר הקו: <span dir="ltr" className="inline-block tabular-nums">{s.scanner_phone ? formatPhoneDisplay(s.scanner_phone) : 'לא זוהה'}</span></span></div>
       <div className="flex flex-wrap items-center gap-2">
         {field('daily_cap','מכסה יומית',1,50)}{field('jitter_min_seconds','השהיה מ־',45,600)}{field('jitter_max_seconds','עד',45,600)}{field('error_threshold','עצירה אחרי שגיאות',1,5)}
         <Button size="sm" variant="outline" disabled={act.isPending} onClick={() => setConfirm('configure')}>שמירה</Button>

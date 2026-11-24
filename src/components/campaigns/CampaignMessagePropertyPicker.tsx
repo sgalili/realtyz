@@ -77,7 +77,7 @@ export function CampaignMessagePropertyPicker({ value, onChange }: {
         <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
       </Button>
     </PopoverTrigger>
-    <PopoverContent align="start" dir="rtl" className="w-[--radix-popover-trigger-width] p-2">
+    <PopoverContent align="start" dir="rtl" className="w-[var(--radix-popover-trigger-width)] p-2">
       <Input value={query} onChange={event => setQuery(event.target.value)} placeholder="חפש לפי כותרת, עיר או כתובת…" className="mb-2 text-right" />
       <div className="max-h-64 overflow-y-auto">
         <Button type="button" variant="ghost" className="w-full justify-start text-right" onClick={() => { onChange(null); setOpen(false); }}>ללא נכס · הודעה כללית</Button>

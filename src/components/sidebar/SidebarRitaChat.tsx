@@ -186,7 +186,7 @@ function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRi
           onFocus={(event) => { setInputFocused(true); const textarea = event.currentTarget; window.setTimeout(() => textarea.scrollIntoView({ block: 'nearest' }), 300); }}
           aria-label="הודעה לריטה"
           rows={1}
-          className="!min-h-10 max-h-32 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-2 text-xs text-foreground outline-none [field-sizing:fixed]"
+          className="!min-h-10 max-h-32 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-2 text-xs text-foreground outline-hidden [field-sizing:fixed]"
         />
         <Button type="submit" size="icon" disabled={!text.trim() || loading || !ready} className="mb-0.5 h-7 w-7 shrink-0 rounded-full" aria-label="שליחה"><ArrowUp className="h-4 w-4" /></Button>
       </form>

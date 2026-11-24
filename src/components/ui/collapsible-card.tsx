@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 export function CollapsibleCard({ title, open, onToggle, children, className }: { title: ReactNode; open: boolean; onToggle: () => void; children: ReactNode; className?: string }) {
   return (
     <section dir="rtl" className={cn('rounded-xl border bg-card', className)}>
-      <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-center justify-between gap-2 p-4 text-start focus-visible:outline-none">
+      <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-center justify-between gap-2 p-4 text-start focus-visible:outline-hidden">
         <h2 className="text-[17px] font-semibold">{title}</h2>
         <ChevronDown className={cn('h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-700 ease-in-out motion-reduce:transition-none', open && 'rotate-180')} />
       </button>

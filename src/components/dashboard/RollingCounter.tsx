@@ -8,7 +8,7 @@ interface Props {
 
 export function RollingCounter({ target, label }: Props) {
   const [display, setDisplay] = useState(0);
-  const animRef = useRef<number>();
+  const animRef = useRef<number | undefined>(undefined);
   const startRef = useRef(0);
   const prevRef = useRef(0);
 

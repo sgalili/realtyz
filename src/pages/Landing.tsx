@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router-compat';
 import { Button } from '@/components/ui/button';
 import {
   Accordion,
@@ -219,7 +219,7 @@ const faq = (credits: number): { q: string; a: string }[] => [
 
 function useCounter(target: number, ms = 700) {
   const [value, setValue] = useState(target);
-  const raf = useRef<number>();
+  const raf = useRef<number | undefined>(undefined);
   const from = useRef(target);
   useEffect(() => {
     const start = performance.now();
@@ -300,7 +300,7 @@ export function LandingContent() {
             ].map((m) => (
               <div
                 key={m.value}
-                className="rounded-2xl border border-border/60 bg-card p-2 sm:p-4 text-center shadow-sm"
+                className="rounded-2xl border border-border/60 bg-card p-2 sm:p-4 text-center shadow-xs"
               >
                 <div className="text-xl sm:text-3xl font-extrabold tracking-tight text-primary">{m.value}</div>
                 <div className="mt-1 text-xs sm:text-sm font-semibold leading-snug text-muted-foreground">{m.label}</div>
@@ -368,7 +368,7 @@ export function LandingContent() {
                   />
                   <div aria-hidden className="landing-card-veil absolute inset-0" />
                   <div className="relative flex h-full flex-col justify-end p-4">
-                    <h3 className="text-lg font-extrabold text-white drop-shadow transition-all duration-300 group-hover:text-[21px]">{f.title}</h3>
+                    <h3 className="text-lg font-extrabold text-white drop-shadow-sm transition-all duration-300 group-hover:text-[21px]">{f.title}</h3>
                     <p className="mt-1.5 text-[14px] leading-snug text-white/90 transition-all duration-300 group-hover:text-[17px]">{f.body}</p>
                   </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from '@/lib/router-compat';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -526,7 +526,7 @@ export function SocialConnectionsTab() {
                         size="icon"
                         aria-label="ערוך הגדרות"
                         title="ערוך הגדרות / רענן טוקן"
-                        className="h-8 w-8 shrink-0 bg-gradient-to-b from-slate-200 to-slate-300 hover:from-slate-100 hover:to-slate-200 text-slate-900 border border-slate-400/60 shadow-sm"
+                        className="h-8 w-8 shrink-0 bg-gradient-to-b from-slate-200 to-slate-300 hover:from-slate-100 hover:to-slate-200 text-slate-900 border border-slate-400/60 shadow-xs"
                         onClick={() => setConfigFor(def)}
                         disabled={!isSuperAdmin}
                       >
@@ -538,7 +538,7 @@ export function SocialConnectionsTab() {
                       size="icon"
                       aria-label="הגדרת חיבור"
                       title="הגדרת חיבור · API"
-                      className="h-8 w-8 shrink-0 bg-gradient-to-b from-slate-200 to-slate-300 hover:from-slate-100 hover:to-slate-200 text-slate-900 border border-slate-400/60 shadow-sm"
+                      className="h-8 w-8 shrink-0 bg-gradient-to-b from-slate-200 to-slate-300 hover:from-slate-100 hover:to-slate-200 text-slate-900 border border-slate-400/60 shadow-xs"
                       onClick={() => setConfigFor(def)}
                       disabled={!isSuperAdmin}
                     >

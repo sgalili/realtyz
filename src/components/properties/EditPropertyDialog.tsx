@@ -281,7 +281,7 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
                   onClick={() => setListingType(t)}
                   className={`px-5 py-1.5 text-sm font-bold rounded-lg transition-colors ${
                     listingType === t
-                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      ? 'bg-primary text-primary-foreground shadow-xs'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
