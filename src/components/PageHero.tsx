@@ -103,6 +103,7 @@ function usePropertyHeroSuffix(pathname: string): string {
 
 function PropertiesHeroAddButton() {
   const { connected } = useHomelyConnection();
+  const brokersOnly = useBrokersOnly();
   const dispatch = (action: "manual" | "import" | "homely") =>
     window.dispatchEvent(new CustomEvent("properties:add", { detail: { action } }));
   return (
@@ -118,9 +119,9 @@ function PropertiesHeroAddButton() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent("public-publisher:open"))} className="gap-2">
+        {!brokersOnly && <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent("public-publisher:open"))} className="gap-2">
           <Megaphone className="h-4 w-4" /> הוספה מיד2 או ידנית (פרסום חינם)
-        </DropdownMenuItem>
+        </DropdownMenuItem>}
         <DropdownMenuItem onClick={() => dispatch("manual")} className="gap-2">
           <Plus className="h-4 w-4" /> הוספת נכס ידנית
         </DropdownMenuItem>

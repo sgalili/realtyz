@@ -268,12 +268,12 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     if (!brokersOnly) return filtered;
     const cleaned = filtered.map(i => i.url === '/inbox' ? { ...i, title: 'צ׳אטים' } : i);
     if (!brokerMenu) return cleaned;
-    // Brokers-only: My Ads and Campaigns share one hub entry; old routes stay live.
+    // Brokers-only: My Ads is hidden; the single entry opens Campaigns directly.
     const camp = cleaned.find(i => i.url === '/campaigns');
     const idx = cleaned.findIndex(i => i.url === '/campaigns' || i.url === '/my-ads');
     if (idx < 0) return cleaned;
     const rest = cleaned.filter(i => i.url !== '/campaigns' && i.url !== '/my-ads');
-    const hub: NavItem = { ...(camp ?? MY_ADS_ITEM), title: 'קמפיינים ופרסום', url: '/publishing', aliases: ['/my-ads', '/campaigns', ...(camp?.aliases ?? [])] };
+    const hub: NavItem = { ...(camp ?? MY_ADS_ITEM), title: 'קמפיינים', url: '/campaigns', aliases: ['/my-ads', '/publishing', ...(camp?.aliases ?? [])] };
     rest.splice(Math.min(idx, rest.length), 0, hub);
     return rest;
   }, [allNavItems, brokersOnly, brokerMenu]);
