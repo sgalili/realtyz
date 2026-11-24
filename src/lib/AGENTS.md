@@ -1,2 +1,3 @@
 - Rent shows "₪X / לחודש" via src/lib/propertyPrice.ts.
 - Media dedup uses host/path hashes; Yad2 reuses validated own public cache, not other hosts. Why: safe reuse.
+- Outreach uses the consumed OTP's saved phone and exact saved personal WhatsApp attribution, never scraped contact numbers; uncertain provider sends require review rather than automatic replay. Why: no account takeover or duplicate outreach.

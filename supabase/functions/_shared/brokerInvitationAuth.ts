@@ -1,4 +1,5 @@
 import { toIntl } from './phoneSession.ts';
+import { recordOutreachOtp } from './brokerOutreachReceipt.ts';
 
 /** Invitation identity is bound only to the saved personal WhatsApp contact, never a scraped login phone. */
 export async function requireInvitedBrokerPhone(admin: any, brokerId: string, phone: string): Promise<boolean> {
@@ -25,5 +26,6 @@ export async function invitedBrokerSession(admin: any, brokerId: string, phone: 
   if (error || !data?.user?.email) throw new Error('לא ניתן להשלים את הכניסה לחשבון. נסו שוב');
   const { data: link, error: le } = await admin.auth.admin.generateLink({ type: 'magiclink', email: data.user.email });
   if (le || !link?.properties?.hashed_token) throw new Error('לא ניתן להשלים את הכניסה לחשבון. נסו שוב');
+  await recordOutreachOtp(admin,brokerId,phone);
   return { token_hash: link.properties.hashed_token, verification_type: 'magiclink', existing_account: true };
 }

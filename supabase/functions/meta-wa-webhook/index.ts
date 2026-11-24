@@ -21,6 +21,7 @@ import { triggerAvatarFetch } from "../_shared/greenApiCreds.ts";
 import { transcribeWaVoiceNote } from "../_shared/waMediaTranscribe.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
 import { handleVisitorWhatsApp, isVisitorWhatsApp } from '../_shared/visitorWaHandler.ts';
+import { outreachReply } from '../_shared/brokerOutreachReply.ts';
 
 
 const json = (body: Record<string, unknown>, status = 200) =>
@@ -179,6 +180,24 @@ Deno.serve(async (req) => {
             try {
               const from = String(m?.from ?? "").replace(/\D/g, "");
               if (!from) continue;
+              // Only explicitly enrolled journeys use this new lane; all legacy routing remains untouched.
+              const replyText=String(m?.text?.body??m?.button?.text??m?.interactive?.button_reply?.title??'');
+              if(replyText){
+                const {data:journeyContacts,error:contactError}=await admin.from('broker_whatsapp_contacts').select('broker_id').eq('whatsapp_phone',from).limit(2);
+                if(contactError)throw contactError;
+                if(journeyContacts?.length===1){
+                  const {data:journey,error:journeyError}=await admin.from('broker_outreach_journeys').select('broker_id').eq('broker_id',journeyContacts[0].broker_id).eq('outreach_channel','whatsapp').eq('enabled',true).not('outreach_message_id','is',null).maybeSingle();
+                  if(journeyError)throw journeyError;
+                  if(journey&&outreachReply(replyText)!=='unknown'){
+                    const work=fetch(`${Deno.env.get('BROKER_OUTREACH_APP_URL')??'https://toraff.co.il'}/api/public/broker-outreach/reply`,{method:'POST',headers:{Authorization:`Bearer ${serviceRoleKey}`,'Content-Type':'application/json'},body:JSON.stringify({phone:from,messageId:String(m?.id??''),replyTo:m?.context?.id??null,text:replyText}),signal:AbortSignal.timeout(50000)}).then(async response=>{if(!response.ok)throw new Error(`outreach_reply_http_${response.status}`);}).catch(async error=>{
+                      const {error:saveError}=await admin.from('broker_outreach_events').insert({broker_id:journey.broker_id,workspace_owner_id:journey.broker_id,event_key:`reply-handoff-failure:${m?.id??crypto.randomUUID()}`,kind:'reply_handoff_failed',detail:{reason:String(error),message_id:m?.id??null}});
+                      if(saveError)console.error('[broker-outreach-handoff]',saveError.message);
+                    });
+                    EdgeRuntime.waitUntil(work);
+                    continue;
+                  }
+                }
+              }
 
               // Public contact conversations never enter tenant routing or private CRM tools.
               const visitorText = String(m?.text?.body ?? '');

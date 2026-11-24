@@ -13,6 +13,7 @@
  * wide (no MAILBOX_TO_OWNER_EMAIL hardcoding — RZ is a single workspace).
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { outreachReply } from '../_shared/brokerOutreachReply.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -175,6 +176,19 @@ Deno.serve(async (req) => {
   });
 
   const isJoinMail = allTo.map(extractEmail).includes(JOIN_MAILBOX);
+  // Signed/secret-verified Resend receipt, exact saved sender, separately enrolled journey only.
+  if(isJoinMail&&messageId&&outreachReply(bodyText)!=='unknown'){
+    const {data:profiles,error:pe}=await supabase.from('profiles').select('id').eq('email',fromEmail).limit(2);
+    if(pe)return json({error:'outreach_sender_lookup_failed'},500);
+    if(profiles?.length===1){
+      const {data:j,error:je}=await supabase.from('broker_outreach_journeys').select('broker_id').eq('broker_id',profiles[0].id).eq('outreach_channel','email').eq('enabled',true).not('outreach_message_id','is',null).maybeSingle();
+      if(je)return json({error:'outreach_journey_lookup_failed'},500);
+      if(j){
+        const response=await fetch(`${Deno.env.get('BROKER_OUTREACH_APP_URL')??'https://toraff.co.il'}/api/public/broker-outreach/email-reply`,{method:'POST',headers:{Authorization:`Bearer ${SERVICE_ROLE_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({email:fromEmail,messageId,text:bodyText.slice(0,4000)}),signal:AbortSignal.timeout(50000)});
+        if(!response.ok)return json({error:'outreach_reply_processing_failed'},500);
+      }
+    }
+  }
 
   // Resolve broker by the recipient mailbox prefix: <prefix>@realtyz.co.il
   let matchedBrokerUserId: string | null = null;

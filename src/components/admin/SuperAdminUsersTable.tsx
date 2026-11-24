@@ -25,6 +25,7 @@ import { UserCreditBalanceEditor } from './UserCreditBalanceEditor';
 import { emptyAdminUserFilters, matchesAdminUser, type AdminUserFilters } from '@/lib/adminUserFilters';
 import { AgencyIdentity } from '@/components/community/AgencyIdentity';
 import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
+import { BrokerOutreachPanel } from './BrokerOutreachPanel';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'סופר אדמין', admin: 'מנהל', moderator: 'מנחה', managing_broker: 'מתווך מנהל', agent: 'סוכן',
@@ -242,6 +243,7 @@ export function SuperAdminUsersTable() {
               const on = draft.roles.includes(r);
               return <Button key={r} type="button" size="sm" variant={on ? 'default' : 'outline'} className="h-7 px-2 text-xs" onClick={() => setDraft({ ...draft, roles: on ? draft.roles.filter(x => x !== r) : [...draft.roles, r] })}>{ROLE_LABELS[r]}</Button>;
             })}</div></div>
+          <BrokerOutreachPanel key={draft.id} brokerId={draft.id}/>
         </div>}
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
           <Button variant="outline" disabled={saveDraft.isPending} onClick={() => setDraft(null)}>ביטול</Button>

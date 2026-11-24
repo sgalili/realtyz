@@ -1,6 +1,7 @@
 import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";
+import { attachAppAuth } from './lib/attachAppAuth';
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -32,6 +33,7 @@ const csrfMiddleware = createCsrfMiddleware({
 // project did not intentionally replace it.
 export const startInstance = createStart(() => ({
   requestMiddleware: [errorMiddleware, csrfMiddleware],
+  functionMiddleware: [attachAppAuth],
   // Pages render in the browser after the document shell (head, metadata, styles)
   // arrives from the server: the app reads browser-only session, storage and
   // demo state while rendering, exactly as it did before the upgrade.

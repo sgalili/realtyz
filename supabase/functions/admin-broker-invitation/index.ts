@@ -15,6 +15,7 @@ const schema = z.object({
   demo: z.boolean().optional(),
   attachment_id: z.string().uuid().nullable().optional(),
   use_discovered_whatsapp: z.boolean().default(false),
+  outreach: z.boolean().default(false),
 }).strict();
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
@@ -81,11 +82,22 @@ Deno.serve(async req => {
     if (error) return json({ error: 'שמירת הנוסח נכשלה' }, 500);
     gender = input.gender;
   }
-  const text = savedFor(gender);
+  let text = savedFor(gender);
+  let outreachAddress: string | null = null;
+  if(input.outreach){
+    if(!input.broker_id)return json({error:'נדרש מתווך למסלול הפנייה'},400);
+    const {data:j,error:je}=await admin.from('broker_outreach_journeys').select('enabled,message_consent_at,opted_out_at').eq('broker_id',input.broker_id).maybeSingle();
+    const {data:listing,error:le}=await admin.from('listings').select('address,city').eq('workspace_owner_id',input.broker_id).eq('source','yad2').not('address','is',null).order('created_at',{ascending:false}).limit(1).maybeSingle();
+    if(je||le)return json({error:'טעינת מסלול הפנייה נכשלה'},500);
+    if(!j?.enabled||!j.message_consent_at||j.opted_out_at)return json({error:'נדרשת הסכמה מתועדת להפעלת מסלול הפנייה'},409);
+    if(!listing?.address||!listing.city)return json({error:'אין כתובת ועיר מאומתות ממודעת יד2 לפנייה האישית'},409);
+    outreachAddress=[listing.address,listing.city].join(', ');
+    text='שלום {brokerName}, ראינו את המודעה שלך בכתובת {{2}}. אנחנו TORAFF, מערכת למתווכים שמרכזת נכסים, פניות, משימות וקמפיינים. אפשר להתרשם ללא תשלום: {{3}}. אם מעניין לשמוע הסבר קצר מריטה, אפשר להשיב ״מעוניין״ או ״מעוניינת״. להסרה מהודעות המשך יש להשיב ״הסרה״.';
+  }
   let body: string;
-  try { body = templateBody(text); } catch (e) { return json({ error: e instanceof Error ? e.message : 'Invalid template' }, 400); }
+  try { body = input.outreach ? text.replace('{brokerName}','{{1}}') : templateBody(text); } catch (e) { return json({ error: e instanceof Error ? e.message : 'Invalid template' }, 400); }
   const name = await invitationTemplateName(body);
-  if (input.action === 'send' && demo && !templateHasLink(body)) return json({ error: 'תבנית הדמו אינה כוללת קישור. יש לעדכן אותה ולהגיש ל-Meta מחדש.' }, 409);
+  if (input.action === 'send' && demo && !input.outreach && !templateHasLink(body)) return json({ error: 'תבנית הדמו אינה כוללת קישור. יש לעדכן אותה ולהגיש ל-Meta מחדש.' }, 409);
   try {
     // Use only the platform's already configured official number, never the target broker's WABA.
     const { data: rows, error: configError } = await admin.from('wa_providers').select('config').eq('provider_name', 'WBA').eq('is_official', true).eq('is_active', true).order('updated_at', { ascending: false });
@@ -107,9 +119,9 @@ Deno.serve(async req => {
     let template = live.data?.find((t: { name: string; language: string }) => t.name === name && t.language === BROKER_TEMPLATE_LANGUAGE);
     if (template && template.components?.find((c: { type: string }) => c.type === 'BODY')?.text !== body) return json({ error: 'נוסח Meta אינו תואם לתצוגה. יש לרענן לפני שליחה.' }, 409);
     if ((input.action === 'register' || input.action === 'save_text') && !template) {
-      template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/auth'] : ['ישראל ישראלי']] } }] });
+      template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [input.outreach ? ['ישראל','הרצל 10, תל אביב','https://toraff.co.il/demo/broker'] : templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/auth'] : ['ישראל ישראלי']] } }] });
     }
-    if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text, sender: '972537983832', demo_link: demoLink });
+    if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text:input.outreach?text.replace('{{2}}',outreachAddress??'').replace('{{3}}','{authLink}'):text, sender: '972537983832', demo_link: demoLink });
     if (!input.broker_id || !input.request_id || !input.consent) return json({ error: 'נדרשים מתווך, מזהה שליחה ואישור הסכמת הנמען' }, 400);
     if (template?.status !== 'APPROVED') return json({ error: 'התבנית טרם אושרה ב-Meta', status: template?.status ?? 'NOT_REGISTERED' }, 409);
     const { data: broker, error: brokerError } = await admin.from('profiles').select('id,full_name,phone').eq('id', input.broker_id).single();
@@ -142,7 +154,7 @@ Deno.serve(async req => {
       if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');
       const link = demo ? demoLink : invitationLink(site.origin, broker.id, onboarding.invitation_link_token);
       if (!link) throw new Error('Missing invitation link');
-      sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: (contact?.name || broker.full_name)?.trim().split(/\s+/)[0] || 'מתווך' }, ...(templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });
+      sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: (contact?.name || broker.full_name)?.trim().split(/\s+/)[0] || 'מתווך' }, ...(input.outreach ? [{type:'text',text:outreachAddress??''},{type:'text',text:link}] : templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });
     } catch (e) {
       await admin.from('broker_invitation_sends').update({ status: 'unknown' }).eq('request_id', input.request_id);
       throw e;
@@ -152,6 +164,10 @@ Deno.serve(async req => {
     const { error: sendError } = await admin.from('broker_invitation_sends').update({ status: 'accepted', message_id: messageId }).eq('request_id', input.request_id);
     const { error: trackError } = await admin.from('admin_broker_onboarding').update({ invited_at: new Date().toISOString(), invitation_message_id: messageId }).eq('user_id', broker.id);
     if (sendError || trackError) return json({ error: 'Meta קיבלה את ההודעה אך עדכון שלב ההצטרפות נכשל. אין לשלוח שוב.', message_id: messageId }, 500);
+    if(input.outreach){
+      const {error:journeyError}=await admin.from('broker_outreach_journeys').update({outreach_message_id:messageId,outreach_channel:'whatsapp',stage:'outreach_accepted'}).eq('broker_id',broker.id);
+      if(journeyError)return json({error:'ההודעה התקבלה אך רישום מסלול הפנייה נכשל. אין לשלוח שוב.',message_id:messageId},500);
+    }
     // Attachment follows the approved template as a document message; Meta may reject it outside an open 24h conversation.
     let attachment_status: string | undefined;
     if (input.attachment_id) {

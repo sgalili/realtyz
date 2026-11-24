@@ -1,0 +1,169 @@
+import { brokerVoiceIntro, shortBrokerDemoCall } from './brokerOutreachPolicy';
+import type { Json } from '@/integrations/supabase/types';
+import { IVR_DEFAULT_VOICES } from '../../supabase/functions/_shared/ivrVoices';
+
+type Admin = (typeof import('@/integrations/supabase/client.server'))['supabaseAdmin'];
+export async function outreachEvent(admin: Admin, brokerId: string, kind: string, detail: Record<string, unknown> = {}) {
+  const { error } = await admin.from('broker_outreach_events').insert({ broker_id: brokerId, workspace_owner_id: brokerId, event_key: `${kind}:${crypto.randomUUID()}`, kind, detail: JSON.parse(JSON.stringify(detail)) as Json });
+  if (error) throw error;
+}
+
+export async function vapiConfig(admin: Admin) {
+  let key = process.env['VAPI_API_KEY'] ?? '';
+  let phoneId = process.env['VAPI_PHONE_NUMBER_ID'] ?? '';
+  const voiceId = process.env['ELEVENLABS_VOICE_ID'] ?? IVR_DEFAULT_VOICES[0].voice_id;
+  if (!key || !phoneId) {
+    const { data, error } = await admin.from('api_configs').select('api_key').eq('service_name','Vapi').maybeSingle();
+    if (error) throw error;
+    const parts = String(data?.api_key ?? '').split(':');
+    key ||= parts[0] ?? ''; phoneId ||= parts[1] ?? '';
+  }
+  if (!key || !phoneId || !voiceId) throw new Error('נדרשת הגדרת Vapi, קו Twilio וקול ריטה לפני תזמון שיחה');
+  return { key, phoneId, voiceId };
+}
+
+async function vapiRequest(key: string, path: string, method = 'GET', body?: unknown) {
+  const response = await fetch(`https://api.vapi.ai${path}`, { method, headers: { Authorization: `Bearer ${key}`, 'Content-Type':'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(15_000) });
+  const raw = await response.text();
+  if (!response.ok) { console.error('[broker-outreach-vapi]', response.status, raw.slice(0,2000)); throw new Error(`Vapi דחה את הפעולה (${response.status})`); }
+  return raw ? JSON.parse(raw) as Record<string, unknown> : {};
+}
+
+export async function cancelBrokerDemo(admin: Admin, brokerId: string) {
+  const { data: journey, error } = await admin.from('broker_outreach_journeys').select('*').eq('broker_id',brokerId).single();
+  if (error) throw error;
+  if (!journey.call_due_at || Date.parse(journey.call_due_at) <= Date.now()) throw new Error('חלון הביטול הסתיים; יש לבדוק את מצב השיחה לפני חיוג נוסף');
+  const { error: reserveError } = await admin.from('broker_outreach_journeys').update({ cancel_requested_at:new Date().toISOString() }).eq('broker_id',brokerId);
+  if (reserveError) throw reserveError;
+  if (journey.call_provider_id) {
+    const cfg = await vapiConfig(admin);
+    // Vapi documents deleting a scheduled call. Never present a confirmed human-call takeover before acceptance.
+    await vapiRequest(cfg.key,`/call/${encodeURIComponent(journey.call_provider_id)}`,'DELETE');
+  } else if (journey.call_status === 'scheduling') {
+    await outreachEvent(admin,brokerId,'cancel_requested');
+    return { cancelled:false, pending:true };
+  }
+  const { error: updateError } = await admin.from('broker_outreach_journeys').update({call_status:'cancelled',last_error:null}).eq('broker_id',brokerId);
+  if (updateError) throw updateError;
+  await outreachEvent(admin,brokerId,'call_cancelled');
+  return {cancelled:true,pending:false};
+}
+
+export async function scheduleBrokerDemo(admin: Admin, brokerId: string) {
+  try {
+    const cfg = await vapiConfig(admin);
+    const phone = await vapiRequest(cfg.key,`/phone-number/${encodeURIComponent(cfg.phoneId)}`);
+    if (phone['provider'] !== 'twilio') throw new Error('קו Vapi אינו קו Twilio מאומת; השיחה לא תוזמנה');
+    const { data: profile, error: pe } = await admin.from('profiles').select('full_name,gender').eq('id',brokerId).single();
+    // Invitation OTP may be on a separate WhatsApp number; use only verified OTP evidence, never scraped profile.phone.
+    const { data: j, error: je } = await admin.from('broker_outreach_journeys').select('*').eq('broker_id',brokerId).single();
+    if (pe || je) throw pe ?? je;
+    const verifiedPhone = j.otp_verified_phone;
+    if (!verifiedPhone) throw new Error('אין מספר טלפון מאומת לשיחת ההדגמה');
+    if (!j.enabled || !j.call_consent_at || !j.interested_at || j.opted_out_at || !j.call_due_at || j.cancel_requested_at) return;
+    if (Date.parse(j.call_due_at) - Date.now() < 5_000) throw new Error('חלון ההמתנה חלף לפני התזמון; לא תבוצע שיחה מאוחרת אוטומטית');
+    const { data: claimed, error: ce } = await admin.from('broker_outreach_journeys').update({call_status:'scheduling'}).eq('broker_id',brokerId).eq('call_status','ready_to_schedule').is('cancel_requested_at',null).select('broker_id').maybeSingle();
+    if (ce) throw ce;
+    if (!claimed) return;
+    const script = shortBrokerDemoCall(profile.full_name ?? '', profile.gender);
+    const result = await vapiRequest(cfg.key,'/call','POST',{
+      phoneNumberId:cfg.phoneId, customer:{number:`+${verifiedPhone.replace(/\D/g,'').replace(/^0/,'972')}`},
+      schedulePlan:{earliestAt:j.call_due_at,latestAt:new Date(Date.parse(j.call_due_at)+30_000).toISOString()},
+      metadata:{broker_outreach_id:brokerId},
+      assistant:{name:'ריטה',firstMessage:script.firstMessage,maxDurationSeconds:script.maxDurationSeconds,
+        model:{provider:'openai',model:'gpt-4o-mini',messages:[{role:'system',content:script.prompt}]},
+        voice:{provider:'11labs',voiceId:cfg.voiceId},
+        transcriber:{provider:'deepgram',model:'nova-2',language:'he'},
+        server:{url:`${process.env['BROKER_OUTREACH_APP_URL'] ?? 'https://toraff.co.il'}/api/public/broker-outreach/call-status`},
+        serverMessages:['end-of-call-report','status-update']},
+    });
+    const id = typeof result['id'] === 'string' ? result['id'] : null;
+    if (!id) throw new Error('Vapi לא החזיר מזהה שיחה; אין לנסות שוב אוטומטית');
+    const { error: ue } = await admin.from('broker_outreach_journeys').update({call_provider_id:id,call_status:'pending',last_error:null}).eq('broker_id',brokerId);
+    if (ue) throw ue;
+    await outreachEvent(admin,brokerId,'call_scheduled',{provider_id:id,due_at:j.call_due_at});
+    const {data: latest,error:le}=await admin.from('broker_outreach_journeys').select('cancel_requested_at').eq('broker_id',brokerId).single();
+    if(le)throw le;
+    if(latest.cancel_requested_at)await cancelBrokerDemo(admin,brokerId);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'תזמון השיחה נכשל';
+    const {error:e}=await admin.from('broker_outreach_journeys').update({last_error:reason,call_status:'blocked'}).eq('broker_id',brokerId).in('call_status',['ready_to_schedule','scheduling']);
+    if(e)console.error('[broker-outreach-state]',e.message);
+    await outreachEvent(admin,brokerId,'call_schedule_failed',{reason});
+  }
+}
+
+export async function officialOutreachSend(admin: Admin, ownerId: string, payload: Record<string, unknown>) {
+  if(typeof payload['audio_url']==='string'){
+    const {data:rows,error}=await admin.from('wa_providers').select('config').eq('provider_name','WBA').eq('is_official',true).eq('is_active',true).order('updated_at',{ascending:false});
+    if(error)throw error;
+    const cfg=(rows??[]).map(row=>row.config as Record<string,unknown>).find(c=>String(c['display_phone_number']??c['phone_number']??'').replace(/\D/g,'')==='972537983832');
+    const token=cfg?.['access_token']??process.env['META_WA_ACCESS_TOKEN'];
+    const version=String(cfg?.['api_version']??'v25.0');
+    if(!cfg?.['phone_number_id']||!token||!/^v\d+\.0$/.test(version))throw new Error('המספר הרשמי אינו מוגדר לשליחת הקלטה');
+    const audio=new URL(payload['audio_url']);const appStorage=process.env['SUPABASE_URL'];
+    if(!appStorage||audio.origin!==new URL(appStorage).origin||!audio.pathname.startsWith(`/storage/v1/object/sign/ivr-audio/${ownerId}/`))throw new Error('ההקלטה אינה שייכת לשולח המורשה');
+    const response=await fetch(`https://graph.facebook.com/${version}/${cfg['phone_number_id']}/messages`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({messaging_product:'whatsapp',to:payload['phone_number'],type:'audio',audio:{link:payload['audio_url']}}),signal:AbortSignal.timeout(15_000)});
+    const raw=await response.text();if(!response.ok){console.error('[broker-outreach-audio]',response.status,raw.slice(0,2000));throw new Error(`Meta דחתה שליחת הקלטה (${response.status})`);}
+    const body=JSON.parse(raw) as {messages?:{id?:string}[]};const id=body.messages?.[0]?.id;if(!id)throw new Error('השליחה לא החזירה מזהה הודעה');return id;
+  }
+  const key=process.env['SUPABASE_SERVICE_ROLE_KEY']; const url=process.env['SUPABASE_URL'];
+  if(!key||!url)throw new Error('חיבור השליחה הרשמי אינו זמין');
+  const response=await fetch(`${url}/functions/v1/send-whatsapp`,{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({...payload,tenant_id:ownerId,force_official:true}),signal:AbortSignal.timeout(15_000)});
+  const raw=await response.text();
+  if(!response.ok){console.error('[broker-outreach-whatsapp]',response.status,raw.slice(0,2000));throw new Error(`שליחת WhatsApp לא התקבלה (${response.status})`);}
+  const data=JSON.parse(raw) as {success?:boolean;message_id?:string;error?:string};
+  if(!data.success||!data.message_id)throw new Error(data.error??'השליחה לא החזירה מזהה הודעה');
+  void admin;
+  return data.message_id;
+}
+
+export async function sendBrokerVoice(admin: Admin, brokerId: string) {
+  const key=process.env['ELEVENLABS_API_KEY'];const voiceId=process.env['ELEVENLABS_VOICE_ID']??IVR_DEFAULT_VOICES[0].voice_id;
+  if(!key||!voiceId)throw new Error('נדרש חיבור ElevenLabs וקול ריטה שמור');
+  const {data:j,error:je}=await admin.from('broker_outreach_journeys').select('*').eq('broker_id',brokerId).single();
+  if(je)throw je;
+  if(!j.enabled||!j.interested_at||j.opted_out_at||j.voice_status!=='pending')return;
+  const emailReply=j.outreach_channel==='email';
+  if(!emailReply&&Date.parse(j.interested_at)<Date.now()-86_400_000)throw new Error('חלון התגובה של WhatsApp הסתיים; נדרשת שיחה חדשה לפני שליחת הקלטה');
+  const {data:contact,error:ce}=emailReply?{data:null,error:null}:await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id',brokerId).eq('workspace_owner_id',brokerId).single();
+  const {data:p,error:pe}=await admin.from('profiles').select('full_name,gender,email').eq('id',brokerId).single();
+  const {count,error:ne}=await admin.from('listings').select('id',{head:true,count:'exact'}).eq('workspace_owner_id',brokerId).eq('is_published',false);
+  if(ce||pe||ne)throw ce??pe??ne;
+  const {data:claim,error:claimError}=await admin.from('broker_outreach_journeys').update({voice_status:'generating'}).eq('broker_id',brokerId).eq('voice_status','pending').is('opted_out_at',null).select('broker_id').maybeSingle();
+  if(claimError)throw claimError;if(!claim)return;
+  try {
+    const response=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,{method:'POST',headers:{'xi-api-key':key,'Content-Type':'application/json'},body:JSON.stringify({text:brokerVoiceIntro(p.full_name??'',p.gender,count??0),model_id:'eleven_v3'}),signal:AbortSignal.timeout(30_000)});
+    if(!response.ok){const body=await response.text();console.error('[broker-outreach-voice]',response.status,body.slice(0,2000));throw new Error(`ElevenLabs דחה יצירת הקלטה (${response.status})`);}
+    const reader=response.body?.getReader();if(!reader)throw new Error('הספק לא החזיר הקלטה');
+    const chunks:Uint8Array[]=[];let length=0;
+    while(true){const part=await reader.read();if(part.done)break;length+=part.value.byteLength;if(length>5*1024*1024){await reader.cancel();throw new Error('ההקלטה גדולה מדי');}chunks.push(part.value);}
+    const audio=new Uint8Array(length);let offset=0;for(const part of chunks){audio.set(part,offset);offset+=part.byteLength;}
+    const path=`${j.created_by}/broker-outreach/${brokerId}/${crypto.randomUUID()}.mp3`;
+    const {error:uploadError}=await admin.storage.from('ivr-audio').upload(path,audio,{contentType:'audio/mpeg'});if(uploadError)throw uploadError;
+    const {data:signed,error:signError}=await admin.storage.from('ivr-audio').createSignedUrl(path,300);if(signError||!signed?.signedUrl)throw signError??new Error('ההקלטה אינה זמינה');
+    const {data:latest,error:latestError}=await admin.from('broker_outreach_journeys').select('enabled,opted_out_at').eq('broker_id',brokerId).single();if(latestError)throw latestError;
+    if(!latest.enabled||latest.opted_out_at)return;
+    const {error:stateError}=await admin.from('broker_outreach_journeys').update({voice_status:'sending'}).eq('broker_id',brokerId);if(stateError)throw stateError;
+    let messageId:string;
+    if(emailReply){
+      if(!p.email||p.email.endsWith('.invalid'))throw new Error('אין כתובת מייל תקינה לשליחת ההקלטה');
+      const gatewayKey=process.env['LOVABLE_API_KEY'];const resendKey=process.env['RESEND_API_KEY'];
+      if(!gatewayKey||!resendKey)throw new Error('חיבור המייל אינו זמין');
+      let binary='';for(const value of audio)binary+=String.fromCharCode(value);
+      const response=await fetch('https://connector-gateway.lovable.dev/resend/emails',{method:'POST',headers:{Authorization:`Bearer ${gatewayKey}`,'X-Connection-Api-Key':resendKey,'Content-Type':'application/json'},body:JSON.stringify({from:`TORAFF <${process.env['RESEND_FROM_EMAIL']??'join@toraff.co.il'}>`,to:[p.email],subject:'הסבר קצר מריטה על TORAFF',text:'תודה על ההתעניינות. מצורפת הודעה קולית קצרה מריטה. אפשר להשיב בכל שאלה, או להשיב ״הסרה״ כדי שלא לקבל הודעות המשך.',attachments:[{filename:'rita-toraff.mp3',content:btoa(binary)}]}),signal:AbortSignal.timeout(15_000)});
+      const raw=await response.text();if(!response.ok){console.error('[broker-outreach-email-audio]',response.status,raw.slice(0,1000));throw new Error(`שליחת ההקלטה במייל נכשלה (${response.status})`);}
+      const body=JSON.parse(raw) as {id?:string};if(!body.id)throw new Error('המייל לא החזיר מזהה הודעה');messageId=body.id;
+    }else{
+      if(!contact?.whatsapp_phone)throw new Error('לא נשמר מספר וואטסאפ אישי');
+      messageId=await officialOutreachSend(admin,j.created_by,{phone_number:contact.whatsapp_phone,audio_url:signed.signedUrl});
+    }
+    const {error:saveError}=await admin.from('broker_outreach_journeys').update({voice_status:'accepted',voice_message_id:messageId,last_error:null}).eq('broker_id',brokerId);if(saveError)throw saveError;
+    await outreachEvent(admin,brokerId,'voice_accepted',{message_id:messageId});
+  } catch(error){
+    const reason=error instanceof Error?error.message:'יצירת ההודעה הקולית נכשלה';
+    // An ambiguous send is never retried automatically.
+    const {error:e}=await admin.from('broker_outreach_journeys').update({voice_status:'needs_review',last_error:reason}).eq('broker_id',brokerId);if(e)console.error('[broker-outreach-state]',e.message);
+    await outreachEvent(admin,brokerId,'voice_failed',{reason});
+  }
+}

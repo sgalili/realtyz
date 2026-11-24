@@ -31,10 +31,10 @@ function useBrokerWhatsAppEligibility(brokerId: string) {
 }
 
 /** WhatsApp invitation content, usable inside any dialog or tab. */
-export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachmentId, useDiscoveredWhatsApp = false }: { broker: { id: string; full_name?: string | null; recipient_name?: string | null }; onClose: () => void; onSent?: () => void; attachmentId?: string | null; useDiscoveredWhatsApp?: boolean }) {
+export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachmentId, useDiscoveredWhatsApp = false, outreach = false }: { broker: { id: string; full_name?: string | null; recipient_name?: string | null }; onClose: () => void; onSent?: () => void; attachmentId?: string | null; useDiscoveredWhatsApp?: boolean; outreach?: boolean }) {
   const open = true;
   const [consent, setConsent] = useState(false);
-  const [demo, setDemo] = useState(!useDiscoveredWhatsApp);
+  const [demo, setDemo] = useState(outreach || !useDiscoveredWhatsApp);
   const [feedback, setFeedback] = useState('');
   const requestId = useRef(crypto.randomUUID());
   const qc = useQueryClient();
@@ -42,7 +42,7 @@ export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachm
   const whatsappEligibility = useBrokerWhatsAppEligibility(broker.id);
   const hasSavedWhatsApp = whatsappEligibility.data === true;
   // Fixed wording only; the server picks the variant from the recipient's saved gender.
-  const state = useQuery({ queryKey: ['official-broker-template', broker.id], enabled: open, retry: false, staleTime: 0, queryFn: () => invoke({ action: 'status', broker_id: broker.id }) });
+  const state = useQuery({ queryKey: ['official-broker-template', broker.id, outreach], enabled: open, retry: false, staleTime: 0, queryFn: () => invoke({ action: 'status', broker_id: broker.id, ...(outreach?{outreach:true}:{}) }) });
   const text: string = state.data?.text ?? brokerTemplateFor(null);
   const demoLink: string = state.data?.demo_link ?? publicUrl('/demo');
   const previewLink = demo ? demoLink : personalBrokerLink(broker.id);
@@ -54,11 +54,11 @@ export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachm
     return data as BrokerOnboardingStatus | null;
   } });
   const sender = useQuery({ queryKey: ['official-wa-number'], enabled: open, queryFn: getOfficialWaNumber });
-  const mutation = useMutation({ mutationFn: (action: 'send') => invoke({ action, broker_id: broker.id, ...(action === 'send' ? { request_id: requestId.current, consent, demo, attachment_id: attachmentId ?? null, use_discovered_whatsapp: useDiscoveredWhatsApp } : {}) }), onSuccess: async (d: { attachment_status?: string } | null) => {
+  const mutation = useMutation({ mutationFn: (action: 'send') => invoke({ action, broker_id: broker.id, ...(outreach?{outreach:true}:{}), ...(action === 'send' ? { request_id: requestId.current, consent, demo, attachment_id: attachmentId ?? null, use_discovered_whatsapp: useDiscoveredWhatsApp } : {}) }), onSuccess: async (d: { attachment_status?: string } | null) => {
     setFeedback(`Meta קיבלה את ההזמנה. מסירה לנמען טרם אומתה.${d?.attachment_status === 'failed' ? ' הקובץ המצורף לא נשלח: Meta מאפשרת קובץ רק בשיחה פתוחה מ-24 השעות האחרונות.' : d?.attachment_status === 'sent' ? ' הקובץ המצורף נשלח.' : ''}`); onSent?.(); await qc.invalidateQueries({ queryKey: ['broker-onboarding'] });
     await qc.invalidateQueries({ queryKey: ['broker-contact-history'] });
   }, onError: e => setFeedback(e.message) });
-  const registration = useMutation({ mutationFn: () => invoke({ action: 'register', broker_id: broker.id }), onSuccess: () => { void state.refetch(); }, onError: (error: Error) => setFeedback(error.message) });
+  const registration = useMutation({ mutationFn: () => invoke({ action: 'register', broker_id: broker.id, ...(outreach?{outreach:true}:{}) }), onSuccess: () => { void state.refetch(); }, onError: (error: Error) => setFeedback(error.message) });
   const status = state.data?.status;
   const labels: Record<string, string> = { NOT_REGISTERED: 'הנוסח טרם הוגש ל-Meta', PENDING: 'ממתין לאישור Meta', APPROVED: 'תבנית מאושרת', REJECTED: 'Meta דחתה את התבנית', PAUSED: 'התבנית מושהית', DISABLED: 'התבנית אינה פעילה' };
   return <div className="space-y-3">

@@ -2052,6 +2052,20 @@
       "when": 1795498431381,
       "tag": "0292_protect_repeat_configuration_and_developer_cursor",
       "breakpoints": true
+    },
+    {
+      "idx": 293,
+      "version": "7",
+      "when": 1795499045841,
+      "tag": "0293_broker_opt_in_outreach_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 294,
+      "version": "7",
+      "when": 1795499200107,
+      "tag": "0294_broker_outreach_verified_phone_and_reply_fence",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { recordOutreachOtp } from './brokerOutreachReceipt.ts';
 /** Called only after the caller's phone challenge has been verified server-side. */
 /** Canonical Israeli form 9725XXXXXXXX for 05X / 5X / +972 / 972 / 00972 / 9720 inputs. */
 export const toIntl = (v: unknown) => {
@@ -79,5 +80,7 @@ export async function verifiedPhoneSession(admin: any, client: any, rawPhone: st
   const { data, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
   if (error) throw error;
   if (!data.properties?.hashed_token) throw new Error('Phone session could not be created');
+  // Fixed demo-series accounts must never enter automated outreach.
+  if(userId && !/^97255555/.test(phone)) await recordOutreachOtp(admin,userId,phone);
   return { token_hash: data.properties.hashed_token, verification_type: 'magiclink', existing_account: existingAccount };
 }

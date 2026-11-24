@@ -1632,6 +1632,137 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_outreach_events: {
+        Row: {
+          broker_id: string
+          created_at: string
+          detail: Json
+          event_key: string
+          id: string
+          kind: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          broker_id: string
+          created_at?: string
+          detail?: Json
+          event_key: string
+          id?: string
+          kind: string
+          workspace_owner_id: string
+        }
+        Update: {
+          broker_id?: string
+          created_at?: string
+          detail?: Json
+          event_key?: string
+          id?: string
+          kind?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_outreach_events_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "broker_outreach_journeys"
+            referencedColumns: ["broker_id"]
+          },
+        ]
+      }
+      broker_outreach_journeys: {
+        Row: {
+          broker_id: string
+          call_consent_at: string | null
+          call_due_at: string | null
+          call_provider_id: string | null
+          call_status: string
+          cancel_requested_at: string | null
+          consent_note: string | null
+          created_by: string
+          enabled: boolean
+          first_otp_login_at: string | null
+          interested_at: string | null
+          last_error: string | null
+          message_consent_at: string | null
+          opted_out_at: string | null
+          otp_verified_at: string | null
+          otp_verified_phone: string | null
+          outreach_channel: string | null
+          outreach_message_id: string | null
+          stage: string
+          updated_at: string
+          voice_message_id: string | null
+          voice_status: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          broker_id: string
+          call_consent_at?: string | null
+          call_due_at?: string | null
+          call_provider_id?: string | null
+          call_status?: string
+          cancel_requested_at?: string | null
+          consent_note?: string | null
+          created_by: string
+          enabled?: boolean
+          first_otp_login_at?: string | null
+          interested_at?: string | null
+          last_error?: string | null
+          message_consent_at?: string | null
+          opted_out_at?: string | null
+          otp_verified_at?: string | null
+          otp_verified_phone?: string | null
+          outreach_channel?: string | null
+          outreach_message_id?: string | null
+          stage?: string
+          updated_at?: string
+          voice_message_id?: string | null
+          voice_status?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          broker_id?: string
+          call_consent_at?: string | null
+          call_due_at?: string | null
+          call_provider_id?: string | null
+          call_status?: string
+          cancel_requested_at?: string | null
+          consent_note?: string | null
+          created_by?: string
+          enabled?: boolean
+          first_otp_login_at?: string | null
+          interested_at?: string | null
+          last_error?: string | null
+          message_consent_at?: string | null
+          opted_out_at?: string | null
+          otp_verified_at?: string | null
+          otp_verified_phone?: string | null
+          outreach_channel?: string | null
+          outreach_message_id?: string | null
+          stage?: string
+          updated_at?: string
+          voice_message_id?: string | null
+          voice_status?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_outreach_journeys_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_outreach_journeys_workspace_owner_id_fkey"
+            columns: ["workspace_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_referrals: {
         Row: {
           channel: string
@@ -11243,6 +11374,10 @@ export type Database = {
         Args: { _job: string; _lease_seconds?: number; _worker?: string }
         Returns: boolean
       }
+      activate_broker_outreach_login: {
+        Args: { _broker: string }
+        Returns: Json
+      }
       activate_partner_mode: { Args: never; Returns: Json }
       add_business_days: {
         Args: { _days: number; _from: string }
@@ -11869,6 +12004,16 @@ export type Database = {
         Returns: undefined
       }
       compute_trust_score: { Args: { _user_id: string }; Returns: Json }
+      configure_broker_outreach: {
+        Args: {
+          _broker: string
+          _call_consent: boolean
+          _enabled: boolean
+          _message_consent: boolean
+          _note: string
+        }
+        Returns: undefined
+      }
       confirm_listing_availability: {
         Args: { _available?: boolean; _listing: string }
         Returns: Json
@@ -13005,6 +13150,16 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      record_broker_outreach_reply: {
+        Args: {
+          _broker: string
+          _kind: string
+          _message: string
+          _reply_to: string
+          _text: string
+        }
+        Returns: Json
       }
       record_broker_wa_scanner_error: {
         Args: { _immediate?: boolean; _kind: string; _reason: string }

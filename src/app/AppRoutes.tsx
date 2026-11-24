@@ -4,6 +4,8 @@
  * the old <Route element={...}> entries did.
  */
 import { ImportedLicenseGate } from '@/components/onboarding/ImportedLicenseGate';
+import { completeBrokerOutreachLogin } from '@/lib/brokerOutreach.functions';
+import { useServerFn } from '@tanstack/react-start';
 import * as React from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { PlatformMetadata } from '@/components/PlatformMetadata';
@@ -439,6 +441,7 @@ export function AuthRoute() {
 }
 
 export function AdminBrokerFirstEntry({ children }: { children: React.ReactNode }) {
+  const recordOutreachLogin = useServerFn(completeBrokerOutreachLogin);
   const { user } = useAuth();
   const location = useLocation();
   const { setActiveWorkspace, loading: workspaceLoading } = useWorkspace();
@@ -459,6 +462,8 @@ export function AdminBrokerFirstEntry({ children }: { children: React.ReactNode 
         await setActiveWorkspace(user.id);
         writeAppMode('broker', user.id);
       }
+      // Optional outreach failure never blocks a valid sign-in or its existing redirect.
+      if(!error)void recordOutreachLogin().catch(() => console.warn('רישום מסלול הפנייה לא הושלם'));
       if (currentUser.current === uid) setEntry({ userId: uid, path: !error && data === '/properties' ? '/properties' : '/' });
     }).catch(() => { if (currentUser.current === uid) setEntry({ userId: uid, path: '/' }); }).finally(() => { if (running.current === uid) running.current = null; });
   }, [user?.id, workspaceLoading, setActiveWorkspace, entry?.userId]);

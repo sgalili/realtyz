@@ -10,7 +10,7 @@ import { coldInvitationBody } from '../_shared/brokerInvitationTemplate.ts';
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('summary') }),
   z.object({ action: z.literal('consent'), broker_id: z.string().uuid(), note: z.string().trim().min(3).max(300), revoke: z.boolean().optional() }),
-  z.object({ action: z.literal('send_batch'), broker_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX), message: z.string().trim().min(10).max(4000).optional(), demo: z.boolean().optional(), subject: z.string().trim().min(1).max(200).optional(), attachment_id: z.string().uuid().nullable().optional() }),
+  z.object({ action: z.literal('send_batch'), broker_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX), message: z.string().trim().min(10).max(4000).optional(), demo: z.boolean().optional(), subject: z.string().trim().min(1).max(200).optional(), attachment_id: z.string().uuid().nullable().optional(), outreach:z.boolean().default(false) }),
 ]);
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const escHtml = (v: string) => v.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
@@ -61,6 +61,7 @@ Deno.serve(async req => {
   if (input.broker_id && !targets.length) return json({ error: 'המתווך אינו זמין לשליחה: נדרשת הסכמה מתועדת וכתובת אימייל תקינה' }, 400);
   const results: { broker_id: string; status: string; error?: string }[] = [];
   for (const r of targets.slice(0, input.limit)) {
+    if(input.outreach){const {data:j,error:je}=await admin.from('broker_outreach_journeys').select('enabled,message_consent_at,opted_out_at').eq('broker_id',r.user_id).maybeSingle();if(je||!j?.enabled||!j.message_consent_at||j.opted_out_at){results.push({broker_id:r.user_id,status:'skipped'});continue;}}
     const { data: account, error: accountError } = await admin.auth.admin.getUserById(r.user_id);
     if (accountError || !account.user || account.user.last_sign_in_at) { results.push({ broker_id: r.user_id, status: 'skipped' }); continue; }
     // Claim first so a retry or parallel click never sends twice.
@@ -93,6 +94,7 @@ Deno.serve(async req => {
       const raw = await res.text();
       if (!res.ok) throw new Error(`[${res.status}]: ${raw}`);
       const messageId = JSON.parse(raw).id ?? null;
+      if(input.outreach&&messageId){const {error:journeyError}=await admin.from('broker_outreach_journeys').update({outreach_message_id:messageId,outreach_channel:'email',stage:'outreach_accepted'}).eq('broker_id',r.user_id);if(journeyError)throw journeyError;}
       await admin.from('admin_broker_onboarding').update({ email_message_id: messageId }).eq('user_id', r.user_id);
       await admin.from('broker_invitation_emails').insert({ broker_id: r.user_id, created_by: caller.userId, to_email: r.p.email, subject: sentSubject, body_text: message ?? `ברירת מחדל${examples.length ? `\n${examples.join('\n')}` : ''}`, links: [{ label: demo ? 'צפייה בחשבון הדמו' : 'כניסה לנכסים שלי', url: link }, { label: 'הסרה מרשימת התפוצה', url: unsubscribeUrl }, ...attachLink], message_id: messageId, is_demo: demo });
       if (attachmentId) await markAttachmentSent(admin, attachmentId);

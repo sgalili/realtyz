@@ -123,6 +123,10 @@ import { Route as CommunityProfileUserIdRouteImport } from './routes/community/p
 import { Route as CrmProfileIdRouteImport } from './routes/crm/profile/$id'
 import { Route as MyAdsIdEditRouteImport } from './routes/my-ads/$id/edit'
 import { Route as SharePropertyTokenRouteImport } from './routes/share/property/$token'
+import { Route as SuperAdminBrokerBrokerIdRouteImport } from './routes/super-admin_.broker.$brokerId'
+import { Route as ApiPublicBrokerOutreachCallStatusRouteImport } from './routes/api/public/broker-outreach/call-status'
+import { Route as ApiPublicBrokerOutreachEmailReplyRouteImport } from './routes/api/public/broker-outreach/email-reply'
+import { Route as ApiPublicBrokerOutreachReplyRouteImport } from './routes/api/public/broker-outreach/reply'
 
 const Char91indexChar93Route = Char91indexChar93RouteImport.update({
   id: '/index',
@@ -694,6 +698,30 @@ const SharePropertyTokenRoute = SharePropertyTokenRouteImport.update({
   path: '/share/property/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuperAdminBrokerBrokerIdRoute =
+  SuperAdminBrokerBrokerIdRouteImport.update({
+    id: '/super-admin_/broker/$brokerId',
+    path: '/super-admin/broker/$brokerId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicBrokerOutreachCallStatusRoute =
+  ApiPublicBrokerOutreachCallStatusRouteImport.update({
+    id: '/api/public/broker-outreach/call-status',
+    path: '/api/public/broker-outreach/call-status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicBrokerOutreachEmailReplyRoute =
+  ApiPublicBrokerOutreachEmailReplyRouteImport.update({
+    id: '/api/public/broker-outreach/email-reply',
+    path: '/api/public/broker-outreach/email-reply',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicBrokerOutreachReplyRoute =
+  ApiPublicBrokerOutreachReplyRouteImport.update({
+    id: '/api/public/broker-outreach/reply',
+    path: '/api/public/broker-outreach/reply',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -810,6 +838,10 @@ export interface FileRoutesByFullPath {
   '/crm/profile/$id': typeof CrmProfileIdRoute
   '/my-ads/$id/edit': typeof MyAdsIdEditRoute
   '/share/property/$token': typeof SharePropertyTokenRoute
+  '/super-admin/broker/$brokerId': typeof SuperAdminBrokerBrokerIdRoute
+  '/api/public/broker-outreach/call-status': typeof ApiPublicBrokerOutreachCallStatusRoute
+  '/api/public/broker-outreach/email-reply': typeof ApiPublicBrokerOutreachEmailReplyRoute
+  '/api/public/broker-outreach/reply': typeof ApiPublicBrokerOutreachReplyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -926,6 +958,10 @@ export interface FileRoutesByTo {
   '/crm/profile/$id': typeof CrmProfileIdRoute
   '/my-ads/$id/edit': typeof MyAdsIdEditRoute
   '/share/property/$token': typeof SharePropertyTokenRoute
+  '/super-admin/broker/$brokerId': typeof SuperAdminBrokerBrokerIdRoute
+  '/api/public/broker-outreach/call-status': typeof ApiPublicBrokerOutreachCallStatusRoute
+  '/api/public/broker-outreach/email-reply': typeof ApiPublicBrokerOutreachEmailReplyRoute
+  '/api/public/broker-outreach/reply': typeof ApiPublicBrokerOutreachReplyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -1043,6 +1079,10 @@ export interface FileRoutesById {
   '/crm/profile/$id': typeof CrmProfileIdRoute
   '/my-ads/$id/edit': typeof MyAdsIdEditRoute
   '/share/property/$token': typeof SharePropertyTokenRoute
+  '/super-admin_/broker/$brokerId': typeof SuperAdminBrokerBrokerIdRoute
+  '/api/public/broker-outreach/call-status': typeof ApiPublicBrokerOutreachCallStatusRoute
+  '/api/public/broker-outreach/email-reply': typeof ApiPublicBrokerOutreachEmailReplyRoute
+  '/api/public/broker-outreach/reply': typeof ApiPublicBrokerOutreachReplyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1161,6 +1201,10 @@ export interface FileRouteTypes {
     | '/crm/profile/$id'
     | '/my-ads/$id/edit'
     | '/share/property/$token'
+    | '/super-admin/broker/$brokerId'
+    | '/api/public/broker-outreach/call-status'
+    | '/api/public/broker-outreach/email-reply'
+    | '/api/public/broker-outreach/reply'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1277,6 +1321,10 @@ export interface FileRouteTypes {
     | '/crm/profile/$id'
     | '/my-ads/$id/edit'
     | '/share/property/$token'
+    | '/super-admin/broker/$brokerId'
+    | '/api/public/broker-outreach/call-status'
+    | '/api/public/broker-outreach/email-reply'
+    | '/api/public/broker-outreach/reply'
   id:
     | '__root__'
     | '/'
@@ -1393,6 +1441,10 @@ export interface FileRouteTypes {
     | '/crm/profile/$id'
     | '/my-ads/$id/edit'
     | '/share/property/$token'
+    | '/super-admin_/broker/$brokerId'
+    | '/api/public/broker-outreach/call-status'
+    | '/api/public/broker-outreach/email-reply'
+    | '/api/public/broker-outreach/reply'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1510,6 +1562,10 @@ export interface RootRouteChildren {
   CrmProfileIdRoute: typeof CrmProfileIdRoute
   MyAdsIdEditRoute: typeof MyAdsIdEditRoute
   SharePropertyTokenRoute: typeof SharePropertyTokenRoute
+  SuperAdminBrokerBrokerIdRoute: typeof SuperAdminBrokerBrokerIdRoute
+  ApiPublicBrokerOutreachCallStatusRoute: typeof ApiPublicBrokerOutreachCallStatusRoute
+  ApiPublicBrokerOutreachEmailReplyRoute: typeof ApiPublicBrokerOutreachEmailReplyRoute
+  ApiPublicBrokerOutreachReplyRoute: typeof ApiPublicBrokerOutreachReplyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -2312,6 +2368,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SharePropertyTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/super-admin_/broker/$brokerId': {
+      id: '/super-admin_/broker/$brokerId'
+      path: '/super-admin/broker/$brokerId'
+      fullPath: '/super-admin/broker/$brokerId'
+      preLoaderRoute: typeof SuperAdminBrokerBrokerIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/broker-outreach/call-status': {
+      id: '/api/public/broker-outreach/call-status'
+      path: '/api/public/broker-outreach/call-status'
+      fullPath: '/api/public/broker-outreach/call-status'
+      preLoaderRoute: typeof ApiPublicBrokerOutreachCallStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/broker-outreach/email-reply': {
+      id: '/api/public/broker-outreach/email-reply'
+      path: '/api/public/broker-outreach/email-reply'
+      fullPath: '/api/public/broker-outreach/email-reply'
+      preLoaderRoute: typeof ApiPublicBrokerOutreachEmailReplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/broker-outreach/reply': {
+      id: '/api/public/broker-outreach/reply'
+      path: '/api/public/broker-outreach/reply'
+      fullPath: '/api/public/broker-outreach/reply'
+      preLoaderRoute: typeof ApiPublicBrokerOutreachReplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -2430,6 +2514,12 @@ const rootRouteChildren: RootRouteChildren = {
   CrmProfileIdRoute: CrmProfileIdRoute,
   MyAdsIdEditRoute: MyAdsIdEditRoute,
   SharePropertyTokenRoute: SharePropertyTokenRoute,
+  SuperAdminBrokerBrokerIdRoute: SuperAdminBrokerBrokerIdRoute,
+  ApiPublicBrokerOutreachCallStatusRoute:
+    ApiPublicBrokerOutreachCallStatusRoute,
+  ApiPublicBrokerOutreachEmailReplyRoute:
+    ApiPublicBrokerOutreachEmailReplyRoute,
+  ApiPublicBrokerOutreachReplyRoute: ApiPublicBrokerOutreachReplyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
