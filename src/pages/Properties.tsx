@@ -953,7 +953,7 @@ export default function Properties() {
 
         {/* Row 1 — [magnify][search field, collapsed by default] ⇢ [sort][select][count][view] */}
         <div data-testid="property-filter-row" className="flex flex-nowrap items-center gap-1">
-            <div className="order-first shrink-0">
+            <div className={`order-first shrink-0 ${searchOpen ? 'hidden' : ''}`}>
               <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
             </div>
             {/* Brokers-only: rotating broker tips fill the space between the two icon buttons. */}
@@ -1158,16 +1158,16 @@ export default function Properties() {
         {/* Search-open row: options aligned to the field edge, tools at row end. */}
         <div aria-hidden={!searchOpen || filtersOpen} className={`${filtersOpen ? 'invisible pointer-events-none' : ''} grid transition-[grid-template-rows,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${searchOpen ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"}`}>
           <div className="min-h-0 overflow-hidden">
-            <div className={`mb-2 mt-1 flex items-center justify-between gap-2 ps-9 transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${searchOpen ? "translate-y-0" : "-translate-y-2"}`}>
+            <div className={`mb-2 mt-1 flex items-center justify-between gap-2 text-[13px] transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${searchOpen ? "translate-y-0" : "-translate-y-2"}`}>
           <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+        {searchOpen && <div className="shrink-0"><SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} /></div>}
         <div role="group" aria-label="מקורות חיפוש" className="flex shrink-0 items-center gap-2.5">
-          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className={`h-8 shrink-0 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit ${activeSources.includes(source) ? 'font-semibold text-foreground' : 'text-muted-foreground/40'}`}>
-            {activeSources.includes(source) ? <X aria-hidden className="!h-2.5 !w-2.5 shrink-0" strokeWidth={3} /> : <Check aria-hidden className="!h-2.5 !w-2.5 shrink-0 text-foreground" strokeWidth={3} />}
+          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className={`h-8 shrink-0 gap-1 px-0 text-[13px] hover:bg-transparent hover:text-inherit ${activeSources.includes(source) ? 'font-bold text-foreground' : 'font-normal text-muted-foreground/40'}`}>
             <span className="whitespace-nowrap">{sourceLabel(source)}</span>
           </Button>)}
         </div>
         <div className="inline-flex shrink-0 items-center gap-2.5" role="group" aria-label="סוג עסקה">
-          {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/40'}`}><span className={`h-2 w-2 rounded-full ${t === 'rent' ? 'bg-sale' : 'bg-success'} ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
+          {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1 px-0 text-[13px] hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-bold text-foreground' : 'font-normal text-muted-foreground/40'}`}><span className={`h-2 w-2 rounded-full ${t === 'rent' ? 'bg-sale' : 'bg-success'} ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
         </div>
           </div>
               {searchOpen && renderToolsRow("property-tools-row")}

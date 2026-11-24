@@ -12,6 +12,7 @@ const roleFlags = vi.hoisted(() => ({
   isPropertySeeker: false,
 }));
 
+vi.mock('@/hooks/usePlatformMode', () => ({ useBrokersOnly: () => false }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' } }) }));
 vi.mock('@/hooks/usePropertyPageAccess', () => ({
   usePropertyPageAccess: () => ({ properties: true, projects: false }),

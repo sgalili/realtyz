@@ -2010,6 +2010,13 @@
       "when": 1795491740799,
       "tag": "0286_registry_source_timestamp_casts",
       "breakpoints": true
+    },
+    {
+      "idx": 287,
+      "version": "7",
+      "when": 1795496053130,
+      "tag": "0287_migration",
+      "breakpoints": true
     }
   ]
 }

@@ -2407,7 +2407,8 @@ svg.lucide-megaphone {
 .show-x-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.5); border-radius: 9999px; }
 .show-x-scrollbar::-webkit-scrollbar-track { background: hsl(var(--muted)); }
 
-.filter-blur-scrim { position: fixed; inset-inline: 0; bottom: 0; z-index: 40; background: hsl(var(--activity-scrim) / .15); }
+/* Below the z-40 filter control bar so the inline panel stays fully clickable. */
+.filter-blur-scrim { position: fixed; inset-inline: 0; bottom: 0; z-index: 30; background: hsl(var(--activity-scrim) / .15); }
 
 /* Signed-out board header icon controls (search + view mode): identical footprint
    and never a filled background. Unlayered !important is required because the

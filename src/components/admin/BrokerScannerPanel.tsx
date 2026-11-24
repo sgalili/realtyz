@@ -11,7 +11,7 @@ import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
 import { brokerUserError } from '../../../supabase/functions/_shared/brokerRecovery';
 import { ScannerActionConfirm } from './ScannerActionConfirm';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
-import type { DiscoveryRowState } from '@/lib/brokerDiscoveryPriority';
+import type { DiscoveryRowState, DiscoverySortMode } from '@/lib/brokerDiscoveryPriority';
 import { scannerWorkerState, workerStateLabels } from '@/lib/brokerScannerState';
 
 export type ScannerSettings = { scanner_phone?: string | null; enabled: boolean; paused: boolean; pause_reason: string | null; daily_cap: number; jitter_min_seconds: number; jitter_max_seconds: number; start_hour: number; end_hour: number; error_threshold: number; next_send_at?: string | null; connected?: boolean; webhook_ready?: boolean; worker_seen_at?: string | null; worker_rejected_at?: string | null; config_checked_at?: string | null };
@@ -21,7 +21,7 @@ export async function scannerCall(body: Record<string, unknown>) {
 }
 const reasons: Record<string, string> = { not_configured: 'טרם הוגדר', configuration_changed: 'ההגדרות השתנו — יש לבדוק ולהפעיל', user_paused: 'הושהה ידנית', scanner_disconnected: 'הקו מנותק', scanner_webhook_not_configured: 'הוובהוק אינו מוגדר בקו', scanner_phone_not_dedicated: 'הקו אינו ייעודי', scanner_instance_in_use_by_workspace: 'הקו כבר משמש חשבון אחר', scanner_credentials_missing: 'חסרים פרטי קו', scanner_phone_is_broker_contact: 'מספר הקו שמור כמספר של מתווך', save_settings_first: 'יש לשמור הגדרות תחילה', scanner_not_ready: 'הקו אינו מוכן' };
 
-export function BrokerScannerPanel({ prioritySort = false, onPrioritySort }: { prioritySort?: boolean; onPrioritySort?: () => void }) {
+export function BrokerScannerPanel({ prioritySort = 'off', onPrioritySort }: { prioritySort?: DiscoverySortMode; onPrioritySort?: () => void }) {
   const qc = useQueryClient();
   const gate = useSuperAdminGate();
   const status = useQuery({ queryKey: ['broker-wa-scanner', gate.uid], enabled: gate.enabled, retry: false, queryFn: () => scannerCall({ action: 'status' }), refetchInterval: 15000 });
@@ -61,7 +61,7 @@ export function BrokerScannerPanel({ prioritySort = false, onPrioritySort }: { p
         <Button size="icon" variant="ghost" aria-label={plugLabel} title={plugLabel} disabled={act.isPending} className={active ? 'text-lead-whatsapp' : 'text-muted-foreground'} onClick={() => setConfirm(active ? 'pause' : 'resume')}>{act.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : active ? <Plug className="h-4 w-4" /> : <Unplug className="h-4 w-4" />}</Button>
         <BulkBrokerWhatsAppScan />
         <BulkBrokerRegistryRecheck onProgress={setRegistryResult} />
-        {onPrioritySort && <Button size="icon" variant="ghost" aria-label="מיון לפי התקדמות גילוי וואטסאפ" title="בתהליך, הושלמו, ממתינים" aria-pressed={prioritySort} className={prioritySort ? 'text-primary' : 'text-muted-foreground'} onClick={onPrioritySort}><ArrowDownWideNarrow className="h-4 w-4" /></Button>}
+        {onPrioritySort && <Button size="icon" variant="ghost" aria-label={prioritySort === 'progress' ? 'מיון: עם וואטסאפ קודם' : 'מיון: בתהליך קודם'} title={prioritySort === 'progress' ? 'בתהליך לפי זמן, נמצאו, ממתינים. לחיצה: נמצאו קודם' : prioritySort === 'found' ? 'נמצאו, בתהליך, ממתינים. לחיצה: בתהליך קודם' : 'בתהליך לפי זמן, נמצאו, ממתינים'} aria-pressed={prioritySort !== 'off'} className={prioritySort !== 'off' ? 'text-primary' : 'text-muted-foreground'} onClick={onPrioritySort}><ArrowDownWideNarrow className="h-4 w-4" /></Button>}
       </div>
     </div>
     {open && (!status.data?.credentials_ready || w !== 'connected') && <p className="text-xs text-destructive">{[!status.data?.credentials_ready && 'חסרים פרטי קו', w !== 'connected' && workerStateLabels[w]].filter(Boolean).join(' · ')}</p>}

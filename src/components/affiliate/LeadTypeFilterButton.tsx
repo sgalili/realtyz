@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { createPortal } from 'react-dom';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { LeadPriceSlider } from '@/components/public/LeadPriceSlider';
 import { PropertyAmenitiesFields } from '@/components/public/PropertyAmenitiesFields';
 import { EMPTY_PUBLIC_LISTING_DRAFT, type PublicListingDraftFields } from '@/lib/publicListingDraft';
@@ -207,9 +208,11 @@ export default function LeadTypeFilterButton({
             ? 'private'
             : 'guest';
 
+  const brokersOnlyMode = useBrokersOnly();
   // Lead filters: partners and brokers only. Deal-closing (tier4) is visible
   // to registered brokers; partners see the first three tiers only.
-  const showLeadFilters = !hideLeadFilters && (kind === 'partner' || kind === 'broker' || isTeamMember);
+  // Brokers-only mode never shows partner reward filters.
+  const showLeadFilters = !brokersOnlyMode && !hideLeadFilters && (kind === 'partner' || kind === 'broker' || isTeamMember);
   const leadTypes = kind === 'broker' ? LEAD_TYPE_ORDER : LEAD_TYPE_ORDER.filter((key) => key !== 'tier4');
 
   // Property/market fields per role — minimal for partners and private users.
