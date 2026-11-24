@@ -131,13 +131,26 @@ Deno.serve(async req => {
     ]);
     const developerOwners = [...new Set(devs.flatMap(d => d.workspace_owner_id ? [d.workspace_owner_id] : []))];
     const devProfiles = await chunked(developerOwners, p => admin.from('profiles').select('id,full_name,avatar_url').in('id', p));
+    // Index once: per-row linear scans over every listing exceeded the CPU limit.
+    const devById = new Map(devs.map(d => [d.id, d]));
+    const devProfileById = new Map(devProfiles.map(p => [p.id, p]));
+    const projectCount = new Map(projects.map(p => [p.developer_id, p.count]));
+    const profileById = new Map(profiles.map(p => [p.id, p]));
+    const officeById = new Map(offices.map(o => [o.user_id, o]));
+    const listingStats = new Map<string, { count: number; yad2: string | null; first: string | null }>();
+    for (const x of listings) {
+      const st = listingStats.get(x.workspace_owner_id) ?? { count: 0, yad2: null, first: null };
+      st.count++;
+      if (!st.yad2 && x.source_url && String(x.source_url).includes('yad2.co.il')) st.yad2 = x.source_url;
+      listingStats.set(x.workspace_owner_id, st);
+    }
     const deleted = new Set(deletedRecords.map(r => r.record_key));
     const items = raw.filter(r => !deleted.has(r.id)).map(r => {
-      if (r.kind === 'developer') { const d = devs.find(x => x.id === r.ref);
-        const p = devProfiles.find(p => p.id === d?.workspace_owner_id);
-        return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name || d?.company_name || r.name || '', workspace_owner_id: d?.workspace_owner_id ?? null, public_user_id: d?.owner_user_id ?? d?.workspace_owner_id ?? null, avatar_url: p?.avatar_url ?? null, agency_name: d?.company_name ?? r.name ?? null, logo_url: d?.logo_url ?? null, agency_imported: !!d?.company_name, projects: projects.find(p => p.developer_id === r.ref)?.count ?? 0, source_url: r.source_url, imported_at: r.at }; }
-      const p = profiles.find(x => x.id === r.ref); const o = offices.find(x => x.user_id === r.ref); const l = listings.filter(x => x.workspace_owner_id === r.ref);
-      return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name ?? r.name ?? '', workspace_owner_id: p?.id ?? null, public_user_id: p?.id ?? null, avatar_url: p?.avatar_url ?? null, logo_url: o?.logo_url ?? null, agency_imported: !!o?.agency_name, agency_name: o?.agency_name ?? null, projects: l.length, source_url: r.source_url ?? l.find(x => /yad2\.co\.il/.test(String(x.source_url)))?.source_url ?? null, imported_at: r.at };
+      if (r.kind === 'developer') { const d = devById.get(r.ref);
+        const p = d?.workspace_owner_id ? devProfileById.get(d.workspace_owner_id) : undefined;
+        return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name || d?.company_name || r.name || '', workspace_owner_id: d?.workspace_owner_id ?? null, public_user_id: d?.owner_user_id ?? d?.workspace_owner_id ?? null, avatar_url: p?.avatar_url ?? null, agency_name: d?.company_name ?? r.name ?? null, logo_url: d?.logo_url ?? null, agency_imported: !!d?.company_name, projects: projectCount.get(r.ref) ?? 0, source_url: r.source_url, imported_at: r.at }; }
+      const p = profileById.get(r.ref); const o = officeById.get(r.ref); const st = listingStats.get(r.ref);
+      return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name ?? r.name ?? '', workspace_owner_id: p?.id ?? null, public_user_id: p?.id ?? null, avatar_url: p?.avatar_url ?? null, logo_url: o?.logo_url ?? null, agency_imported: !!o?.agency_name, agency_name: o?.agency_name ?? null, projects: st?.count ?? 0, source_url: r.source_url ?? st?.yad2 ?? null, imported_at: r.at };
     }).sort((a, b) => String(b.imported_at).localeCompare(String(a.imported_at)));
     // Hide nameless rows (deleted/never-created entities) and keep one latest row per imported account.
     const shown = new Set<string>();
@@ -161,10 +174,14 @@ Deno.serve(async req => {
       if ((data?.length ?? 0) < 500) break;
     }
     const eligible = [];
-    for (const row of rows) {
-      const { data, error } = await admin.auth.admin.getUserById(row.user_id);
-      if (error) return json({ error: 'בדיקת החשבונות נכשלה' }, 500);
-      if (data.user && pendingFirstInvitation(row, data.user.last_sign_in_at ?? null)) eligible.push(row);
+    for (let i = 0; i < rows.length; i += 10) {
+      const part = rows.slice(i, i + 10);
+      const results = await Promise.all(part.map(row => admin.auth.admin.getUserById(row.user_id)));
+      for (let j = 0; j < part.length; j++) {
+        const { data, error } = results[j];
+        if (error) return json({ error: 'בדיקת החשבונות נכשלה' }, 500);
+        if (data.user && pendingFirstInvitation(part[j], data.user.last_sign_in_at ?? null)) eligible.push(part[j]);
+      }
     }
     const ids = eligible.map(r => r.user_id);
     if (!ids.length) return json({ brokers: [] });
@@ -183,18 +200,21 @@ Deno.serve(async req => {
     if(companyError)return json({error:'לא ניתן לקרוא את פרטי המתווכים כרגע'},503);
     const { data: whatsappContacts, error: whatsappError } = await admin.from('broker_whatsapp_contacts').select('broker_id,whatsapp_phone,whatsapp_link').in('broker_id', ids);
     if (whatsappError) return json({ error: 'קריאת פרטי WhatsApp נכשלה' }, 500);
+    const by = <T,>(rows: T[] | null | undefined, k: (x: T) => string) => { const m = new Map<string, T>(); for (const x of rows ?? []) if (!m.has(k(x))) m.set(k(x), x); return m; };
+    const pM = by(profiles, (x: any) => x.id), invM = by(inventory as any[], (x: any) => x.user_id), waM = by(whatsappContacts, (x: any) => x.broker_id), verM = by(verified, (x: any) => x.user_id), licM = by(licenses, (x: any) => x.user_id), offM = by(offices, (x: any) => x.user_id), devM = by(devCompanies, (x: any) => x.workspace_owner_id);
+    const devRoleSet = new Set((devRoles ?? []).map(d => d.user_id));
     const brokers = eligible.map(r => {
-      const p = profiles?.find(x => x.id === r.user_id);
-      const counts = inventory.find((x: { user_id: string }) => x.user_id === r.user_id);
+      const p = pM.get(r.user_id);
+      const counts: any = invM.get(r.user_id);
       return { user_id: r.user_id, created_at: r.created_at, full_name: p?.full_name ?? '', phone: p?.phone ?? null, email: realEmail(p?.email) ? p?.email : null,
-        whatsapp_phone: whatsappContacts?.find(c => c.broker_id === r.user_id)?.whatsapp_phone ?? null,
-        whatsapp_link: whatsappContacts?.find(c => c.broker_id === r.user_id)?.whatsapp_link ?? null,
-        license_number: verified?.find(l => l.user_id === r.user_id)?.license_number ?? licenses?.find(l => l.user_id === r.user_id)?.license_number ?? r.imported_license_number ?? null,
-        office_name: offices?.find(o => o.user_id === r.user_id)?.agency_name ?? devCompanies?.find(d => d.workspace_owner_id === r.user_id)?.company_name ?? null,
-        office_logo_url: offices?.find(o => o.user_id === r.user_id)?.logo_url ?? devCompanies?.find(d => d.workspace_owner_id === r.user_id)?.logo_url ?? null, avatar_url: (p as any)?.avatar_url ?? null,
+        whatsapp_phone: waM.get(r.user_id)?.whatsapp_phone ?? null,
+        whatsapp_link: waM.get(r.user_id)?.whatsapp_link ?? null,
+        license_number: verM.get(r.user_id)?.license_number ?? licM.get(r.user_id)?.license_number ?? r.imported_license_number ?? null,
+        office_name: offM.get(r.user_id)?.agency_name ?? devM.get(r.user_id)?.company_name ?? null,
+        office_logo_url: offM.get(r.user_id)?.logo_url ?? devM.get(r.user_id)?.logo_url ?? null, avatar_url: (p as any)?.avatar_url ?? null,
         profile_license: (p as any)?.broker_license_number ?? null, gender: (p as any)?.gender ?? null, city: (p as any)?.city ?? null,
-        license_verified: !!verified?.find(l => l.user_id === r.user_id && l.verified_at) || !!(p as any)?.locked_broker_name,
-        is_developer: (devRoles ?? []).some(d => d.user_id === r.user_id),
+        license_verified: !!(verified ?? []).find(l => l.user_id === r.user_id && l.verified_at) || !!(p as any)?.locked_broker_name,
+        is_developer: devRoleSet.has(r.user_id),
         drafts: Number(counts?.drafts ?? 0),
         projects: Number(counts?.projects ?? 0),
         apartments: Number(counts?.apartments ?? 0),
