@@ -88,6 +88,7 @@ import { AffiliateCommissionButton } from '@/components/properties/AffiliateComm
 import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { AffiliateShareCell, AffiliateTierPrices } from '@/components/properties/AffiliateShareCell';
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
+import { TypewriterBanner } from '@/components/public/TypewriterBanner';
 import type { ListingSortValue } from '@/lib/listingSortOptions';
 import { useAppMode } from '@/hooks/useAppMode';
 import { useAffiliateConfigs } from '@/hooks/useAffiliate';
@@ -954,6 +955,8 @@ export default function Properties() {
             <div className="order-first shrink-0">
               <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
             </div>
+            {/* Brokers-only: rotating broker tips fill the space between the two icon buttons. */}
+            {brokersOnly && !searchOpen && <div className="order-2 flex min-w-0 flex-1"><TypewriterBanner brokersOnly /></div>}
             {/* Commissions shortcut: every saved property still missing commissions. */}
             {!brokersOnly && !searchOpen && activeWorkspaceId && unconfiguredIds.length > 0 && <div className="order-2 flex min-w-0 flex-1 px-1">
               <BulkClosingCommission ids={commissionIds} workspaceId={activeWorkspaceId} overwriteOption publishAfterSave onPickInTable={() => { setCommissionPicked(new Set(unconfiguredIds)); setViewMode('table'); }} onSaved={() => { setCommissionPicked(null); void unconfiguredQuery.refetch(); }} trigger={open => <Button type="button" variant="outline" disabled={!commissionIds.length} className="h-11 w-full min-w-0 whitespace-nowrap border border-border bg-gradient-to-b from-background to-muted px-3 text-[17px] font-bold text-foreground shadow-[0_1px_2px_hsl(var(--foreground)/0.12),inset_0_1px_0_hsl(var(--background))] hover:to-secondary active:translate-y-px" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); open(); }}>{`הגדר עמלות ל-${commissionIds.length} נכסים ופרסם עכשיו`}</Button>} />

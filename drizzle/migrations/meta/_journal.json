@@ -1975,6 +1975,13 @@
       "when": 1795481440868,
       "tag": "0281_scanner_reply_defer_while_paused",
       "breakpoints": true
+    },
+    {
+      "idx": 282,
+      "version": "7",
+      "when": 1795484537836,
+      "tag": "0282_broker_saas_rotating_messages",
+      "breakpoints": true
     }
   ]
 }

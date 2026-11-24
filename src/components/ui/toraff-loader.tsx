@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ComponentProps } from 'react';
+import { useContext, useEffect, useRef, useState, type ComponentProps } from 'react';
+import { QueryClientContext } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import loader from '@/assets/toraff-loader.mp4.asset.json';
 import poster from '@/assets/toraff-loader-poster.jpg.asset.json';
@@ -10,6 +11,9 @@ export type ToraffLoaderProps = ComponentProps<'span'> & { size?: number | strin
 export function ToraffLoader({ className, size: _size, fullPage = false, ...props }: ToraffLoaderProps) {
   const video = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
+  // The loader can render before the query provider exists, so read the cached mode safely.
+  const queryClient = useContext(QueryClientContext);
+  const brokersOnly = queryClient?.getQueryData<string>(['platform-mode']) !== 'full_marketplace';
   useEffect(() => {
     if (!fullPage) return;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -30,7 +34,7 @@ export function ToraffLoader({ className, size: _size, fullPage = false, ...prop
       <span className="toraff-loader-media" aria-hidden="true">
         {failed ? <img src={poster.url} alt="" /> : <video ref={video} src={loader.url} poster={poster.url} autoPlay muted loop playsInline preload="auto" disablePictureInPicture onError={() => setFailed(true)} />}
       </span>
-      <span className="toraff-loader-subtitle" dir="rtl">לוח השותפים של המדינה</span>
+      <span className="toraff-loader-subtitle" dir="rtl">{brokersOnly ? 'המערכת היחידה שכל מתווך חייב' : 'לוח השותפים של המדינה'}</span>
     </span>
   );
 }

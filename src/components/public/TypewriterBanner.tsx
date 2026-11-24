@@ -8,13 +8,13 @@ import { useRotatingMessages } from '@/hooks/useRotatingMessages';
 import { resolveRotatingMessageAudience, rotatingMessageNavigation } from '@/lib/rotatingMessages';
 import { advanceTypewriter, INITIAL_TYPEWRITER_STATE, typewriterDelay } from '@/lib/typewriter';
 
-export function TypewriterBanner() {
+export function TypewriterBanner({ brokersOnly = false }: { brokersOnly?: boolean } = {}) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { roles, loading: rolesLoading } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const reducedMotion = useReducedMotion();
-  const audience = resolveRotatingMessageAudience({ signedIn: !!user, roles, partnerMode: isPartnerMode });
+  const audience = resolveRotatingMessageAudience({ signedIn: !!user, roles, partnerMode: isPartnerMode, brokersOnly });
   const { data } = useRotatingMessages(audience, !user || !rolesLoading);
   const messageRows = useMemo(() => data ?? [], [data]);
   const messages = useMemo(() => messageRows.map((message) => message.message_text), [messageRows]);

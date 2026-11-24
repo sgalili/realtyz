@@ -1,4 +1,4 @@
-export const ROTATING_MESSAGE_AUDIENCES = ['guest', 'broker_partner', 'developer', 'private'] as const;
+export const ROTATING_MESSAGE_AUDIENCES = ['guest', 'broker_partner', 'developer', 'private', 'broker_saas'] as const;
 
 export type RotatingMessageAudience = typeof ROTATING_MESSAGE_AUDIENCES[number];
 
@@ -40,6 +40,7 @@ export const ROTATING_MESSAGE_AUDIENCE_LABELS: Record<RotatingMessageAudience, s
   broker_partner: 'מתווכים ושותפים',
   developer: 'יזמים',
   private: 'משתמשים פרטיים',
+  broker_saas: 'מתווכים (מצב מתווכים בלבד)',
 };
 
 const BROKER_ROLES = new Set([
@@ -57,12 +58,15 @@ export function resolveRotatingMessageAudience({
   signedIn,
   roles,
   partnerMode,
+  brokersOnly = false,
 }: {
   signedIn: boolean;
   roles: readonly string[];
   partnerMode: boolean;
+  brokersOnly?: boolean;
 }): RotatingMessageAudience {
   if (!signedIn) return 'guest';
+  if (brokersOnly && roles.some((role) => BROKER_ROLES.has(role))) return 'broker_saas';
   if (partnerMode) return 'broker_partner';
   if (roles.includes('developer')) return 'developer';
   if (roles.includes('affiliate') || roles.some((role) => BROKER_ROLES.has(role))) return 'broker_partner';
