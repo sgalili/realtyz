@@ -1,3 +1,4 @@
+import { Yad2MoreButton } from '@/components/properties/Yad2MoreButton';
 import { missingListingDetails, listingPublicationState, PUBLICATION_STATE_LABELS } from '@/lib/listingCompleteness';
 import { SelectedListingsActions } from '@/components/properties/SelectedListingsActions';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
@@ -1235,6 +1236,7 @@ export default function Properties() {
                 ))}
               </div>
             )}
+            {!hasMore && <Yad2MoreButton ownerId={activeWorkspaceId} />}
             {hasMore && (
               <div ref={sentinelRef} className="flex items-center justify-center py-6 text-xs text-muted-foreground gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />

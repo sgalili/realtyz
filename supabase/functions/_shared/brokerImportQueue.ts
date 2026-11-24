@@ -1,6 +1,6 @@
 import { batchPhone, batchListingUrls } from './brokerBatchImport.ts';
 
-export type DiscoveredBroker = { full_name: string; phone: string | null; email?: string; license_number: string; office_name?: string; agency_description?: string; imported_bio?: string; listing_urls: string[] };
+export type DiscoveredBroker = { full_name: string; phone: string | null; email?: string; license_number: string; office_name?: string; agency_description?: string; imported_bio?: string; listing_urls: string[]; yad2_total?: number };
 export function validImportParameters(target: number, min: number, max: number) {
   return [target, min, max].every(Number.isInteger) && target >= 1 && target <= 100 && min >= 1 && max <= 50 && max >= min;
 }
@@ -19,6 +19,11 @@ export function collectBrokers(rows: Record<string, any>[], min: number, max: nu
     if (!b.imported_bio && typeof p.imported_bio === 'string') b.imported_bio = p.imported_bio.trim().slice(0, 5000);
     if (!b.agency_description && typeof p.agency_description === 'string') b.agency_description = p.agency_description.trim().slice(0, 5000);
     if (!b.email && typeof row.owner_email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.owner_email)) b.email = row.owner_email;
+    // Yad2's own active-ad count when shown; otherwise the unique ads seen so far (never NaN).
+    const shown = Number(row.active_listing_count ?? row.raw?.active_listing_count);
+    if (Number.isFinite(shown) && shown >= 0) b.yad2_total = Math.max(b.yad2_total ?? 0, Math.floor(shown));
+    const seen = batchListingUrls([...b.listing_urls, ...(row.listing_urls ?? []), row.source_url], 10000).length;
+    b.yad2_total = Math.max(b.yad2_total ?? 0, seen);
     b.listing_urls = batchListingUrls([...b.listing_urls, ...(row.listing_urls ?? []), row.source_url], max); grouped.set(key, b);
   }
   return [...grouped.values()].filter(b => b.listing_urls.length >= min).map(b => ({ ...b, listing_urls: b.listing_urls.slice(0, max) }));

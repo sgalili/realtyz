@@ -95,7 +95,7 @@ Deno.serve(async req => {
     const [queueJobs, devJobs, onboard, allDevs, batchLogs, deletedRecords] = await Promise.all([
       all((f, t) => admin.from('broker_import_jobs').select('id,status,error,checkpoint,created_at,updated_at').order('created_at', { ascending: false }).range(f, t)),
       all((f, t) => admin.from('developer_import_jobs').select('id,status,error,source_url,developer_id,company,completed_at,updated_at,created_at').order('created_at', { ascending: false }).range(f, t)),
-      all((f, t) => admin.from('admin_broker_onboarding').select('user_id,created_at,import_source').eq('import_source', 'bright_data').order('created_at', { ascending: false }).range(f, t)),
+      all((f, t) => admin.from('admin_broker_onboarding').select('user_id,created_at,import_source,yad2_total_listings').eq('import_source', 'bright_data').order('created_at', { ascending: false }).range(f, t)),
       all((f, t) => admin.from('developers').select('id,company_name,logo_url,source_url,workspace_owner_id,created_at').not('source_url', 'is', null).range(f, t)),
       all((f, t) => admin.from('audit_logs').select('id,target_id,details,created_at').eq('action', 'super_admin.broker_batch_import').order('created_at', { ascending: false }).range(f, t)),
       all((f, t) => admin.from('import_history_deleted_records').select('record_key').order('record_key').range(f, t)),
@@ -144,13 +144,14 @@ Deno.serve(async req => {
       if (!st.yad2 && x.source_url && String(x.source_url).includes('yad2.co.il')) st.yad2 = x.source_url;
       listingStats.set(x.workspace_owner_id, st);
     }
+    const yad2TotalBy = new Map<string, number>(onboard.filter((o: any) => Number.isFinite(Number(o.yad2_total_listings)) && o.yad2_total_listings !== null).map((o: any) => [o.user_id, Number(o.yad2_total_listings)]));
     const deleted = new Set(deletedRecords.map(r => r.record_key));
     const items = raw.filter(r => !deleted.has(r.id)).map(r => {
       if (r.kind === 'developer') { const d = devById.get(r.ref);
         const p = d?.workspace_owner_id ? devProfileById.get(d.workspace_owner_id) : undefined;
         return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name || d?.company_name || r.name || '', workspace_owner_id: d?.workspace_owner_id ?? null, public_user_id: d?.owner_user_id ?? d?.workspace_owner_id ?? null, avatar_url: p?.avatar_url ?? null, agency_name: d?.company_name ?? r.name ?? null, logo_url: d?.logo_url ?? null, agency_imported: !!d?.company_name, projects: projectCount.get(r.ref) ?? 0, source_url: r.source_url, imported_at: r.at }; }
       const p = profileById.get(r.ref); const o = officeById.get(r.ref); const st = listingStats.get(r.ref);
-      return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name ?? r.name ?? '', workspace_owner_id: p?.id ?? null, public_user_id: p?.id ?? null, avatar_url: p?.avatar_url ?? null, logo_url: o?.logo_url ?? null, agency_imported: !!o?.agency_name, agency_name: o?.agency_name ?? null, projects: st?.count ?? 0, source_url: r.source_url ?? st?.yad2 ?? null, imported_at: r.at };
+      return { id: r.id, kind: r.kind, status: r.status, error: r.error, name: p?.full_name ?? r.name ?? '', workspace_owner_id: p?.id ?? null, public_user_id: p?.id ?? null, avatar_url: p?.avatar_url ?? null, logo_url: o?.logo_url ?? null, agency_imported: !!o?.agency_name, agency_name: o?.agency_name ?? null, projects: st?.count ?? 0, yad2_total: yad2TotalBy.get(r.ref) ?? null, source_url: r.source_url ?? st?.yad2 ?? null, imported_at: r.at };
     }).sort((a, b) => String(b.imported_at).localeCompare(String(a.imported_at)));
     // Hide nameless rows (deleted/never-created entities) and keep one latest row per imported account.
     const shown = new Set<string>();
@@ -168,7 +169,7 @@ Deno.serve(async req => {
   if (input.action === 'list') {
     const rows = [];
     for (let start = 0; ; start += 500) {
-      const { data, error } = await admin.from('admin_broker_onboarding').select('user_id,contact_status,import_source,imported_license_number,first_invitation_at,first_login_at,email_consent_at,email_invited_at,invited_at,created_at').not('import_source', 'is', null).is('first_invitation_at', null).is('first_login_at', null).order('user_id').range(start, start + 499);
+      const { data, error } = await admin.from('admin_broker_onboarding').select('user_id,contact_status,import_source,imported_license_number,yad2_total_listings,first_invitation_at,first_login_at,email_consent_at,email_invited_at,invited_at,created_at').not('import_source', 'is', null).is('first_invitation_at', null).is('first_login_at', null).order('user_id').range(start, start + 499);
       if (error) return json({ error: 'קריאת הרשימה נכשלה' }, 500);
       rows.push(...(data ?? []));
       if ((data?.length ?? 0) < 500) break;
@@ -192,6 +193,7 @@ Deno.serve(async req => {
       admin.rpc('imported_account_inventory_counts', { owner_ids: ids }),
       admin.from('broker_license_verifications').select('user_id,license_number,verified_at').in('user_id', ids),
       admin.from('user_roles').select('user_id').in('user_id', ids).eq('role', 'developer'),
+      admin.from('broker_import_jobs').select('checkpoint').in('status', ['running', 'pending']).limit(50),
     ]);
     if(brokerReads.some(result=>result.error))return json({error:'לא ניתן לקרוא את פרטי המתווכים כרגע'},503);
     const [{data:profiles},{data:offices},{data:licenses},{data:inventory,error:inventoryError},{data:verified},{data:devRoles}]=brokerReads;
@@ -203,6 +205,8 @@ Deno.serve(async req => {
     const by = <T,>(rows: T[] | null | undefined, k: (x: T) => string) => { const m = new Map<string, T>(); for (const x of rows ?? []) if (!m.has(k(x))) m.set(k(x), x); return m; };
     const pM = by(profiles, (x: any) => x.id), invM = by(inventory as any[], (x: any) => x.user_id), waM = by(whatsappContacts, (x: any) => x.broker_id), verM = by(verified, (x: any) => x.user_id), licM = by(licenses, (x: any) => x.user_id), offM = by(offices, (x: any) => x.user_id), devM = by(devCompanies, (x: any) => x.workspace_owner_id);
     const devRoleSet = new Set((devRoles ?? []).map(d => d.user_id));
+    // Broker whose ads an active import run is saving right now.
+    const importingIds = new Set(((brokerReads[6] as any).data ?? []).flatMap((j: any) => j.checkpoint?.phase === 'importing' && j.checkpoint?.brokerId ? [String(j.checkpoint.brokerId)] : []));
     const {data: noMatches,error: noMatchError}=await admin.from('broker_registry_no_matches').select('broker_id,license_number').in('broker_id',ids);
     if(noMatchError)return json({error:'לא ניתן לקרוא את תוצאות האימות כרגע'},503);
     const noMatchKeys=new Set((noMatches??[]).map(r=>`${r.broker_id}:${r.license_number}`));
@@ -222,6 +226,8 @@ Deno.serve(async req => {
         drafts: Number(counts?.drafts ?? 0),
         projects: Number(counts?.projects ?? 0),
         apartments: Number(counts?.apartments ?? 0),
+        yad2_total: Number.isFinite(Number((r as any).yad2_total_listings)) && (r as any).yad2_total_listings !== null ? Number((r as any).yad2_total_listings) : null,
+        importing: importingIds.has(r.user_id),
         contact_status: r.contact_status, first_login_at: r.first_login_at, email_consent_at: r.email_consent_at, email_invited_at: r.email_invited_at };
     });
     return json({ brokers });

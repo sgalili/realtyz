@@ -149,6 +149,7 @@ export type Database = {
           license_grace_started_at: string | null
           license_verified_at: string | null
           user_id: string
+          yad2_total_listings: number | null
         }
         Insert: {
           contact_completed_at?: string | null
@@ -177,6 +178,7 @@ export type Database = {
           license_grace_started_at?: string | null
           license_verified_at?: string | null
           user_id: string
+          yad2_total_listings?: number | null
         }
         Update: {
           contact_completed_at?: string | null
@@ -205,6 +207,7 @@ export type Database = {
           license_grace_started_at?: string | null
           license_verified_at?: string | null
           user_id?: string
+          yad2_total_listings?: number | null
         }
         Relationships: [
           {
@@ -13092,6 +13095,7 @@ export type Database = {
       }
       my_demo_view_type: { Args: never; Returns: string }
       my_marketing_company_id: { Args: never; Returns: string }
+      my_yad2_import_gap: { Args: { _owner: string }; Returns: Json }
       notify_broker_upgrade: {
         Args: { _id: string; _status: string; _uid: string }
         Returns: undefined

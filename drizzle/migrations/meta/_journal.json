@@ -2115,6 +2115,13 @@
       "when": 1795532703296,
       "tag": "0301_grow_quick_charge",
       "breakpoints": true
+    },
+    {
+      "idx": 302,
+      "version": "7",
+      "when": 1795536523480,
+      "tag": "0302_broker_yad2_total_listings",
+      "breakpoints": true
     }
   ]
 }

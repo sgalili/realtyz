@@ -83,6 +83,6 @@ it('transfers the ring-3 to the next broker without changing either saved numeri
   state.jobs = [{ ...state.jobs[0], status: 'completed' }];
   refresh();
   expect(screen.queryByRole('img')).toBeNull();
-  expect(screen.getByText('7')).toBeVisible();
-  expect(screen.getByText('12')).toBeVisible();
+  expect(screen.getByText('(7)')).toBeVisible();
+  expect(screen.getByText('(12)')).toBeVisible();
 });

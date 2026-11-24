@@ -1,3 +1,4 @@
+import { importRatioLabel } from '@/lib/importRatio';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck, ChevronDown, Phone } from 'lucide-react';
@@ -33,7 +34,7 @@ import { firstContactBody } from '../../../supabase/functions/_shared/brokerInvi
 import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
 import { brokerUserError } from '../../../supabase/functions/_shared/brokerRecovery';
 
-export type ContactBroker = { created_at?: string; user_id: string; full_name: string; phone: string | null; whatsapp_phone?: string | null; whatsapp_link?: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; registry_no_match?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
+export type ContactBroker = { created_at?: string; user_id: string; full_name: string; phone: string | null; whatsapp_phone?: string | null; whatsapp_link?: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; registry_no_match?: boolean; gender?: string | null; drafts: number; yad2_total?: number | null; importing?: boolean; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
 async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> {
   return brokerWhatsAppRequest<T>(fn, body);
@@ -195,7 +196,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
         {b.license_verified ? <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-label="אומת מול המאגר הממשלתי" /> : !b.is_developer && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense??''} noMatch={b.registry_no_match ?? false} onUpdated={() => void qc.invalidateQueries({queryKey:['broker-contact-queue']})} />}
         <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
           {b.is_developer ? <DeveloperLogo name={b.full_name} logoUrl={b.office_logo_url} className="h-9 w-9" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
-          <span className="flex min-w-0 items-center gap-1 text-base sm:text-lg"><span className="min-w-0 break-words font-bold">{b.full_name || 'ללא שם'}</span>{!b.is_developer && regLicense && <span dir="ltr" className="shrink-0 whitespace-nowrap text-sm font-normal text-muted-foreground sm:text-base">{regLicense}</span>}</span>
+          <span className="flex min-w-0 items-center gap-1 text-base sm:text-lg"><span className="min-w-0 break-words font-bold">{b.full_name || 'ללא שם'}</span>{!b.is_developer && regLicense && <span dir="ltr" className="shrink-0 whitespace-nowrap text-sm font-normal text-muted-foreground sm:text-base">{regLicense}</span>}{!b.is_developer && <span dir="ltr" title="יובאו / סה״כ ביד2" className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-normal tabular-nums text-muted-foreground sm:text-base">{importRatioLabel(b.drafts, b.yad2_total)}{b.importing && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary motion-reduce:animate-none" aria-label="הייבוא פעיל" />}</span>}</span>
         </button>
         {!b.is_developer && !hasSelectedGender && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'גבר', '\u2642\uFE0E'], ['female', 'אישה', '\u2640\uFE0E']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role="radio" aria-checked={false} aria-label={label} title={label} className={`h-7 w-7 text-base ${g === 'male' ? 'text-gender-male' : 'text-gender-female'}`} disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>}
         </div>
@@ -315,7 +316,7 @@ function SendHistory({ search }: { search: ImportSearch }) {
   </div>;
 }
 
-type ImportItem = { id: string; kind: 'developer' | 'broker'; name: string; logo_url: string | null; avatar_url?: string | null; workspace_owner_id?: string | null; public_user_id?: string | null; source_url?: string | null; agency_imported: boolean; agency_name?: string | null; projects: number; imported_at: string; status?: string; error?: string | null };
+type ImportItem = { id: string; kind: 'developer' | 'broker'; name: string; logo_url: string | null; avatar_url?: string | null; workspace_owner_id?: string | null; public_user_id?: string | null; source_url?: string | null; agency_imported: boolean; agency_name?: string | null; projects: number; yad2_total?: number | null; imported_at: string; status?: string; error?: string | null };
 
 /** Row identity shown inside the name cell: saved office/company logo first, then the profile photo. No placeholder when neither exists. */
 function ImportIdentityImage({ item }: { item: ImportItem }) {
@@ -328,9 +329,9 @@ function ImportIdentityImage({ item }: { item: ImportItem }) {
 /** Properties/projects count. While the import is still running the number sits centered inside a spinning loader ring. */
 function ImportCount({ item, running }: { item: ImportItem; running: boolean }) {
   const label = item.kind === 'developer' ? 'פרויקטים' : 'נכסים';
-  return <span role={running ? 'img' : undefined} aria-label={running ? `${label} נטענים · ${item.projects}` : undefined} className="relative inline-grid h-9 w-9 place-items-center">
+  return <span role={running ? 'img' : undefined} aria-label={running ? `${label} נטענים · ${item.projects}` : undefined} className="relative inline-grid h-9 min-w-9 place-items-center px-1">
     {running && <span aria-hidden="true" className="absolute inset-0 animate-spin rounded-full border-2 border-primary/25 border-t-primary motion-reduce:animate-none" />}
-    <span className={`text-sm font-bold tabular-nums ${!running && item.status === 'failed' ? 'text-destructive' : ''}`} title={!running && item.status === 'failed' && item.error ? brokerUserError(item.error) : undefined}>{item.projects}</span>
+    <span className={`text-sm font-bold tabular-nums ${!running && item.status === 'failed' ? 'text-destructive' : ''}`} title={!running && item.status === 'failed' && item.error ? brokerUserError(item.error) : undefined}>{item.kind === 'broker' ? <span dir="ltr">{importRatioLabel(item.projects, item.yad2_total)}</span> : item.projects}</span>
   </span>;
 }
 

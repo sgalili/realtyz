@@ -466,7 +466,9 @@ Deno.serve(async req => {
           if(b.imported_bio) {
             const {error}=await admin.from('profiles').update({imported_public_bio:b.imported_bio}).eq('id',brokerId).is('imported_public_bio',null);if(error)throw error;
           }
-          c.brokerResults=[...(c.brokerResults??[]).filter((r:Record<string,any>)=>r.broker_id!==brokerId),{broker_id:brokerId,full_name:b.full_name??null,office_name:b.office_name??null,license_number:b.license_number??null,source_url:b.source_url??b.listing_urls?.[0]??null,listings:b.listing_urls?.length??0}];
+          const yad2Total=Number.isFinite(Number(b.yad2_total))?Math.max(Number(b.yad2_total),b.listing_urls?.length??0):(b.listing_urls?.length??0);
+          {const {error}=await admin.from('admin_broker_onboarding').update({yad2_total_listings:yad2Total}).eq('user_id',brokerId);if(error)throw error;}
+          c.brokerResults=[...(c.brokerResults??[]).filter((r:Record<string,any>)=>r.broker_id!==brokerId),{broker_id:brokerId,full_name:b.full_name??null,office_name:b.office_name??null,license_number:b.license_number??null,source_url:b.source_url??b.listing_urls?.[0]??null,listings:b.listing_urls?.length??0,yad2_total:yad2Total}];
           c.brokerId=brokerId;c.brokerListingsDone=0;c.phase='importing';await save();
         } else if(c.phase==='importing') {
           const d=await pacedCall('yad2-unlocker',{owner_id:c.brokerId,url:b.listing_urls[c.listingIndex],import_item:true,residential_only:true,limit:1,pages:1});
