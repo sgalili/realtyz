@@ -425,7 +425,7 @@ function ProfessionalCommandCenter() {
         {/* Tabs first, then the "add new" button below them. Desktop keeps an
             exact 50px gap under the tabs; mobile stays as it was. */}
         <div className="mb-4 flex flex-col items-center justify-center gap-[25px] md:gap-0">
-          <div dir="rtl" className="mx-auto flex w-full max-w-2xl items-center gap-2">
+          <div dir="rtl" className="-mx-[6px] flex w-[calc(100%+12px)] max-w-none items-center gap-2 self-stretch md:mx-auto md:w-full md:max-w-2xl md:self-auto">
           <ScrollableTabsRow tab={tab} setTab={setTab} visibleTabs={visibleTabs} counts={counts} />
           {tab !== 'leads' && tab !== 'demos' && (
             <ScheduleViewToggle view={tab === 'calls' ? callView : taskView} onViewChange={tab === 'calls' ? setCallView : setTaskView} monthCursor={taskMonth} onMonthChange={setTaskMonth} />
@@ -567,7 +567,7 @@ function EditTaskDialog({
   );
 }
 
-/** Single-row tabs that scroll horizontally, with a fade and arrow cue on the left (RTL scroll direction). */
+/** Single-row tabs that scroll horizontally, with a fade cue on the left (RTL scroll direction). */
 function ScrollableTabsRow({ tab, setTab, visibleTabs, counts }: {
   tab: SectionTab; setTab: (t: SectionTab) => void; visibleTabs: SectionTab[]; counts: Record<string, number>;
 }) {
@@ -598,9 +598,7 @@ function ScrollableTabsRow({ tab, setTab, visibleTabs, counts }: {
           ))}
         </TabsList>
       </div>
-      <div aria-hidden className={`pointer-events-none absolute inset-y-px left-px flex w-10 items-center justify-start rounded-l-xl bg-gradient-to-r from-muted via-muted/80 to-transparent pl-1 transition-opacity duration-200 ${more ? 'opacity-100' : 'opacity-0'}`}>
-        <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-      </div>
+      <div aria-hidden className={`pointer-events-none absolute inset-y-px left-px flex w-10 items-center justify-start rounded-l-xl bg-gradient-to-r from-muted via-muted/80 to-transparent transition-opacity duration-200 ${more ? 'opacity-100' : 'opacity-0'}`} />
     </Tabs>
   );
 }

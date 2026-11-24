@@ -16,7 +16,7 @@ interface CollapsibleSectionProps {
   title: string;
   description?: string;
   icon?: ReactNode;
-  /** Semantic color token name used for the icon badge and accent edge. */
+  /** Semantic color token name used for the icon badge. */
   tone?: string;
   /** Live counter shown on the header. */
   badge?: ReactNode;
@@ -41,12 +41,12 @@ export function CollapsibleSection({
   useEffect(() => { if (defaultOpen) setOpen(true); }, [defaultOpen, setOpen]);
 
   return (
-    <section className={cn('overflow-hidden rounded-2xl border border-border/60 bg-card shadow-xs', tone && 'border-s-4', className)} style={tone ? { borderInlineStartColor: `hsl(var(--${tone}))` } : undefined} dir="rtl">
+    <section className={cn('overflow-hidden rounded-2xl border border-border/60 bg-card py-2 shadow-xs', className)} dir="rtl">
       <Button variant="ghost"
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="w-full flex items-center gap-3 px-4 py-3 text-right hover:bg-muted/40 transition-colors rounded-xl"
+        className="w-full h-auto flex items-center gap-3 px-4 py-4 text-right hover:bg-muted/40 transition-colors rounded-xl"
       >
         {tone ? <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl [&_svg]:!h-6 [&_svg]:!w-6" style={{ background: `hsl(var(--${tone}) / 0.14)`, color: `hsl(var(--${tone}))` }}>{icon}</span> : icon}
         <span className="flex-1 min-w-0">
@@ -60,7 +60,7 @@ export function CollapsibleSection({
           className={cn('h-4 w-4 text-muted-foreground transition-transform', open && 'rotate-180')}
         />
        </Button>
-       <AnimatedExpansion open={open}><div className="px-1 pb-1">{children}</div></AnimatedExpansion>
+       <AnimatedExpansion open={open}><div className="px-2 pb-3 pt-1">{children}</div></AnimatedExpansion>
     </section>
   );
 }

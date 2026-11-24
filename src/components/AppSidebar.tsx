@@ -277,6 +277,13 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     const rest = cleaned.filter(i => i.url !== '/campaigns' && i.url !== '/my-ads');
     const hub: NavItem = { ...(camp ?? MY_ADS_ITEM), title: 'קמפיינים', url: '/campaigns', aliases: ['/my-ads', '/publishing', ...(camp?.aliases ?? [])] };
     rest.splice(Math.min(idx, rest.length), 0, hub);
+    // Brokers-only: chats sit directly above tasks.
+    const chatsAt = rest.findIndex(i => i.url === '/inbox');
+    const tasksAt = rest.findIndex(i => i.url === '/command-center');
+    if (chatsAt > tasksAt && tasksAt >= 0) {
+      const [chats] = rest.splice(chatsAt, 1);
+      rest.splice(tasksAt, 0, chats!);
+    }
     return rest;
   }, [allNavItems, brokersOnly, brokerMenu, demo]);
 

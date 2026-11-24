@@ -119,13 +119,14 @@ const RealEstateDashboard = () => {
   });
 
   const { data: hotLeads, isLoading: loadingHot } = useQuery({
-    queryKey: ['kpi-hot-leads', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['kpi-hot-leads', user?.id, ownerId],
+    enabled: !!user?.id && !!ownerId,
     queryFn: async () => {
       const since = subHours(new Date(), 24).toISOString();
       const { count } = await (supabase as any)
         .from('leads')
         .select('id', { count: 'exact', head: true })
+        .eq('workspace_owner_id', ownerId)
         .gte('last_interaction_at', since);
       return count ?? 0;
     },
@@ -134,12 +135,13 @@ const RealEstateDashboard = () => {
   });
 
   const { data: scheduledMeetings, isLoading: loadingMeetings } = useQuery({
-    queryKey: ['kpi-scheduled-meetings', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['kpi-scheduled-meetings', user?.id, ownerId],
+    enabled: !!user?.id && !!ownerId,
     queryFn: async () => {
       const { count } = await (supabase as any)
         .from('meetings')
         .select('id', { count: 'exact', head: true })
+        .eq('workspace_owner_id', ownerId)
         .eq('user_id', user!.id)
         .eq('status', 'scheduled')
         .gte('starts_at', new Date().toISOString());
@@ -149,13 +151,14 @@ const RealEstateDashboard = () => {
   });
 
   const { data: closedDeals, isLoading: loadingDeals } = useQuery({
-    queryKey: ['kpi-closed-deals', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['kpi-closed-deals', user?.id, ownerId],
+    enabled: !!user?.id && !!ownerId,
     queryFn: async () => {
       const monthStart = startOfMonth(new Date()).toISOString();
       const { count } = await (supabase as any)
         .from('leads')
         .select('id', { count: 'exact', head: true })
+        .eq('workspace_owner_id', ownerId)
         .eq('lead_stage', 'closed')
         .gte('last_interaction_at', monthStart);
       return count ?? 0;
@@ -165,11 +168,13 @@ const RealEstateDashboard = () => {
 
   /* ───── Leads-by-Neighborhood Pie ───── */
   const { data: neighborhoodData } = useQuery({
-    queryKey: ['leads-by-neighborhood'],
+    queryKey: ['leads-by-neighborhood', ownerId],
+    enabled: !!ownerId,
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from('leads')
         .select('city')
+        .eq('workspace_owner_id', ownerId)
         .not('city', 'is', null);
       const counts: Record<string, number> = {};
       (data ?? []).forEach((row: { city: string | null }) => {
@@ -189,8 +194,8 @@ const RealEstateDashboard = () => {
      Built from: contact_submissions (inquiries), meetings (showings),
      closing_documents (contracts), messages (lead replies). */
   const { data: activityFeed } = useQuery<ActivityFeedItem[]>({
-    queryKey: ['real-estate-activity-feed', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['real-estate-activity-feed', user?.id, ownerId],
+    enabled: !!user?.id && !!ownerId,
     queryFn: async () => {
       const items: ActivityFeedItem[] = [];
 
@@ -198,24 +203,28 @@ const RealEstateDashboard = () => {
         (supabase as any)
           .from('contact_submissions')
           .select('id, full_name, phone_number, message, created_at, lead_id')
+          .eq('workspace_owner_id', ownerId)
           .order('created_at', { ascending: false })
           .limit(8),
         (supabase as any)
           .from('meetings')
           .select('id, title, lead_name, starts_at, created_at')
+          .eq('workspace_owner_id', ownerId)
           .eq('user_id', user!.id)
           .order('created_at', { ascending: false })
           .limit(8),
         (supabase as any)
           .from('closing_documents')
           .select('id, title, signer_name, sent_at, created_at')
+          .eq('workspace_owner_id', ownerId)
           .eq('user_id', user!.id)
           .not('sent_at', 'is', null)
           .order('sent_at', { ascending: false })
           .limit(8),
         (supabase as any)
           .from('messages')
-          .select('id, content, lead_id, sender_type, created_at')
+          .select('id, content, lead_id, sender_type, created_at, leads!inner(workspace_owner_id)')
+          .eq('leads.workspace_owner_id', ownerId)
           .eq('sender_type', 'lead')
           .order('created_at', { ascending: false })
           .limit(8),
@@ -271,17 +280,29 @@ const RealEstateDashboard = () => {
 
   /* ───── Market Alerts (replaces Security Events) ───── */
   const { data: marketAlerts } = useQuery({
-    queryKey: ['market-alerts', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['market-alerts', user?.id, ownerId],
+    enabled: !!user?.id && !!ownerId,
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const db = supabase as any;
+      const { data } = await db
         .from('escalation_alerts')
-        .select('id, severity, lead_message, channel, created_at, status')
+        .select('id, severity, lead_message, channel, trigger_category, lead_id, created_at, status')
         .eq('user_id', user!.id)
         .eq('status', 'open')
         .order('created_at', { ascending: false })
-        .limit(5);
-      return data ?? [];
+        .limit(30);
+      const rows = (data ?? []) as MarketAlertRow[];
+      // Alerts are stored per user; keep only those whose lead belongs to the active workspace.
+      const leadIds = [...new Set(rows.map((a) => a.lead_id).filter(Boolean))] as string[];
+      const leads = new Map<string, string | null>();
+      if (leadIds.length) {
+        const { data: leadRows } = await db.from('leads').select('id, full_name').in('id', leadIds).eq('workspace_owner_id', ownerId);
+        (leadRows ?? []).forEach((l: { id: string; full_name: string | null }) => leads.set(l.id, l.full_name));
+      }
+      return rows
+        .filter((a) => (a.lead_id ? leads.has(a.lead_id) : ownerId === user!.id))
+        .slice(0, 5)
+        .map((a) => ({ ...a, lead_name: a.lead_id ? leads.get(a.lead_id) ?? null : null }));
     },
     refetchInterval: 60_000,
   });
@@ -524,21 +545,21 @@ const RealEstateDashboard = () => {
             </p>
           ) : (
             <div className="space-y-2">
-              {marketAlerts.map((alert: any) => (
+              {marketAlerts.map((alert) => (
                 <div
                   key={alert.id}
                   className="flex items-start gap-3 p-3 rounded-lg border border-warning/30 bg-warning/5"
                 >
                   <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{alert.lead_message}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {alert.channel} ·{' '}
-                      {format(new Date(alert.created_at), 'dd/MM HH:mm', { locale: he })}
+                    <p className="text-sm font-semibold text-foreground">{marketAlertTitle(alert)}</p>
+                    {alert.lead_message && <p className="text-sm text-muted-foreground line-clamp-2">״{alert.lead_message}״</p>}
+                    <p className="text-xs text-muted-foreground">
+                      {[alert.lead_name, channelLabel(alert.channel), format(new Date(alert.created_at), 'dd/MM HH:mm', { locale: he })].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => navigate('/inbox')}>
-                    טיפול
+                  <Button size="sm" variant="outline" className="shrink-0" onClick={() => navigate(alert.lead_id ? `/lead-crm/${alert.lead_id}` : '/inbox')}>
+                    {alert.lead_id ? 'לכרטיס הליד' : 'לצ׳אטים'}
                   </Button>
                 </div>
               ))}
@@ -553,6 +574,28 @@ const RealEstateDashboard = () => {
 };
 
 /* ─── Helpers ─── */
+
+type MarketAlertRow = { id: string; severity: string | null; lead_message: string | null; channel: string | null; trigger_category: string | null; lead_id: string | null; created_at: string; status: string; lead_name?: string | null };
+
+const CHANNEL_LABELS: Record<string, string> = {
+  whatsapp: 'וואטסאפ', sms: 'SMS', email: 'אימייל', facebook: 'פייסבוק', messenger: 'מסנג׳ר', instagram: 'אינסטגרם',
+  web: 'טופס באתר', form: 'טופס באתר', website: 'טופס באתר', phone: 'שיחת טלפון', voice: 'שיחת טלפון', ivr: 'שיחה קולית',
+  deal_room: 'חדר עסקאות', inbox: 'צ׳אטים', rita: 'ריטה',
+};
+const CATEGORY_TITLES: Record<string, string> = {
+  urgent: 'ליד מבקש מענה דחוף', complaint: 'ליד הביע אי שביעות רצון', legal: 'ליד העלה נושא משפטי',
+  price: 'ליד שואל על מחיר או מיקוח', meeting: 'ליד מבקש לתאם פגישה', human: 'ליד מבקש לדבר עם מתווך',
+  cancel: 'ליד שוקל לוותר', escalation: 'שיחה שדורשת את המעורבות שלך',
+};
+function channelLabel(channel: string | null) {
+  if (!channel) return null;
+  return CHANNEL_LABELS[channel.toLowerCase()] ?? null;
+}
+function marketAlertTitle(alert: MarketAlertRow) {
+  const byCategory = alert.trigger_category ? CATEGORY_TITLES[alert.trigger_category.toLowerCase()] : undefined;
+  if (byCategory) return byCategory;
+  return alert.severity === 'high' || alert.severity === 'critical' ? 'ליד מחכה לתגובה דחופה ממך' : 'ליד מחכה לתגובה ממך';
+}
 
 function ActivityRow({ item, onOpen }: { item: ActivityFeedItem; onOpen: (leadId: string) => void }) {
   const config = {

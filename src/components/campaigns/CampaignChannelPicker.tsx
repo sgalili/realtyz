@@ -36,6 +36,11 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
           </h2>
         </div>
         {channel?.id === 'facebook' && <FacebookPageSelector hideConnectButton />}
+        {channel && (channel.id === 'facebook' || channel.id === 'whatsapp') && <p className="text-sm leading-relaxed text-muted-foreground" role="note">
+          {channel.id === 'facebook'
+            ? 'לפרסום נדרש עמוד פייסבוק מחובר או חשבון ענן פעיל. הפוסטים נכנסים לתור ומתפרסמים בהדרגה לפי המכסה היומית שהוגדרה, כך שמועד הפרסום בפועל עשוי להשתנות.'
+            : 'השליחה נעשית רק דרך מספר הוואטסאפ הרשמי ובתבניות מאושרות. ההודעות נכנסות לתור ונשלחות בהדרגה לפי המכסה היומית.'}
+        </p>}
       </div>
       {!channel && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {DISTRIBUTION_CHANNELS.map((item) => {
@@ -44,7 +49,7 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
             className="group relative h-auto min-h-36 flex-col gap-3 whitespace-normal rounded-lg border-border bg-card p-4 text-center hover:border-primary hover:bg-accent focus-visible:ring-primary [&_svg]:size-7">
             <CampaignServiceIcon channel={item.id} className="h-7 w-7" />
             <span className="flex flex-col items-center justify-center gap-1"><span className="text-base font-semibold">{item.label}</span>
-            <span className="text-xs font-normal text-muted-foreground">{inventoryToolLocked(item.id) ? 'בקרוב עם רשת השותפים' : configured ? `${formatCampaignCredits(configured.credits)} ל${configured.unit}` : isLoading ? 'טוען מחיר…' : 'המחירון אינו זמין'}</span></span>
+            <span className="text-xs font-normal text-muted-foreground">{inventoryToolLocked(item.id) ? 'ייפתח בקרוב' : configured ? `${formatCampaignCredits(configured.credits)} ל${configured.unit}` : isLoading ? 'טוען מחיר…' : 'המחירון אינו זמין'}</span></span>
             <ArrowLeft className="absolute left-2 top-2 !size-4 text-muted-foreground transition-transform motion-safe:group-hover:-translate-x-1" aria-hidden />
           </Button>;
         })}

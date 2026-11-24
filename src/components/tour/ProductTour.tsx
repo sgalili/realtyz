@@ -33,7 +33,7 @@ const BROKER_STEPS: TourStep[] = [
   { title: 'לוח הבקרה אומר לך מה לעשות עכשיו', cta: { label: 'פתח את משימות היום', to: '/command-center' } },
   { title: 'תיבה אחת לכל הערוצים', cta: { label: 'פתח שיחות', to: '/live-conversations' } },
   { title: 'מכינים נכס לפרסום ושומרים מחירים ותגמולים', cta: { label: 'פתח נכסים', to: '/properties' } },
-  { title: 'חיבורי פייסבוק ייפתחו בקרוב', connections: true },
+  { title: 'מחברים את פייסבוק כדי לפרסם ישירות מהמערכת', connections: true },
 ];
 
 /** Partner (affiliate) flow: marketing links, rewards and Rita on autopilot. */
