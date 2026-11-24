@@ -59,10 +59,13 @@ Deno.serve(async req => {
       ]);
       const excluded = new Set([...demos.map(r=>r.user_id), ...contacts.map(r=>r.broker_id), ...jobs.map(r=>r.broker_id), ...inquiries.map(r=>r.broker_id)]);
       const sources = new Set(listings.filter(r=>r.user_id===r.workspace_owner_id && /^https:\/\/www\.yad2\.co\.il\/realestate\/item\/[a-zA-Z0-9]+(?:\?.*)?$/.test(r.source_url)).map(r=>r.user_id));
+      // Index once; per-row scans over all roles/profiles grow quadratically.
+      const rolesBy = new Map<string,string[]>(); for (const x of roles) { const l = rolesBy.get(x.user_id) ?? []; l.push(x.role); rolesBy.set(x.user_id, l); }
+      const nameBy = new Map(profiles.map(p=>[p.id, p.full_name]));
       const brokers = onboarding.filter(r => {
-        const own = roles.filter(role=>role.user_id===r.user_id).map(role=>role.role);
+        const own = rolesBy.get(r.user_id) ?? [];
         return !excluded.has(r.user_id) && sources.has(r.user_id) && !own.some(role=>['developer','marketing_company'].includes(role)) && (r.imported_license_number || own.some(role=>['agent','lead_agent','managing_broker','junior_agent'].includes(role)));
-      }).map(r=>({user_id:r.user_id,created_at:r.created_at,full_name:profiles.find(p=>p.id===r.user_id)?.full_name ?? ''}));
+      }).map(r=>({user_id:r.user_id,created_at:r.created_at,full_name:nameBy.get(r.user_id) ?? ''}));
       return json({brokers});
     }
     if (userAction || input.action==='claim') {
