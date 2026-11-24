@@ -23,3 +23,4 @@
 
 - Vapi, Twilio and ElevenLabs management lives only in the Super Admin "voice" section (VoiceProvidersTab), storing through manage-api-configs; credit/bonus pricing tools live in FinanceTab, not API Settings. Why: one privileged home for platform credentials and pricing.
 - Super Admin quick card charges go through grow-payments quick_charge to Grow's hosted checkout; TORAFF never collects card numbers, and paid quick_charge orders grant nothing. Why: PCI safety and no accidental entitlements.
+- Broker Yad2 totals persist on admin_broker_onboarding.yad2_total_listings at account creation; cards/history show (imported/total) via src/lib/importRatio.ts and the My Properties add button reads only my_yad2_import_gap for the authorized workspace. Why: no NaN or cross-tenant counts.
