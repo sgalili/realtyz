@@ -21,7 +21,7 @@ export function renderBrokerInvitation(
 }
 
 export function brokerInvitation(broker: { id: string; full_name?: string | null }) {
-  const link = publicUrl('/demo/broker');
+  const link = personalBrokerLink(broker.id);
   return { link, message: renderBrokerInvitation(BROKER_INVITATION_TEMPLATE, { brokerName: broker.full_name?.trim().split(/\s+/)[0], authLink: link }) };
 }
 

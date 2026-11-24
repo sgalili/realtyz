@@ -9,6 +9,7 @@ import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { clearPendingSignupRole, clearPostSignupWelcome } from '@/lib/signupRole';
 import { clearSmsSignup, formatAuthMobile, israeliMobile, saveSmsSignup, smsSignupSchema } from '@/lib/smsSignup';
+import { OtpFailureActions } from '@/components/auth/OtpFailureActions';
 
 // Gray, unbolded placeholder; black bold typed text; no border/ring on focus.
 const fieldClass = 'h-12 min-w-0 text-lg md:text-lg font-normal text-foreground placeholder:text-lg placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0';
@@ -18,7 +19,8 @@ const PENDING_OTP_TTL_MS = 5 * 60 * 1000;
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const invitedBroker = new URLSearchParams(location.search).has('broker');
+  const brokerId = new URLSearchParams(location.search).get('broker');
+  const invitedBroker = !!brokerId;
   const [signup, setSignup] = useState(!invitedBroker && location.state?.signup !== false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -29,6 +31,8 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(0);
   const [attempts, setAttempts] = useState(0);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [delivery, setDelivery] = useState<'sms' | 'whatsapp'>(invitedBroker ? 'whatsapp' : 'sms');
   const mobile = israeliMobile.safeParse(phone);
   const profile = smsSignupSchema.safeParse({ firstName, lastName, gender, phone });
   const ready = mobile.success && (!signup || profile.success);
@@ -49,7 +53,7 @@ const Auth = () => {
       setResendSeconds(Math.max(0, 60 - Math.floor((Date.now() - saved.sentAt) / 1000)));
     } catch { localStorage.removeItem(PENDING_OTP_KEY); }
   }, []);
-  const switchPhone = () => { localStorage.removeItem(PENDING_OTP_KEY); setCodeSent(false); setOtp(''); setAttempts(0); setPhone(''); };
+  const switchPhone = () => { localStorage.removeItem(PENDING_OTP_KEY); setCodeSent(false); setOtp(''); setAttempts(0); setPhone(''); setFailure(null); };
   useEffect(() => {
     if (resendSeconds <= 0) return;
     const timer = window.setTimeout(() => setResendSeconds(value => value - 1), 1000);
@@ -59,21 +63,28 @@ const Auth = () => {
     event?.preventDefault();
     if (!ready || !mobile.success || loading || resendSeconds > 0) return;
     setLoading(true);
+    setFailure(null);
     try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-auth', { body: { action: 'send_sms', phone: `+${mobile.data}` } });
-      if (error || data?.error) throw new Error(data?.error ?? 'לא ניתן לשלוח קוד כרגע. נסו שוב.');
+      const { data, error } = await supabase.functions.invoke('whatsapp-auth', { body: { action: invitedBroker ? 'send' : 'send_sms', phone: `+${mobile.data}`, ...(brokerId ? { broker_id: brokerId } : {}) } });
+      if (error || data?.error) {
+        let message = data?.error as string | undefined;
+        try { if (!message && error && 'context' in error) message = (await (error as { context: Response }).context.json())?.error; } catch { /* keep default */ }
+        throw new Error(message ?? 'לא ניתן לשלוח קוד כרגע. נסו שוב.');
+      }
       if (signup && profile.success) saveSmsSignup(profile.data);
       setCodeSent(true); setOtp(''); setAttempts(0); setResendSeconds(60);
+      setDelivery(data?.channel === 'sms' || !invitedBroker ? 'sms' : 'whatsapp');
       localStorage.setItem(PENDING_OTP_KEY, JSON.stringify({ phone, signup, gender, sentAt: Date.now() }));
-      toast.success('קוד האימות נשלח ב-SMS');
-    } catch (error) { toast.error(error instanceof Error ? error.message : 'שליחת הקוד נכשלה'); }
+      toast.success(invitedBroker && data?.channel !== 'sms' ? 'קוד האימות נשלח בוואטסאפ' : 'קוד האימות נשלח ב-SMS');
+    } catch (error) { const message = error instanceof Error ? error.message : 'שליחת הקוד נכשלה'; setFailure(message); toast.error(message); }
     finally { setLoading(false); }
   };
   const verify = async (code = otp) => {
     if (!mobile.success || code.length !== 4 || loading || attempts >= 3) return;
     setLoading(true);
+    setFailure(null);
     try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-auth', { body: { action: 'verify', phone: `+${mobile.data}`, code } });
+      const { data, error } = await supabase.functions.invoke('whatsapp-auth', { body: { action: 'verify', phone: `+${mobile.data}`, code, ...(brokerId ? { broker_id: brokerId } : {}) } });
       if (error || data?.error) {
         let message = data?.error as string | undefined;
         try { if (!message && error && 'context' in error) message = (await (error as { context: Response }).context.json())?.error; } catch { /* keep default */ }
@@ -96,10 +107,11 @@ const Auth = () => {
         }
       }
       if (established) { clearSmsSignup(); clearPendingSignupRole(); clearPostSignupWelcome(); }
-      navigate('/', { replace: true });
+      navigate(invitedBroker ? '/properties' : '/', { replace: true });
     } catch (error) {
       setAttempts(value => value + 1); setOtp('');
-      toast.error(attempts + 1 >= 3 ? 'שלחו קוד חדש ונסו שוב.' : error instanceof Error ? error.message : 'האימות נכשל');
+      const message = attempts + 1 >= 3 ? 'שלחו קוד חדש ונסו שוב.' : error instanceof Error ? error.message : 'האימות נכשל';
+      setFailure(message); toast.error(message);
     } finally { setLoading(false); }
   };
   return <div dir="rtl" className="auth-gradient-shell relative flex h-[100dvh] flex-col overflow-hidden bg-background px-4 pb-14 text-foreground">
@@ -109,7 +121,7 @@ const Auth = () => {
 
     <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center pt-[40px]">
       <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
-      <h1 className={`mb-8 mt-[50px] text-center !font-normal ${codeSent ? 'text-xl' : 'text-[17px]'}`}>{codeSent ? gender === 'female' ? 'הזיני את הקוד שקיבלת ב-SMS' : gender === 'male' ? 'הזן את הקוד שקיבלת ב-SMS' : 'הזינו את הקוד שקיבלתם ב-SMS' : signup ? 'להרשמה מהירה בחינם:' : 'כניסה לחשבון'}</h1>
+      <h1 className={`mb-8 mt-[50px] text-center !font-normal ${codeSent ? 'text-xl' : 'text-[17px]'}`}>{codeSent ? `הזינו את הקוד שקיבלתם ${delivery === 'whatsapp' ? 'בוואטסאפ' : 'ב-SMS'}` : signup ? 'להרשמה מהירה בחינם:' : 'כניסה לחשבון'}</h1>
       <div className="min-h-0 w-full overflow-y-auto overscroll-contain">
         {codeSent ? <div className="space-y-5 text-center">
           <p className="-mt-6 text-base text-muted-foreground">נשלח למספר <span dir="ltr" className="font-medium text-foreground">{phone}</span> <button type="button" className="ms-1 text-sm text-primary underline underline-offset-2" onClick={switchPhone}>החלפה</button></p>
@@ -124,11 +136,12 @@ const Auth = () => {
             <Input aria-label="שם משפחה" placeholder="שם משפחה" autoComplete="family-name" maxLength={80} className={fieldClass} value={lastName} onChange={e => setLastName(e.target.value)} />
           </div>}
           <div className={signup ? 'grid grid-cols-2 gap-3' : ''}>
-            <Input type="tel" inputMode="tel" autoComplete="tel" aria-label="מספר טלפון נייד" placeholder="מספר טלפון נייד" maxLength={11} className={fieldClass} dir={phone ? 'ltr' : 'rtl'} value={phone} onChange={e => setPhone(formatAuthMobile(e.target.value))} />
+            <Input type="tel" inputMode="tel" autoComplete="tel" aria-label={invitedBroker ? 'מספר וואטסאפ אישי' : 'מספר טלפון נייד'} placeholder={invitedBroker ? 'מספר וואטסאפ אישי' : 'מספר טלפון נייד'} maxLength={11} className={fieldClass} dir={phone ? 'ltr' : 'rtl'} value={phone} onChange={e => setPhone(formatAuthMobile(e.target.value))} />
             {signup && <div role="group" aria-label="מגדר" className="flex min-w-0 gap-1">{[['male', 'גבר', User], ['female', 'אישה', UserRound]].map(([value, label, Icon]) => <Button key={value as string} type="button" variant={gender === value ? 'default' : 'outline'} aria-pressed={gender === value} className="h-12 min-w-0 flex-1 gap-1 px-2 text-lg font-normal" onClick={() => setGender(value as string)}><Icon className="h-5 w-5 shrink-0" />{label as string}</Button>)}</div>}
           </div>
-          {ready && <Button type="submit" disabled={loading} className="h-12 w-full text-xl font-bold">{loading ? 'שולח...' : 'שלחו לי קוד ב-SMS'}</Button>}
+          {ready && <Button type="submit" disabled={loading} className="h-12 w-full text-xl font-bold">{loading ? 'שולח...' : invitedBroker ? 'שלחו לי קוד בוואטסאפ' : 'שלחו לי קוד ב-SMS'}</Button>}
         </form>}
+        {failure && <div className="mt-4 space-y-3"><p role="alert" className="text-center text-sm text-destructive">{failure}</p><OtpFailureActions disabled={loading || (codeSent && attempts >= 3 && resendSeconds > 0)} retryLabel={codeSent && attempts >= 3 ? resendSeconds > 0 ? `קוד חדש בעוד ${resendSeconds}` : 'בקשת קוד חדש' : 'ניסיון נוסף'} onRetry={() => { if (codeSent && attempts < 3) { setFailure(null); setOtp(''); } else void sendCode(); }} /></div>}
       </div>
     </div>
     {!codeSent && <div className="absolute inset-x-0 bottom-[68px] flex justify-center">

@@ -13,6 +13,7 @@ const schema = z.discriminatedUnion('action',[
   z.object({action:z.literal('pause')}).strict(),
   z.object({action:z.literal('enqueue'),broker_id:z.string().uuid(),confirmed:z.literal(true)}).strict(),
   z.object({action:z.literal('cancel'),job_id:z.string().uuid()}).strict(),
+  z.object({action:z.literal('promote'),job_id:z.string().uuid()}).strict(),
   z.object({action:z.literal('claim_source')}).strict(),
   z.object({action:z.literal('source_result'),job_id:z.string().uuid(),lease_token:z.string().uuid(),html:z.string().max(4000000)}).strict(),
   z.object({action:z.literal('source_failure'),job_id:z.string().uuid(),lease_token:z.string().uuid(),status:z.number().int().min(400).max(599)}).strict(),
@@ -47,22 +48,23 @@ Deno.serve(async req=>{
     const {data:settings,error:se}=await admin.from('broker_wa_scanner_settings').select('*').eq('id',true).maybeSingle();
     if(se)throw new Error('scanner_settings_read_failed');
     if(body.action==='status') {
-      const {data:job,error:je}=body.broker_id?await admin.from('broker_wa_scanner_jobs').select('id,status,last_error,provider_status,reply_deadline,updated_at,created_at').eq('broker_id',body.broker_id).order('created_at',{ascending:false}).limit(1).maybeSingle():{data:null,error:null};
+      const {data:job,error:je}=body.broker_id?await admin.from('broker_wa_scanner_jobs').select('id,status,last_error,provider_status,reply_deadline,updated_at,created_at,queue_priority,next_source_at,lease_until,send_reserved_at').eq('broker_id',body.broker_id).order('created_at',{ascending:false}).limit(1).maybeSingle():{data:null,error:null};
       if(je)throw new Error('scanner_job_read_failed');
       const {count,error:ce}=await admin.from('broker_wa_scanner_events').select('id',{head:true,count:'exact'}).eq('status','needs_manual');
       if(ce)throw new Error('scanner_event_count_failed');
       const {data:contact,error:co}=body.broker_id?await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id',body.broker_id).eq('workspace_owner_id',body.broker_id).maybeSingle():{data:null,error:null};
       if(co)throw new Error('scanner_contact_read_failed');
       // Queue order for the live countdown: jobs created earlier that will consume a send slot first.
-      let queue_ahead=0, outstanding=false;
+      let queue_ahead=0, outstanding=false, outstanding_until:string|null=null;
       if(job&&['pending_source','reading_source','ready'].includes(job.status)){
-        const {count:ahead,error:ae}=await admin.from('broker_wa_scanner_jobs').select('id',{head:true,count:'exact'}).in('status',['pending_source','reading_source','ready']).lt('created_at',job.created_at);
+        const {count:ahead,error:ae}=await admin.from('broker_wa_scanner_jobs').select('id',{head:true,count:'exact'}).in('status',['pending_source','reading_source','ready']).or(`queue_priority.gt.${job.queue_priority},and(queue_priority.eq.${job.queue_priority},created_at.lt.${job.created_at}),and(queue_priority.eq.${job.queue_priority},created_at.eq.${job.created_at},id.lt.${job.id})`);
         if(ae)throw new Error('scanner_queue_read_failed');queue_ahead=ahead??0;
-        const {count:busy,error:be}=await admin.from('broker_wa_scanner_jobs').select('id',{head:true,count:'exact'}).in('status',['sending','awaiting_reply']);
+        const {data:busy,error:be}=await admin.from('broker_wa_scanner_jobs').select('status,reply_deadline,send_reserved_at').in('status',['sending','awaiting_reply']).limit(1).maybeSingle();
         if(be)throw new Error('scanner_queue_read_failed');outstanding=!!busy;
+        outstanding_until=busy?.status==='awaiting_reply'?busy.reply_deadline:busy?.send_reserved_at?new Date(Date.parse(busy.send_reserved_at)+90000).toISOString():null;
       }
       const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem'}).format(new Date());
-      return json({queue_ahead,outstanding,settings:settings??{...scannerDefaults,enabled:false,paused:true,pause_reason:'not_configured'},credentials_ready:!!scannerCredentials(),used_today:settings?.budget_day===today?settings.day_attempts:0,manual_replies:count??0,job,contact});
+      return json({queue_ahead,outstanding,outstanding_until,settings:settings??{...scannerDefaults,enabled:false,paused:true,pause_reason:'not_configured'},credentials_ready:!!scannerCredentials(),used_today:settings?.budget_day===today?settings.day_attempts:0,manual_replies:count??0,job,contact});
     }
     if(body.action==='configure') {
       if(body.jitter_max_seconds<body.jitter_min_seconds)return json({ok:false,error:'טווח ההשהיה אינו תקין'});
@@ -88,6 +90,12 @@ Deno.serve(async req=>{
     if(body.action==='cancel') {
       const {error}=await admin.from('broker_wa_scanner_jobs').update({status:'cancelled',last_error:'user_cancelled',lease_token:null,lease_until:null,updated_at:new Date().toISOString()}).eq('id',body.job_id).in('status',active);
       if(error)throw new Error('scanner_cancel_failed');return json({ok:true});
+    }
+    if(body.action==='promote') {
+      if(caller?.kind!=='user')return json({error:'forbidden'},403);
+      const {data,error}=await admin.rpc('promote_broker_wa_scanner_job',{_job:body.job_id,_actor:caller.userId});
+      if(error)throw new Error('scanner_promote_failed');
+      return data?json({ok:true}):json({ok:false,error:'ניתן לקדם רק פנייה שממתינה בתור וללא מספר שמור'});
     }
     if(body.action==='enqueue') {
       if(caller?.kind!=='user')return json({error:'forbidden'},403);

@@ -25,3 +25,17 @@ it('releases the send control on a rejected request without invoking continuatio
   expect(screen.getByRole('button', { name: /קוד ב-SMS$/ })).toBeEnabled();
   expect(continuation).not.toHaveBeenCalled();
 });
+it('keeps the protected continuation blocked on OTP failure and permits a fresh retry', async () => {
+  state.invoke.mockResolvedValueOnce({ data: { channel: 'whatsapp' } }).mockResolvedValueOnce({ data: { error: 'expired' } }).mockResolvedValueOnce({ data: { token_hash: 'test-only-hash' } });
+  const continuation = vi.fn();
+  render(<WhatsAppOtpVerify defaultPhone="0502222222" onVerified={continuation} />);
+  fireEvent.click(screen.getByRole('button', { name: /קוד בוואטסאפ$/ }));
+  fireEvent.change(await screen.findByPlaceholderText('1234'), { target: { value: '1111' } });
+  fireEvent.click(screen.getByRole('button', { name: /^(אמת|אימות) קוד$/ }));
+  await screen.findByRole('alert');
+  expect(continuation).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'ניסיון נוסף' }));
+  fireEvent.change(screen.getByPlaceholderText('1234'), { target: { value: '2222' } });
+  fireEvent.click(screen.getByRole('button', { name: /^(אמת|אימות) קוד$/ }));
+  await waitFor(() => expect(continuation).toHaveBeenCalledTimes(1));
+});

@@ -20,7 +20,7 @@ async function call(fn: string, body: Record<string, unknown>) {
 }
 
 /** Telephone discovery only suggests a value; the existing authorized save confirms any login change. */
-export function BrokerNumberEditor({ brokerId, name, phone, kind }: { brokerId: string; name: string; phone?: string | null; kind: 'phone' | 'whatsapp' }) {
+export function BrokerNumberEditor({ brokerId, name, phone, kind, discoveryBusy = false }: { brokerId: string; name: string; phone?: string | null; kind: 'phone' | 'whatsapp'; discoveryBusy?: boolean }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState('');
@@ -65,7 +65,7 @@ export function BrokerNumberEditor({ brokerId, name, phone, kind }: { brokerId: 
     <Dialog open={open} onOpenChange={next => { if (!save.isPending) setOpen(next); }}><DialogContent dir="rtl" className="max-w-md text-right">
       <DialogHeader><DialogTitle>{label} של {name}</DialogTitle><DialogDescription>{kind === 'phone' ? 'טלפון הכניסה משתנה רק לאחר שמירה ידנית.' : 'מספר WhatsApp נשמר בנפרד מטלפון הכניסה.'}</DialogDescription></DialogHeader>
       <label className="space-y-2"><span>עריכה ידנית</span><Input aria-label={`עריכה ידנית של ${label}`} dir="ltr" inputMode="tel" value={value} onChange={event => setValue(event.target.value)} placeholder="05X-XXXXXXX" /></label>
-      <Button variant="ghost" className="justify-start" disabled={busy} aria-busy={busy} onClick={() => discover.mutate()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}איתור אוטומטי</Button>
+      {!discoveryBusy && <Button variant="ghost" className="justify-start" disabled={busy} aria-busy={busy} onClick={() => discover.mutate()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}איתור אוטומטי</Button>}
       <DialogFooter className="flex-row justify-between sm:justify-between"><Button variant="outline" onClick={() => setOpen(false)}>ביטול</Button><Button disabled={!value.trim() || save.isPending || busy} onClick={() => save.mutate()}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}שמירה</Button></DialogFooter>
     </DialogContent></Dialog>
   </>;

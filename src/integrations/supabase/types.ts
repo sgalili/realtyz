@@ -1864,6 +1864,7 @@ export type Database = {
           prefilled_message: string | null
           provider_message_id: string | null
           provider_status: number | null
+          queue_priority: number
           reply_deadline: string | null
           scanner_phone: string | null
           send_reserved_at: string | null
@@ -1891,6 +1892,7 @@ export type Database = {
           prefilled_message?: string | null
           provider_message_id?: string | null
           provider_status?: number | null
+          queue_priority?: number
           reply_deadline?: string | null
           scanner_phone?: string | null
           send_reserved_at?: string | null
@@ -1918,6 +1920,7 @@ export type Database = {
           prefilled_message?: string | null
           provider_message_id?: string | null
           provider_status?: number | null
+          queue_priority?: number
           reply_deadline?: string | null
           scanner_phone?: string | null
           send_reserved_at?: string | null
@@ -11344,6 +11347,7 @@ export type Database = {
           prefilled_message: string | null
           provider_message_id: string | null
           provider_status: number | null
+          queue_priority: number
           reply_deadline: string | null
           scanner_phone: string | null
           send_reserved_at: string | null
@@ -12700,6 +12704,10 @@ export type Database = {
         Returns: Json
       }
       profile_management_access: { Args: { _user: string }; Returns: boolean }
+      promote_broker_wa_scanner_job: {
+        Args: { _actor: string; _job: string }
+        Returns: boolean
+      }
       publish_developer_project: {
         Args: { _project: string; _unit_key?: string }
         Returns: Json
@@ -12825,6 +12833,7 @@ export type Database = {
           prefilled_message: string | null
           provider_message_id: string | null
           provider_status: number | null
+          queue_priority: number
           reply_deadline: string | null
           scanner_phone: string | null
           send_reserved_at: string | null

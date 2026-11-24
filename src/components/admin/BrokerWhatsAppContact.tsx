@@ -73,12 +73,12 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
   }, [job?.status, tracking, status.error, brokerId, qc]);
   const busy = enqueue.isPending || discoveryInProgress(job?.status, scanner.data?.job?.status) || (tracking && status.isLoading);
   return <span className="inline-flex max-w-full flex-wrap items-center gap-0.5">
-    <BrokerNumberEditor brokerId={brokerId} name={name} phone={savedPhone} kind="whatsapp" />
+    {(!busy || savedPhone) && <BrokerNumberEditor brokerId={brokerId} name={name} phone={savedPhone} kind="whatsapp" />}
     {savedPhone && <>
       <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-lead-whatsapp" aria-label={`WhatsApp רשמי אל ${name}`} title={`שליחה רשמית אל ${formatPhoneDisplay(savedPhone)}`} onClick={() => setSendOpen(true)}><WhatsAppIcon className="h-4 w-4" /></Button>
     </>}
-    {!savedPhone && <Button variant="ghost" size="icon" className={`h-7 w-7 shrink-0 ${busy ? 'text-muted-foreground' : 'text-lead-whatsapp'}`} aria-label={`גילוי WhatsApp של ${name}`} aria-busy={busy} disabled={busy} title={busy ? 'הגילוי בתהליך או ממתין בתור' : 'גילוי WhatsApp במודעת יד2'} onClick={() => { if(starting.current||busy)return;starting.current=true;enqueue.mutate(brokerId); }}><Search className="h-4 w-4" /></Button>}
-    <BrokerScannerInquiry brokerId={brokerId} name={name} hasWhatsApp={!!savedPhone} />
+    {!savedPhone && !busy && <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-lead-whatsapp" aria-label={`גילוי WhatsApp של ${name}`} title="גילוי WhatsApp במודעת יד2" onClick={() => { if(starting.current||busy)return;starting.current=true;enqueue.mutate(brokerId); }}><Search className="h-4 w-4" /></Button>}
+    <BrokerScannerInquiry brokerId={brokerId} name={name} hasWhatsApp={!!savedPhone} lookupStatus={busy ? job?.status ?? 'pending' : undefined} />
     <Dialog open={sendOpen} onOpenChange={setSendOpen}><DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto text-right"><DialogHeader><DialogTitle>הזמנה ב־WhatsApp ל־{name}</DialogTitle><DialogDescription>מספר וואטסאפ: <span dir="ltr">{savedPhone ? formatPhoneDisplay(savedPhone) : ''}</span></DialogDescription></DialogHeader>
       {sendOpen && <OfficialBrokerInvitationPanel broker={{ id: brokerId, full_name: name }} useDiscoveredWhatsApp onClose={() => setSendOpen(false)} />}
     </DialogContent></Dialog>

@@ -8,10 +8,9 @@ import {
 import { recipientIsSilent } from '../../supabase/functions/_shared/adminOnboarding';
 
 describe('admin broker onboarding', () => {
-  it('first invitation uses public broker demo without credentials or personal account identifiers', () => {
+  it('first invitation targets the broker account without credentials or session tokens', () => {
     const invitation = brokerInvitation({ id: 'broker-id', full_name: 'דולי אידלסון' });
-    expect(invitation.link).toBe('https://toraff.co.il/demo/broker');
-    expect(invitation.link).not.toContain('broker-id');
+    expect(invitation.link).toBe('https://toraff.co.il/auth?broker=broker-id');
     expect(new URL(invitation.link).searchParams.has('token')).toBe(false);
   });
   it('invitation copy is the fixed wording with name and link filled in', () => {
@@ -19,7 +18,6 @@ describe('admin broker onboarding', () => {
     expect(BROKER_INVITATION_TEMPLATE).toContain('{authLink}');
     const invitation = brokerInvitation({ id: 'broker-id', full_name: 'דולי אידלסון' });
     expect(invitation.message).toContain(invitation.link);
-    expect(invitation.message).not.toContain('broker-id');
     expect(invitation.message).not.toContain('{');
   });
   it('invitation greeting stays clean without a broker name', () => {

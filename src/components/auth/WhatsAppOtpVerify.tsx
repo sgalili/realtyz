@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, MessageCircle, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { OtpFailureActions } from './OtpFailureActions';
 
 type Props = {
   /** Pre-filled Israeli phone (05X-XXXXXXX or 9725XXXXXXXX). */
@@ -134,6 +135,7 @@ export function WhatsAppOtpVerify({
           <AlertDescription className="text-xs">{error}</AlertDescription>
         </Alert>
       )}
+      {error && <OtpFailureActions disabled={busy} onRetry={() => { if (sent) { setError(null); setCode(''); } else void send(smsOnly ? 'sms' : channel); }} />}
 
       <div className="space-y-1">
         <Label className="text-xs">{smsOnly ? 'מספר טלפון' : 'מספר וואטסאפ'}</Label>

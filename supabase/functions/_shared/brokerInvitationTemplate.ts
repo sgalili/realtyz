@@ -1,5 +1,20 @@
 export const BROKER_TEMPLATE_LANGUAGE = 'he';
 export function coldInvitationBody(gender: unknown, roles: readonly string[] = [], channel: 'whatsapp' | 'email' = 'whatsapp') {
+  const broker = !roles.some(r => ['marketing_company','developer','property_owner','property_seeker','affiliate'].includes(r)) || roles.some(r => ['agent','lead_agent','managing_broker','junior_agent'].includes(r));
+  if (broker) return `היי {brokerName},
+
+TORAFF היא המערכת היחידה שכל מתווך חייב: מערכת הפעלה אחת לניהול כל העסק במקום אחד.
+
+יצירת נכסים ועריכתם, שיווק ופרסום, ניהול לידים ושיחות, וואטסאפ וריטה AI, קמפיינים בפייסבוק, ייבוא מיד2, משימות, סיורים וחתימות דיגיטליות.
+
+הנכסים שהכנו עבורך מחכים לבדיקה ולניהול במרחב האישי. פרסום ושליחת הודעות נעשים רק באישור שלך.
+
+לחצו כאן כדי לצפות:
+{authLink}
+
+בכל שאלה אני כאן,
+שי גלילי
+TORAFF`;
   const audience = roles.includes('marketing_company') ? 'חברות שיווק נדל״ן' : roles.includes('developer') ? 'יזמים וחברות בנייה' : roles.includes('property_owner') ? 'מוכרים ומשכירים פרטיים' : roles.includes('property_seeker') ? 'קונים ומחפשי נכסים' : roles.includes('affiliate') && !roles.some(r => ['agent','lead_agent','managing_broker','junior_agent'].includes(r)) ? 'שותפים לשיווק נכסים' : 'מתווכים ואנשי נדל״ן';
   const invitation = gender === 'female' ? 'את מוזמנת' : gender === 'male' ? 'אתה מוזמן' : 'אפשר';
   return `היי {brokerName},
@@ -8,11 +23,9 @@ TORAFF, לוח טורף, מחבר ${audience} לרשת שותפים ולריטה
 
 חסכנו את העבודה הסיזיפית: הכנו חשבון והזנו נכסים או פרויקטים לעמוד טיוטה לבדיקה. שום נכס לא מתפרסם ללא אישור. לאחר כניסה לחשבון האישי אפשר לתקן פרטים, לקבוע עמלות ותגמולים ולפרסם בחינם.
 
-${channel === 'whatsapp' ? 'ההזמנה מגיעה למספר הוואטסאפ שלך.' : 'מספר הוואטסאפ שלך משמש לקבלת הודעות WhatsApp.'} כניסה אישית מתבצעת עם קוד אימות במספר הכניסה השמור בחשבון.
-
 ריטה יוצרת, מפרסמת, עונה לתגובות ומייצרת לידים מסוננים 24/7.
 
-${invitation} לצפות במרחב ההדגמה המותאם לך, ללא צורך בהרשמה או קוד אימות:
+${invitation} לצפות במרחב ההדגמה המותאם לך:
 {authLink}
 
 בכל שאלה אני כאן,
@@ -29,7 +42,7 @@ export const brokerTemplateFor = (gender: unknown, roles: readonly string[] = []
 
 /** Retire only the former warm-contact default; retain deliberate custom edits. */
 export const invitationTextFor = (saved: string | undefined, gender: unknown, roles: readonly string[] = []) =>
-  saved && !/בהמשך לשיחת(?:נו|ינו)/.test(saved) ? saved : brokerTemplateFor(gender, roles);
+  saved && !/בהמשך לשיחת(?:נו|ינו)|TORAFF, לוח טורף|קוד אימות במספר הכניסה/.test(saved) ? saved : brokerTemplateFor(gender, roles);
 
 /** A broker's saved WhatsApp is never replaced by the unrelated login phone. */
 export function invitationTargetPhone(whatsapp: string | null, contact: string | null, login: string | null, useWhatsApp: boolean) {

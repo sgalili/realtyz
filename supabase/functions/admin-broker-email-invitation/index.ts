@@ -15,7 +15,7 @@ const schema = z.discriminatedUnion('action', [
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const escHtml = (v: string) => v.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
 // Super Admin-edited body: escaped plain text only, always followed by the selected demo/sign-in link and unsubscribe.
-const customEmailHtml = (msg: string, link: string, unsubscribeUrl: string, demo: boolean) => `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"></head><body style="margin:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#1f2937"><div style="max-width:560px;margin:0 auto;padding:28px 22px;text-align:right;line-height:1.7;font-size:16px"><div style="font-weight:700;font-size:20px;color:#0f2a4a;margin-bottom:18px">TORAFF</div>${msg.split(/\n{2,}/).map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('')}<p style="margin:8px 0 26px"><a href="${escHtml(link)}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-weight:700">${demo ? 'צפייה בחשבון הדמו' : 'כניסה לנכסים שלי'}</a></p><p style="margin:0;color:#6b7280;font-size:13px"><a href="${escHtml(unsubscribeUrl)}" style="color:#6b7280">הסרה מרשימת התפוצה</a></p></div></body></html>`;
+const customEmailHtml = (msg: string, link: string, unsubscribeUrl: string, demo: boolean) => `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"></head><body style="margin:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#1f2937"><div style="max-width:560px;margin:0 auto;padding:28px 22px;text-align:right;line-height:1.7;font-size:16px"><div style="font-weight:700;font-size:20px;color:#0f2a4a;margin-bottom:18px">TORAFF</div>${msg.split(/\n{2,}/).map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('')}<p style="margin:8px 0 26px"><a href="${escHtml(link)}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:8px;font-weight:700">${demo ? 'לחצו כאן לצפייה במרחב ההדגמה' : 'לחצו כאן כדי לצפות'}</a></p><p style="margin:0;color:#6b7280;font-size:13px"><a href="${escHtml(unsubscribeUrl)}" style="color:#6b7280">הסרה מרשימת התפוצה</a></p></div></body></html>`;
 const page = (msg: string) => new Response(`<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><body style="font-family:Arial;text-align:center;padding:60px">${msg}</body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 
 Deno.serve(async req => {
@@ -57,7 +57,6 @@ Deno.serve(async req => {
   let attachments: { filename: string; content: string }[] | undefined; let attachmentId: string | null = null;
   if (input.attachment_id) { try { const a = await loadAttachment(admin, input.attachment_id); if (a) { attachments = [{ filename: a.file_name, content: await attachmentBase64(admin, a) }]; attachmentId = a.id; } } catch (e) { return json({ error: e instanceof Error ? e.message : 'הקובץ המצורף אינו זמין' }, 400); } }
   const attachLink = attachments ? [{ label: `קובץ מצורף: ${attachments[0].filename}`, url: '' }] : [];
-  const demo = input.demo ?? true;
   const targets = input.broker_id ? eligible.filter(r => r.user_id === input.broker_id) : eligible;
   if (input.broker_id && !targets.length) return json({ error: 'המתווך אינו זמין לשליחה: נדרשת הסכמה מתועדת וכתובת אימייל תקינה' }, 400);
   const results: { broker_id: string; status: string; error?: string }[] = [];
@@ -81,6 +80,7 @@ Deno.serve(async req => {
     try {
       const { data: roleRows, error: roleError } = await admin.from('user_roles').select('role').eq('user_id', r.user_id);
       if (roleError) throw new Error('קריאת סוג המשתמש נכשלה');
+      const demo = input.demo ?? (roleRows ?? []).some(role => ['developer','marketing_company','property_owner','property_seeker','affiliate'].includes(String(role.role)));
       const link = demo ? demoInvitationLink(site.origin, (roleRows ?? []).map(role => String(role.role))) : invitationLink(site.origin, r.user_id, r.invitation_link_token);
       const message = input.message ?? coldInvitationBody(mc?.contact_gender ?? dc?.contact_gender ?? r.p.gender, (roleRows ?? []).map(role => String(role.role)), 'email').replace('{brokerName}', firstName).replace('{authLink}', link);
       const res = await fetch('https://connector-gateway.lovable.dev/resend/emails', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOVABLE_API_KEY}`, 'X-Connection-Api-Key': RESEND_API_KEY }, body: JSON.stringify({

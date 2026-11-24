@@ -1,5 +1,10 @@
 # Roadmap
 
+## Live discovery and invitation flow November 24
+- [x] Timestamp-anchored 1000ms countdown, active spinner, clickable status/manual editor and audited Super Admin queue promotion; serial reply deadline included in ETA, no quota/pacing bypass.
+- [x] Equal 8px gaps verified above/between tabs; first broker invitation copy and personal links updated. Previous sent templates/history preserved; new default WhatsApp text requires Meta approval.
+- [x] OTP failure offers retry/public sample-only demo; imported broker OTP binds uniquely saved WhatsApp server-side without changing login phones. 58 focused tests passed, authorized mobile/desktop status/editor checked, guest refusal/demo verified with zero remote demo requests. No messages, imports, real contact edits or queue promotion triggered. Successful real OTP delivery/session remains unverified without a consenting recipient.
+
 ## Import controls cleanup November 24
 - [x] Compact WhatsApp settings, prevent repeat row discovery, confirm selected bulk targets with server eligibility and existing batch cancellation.
 - [x] Import-tab controls, counts, newest-first waiting list, hero search and import actions; last completed run read separately from the five recent jobs.

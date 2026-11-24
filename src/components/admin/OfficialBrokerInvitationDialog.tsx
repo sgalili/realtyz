@@ -42,7 +42,7 @@ function useBrokerWhatsAppEligibility(brokerId: string) {
 export function OfficialBrokerInvitationPanel({ broker, onClose, onSent, attachmentId, useDiscoveredWhatsApp = false }: { broker: { id: string; full_name?: string | null; recipient_name?: string | null }; onClose: () => void; onSent?: () => void; attachmentId?: string | null; useDiscoveredWhatsApp?: boolean }) {
   const open = true;
   const [consent, setConsent] = useState(false);
-  const [demo, setDemo] = useState(true);
+  const [demo, setDemo] = useState(!useDiscoveredWhatsApp);
   const [feedback, setFeedback] = useState('');
   const requestId = useRef(crypto.randomUUID());
   const qc = useQueryClient();

@@ -3,6 +3,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { sendSms019 } from "../_shared/sms019.ts";
 import { verifiedPhoneSession } from "../_shared/phoneSession.ts";
+import { invitedBrokerSession, requireInvitedBrokerPhone } from '../_shared/brokerInvitationAuth.ts';
 
 const OTP_TTL_MINUTES = 10;
 const MAX_ATTEMPTS = 5;
@@ -393,6 +394,13 @@ Deno.serve(async (req) => {
       return json({ error: "Backend environment is not configured" }, 500);
     }
     const admin = createClient(supabaseUrl, serviceRoleKey);
+    const invitedBrokerId = typeof body.broker_id === 'string' ? body.broker_id : null;
+    let bindInvitedBroker = false;
+    if (invitedBrokerId) {
+      if (!['send', 'send_sms', 'verify'].includes(action)) return json({ error: 'פעולה לא נתמכת בקישור ההזמנה' }, 400);
+      try { bindInvitedBroker = await requireInvitedBrokerPhone(admin, invitedBrokerId, phone); }
+      catch (error) { return json({ error: error instanceof Error ? error.message : 'לא ניתן לאמת את פרטי ההזמנה' }, 400); }
+    }
 
     // SMS login code: dispatched straight through the 019 gateway (never the
     // built-in phone provider, which is not configured). Credentials resolve
@@ -594,7 +602,7 @@ Deno.serve(async (req) => {
 
       // Fictional QA test series: fixed code, no OTP row needed. Real phone
       // numbers always go through the stored-code check below.
-      if (action !== 'broker_verify' && isTestSeriesPhone(phone) && code === (phone === MARKETING_DEMO_PHONE ? MARKETING_DEMO_CODE : TEST_OTP_CODE)) {
+      if (!invitedBrokerId && action !== 'broker_verify' && isTestSeriesPhone(phone) && code === (phone === MARKETING_DEMO_PHONE ? MARKETING_DEMO_CODE : TEST_OTP_CODE)) {
         const testPublishableKey = Deno.env.get('SUPABASE_ANON_KEY');
         if (!testPublishableKey) throw new Error('Phone authentication is not configured');
         const testClient = createClient(supabaseUrl, testPublishableKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -645,6 +653,7 @@ Deno.serve(async (req) => {
         if (evidenceError) throw evidenceError;
         return json({ success: true, account_verified: true });
       }
+      if (invitedBrokerId && bindInvitedBroker) return json({ success: true, ...await invitedBrokerSession(admin, invitedBrokerId, phone) });
 
       const publishableKey = Deno.env.get('SUPABASE_ANON_KEY');
       if (!publishableKey) throw new Error('Phone authentication is not configured');

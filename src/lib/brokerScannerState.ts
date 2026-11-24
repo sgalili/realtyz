@@ -26,7 +26,7 @@ export function scannerBlockReason(s: ScannerWorkerFields, now = Date.now()): st
   return w === 'connected' ? null : workerStateLabels[w];
 }
 
-export type ScannerEtaInput = { daily_cap: number; jitter_min_seconds: number; jitter_max_seconds: number; next_send_at?: string | null; used_today: number; queue_ahead: number };
+export type ScannerEtaInput = { daily_cap: number; jitter_min_seconds: number; jitter_max_seconds: number; next_send_at?: string | null; outstanding_until?: string | null; used_today: number; queue_ahead: number };
 
 /** Ms from now until local Israel midnight. */
 function msToIsraelMidnight(now: number): number {
@@ -38,7 +38,7 @@ function msToIsraelMidnight(now: number): number {
 /** Estimated dispatch time from queue order, remaining daily quota and average pacing. */
 export function scannerEta(i: ScannerEtaInput, now = Date.now()): number {
   const avg = ((i.jitter_min_seconds + i.jitter_max_seconds) / 2) * 1000;
-  const base = Math.max(now, Date.parse(i.next_send_at ?? '') || 0);
+  const base = Math.max(now, Date.parse(i.next_send_at ?? '') || 0, Date.parse(i.outstanding_until ?? '') || 0);
   const remaining = Math.max(0, i.daily_cap - i.used_today);
   const n = i.queue_ahead;
   if (n < remaining) return base + n * avg;

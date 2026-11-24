@@ -26,11 +26,9 @@ describe('official broker invitation rules', () => {
   it('does not claim publication without inventory', () => {
     expect(brokerStage({ first_login_at: '2026-11-10', pending_properties: 0, published_properties: 0 })).toBe('pending_inventory');
   });
-  it('defaults to a view-only demo link and validates variables', () => {
+  it('validates the name and destination variables', () => {
     const body = templateBody(BROKER_TEMPLATE_BODY);
     expect(body.match(/\{\{\d\}\}/g)).toEqual(['{{1}}', '{{2}}']);
-    expect(BROKER_TEMPLATE_BODY).toContain('ללא צורך בהרשמה או קוד אימות');
-    expect(BROKER_TEMPLATE_BODY).not.toContain('אחרי כניסה עם קוד אימות');
     expect(() => templateBody(BROKER_TEMPLATE_BODY.replace('{brokerName}', ''))).toThrow();
     expect(() => templateBody(BROKER_TEMPLATE_BODY + ' {unknown}')).toThrow();
     expect(() => templateBody('{authLink} ' + BROKER_TEMPLATE_BODY.replace('{authLink}', ''))).toThrow();

@@ -40,7 +40,7 @@ async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> 
   return data as T;
 }
 
-const DEFAULT_SUBJECT = 'הזמנה לפרסום חינם בלוח נדל"ן מבוסס שותפים ובינה מלאכותית';
+const DEFAULT_SUBJECT = 'TORAFF · המערכת היחידה שכל מתווך חייב';
 const DEFAULT_EMAIL = (name: string) => coldInvitationBody(null, [], 'email').replace('{brokerName}', name).replace('{authLink}', '').trim();
 
 function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; contactPhone?: string | null; contactName?: string | null }) {
@@ -52,7 +52,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
   const [email, setEmail] = useState(b.email ?? '');
   const [body, setBody] = useState(() => DEFAULT_EMAIL(recipientFirst));
   const bodyTouched = useRef(false);
-  const [demo, setDemo] = useState(true);
+  const [demo, setDemo] = useState(!!b.is_developer);
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [attachmentId, setAttachmentId] = useState<string | null>(null);
   // Same gender-matched default wording as the WhatsApp template, filled with the recipient's first name.
@@ -403,7 +403,7 @@ function PendingInvitations({ search }: { search: ImportSearch }) {
   return <div className="space-y-4">
     {/* The scrollport has 20px top padding and the primary band is 76px high. A 56px
         offset therefore joins this row to it, with an opaque background over passing cards. */}
-    <div data-import-secondary-tabs className="sticky top-[56px] z-20 -mx-[15px] bg-background px-[15px]">
+    <div data-import-secondary-tabs className="sticky top-[36px] z-20 -mx-[15px] bg-background px-[15px]">
       <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="broker" className="px-1">מתווכים ({count('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({count('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({count('marketing')})</TabsTrigger>
       </TabsList></Tabs>
@@ -417,7 +417,7 @@ function PendingInvitations({ search }: { search: ImportSearch }) {
 export type BrokerContactView = 'pending' | 'imports' | 'sends';
 
 export function BrokerContactQueueCard({ view = 'pending', search = emptyImportSearch }: { view?: BrokerContactView; search?: ImportSearch }) {
-  return <section dir="rtl" className="pb-5 pt-3 text-right">
+  return <section dir="rtl" className="pb-5 text-right">
     {view === 'pending' ? <PendingInvitations search={search} /> : view === 'imports' ? <ImportHistory search={search} /> : <SendHistory search={search} />}
   </section>;
 }
