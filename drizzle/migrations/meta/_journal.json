@@ -1968,6 +1968,13 @@
       "when": 1795480504382,
       "tag": "0280_configurable_monthly_free_credits",
       "breakpoints": true
+    },
+    {
+      "idx": 281,
+      "version": "7",
+      "when": 1795481440868,
+      "tag": "0281_scanner_reply_defer_while_paused",
+      "breakpoints": true
     }
   ]
 }
