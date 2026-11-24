@@ -1933,6 +1933,13 @@
       "when": 1795451335006,
       "tag": "0275_scanner_reply_broker_name_correlation",
       "breakpoints": true
+    },
+    {
+      "idx": 276,
+      "version": "7",
+      "when": 1795479345152,
+      "tag": "0276_platform_mode_setting",
+      "breakpoints": true
     }
   ]
 }

@@ -8556,6 +8556,27 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_system_settings: {
+        Row: {
+          id: boolean
+          platform_mode: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          platform_mode?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          platform_mode?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       pricing_plans: {
         Row: {
           created_at: string

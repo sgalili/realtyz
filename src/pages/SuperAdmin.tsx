@@ -27,6 +27,7 @@ import { ScrapingUsageReport } from '@/components/admin/ScrapingUsageReport';
 import { RotatingMessagesManager } from '@/components/admin/RotatingMessagesManager';
 import { DynamicQrManager } from '@/components/admin/DynamicQrManager';
 import { toast } from 'sonner';
+import { PlatformModeToggle } from '@/components/admin/PlatformModeToggle';
 import { format } from 'date-fns';
 
 const SuperAdmin = () => {
@@ -267,6 +268,7 @@ const SuperAdmin = () => {
 
       {section === 'system' && (
         <div className="space-y-4">
+          <PlatformModeToggle />
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4"><StatCard label="סה״כ לידים" value={stats?.voters ?? 0} /><StatCard label="הודעות" value={stats?.messages ?? 0} /><StatCard label="קמפיינים" value={stats?.campaigns ?? 0} /><StatCard label="חיבורים פעילים" value={stats?.connections ?? 0} /></div>
           <Card><CardHeader><CardTitle className="text-base">סטטוס מערכת</CardTitle><CardDescription>בדיקת זמינות של WhatsApp ומנועי ה־AI</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2"><HealthToggle label="שער WhatsApp" status={health.whatsapp} onChange={(v) => checkHealth('whatsapp', v)} /><HealthToggle label="מנועי AI" status={health.ai} onChange={(v) => checkHealth('ai', v)} /></CardContent></Card>
           <ErrorLogPanel />
