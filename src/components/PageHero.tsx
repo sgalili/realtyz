@@ -214,6 +214,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/sharing-pool/, title: "נכסים פתוחים לשיתוף" },
   { match: /^\/developer-dashboard/, title: "הפרויקטים שלנו" },
   { match: /^\/(command-center|tasks)/, title: "מטלות" },
+  { match: /^\/signatures(?:\/|$)/, title: "חתימות דיגיטליות" },
   { match: /^\/dashboard$/, title: "לוח בקרה" },
   { match: /^\/lead-crm/, title: "לידים" },
   { match: /^\/inbox/, title: "צ׳אטים" },

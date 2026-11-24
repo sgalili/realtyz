@@ -1,8 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
 import { createPublicWorkspaceData, type DemoRow, type PublicWorkspaceData } from './publicWorkspaceData';
 import type { DemoType } from '@/pages/demo/demoData';
+import type { PlatformMode } from '@/hooks/usePlatformMode';
+import { notifyDemoReadOnly, DEMO_READ_ONLY } from './demoReadOnly';
+import { isDemoWindowUrl } from './brokerDemoPolicy';
 
-const denied = () => ({ data: null, error: { message: 'הפעולה אינה זמינה בהדגמה; לא נשלחו הודעות ולא שונו נתונים אמיתיים', code: 'simulation_only' }, status: 403 });
+const denied = (notify = false) => { if (notify) notifyDemoReadOnly(); return { data: null, error: { message: DEMO_READ_ONLY, code: 'simulation_only' }, status: 403 }; };
 const result = (data: unknown, count?: number) => ({ data, error: null, count: count ?? null, status: 200 });
 export function simulationQuery(store: PublicWorkspaceData, table: string) {
   let rows = [...(store.tables[table] ?? [])]; let single = false; let head = false;
@@ -11,7 +14,7 @@ export function simulationQuery(store: PublicWorkspaceData, table: string) {
   const chain = new Proxy(target, { get(_t, key) {
     if (key === 'then') return (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => {
       if (mutation) {
-        return Promise.resolve(denied()).then(resolve, reject);
+        return Promise.resolve(denied(true)).then(resolve, reject);
       }
       return Promise.resolve(result(head ? null : single ? rows[0] ?? null : rows, rows.length)).then(resolve, reject);
     };
@@ -22,6 +25,9 @@ export function simulationQuery(store: PublicWorkspaceData, table: string) {
       if (key === 'neq') rows = rows.filter(r => r[args[0]] !== args[1]);
       if (key === 'in') rows = rows.filter(r => args[1].includes(r[args[0]]));
       if (key === 'is') rows = rows.filter(r => args[1] === null ? r[args[0]] == null : r[args[0]] === args[1]);
+      if (key === 'not' && args[1] === 'is') rows = rows.filter(r => args[2] === null ? r[args[0]] != null : r[args[0]] !== args[2]);
+      if (key === 'not' && args[1] === 'in') { const values = String(args[2]).replace(/^\(|\)$/g, '').split(','); rows = rows.filter(r => !values.includes(String(r[args[0]]))); }
+      if (['gt','gte','lt','lte'].includes(String(key))) rows = rows.filter(r => { const value = r[args[0]]; if (value == null) return false; return key === 'gt' ? value > args[1] : key === 'gte' ? value >= args[1] : key === 'lt' ? value < args[1] : value <= args[1]; });
       if (key === 'ilike') rows = rows.filter(r => String(r[args[0]] ?? '').toLowerCase().includes(String(args[1]).split('%').join('').toLowerCase()));
       if (key === 'range') rows = rows.slice(args[0], args[1] + 1);
       if (key === 'limit') rows = rows.slice(0, args[0]);
@@ -35,6 +41,7 @@ export function simulationQuery(store: PublicWorkspaceData, table: string) {
 
 export function simulationRpc(store: PublicWorkspaceData, name: string, args: DemoRow = {}) {
   const rpc: Record<string, unknown> = {
+    get_public_platform_settings: [{ platform_mode: store.platformMode, monthly_free_credits: 20 }],
     get_my_wallet: { balance_ils: 310, locked_at: null, frozen: false }, get_my_wallet_ledger: store.ledger,
     get_my_subscription_status: { status: 'active', plan_name: 'free', is_active: true }, get_my_workspaces: store.workspaces,
     my_demo_view_type: null, get_verified_user_roles: [], get_workspace_owner_roles: [],
@@ -57,8 +64,9 @@ export function simulationRpc(store: PublicWorkspaceData, name: string, args: De
     get_broker_entitlement: { eligible: store.role === 'broker', verified: store.role === 'broker', license_verified: store.role === 'broker', is_eligible: store.role === 'broker', can_view_closing: store.role === 'broker', status: 'verified' },
   };
   if (Object.prototype.hasOwnProperty.call(rpc, name)) return result(rpc[name]);
+  if (/(^|_)(send|save|update|insert|delete|create|publish|approve|charge|cancel|set|add|accept|join|remove)(_|$)/.test(name)) return denied(true);
   if (/^(get_|my_|list_|search_|community_|marketing_|partner_)/.test(name)) return result(null);
-  return denied();
+  return denied(/^(approve|save|update|insert|delete|create|send|publish|subscribe|charge|cancel|advance|set|generate)_/.test(name));
 }
 
 export function simulationFunction(store: PublicWorkspaceData, name: string, options?: DemoRow) {
@@ -68,14 +76,14 @@ export function simulationFunction(store: PublicWorkspaceData, name: string, opt
   if (endpoint === 'executive-summary') return result({ summary: 'ריטה סיננה פניות חדשות, תואמו ביקורים ונוספו שיתופי פעולה בהדגמה.', new_leads: 8, active_listings: 6 });
   if (endpoint === 'neighborhood-perks') return result({ ok: true, area_perks: null });
   if (endpoint === 'get-action-pricing') return result([]);
-  return denied();
+  return denied(/^(send|publish|generate|save|update|delete|create|upload|admin)-/.test(endpoint) || /^(send|publish|save|update|delete|create|upload|approve)$/.test(String(options?.body?.action ?? '')));
 }
 
 /** Installed before workspace providers mount. Every transport is local/fail-closed. */
-export function installPublicWorkspaceTransport(role: DemoType) {
-  const store = createPublicWorkspaceData(role);
+export function installPublicWorkspaceTransport(role: DemoType, platformMode: PlatformMode = 'full_marketplace') {
+  const store = createPublicWorkspaceData(role, platformMode);
   const client = supabase as any;
-  const saved = { from: client.from, rpc: client.rpc, invoke: client.functions.invoke, channel: client.channel, removeChannel: client.removeChannel, removeAllChannels: client.removeAllChannels, storageFrom: client.storage.from, fetch: window.fetch, getItem: Storage.prototype.getItem, setItem: Storage.prototype.setItem, removeItem: Storage.prototype.removeItem, clear: Storage.prototype.clear };
+  const saved = { from: client.from, rpc: client.rpc, invoke: client.functions.invoke, channel: client.channel, removeChannel: client.removeChannel, removeAllChannels: client.removeAllChannels, storageFrom: client.storage.from, fetch: window.fetch, open: window.open, share: navigator.share, getItem: Storage.prototype.getItem, setItem: Storage.prototype.setItem, removeItem: Storage.prototype.removeItem, clear: Storage.prototype.clear };
   // Preferences, caches and existing auth storage stay outside the synthetic workspace.
   const local = new Map<string, string>();
   Storage.prototype.getItem = function(key) { return this === window.localStorage ? local.get(String(key)) ?? null : saved.getItem.call(this, key); };
@@ -85,8 +93,8 @@ export function installPublicWorkspaceTransport(role: DemoType) {
   client.from = (name: string) => simulationQuery(store, name);
   client.rpc = (name: string, args?: DemoRow) => Promise.resolve(simulationRpc(store, name, args));
   client.functions.invoke = (name: string, opts?: DemoRow) => Promise.resolve(simulationFunction(store, name, opts));
-  client.storage.from = () => new Proxy({}, { get: (_target, method) => (..._args: unknown[]) => method === 'getPublicUrl' ? { data: { publicUrl: '' } } : Promise.resolve(denied()) });
-  const idleChannel: any = { on: () => idleChannel, subscribe: () => idleChannel, teardown: () => {}, unsubscribe: async () => 'ok', send: async () => 'ok', track: async () => 'ok', presenceState: () => ({}) };
+  client.storage.from = () => new Proxy({}, { get: (_target, method) => (..._args: unknown[]) => method === 'getPublicUrl' ? { data: { publicUrl: '' } } : Promise.resolve(denied(true)) });
+  const idleChannel: any = { on: () => idleChannel, subscribe: () => idleChannel, teardown: () => {}, unsubscribe: async () => 'ok', send: async () => { notifyDemoReadOnly(); return 'error'; }, track: async () => 'error', presenceState: () => ({}) };
   client.channel = () => idleChannel; client.removeChannel = async () => 'ok'; client.removeAllChannels = async () => [];
   const authSaved = new Map<string, unknown>();
   for (const name of ['getSession', 'getUser', 'signInWithOAuth', 'signInWithOtp', 'signInWithPassword', 'signUp', 'updateUser', 'verifyOtp', 'setSession', 'signOut', 'resetPasswordForEmail', 'refreshSession']) {
@@ -98,11 +106,13 @@ export function installPublicWorkspaceTransport(role: DemoType) {
     const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
     if (url.origin === location.origin && /^(GET|HEAD)$/i.test(method) && !url.pathname.includes('/functions/') && !url.pathname.includes('/rest/')) return saved.fetch(input, init);
     const fn = url.pathname.match(/\/functions\/v1\/(.+)/)?.[1];
-    const answer = fn ? simulationFunction(store, fn) : denied();
+    const answer = fn ? simulationFunction(store, fn) : denied(!/^(GET|HEAD)$/i.test(method));
     return new Response(JSON.stringify(answer.data ?? answer), { status: answer.error ? 403 : 200, headers: { 'content-type': 'application/json' } });
   };
-  const preventExternal = (event: MouseEvent) => { const link = (event.target as Element)?.closest?.('a'); if (link && /^(https?:|tel:|mailto:)/.test(link.getAttribute('href') ?? '') && new URL(link.href, location.origin).origin !== location.origin) event.preventDefault(); };
+  window.open = (url, target, features) => { if (url && isDemoWindowUrl(String(url), location.origin)) return saved.open(url, target, features); notifyDemoReadOnly(); return null; };
+  if (typeof saved.share === 'function') navigator.share = async () => { notifyDemoReadOnly(); throw new DOMException('Demo is read-only', 'AbortError'); };
+  const preventExternal = (event: MouseEvent) => { const link = (event.target as Element)?.closest?.('a'); if (link && /^(https?:|tel:|mailto:)/.test(link.getAttribute('href') ?? '') && new URL(link.href, location.origin).origin !== location.origin) { event.preventDefault(); notifyDemoReadOnly(); } };
   document.addEventListener('click', preventExternal, true);
   let restored = false;
-  return { store, restore: () => { if (restored) return; restored = true; client.from = saved.from; client.rpc = saved.rpc; client.functions.invoke = saved.invoke; client.channel = saved.channel; client.removeChannel = saved.removeChannel; client.removeAllChannels = saved.removeAllChannels; client.storage.from = saved.storageFrom; window.fetch = saved.fetch; Storage.prototype.getItem = saved.getItem; Storage.prototype.setItem = saved.setItem; Storage.prototype.removeItem = saved.removeItem; Storage.prototype.clear = saved.clear; authSaved.forEach((value, name) => { client.auth[name] = value; }); document.removeEventListener('click', preventExternal, true); } };
+  return { store, restore: () => { if (restored) return; restored = true; client.from = saved.from; client.rpc = saved.rpc; client.functions.invoke = saved.invoke; client.channel = saved.channel; client.removeChannel = saved.removeChannel; client.removeAllChannels = saved.removeAllChannels; client.storage.from = saved.storageFrom; window.fetch = saved.fetch; window.open = saved.open; navigator.share = saved.share; Storage.prototype.getItem = saved.getItem; Storage.prototype.setItem = saved.setItem; Storage.prototype.removeItem = saved.removeItem; Storage.prototype.clear = saved.clear; authSaved.forEach((value, name) => { client.auth[name] = value; }); document.removeEventListener('click', preventExternal, true); } };
 }

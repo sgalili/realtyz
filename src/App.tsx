@@ -2,6 +2,7 @@ import { ImportedLicenseGate } from '@/components/onboarding/ImportedLicenseGate
 import * as React from 'react';
 import { PublicWorkspaceProvider, InitialDemoWorkspaceChoice, publicWorkspaceRoute, usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 import { installPublicWorkspaceTransport } from '@/lib/publicWorkspaceTransport';
+import { BrokerDemoRouteGate } from '@/components/demo/BrokerDemoRouteGate';
 import { InventoryComingSoonHost } from '@/components/InventoryCollection';
 import { CreditRateSync } from "@/hooks/useCreditRate";
 import { QueryClient, QueryClientProvider, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -40,7 +41,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { useWorkspaceFeatures } from "@/hooks/useWorkspaceFeatures";
 import { CreditsUpgradeDialog } from '@/components/billing/CreditsUpgradeDialog';
-import { usePlatformMode } from '@/hooks/usePlatformMode';
+import { usePlatformMode, type PlatformMode } from '@/hooks/usePlatformMode';
 import { applyPendingSignupRole, readPostSignupWelcome } from '@/lib/signupRole';
 import { PostSignupWelcome } from '@/components/onboarding/PostSignupWelcome';
 import { useEarningsFeedback } from '@/hooks/useEarningsFeedback';
@@ -507,17 +508,35 @@ function AccountPageLoading({ children }: { children: React.ReactNode }) {
 
 function DemoEntry() { React.useEffect(() => { window.location.assign('/demo'); }, []); return <PageLoader />; }
 
+// The only live read permitted before the isolated demo mounts is this public, two-field setting.
+const demoSettingsFetch = window.fetch.bind(window);
+
 const App = () => {
   const [route, setRoute] = React.useState(() => publicWorkspaceRoute(window.location.pathname));
+  const [demoPlatformMode, setDemoPlatformMode] = React.useState<PlatformMode | null>(null);
+  React.useEffect(() => {
+    if (!route || demoPlatformMode) return;
+    let alive = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
+    void demoSettingsFetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/get_public_platform_settings`, {
+      method: 'POST', headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, 'Content-Type': 'application/json' },
+      body: '{}', signal: controller.signal,
+    }).then(async response => { if (!response.ok) throw new Error('mode_unavailable'); const rows = await response.json(); return rows?.[0]?.platform_mode === 'full_marketplace' ? 'full_marketplace' as const : 'brokers_only' as const; })
+      .catch(() => 'brokers_only' as const).then(mode => { if (alive) setDemoPlatformMode(mode); })
+      .finally(() => window.clearTimeout(timeout));
+    return () => { alive = false; controller.abort(); window.clearTimeout(timeout); };
+  }, [route?.base, demoPlatformMode]);
   React.useEffect(() => {
     const sync = () => setRoute(previous => { const next = publicWorkspaceRoute(window.location.pathname); return next?.base === previous?.base ? previous : next; });
     window.addEventListener('toraff:public-demo-role', sync); window.addEventListener('popstate', sync);
     return () => { window.removeEventListener('toraff:public-demo-role', sync); window.removeEventListener('popstate', sync); };
   }, []);
   const previousRuntime = React.useRef<ReturnType<typeof installPublicWorkspaceTransport> | null>(null);
-  const runtime = React.useMemo(() => { previousRuntime.current?.restore(); const next = route ? installPublicWorkspaceTransport(route.role) : null; previousRuntime.current = next; return next; }, [route?.base]);
+  const runtime = React.useMemo(() => { previousRuntime.current?.restore(); const next = route ? installPublicWorkspaceTransport(route.role, demoPlatformMode ?? 'brokers_only') : null; previousRuntime.current = next; return next; }, [route?.base, demoPlatformMode]);
   const cache = React.useMemo(() => runtime ? new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 1000 } } }) : queryClient, [runtime]);
   React.useEffect(() => () => { runtime?.restore(); if (runtime) cache.clear(); }, [runtime, cache]);
+  if (route && !demoPlatformMode) return <div className="flex min-h-screen items-center justify-center"><RealtyzLoader size="lg" /></div>;
   return <PublicWorkspaceProvider key={route?.base ?? 'registered'} store={runtime?.store ?? null}><QueryClientProvider client={cache}>
     <CreditRateSync>
     <DirectionProvider dir="rtl">
@@ -545,7 +564,7 @@ const App = () => {
             <AdminBrokerFirstEntry><ImportedLicenseGate><WorkspaceScope>
             <div className="app-route-pages">
             <PendingMessageResume />
-            <Routes>
+            <BrokerDemoRouteGate><Routes>
               <Route path="/auth" element={<AuthRoute />} />
               <Route path="/demo" element={<DemoEntry />} />
               <Route path="/demo/:type" element={<DemoEntry />} />
@@ -666,7 +685,7 @@ const App = () => {
               <Route path="/pricing" element={<Navigate to="/wallet" replace />} />
               <Route path="/contact" element={<Suspense fallback={<PageLoader />}><ContactForm /></Suspense>} />
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
-            </Routes>
+            </Routes></BrokerDemoRouteGate>
             </div>
             </WorkspaceScope></ImportedLicenseGate></AdminBrokerFirstEntry>
             </Suspense>

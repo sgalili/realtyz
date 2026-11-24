@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useBrokersOnly } from '@/hooks/usePlatformMode';
+import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 import { BROKER_NAV_PATHS } from '@/lib/brokerNavigation';
 import { Button } from '@/components/ui/button';
 import { APP_TOUR_EVENT } from '@/lib/appWalkthrough';
@@ -215,6 +216,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const { data: counts } = useSidebarCounts();
   const { isPartnerMode } = useAppMode();
   const brokersOnly = useBrokersOnly();
+  const demo = usePublicWorkspace();
   const identity = useAccountIdentity();
   const { gender } = usePersonalLanguage();
 
@@ -264,7 +266,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   }, [audience, features, access.projects, access.properties, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError, identity.label, isPartnerMode]);
   // Brokers-only SaaS hides partner/affiliate and referral-reward screens (code and data stay intact).
   const navItems = useMemo(() => {
-    const filtered = brokersOnly ? allNavItems.filter(i => !['/affiliate-network', '/partner/chats', '/partner/contacts', '/sharing-pool', '/posts'].includes(i.url) || (i.url === '/posts' && !PARTNER_NAV_ITEMS.includes(i))) : allNavItems;
+    const filtered = brokersOnly ? allNavItems.filter(i => (!demo || i.url !== '/referral') && (!['/affiliate-network', '/partner/chats', '/partner/contacts', '/sharing-pool', '/posts'].includes(i.url) || (i.url === '/posts' && !PARTNER_NAV_ITEMS.includes(i)))) : allNavItems;
     if (!brokersOnly) return filtered;
     const cleaned = filtered.map(i => i.url === '/inbox' ? { ...i, title: 'צ׳אטים' } : i);
     if (!brokerMenu) return cleaned;
@@ -276,7 +278,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     const hub: NavItem = { ...(camp ?? MY_ADS_ITEM), title: 'קמפיינים', url: '/campaigns', aliases: ['/my-ads', '/publishing', ...(camp?.aliases ?? [])] };
     rest.splice(Math.min(idx, rest.length), 0, hub);
     return rest;
-  }, [allNavItems, brokersOnly, brokerMenu]);
+  }, [allNavItems, brokersOnly, brokerMenu, demo]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts || audience !== 'professional') return undefined;

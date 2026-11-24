@@ -14,6 +14,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { ClosingRoomDialog } from '@/components/dealroom/ClosingRoomDialog';
+import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
+import { notifyDemoReadOnly } from '@/lib/demoReadOnly';
 
 type Lead = { id: string; full_name: string | null; phone_number: string };
 type Doc = {
@@ -42,6 +44,7 @@ export default function DigitalSignatures() {
 }
 
 function DigitalSignaturesContent({ owner }: { owner: string | null }) {
+  const demo = usePublicWorkspace();
   const { user } = useAuth();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>('all');
@@ -86,6 +89,7 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
   const refresh = () => qc.invalidateQueries({ queryKey: docsKey });
 
   async function openFile(path: string | null) {
+    if (demo) { notifyDemoReadOnly(); return; }
     if (!path) { toast.error('אין קובץ זמין למסמך הזה'); return; }
     const { data, error } = await supabase.storage.from('closing-docs').createSignedUrl(path, 300);
     if (error || !data?.signedUrl) { toast.error('לא ניתן לפתוח את הקובץ'); return; }
@@ -93,6 +97,7 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
   }
 
   async function uploadAndSend(file: File) {
+    if (demo) { notifyDemoReadOnly(); return; }
     if (!user || !owner || !lead) return;
     if (file.type !== 'application/pdf') { toast.error('אפשר להעלות קובץ PDF בלבד'); return; }
     if (file.size > 10 * 1024 * 1024) { toast.error('הקובץ גדול מ־10MB'); return; }
@@ -152,7 +157,7 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
         )}
         <div className="flex flex-wrap gap-2">
           <Button disabled={!lead} onClick={() => setTemplateOpen(true)} className="gap-2"><FileSignature className="h-4 w-4" />הפקת הסכם מוכן</Button>
-          <Button variant="outline" disabled={!lead || uploading} onClick={() => fileRef.current?.click()} className="gap-2"><Upload className="h-4 w-4" />{uploading ? 'מעלה ושולח…' : 'העלאת PDF ושליחה'}</Button>
+          <Button variant="outline" disabled={!lead || uploading} onClick={() => { if (demo) notifyDemoReadOnly(); else fileRef.current?.click(); }} className="gap-2"><Upload className="h-4 w-4" />{uploading ? 'מעלה ושולח…' : 'העלאת PDF ושליחה'}</Button>
           <input ref={fileRef} type="file" accept="application/pdf" hidden onChange={e => { const f = e.target.files?.[0]; if (f) void uploadAndSend(f); }} />
         </div>
       </CardContent></Card>
@@ -195,6 +200,7 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
 }
 
 function ReviewDialog({ doc, onClose, onOpen, onApproved }: { doc: Doc; onClose: () => void; onOpen: (p: string | null) => void; onApproved: () => void }) {
+  const demo = usePublicWorkspace();
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const f = doc.fields ?? {};
@@ -206,6 +212,7 @@ function ReviewDialog({ doc, onClose, onOpen, onApproved }: { doc: Doc; onClose:
     ...(idNumber ? [{ ok: true, label: `תעודת זהות: ${idNumber}` }] : []),
   ];
   const approve = async () => {
+    if (demo) { notifyDemoReadOnly(); return; }
     setBusy(true);
     const { error } = await supabase.rpc('approve_signed_document', { _id: doc.id, _note: note || undefined });
     setBusy(false);

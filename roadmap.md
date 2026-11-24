@@ -1,5 +1,11 @@
 # Roadmap
 
+## Broker demo and bulk registry recheck November 24
+- [x] Inspected shared App/demo/transport and the red waiting predicate, existing registry action and its server authorization/identity checks.
+- [x] Demo reads only public platform settings before isolation, defaults broker-only entry to Properties, uses a broker-only workspace/sidebar and shared pages, gates all marketplace routes before mounting and shows explicit read-only denials. Sample signatures, tours, notes and wallet support exploration; full-marketplace personas remain available.
+- [x] Added a third shield icon on the scanner toolbar. A fresh complete waiting list drives serial existing registry checks for red non-developers, independent of search. Exact saved response updates its row; missing licenses/failures are counted; scoped cancellation and one final refresh prevent stale updates and repeated full-list pressure.
+- [x] 58 focused tests passed and build OK. Mobile broker sidebar navigation, tasks tabs, signatures approval denial, campaigns, marketplace redirects and desktop cockpit/external-window blocking verified; only public platform-settings requests escaped demo isolation. Authorized bulk UI checked with intercepted fixture records: 2 red targets became green, existing green untouched. No real bulk registry checks, messages or settings changes initiated; live registry lookup/provider outcomes were not exercised in this request.
+
 ## Discovery and invitation flow sweep November 24
 - [x] Read row/editor/bulk/timers, user-table/create-user invitations, email/official templates, Auth/publisher/upgrade OTP, public and legacy demo paths, scanner Worker/webhook and live claim/reserve/promote/finish/reply/cancel/follow-up functions. Campaign and import timers already use timestamps; follow-ups only queue and never send automatically.
 - [x] Added explicit contact clear/readback; fresh-code retry after expired/consumed OTP or failed session continuation; publisher propagates final sign-in failure; all broker invitation entry points use the personal-link choice; legacy email renderer aligned. Public demo rejects sample writes without changing sample data. Server now continues single/bulk no-match discovery on the same authorized source independently of mounted cards, respecting pause/contacts/dedup. Settled history, roles, quotas and settings unchanged.

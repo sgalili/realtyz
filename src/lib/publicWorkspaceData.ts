@@ -2,6 +2,8 @@ import type { DemoType } from '@/pages/demo/demoData';
 import { DEMO_TYPES } from '@/pages/demo/demoData';
 import avatar from '@/assets/demo-headshots/voter-01.jpg';
 import logo from '@/assets/realtyz-logo.png';
+import type { PlatformMode } from '@/hooks/usePlatformMode';
+import { demoPersona } from './brokerDemoPolicy';
 
 export type DemoRow = Record<string, any>;
 export const demoRoles: Record<DemoType, string[]> = {
@@ -12,7 +14,8 @@ export const demoId = (index: number) => `00000000-0000-4000-8000-${String(index
 export const demoOwner = (role: DemoType) => demoId(DEMO_TYPES.findIndex(t => t.id === role) + 1);
 
 /** Entirely invented records. No board, tenant, contact or provider data is fetched. */
-export function createPublicWorkspaceData(role: DemoType) {
+export function createPublicWorkspaceData(requestedRole: DemoType, platformMode: PlatformMode = 'full_marketplace') {
+  const role = demoPersona(requestedRole, platformMode);
   const owner = demoOwner(role);
   const now = new Date().toISOString();
   const future = (hours: number) => new Date(Date.now() + hours * 3600000).toISOString();
@@ -57,8 +60,23 @@ export function createPublicWorkspaceData(role: DemoType) {
   }));
   tables.affiliate_profiles = [{ user_id: owner, workspace_owner_id: owner, license_number: role === 'broker' ? '123456' : null, license_holder_name: name, license_status: role === 'broker' ? 'verified' : 'none', terms_accepted_at: now, terms_version: 'affiliate-marketing-2026-09', rita_auto_mode: true, auto_funnel_enabled: true }];
   tables.broker_license_verifications = role === 'broker' ? [{ user_id: owner, license_number: '123456', registry_holder_name: name }] : [];
+  tables.closing_documents = ['sent', 'signed', 'signed'].map((status, i) => ({
+    id: demoId(1200 + i), workspace_owner_id: owner, user_id: owner, lead_id: leads[i].id,
+    title: ['הסכם סיור לדוגמה', 'הזמנת שירותי תיווך לדוגמה', 'הסכם שכירות לדוגמה'][i], status,
+    template_key: 'tour_agreement', signer_name: leads[i].full_name, sign_token: null,
+    pdf_path: null, signed_pdf_path: status === 'signed' ? 'demo-only/signed.pdf' : null,
+    sent_at: now, viewed_at: now, signed_at: status === 'signed' ? now : null, created_at: now,
+    approved_at: i === 2 ? now : null, approval_note: null, fields: { lead_name: leads[i].full_name },
+  }));
+  tables.credit_wallets = [{ user_id: owner, balance_ils: 310, locked_at: null, frozen: false }];
+  tables.property_tours = tasks.slice(0, 2).map((task, i) => ({ ...task, owner_id: owner, id: demoId(1300 + i), client_name: leads[i].full_name, client_phone: '', client_email: null, property_title: listings[i].property_title, property_address: listings[i].address, status: 'pending', notes: 'סיור לדוגמה', whatsapp_sent_at: null }));
+  tasks.forEach((task, i) => Object.assign(task.metadata, { lead_id: leads[i].id, listing_id: listings[i].id }));
+  tables.interaction_activity_log.push(...['note', 'interaction'].map((action_type, i) => ({ id: demoId(1400 + i), user_id: owner, workspace_owner_id: owner, action_type, platform: 'phone', content: i ? 'סיכום שיחה לדוגמה: הלקוחה מחפשת דירת ארבעה חדרים עם מרפסת.' : 'הערה לדוגמה: להכין פרטים לקראת הביקור בנכס.', metadata: { lead_id: leads[i].id, listing_id: listings[i].id }, created_at: now })));
+  if (platformMode === 'brokers_only') {
+    ledger.forEach((row, i) => Object.assign(row, { type: 'charge', amount_ils: -[2, 3, 5, 1, 4][i], amount: -[2, 3, 5, 1, 4][i], note: ['קמפיין לדוגמה', 'הודעת וואטסאפ לדוגמה', 'שיחת ריטה לדוגמה', 'הודעת SMS לדוגמה', 'הכנת תוכן לדוגמה'][i] }));
+  }
   projects.forEach(p => { Object.assign(p, { price_from: 2200000, available_units: 4, project_stage: 'construction', deal_type: 'sale' }); p.apartments.forEach(unit => Object.assign(unit, { sqm: unit.area_sqm, size_sqm: unit.area_sqm })); });
-  return { role, owner, name, user, profile, workspaces, roles: demoRoles[role], tables, listings, leads, developers, projects, groups, ledger };
+  return { role, platformMode, owner, name, user, profile, workspaces: platformMode === 'brokers_only' ? workspaces.filter(w => w.is_self) : workspaces, roles: platformMode === 'brokers_only' ? ['agent'] : demoRoles[role], tables, listings, leads, developers, projects, groups, ledger };
 }
 
 export type PublicWorkspaceData = ReturnType<typeof createPublicWorkspaceData>;

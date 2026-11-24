@@ -1,4 +1,5 @@
 # User credit management
+- Bulk registry rechecks consume the complete fresh waiting list, apply the red non-developer predicate and call the existing authorized registry action serially; only matched saved responses update scoped rows, with one final refresh. Why: no borrowed identities, stale account updates or repeated full-list pressure.
 - Scanner countdowns anchor to meaningful server queue/deadline changes, never the ticking clock; promotion is audited, Super Admin-only and changes priority without altering creation dates or bypassing serial sends/quota. Why: real progress without false dispatch promises.
 - HTML discovery results continue to the scanner server-side for both single and bulk jobs using the same saved source/creator, while paused lines and saved contacts block continuation. Why: leaving a card must not strand discovery or launch duplicate inquiries.
 - Import status and history share useAdminImportJobs; count activity matches persisted workspace/source identity and enrichment completion, not aggregate history status. Why: one poll stream and a ring only on the item actually loading inventory.

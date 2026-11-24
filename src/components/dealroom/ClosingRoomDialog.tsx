@@ -24,6 +24,8 @@ import { Badge } from '@/components/ui/badge';
 import { FileSignature, Send, Clock, CheckCircle2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { publicUrl } from '@/lib/publicUrl';
+import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
+import { notifyDemoReadOnly } from '@/lib/demoReadOnly';
 import {
   PropertyMeta,
   PropertyThumb,
@@ -77,6 +79,7 @@ export function ClosingRoomDialog({
   defaultTemplate?: TemplateKey;
   defaultListingId?: string | null;
 }) {
+  const demo = usePublicWorkspace();
   const queryClient = useQueryClient();
   const [template, setTemplate] = useState<TemplateKey>(defaultTemplate);
   const [listingId, setListingId] = useState<string>(defaultListingId ?? '');
@@ -184,6 +187,7 @@ export function ClosingRoomDialog({
   }
 
   async function generateAndSend() {
+    if (demo) { notifyDemoReadOnly(); return; }
     if (!lead || busy) return;
     setBusy(true);
     try {

@@ -3,6 +3,7 @@ import { isDemoType, type DemoType } from '@/pages/demo/demoData';
 import type { PublicWorkspaceData } from '@/lib/publicWorkspaceData';
 import { demoOwner } from '@/lib/publicWorkspaceData';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 
 export const PublicWorkspaceContext = createContext<PublicWorkspaceData | null>(null);
 export const usePublicWorkspace = () => useContext(PublicWorkspaceContext);
@@ -22,6 +23,7 @@ export function PublicWorkspaceProvider({ store, children }: { store: PublicWork
 }
 export function InitialDemoWorkspaceChoice({ enabled }: { enabled: boolean }) {
   const { openSelector } = useWorkspace();
-  useEffect(() => { if (enabled) openSelector(); }, [enabled]);
+  const brokersOnly = useBrokersOnly();
+  useEffect(() => { if (enabled && !brokersOnly) openSelector(); }, [enabled, brokersOnly, openSelector]);
   return null;
 }

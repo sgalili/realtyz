@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createPublicWorkspaceData, demoOwner } from './publicWorkspaceData';
 import { simulationQuery, simulationRpc, simulationFunction, installPublicWorkspaceTransport } from './publicWorkspaceTransport';
 import { publicWorkspaceRoute } from '@/components/demo/PublicWorkspaceProvider';
+import { isDemoWindowUrl } from './brokerDemoPolicy';
 
 describe('isolated registered-screen simulation', () => {
   it.each(['broker', 'developer', 'marketing', 'owner', 'buyer', 'affiliate'] as const)('uses an isolated synthetic %s workspace with no real contacts or credentials', role => {
@@ -37,6 +38,25 @@ describe('isolated registered-screen simulation', () => {
     expect(simulationRpc(store,'publish_developer_project').status).toBe(403);
     expect(simulationRpc(store,'subscribe_to_plan').status).toBe(403);
     expect(simulationFunction(store,'admin-broker-invitation').status).toBe(403);
+  });
+  it('serves the configured broker-only mode without changing marketplace defaults', () => {
+    expect(simulationRpc(createPublicWorkspaceData('broker','brokers_only'),'get_public_platform_settings').data).toEqual([{platform_mode:'brokers_only',monthly_free_credits:20}]);
+    expect(simulationRpc(createPublicWorkspaceData('affiliate','full_marketplace'),'get_public_platform_settings').data).toEqual([{platform_mode:'full_marketplace',monthly_free_credits:20}]);
+  });
+  it('blocks approving a sample signature and keeps the original document unchanged', () => {
+    const store=createPublicWorkspaceData('broker','brokers_only');const before=JSON.stringify(store.tables.closing_documents);
+    expect(simulationRpc(store,'approve_signed_document',{_id:store.tables.closing_documents[1].id}).status).toBe(403);
+    expect(JSON.stringify(store.tables.closing_documents)).toBe(before);
+  });
+  it('does not mistake prefixed partner or community writes for read-only queries', () => {
+    const store=createPublicWorkspaceData('broker','brokers_only');
+    expect(simulationRpc(store,'community_send_message',{content:'test'}).status).toBe(403);
+    expect(simulationRpc(store,'partner_update_settings',{enabled:true}).status).toBe(403);
+  });
+  it('allows only isolated demo windows, never external publishing or public-board windows', () => {
+    expect(isDemoWindowUrl('https://facebook.com','http://localhost')).toBe(false);
+    expect(isDemoWindowUrl('/public-listings','http://localhost')).toBe(false);
+    expect(isDemoWindowUrl('/demo/broker/properties','http://localhost')).toBe(true);
   });
   it('blocks raw RPC, storage, OAuth, AI provider and remote fetch traffic without changing a real session', async () => {
     const remote=vi.spyOn(window,'fetch').mockResolvedValue(new Response('{}'));
