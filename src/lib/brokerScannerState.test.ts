@@ -1,8 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { scannerBlockReason, scannerWorkerState } from './brokerScannerState';
+import { scannerDelayReason, scannerFailureReason } from './brokerScannerState';
 
 const now = Date.parse('2026-11-23T14:30:00Z');
 const iso = (msAgo: number) => new Date(now - msAgo).toISOString();
+
+describe('read-only queue diagnostics', () => {
+  const s = { enabled: true, paused: false, connected: true, webhook_ready: true, worker_seen_at: iso(10000), daily_cap: 20, used_today: 6 };
+  it('distinguishes quota exhaustion from an active serial reply wait', () => {
+    expect(scannerDelayReason({ ...s, used_today: 20 }, now)).toBe('המכסה היומית מוצתה. המשך לאחר חצות בישראל');
+    expect(scannerDelayReason({ ...s, outstanding_until: new Date(now + 7200000).toISOString() }, now)).toBe('ממתין לתשובת יד2 לפנייה קודמת. פנייה אחת בכל פעם');
+  });
+  it('reports connection and pacing separately without changing the settings', () => {
+    expect(scannerDelayReason({ ...s, connected: false }, now)).toBe('קו הוואטסאפ מנותק');
+    expect(scannerDelayReason({ ...s, next_send_at: new Date(now + 45000).toISOString() }, now)).toBe('השהיה בטוחה בין פניות');
+    expect(s.used_today).toBe(6);
+  });
+  it('keeps unknown-send and missing-correlation reasons distinct', () => {
+    expect(scannerFailureReason('reply_timeout_or_unknown_send')).toBe('לא התקבלה תשובה בזמן או שתוצאת השליחה אינה ודאית. נדרשת בדיקה ידנית, ללא שליחה חוזרת אוטומטית');
+    expect(scannerFailureReason('missing_message_correlation')).toBe('התקבלה תשובה שלא ניתן לשייך בבטחה למתווך. המספר לא נשמר');
+  });
+});
 
 describe('scanner worker state', () => {
   it('is connected when the worker checked in within two minutes', () => {

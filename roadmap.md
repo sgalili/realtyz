@@ -1,5 +1,10 @@
 # Roadmap
 
+## Scanner read-only health November 24
+- [x] Read-only queues/events/deployed reservation confirm 176 ready, 1 awaiting reply until 07:53 UTC, 3 saved, 5 manual; 6/20 attempts, fresh worker, zero send errors and no expired active leases. Historical lookup failures: 51 cancelled, 3 stale-worker, 224 not_found. No mutations or scanner control actions.
+- [x] Existing panel/row dialog now distinguish quota, serial reply wait, pacing, disconnect, stale worker, refresh failures and persisted failure reasons. Scanner status reads the serial blocker globally as well as per-row; no queue/pacing/write logic changed. Deployed existing scanner handler.
+- [x] 32 focused tests passed; signed-in requester panel verified real 6/20, 8/185 and explicit reply-wait reason with no runtime errors; build OK. Row dialog not exercised in this view because no lookup controls were rendered. Reply-correlation and long source lease limits reported from code/data, not changed. Frontend requires publishing.
+
 ## Vibrant broker visitor experience November 24
 - [x] Refresh inline guest welcome with existing Rita artwork, colored benefit bands and reduced-motion-aware icons/logo strip.
 - [x] Restore VisitorMenu/VisitorRitaChat in broker-only app header; remove guest standalone sign-in icon, preserve marketplace/signed-in headers. Existing public chat uses a validated broker presentation, no private context/tools; deployed visitor-rita.

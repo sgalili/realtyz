@@ -26,6 +26,41 @@ export function scannerBlockReason(s: ScannerWorkerFields, now = Date.now()): st
   return w === 'connected' ? null : workerStateLabels[w];
 }
 
+/** Presentation only: these reasons never recover, promote or change a queue. */
+export function scannerDelayReason(s: ScannerWorkerFields & {
+  connected?: boolean; webhook_ready?: boolean; pause_reason?: string | null;
+  daily_cap: number; used_today: number; next_send_at?: string | null;
+  outstanding_until?: string | null;
+}, now = Date.now()): string | null {
+  if (s.connected === false) return 'קו הוואטסאפ מנותק';
+  if (s.webhook_ready === false) return 'קבלת התשובות אינה מוכנה בקו';
+  const blocked = scannerBlockReason(s, now);
+  if (blocked) return blocked;
+  if (s.used_today >= s.daily_cap) return 'המכסה היומית מוצתה. המשך לאחר חצות בישראל';
+  if (Date.parse(s.outstanding_until ?? '') > now) return 'ממתין לתשובת יד2 לפנייה קודמת. פנייה אחת בכל פעם';
+  if (Date.parse(s.next_send_at ?? '') > now) return 'השהיה בטוחה בין פניות';
+  return null;
+}
+
+export function scannerFailureReason(reason: string | null | undefined): string | null {
+  if (!reason) return null;
+  const reasons: Record<string, string> = {
+    reply_timeout_or_unknown_send: 'לא התקבלה תשובה בזמן או שתוצאת השליחה אינה ודאית. נדרשת בדיקה ידנית, ללא שליחה חוזרת אוטומטית',
+    reply_timeout: 'לא התקבלה תשובה בתוך שעתיים. נדרשת בדיקה ידנית',
+    send_outcome_unknown_no_resend: 'תוצאת השליחה אינה ודאית. אין שליחה חוזרת אוטומטית; נדרשת בדיקה ידנית',
+    primary_listing_missing: 'מודעת המקור אינה זמינה. נדרשת בדיקה ידנית',
+    missing_message_correlation: 'התקבלה תשובה שלא ניתן לשייך בבטחה למתווך. המספר לא נשמר',
+    worker_not_connected_no_progress_180s: 'שירות האיתור לא דיווח על התקדמות במשך שלוש דקות',
+    shared_yad2_whatsapp_contact_reset: 'נמצא מספר משותף של יד2, לא מספר וואטסאפ אישי',
+    user_cancelled: 'האיתור בוטל ידנית',
+    scanner_disconnected: 'קו הוואטסאפ מנותק',
+    send_circuit_open: 'הקו הושהה בעקבות שגיאות שליחה',
+  };
+  if (reasons[reason]) return reasons[reason];
+  if (/429|rate.limit|too.many.requests/i.test(reason)) return 'השירות הגביל את קצב הבקשות. ממתין לניסיון בטוח נוסף';
+  return null;
+}
+
 export type ScannerEtaInput = { daily_cap: number; jitter_min_seconds: number; jitter_max_seconds: number; next_send_at?: string | null; outstanding_until?: string | null; used_today: number; queue_ahead: number };
 
 /** Ms from now until local Israel midnight. */

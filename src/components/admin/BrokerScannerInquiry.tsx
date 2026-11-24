@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { BrokerNumberEditor } from './BrokerNumberEditor';
 import { scannerCall } from './BrokerScannerPanel';
-import { formatCountdown, scannerBlockReason, scannerEta } from '@/lib/brokerScannerState';
+import { formatCountdown, scannerDelayReason, scannerEta, scannerFailureReason } from '@/lib/brokerScannerState';
 import { brokerUserError } from '../../../supabase/functions/_shared/brokerRecovery';
 export const scannerLabels: Record<string, string> = { pending_source: 'ממתין לקריאת המודעה', reading_source: 'קורא את המודעה', ready: 'ממתין בתור לשליחה', sending: 'שולח פנייה', awaiting_reply: 'ממתין לתשובת יד2', completed: 'המספר נשמר', needs_manual: 'נדרשת בדיקה ידנית', cancelled: 'בוטל', failed: 'נכשל' };
 const live = ['pending_source','reading_source','ready','sending','awaiting_reply'];
 
 /** Status-only: the magnifying-glass discovery queues scanner inquiries. Hidden once a personal number is saved. */
-export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsApp, lookupStatus }: { brokerId: string; name?: string; hasWhatsApp: boolean; lookupStatus?: string }) {
+export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsApp, lookupStatus, lookupError }: { brokerId: string; name?: string; hasWhatsApp: boolean; lookupStatus?: string; lookupError?: string | null }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const status = useQuery({ queryKey: ['broker-wa-scanner-job', brokerId], retry: false, enabled: !hasWhatsApp, queryFn: () => scannerCall({ action: 'status', broker_id: brokerId }),
@@ -36,9 +36,10 @@ export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsAp
   const lookupStarted = useMemo(() => Date.now(), [brokerId, lookupStatus]);
   const promote = useMutation({ mutationFn: async () => { const result = await scannerCall({ action: 'promote', job_id: job?.id }); if (result.ok !== true) throw new Error(result.error ?? 'לא ניתן לקדם את הפנייה כרגע'); return result; }, onSuccess: () => { toast.success('הפנייה קודמה לראש התור'); void qc.invalidateQueries({ queryKey: ['broker-wa-scanner-job'] }); }, onError: (error: Error) => toast.error(error.message) });
   if (hasWhatsApp || status.data?.contact || (!lookupStatus && (!job || job.status === 'completed'))) return null;
-  const blocked = queued && st ? scannerBlockReason(st, now) : null;
+  const blocked = queued && st ? scannerDelayReason({ ...st, used_today: status.data?.used_today ?? 0, outstanding_until: status.data?.outstanding_until }, now) : null;
   const label = job ? scannerLabels[job.status] ?? job.status : lookupStatus === 'running' ? 'מאתר מספר במודעה' : 'ממתין לקריאת המודעה';
-  const errorText = job?.last_error ? brokerUserError(job.last_error) : '';
+  const reason = job?.last_error ?? lookupError;
+  const errorText = reason ? scannerFailureReason(reason) ?? brokerUserError(reason) : '';
   const tip = `${label}${blocked ? ` · ${blocked}` : ''}${errorText ? ` · ${errorText}` : ''}`;
   const time = formatCountdown(target ? target - now : now - lookupStarted);
   return <>
@@ -50,6 +51,8 @@ export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsAp
       {ticking && <p className="text-sm text-muted-foreground">{target ? job?.status === 'awaiting_reply' ? 'הזמן שנותר לקבלת תשובה' : 'הזמן המשוער לשלב הבא' : 'זמן שחלף באיתור'}: <span dir="ltr" className="inline-block tabular-nums">{time}</span>{target > 0 && now >= target && <span className="block">ממתין לעדכון מהסריקה</span>}</p>}
       {queued && <p className="text-sm text-muted-foreground">מיקום בתור: {(status.data?.queue_ahead ?? 0) + 1} · פניות היום: {status.data?.used_today ?? 0}/{st?.daily_cap ?? 0}</p>}
       {errorText && <p className="break-words text-sm text-destructive">{errorText}</p>}
+      {status.error && <p className="text-sm text-muted-foreground">רענון המצב נכשל זמנית. הנתונים האחרונים נשמרו במסך.</p>}
+      {queued && <p className="text-xs text-muted-foreground">הזמן משוער: תשובות לפניות קודמות עשויות להאריך את ההמתנה, עד שעתיים לכל פנייה.</p>}
       <BrokerNumberEditor brokerId={brokerId} name={name} kind="whatsapp" discoveryBusy={ticking} />
       {job && ['pending_source', 'ready'].includes(job.status) && <Button variant="outline" disabled={promote.isPending || (status.data?.queue_ahead ?? 0) === 0} onClick={() => promote.mutate()}>{promote.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpToLine className="h-4 w-4" />}קידום לראש התור</Button>}
     </DialogContent></Dialog>

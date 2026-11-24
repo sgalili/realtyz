@@ -61,10 +61,11 @@ Deno.serve(async req=>{
       if(job&&['pending_source','reading_source','ready'].includes(job.status)){
         const {count:ahead,error:ae}=await admin.from('broker_wa_scanner_jobs').select('id',{head:true,count:'exact'}).in('status',['pending_source','reading_source','ready']).or(`queue_priority.gt.${job.queue_priority},and(queue_priority.eq.${job.queue_priority},created_at.lt.${job.created_at}),and(queue_priority.eq.${job.queue_priority},created_at.eq.${job.created_at},id.lt.${job.id})`);
         if(ae)throw brokerFailure('scanner_queue_read_failed',ae);queue_ahead=ahead??0;
-        const {data:busy,error:be}=await admin.from('broker_wa_scanner_jobs').select('status,reply_deadline,send_reserved_at').in('status',['sending','awaiting_reply']).limit(1).maybeSingle();
-        if(be)throw brokerFailure('scanner_queue_read_failed',be);outstanding=!!busy;
-        outstanding_until=busy?.status==='awaiting_reply'?busy.reply_deadline:busy?.send_reserved_at?new Date(Date.parse(busy.send_reserved_at)+90000).toISOString():null;
       }
+      // Global panel needs the same serial-line blocker as an individual queued row.
+      const {data:busy,error:be}=await admin.from('broker_wa_scanner_jobs').select('status,reply_deadline,send_reserved_at').in('status',['sending','awaiting_reply']).limit(1).maybeSingle();
+      if(be)throw brokerFailure('scanner_queue_read_failed',be);outstanding=!!busy;
+      outstanding_until=busy?.status==='awaiting_reply'?busy.reply_deadline:busy?.send_reserved_at?new Date(Date.parse(busy.send_reserved_at)+90000).toISOString():null;
       const overview = !body.broker_id ? await admin.rpc('get_broker_discovery_overview') : {data:undefined,error:null};
       if(overview.error)throw brokerFailure('scanner_overview_failed',overview.error);
       const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem'}).format(new Date());
