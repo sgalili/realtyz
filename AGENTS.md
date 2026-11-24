@@ -62,4 +62,4 @@
 - Edge fns gate callers via _shared/authz.ts (service/cron secret/user+scope, Meta sigs). Why: apikey isn't trust.
 - Platform mode: platform_system_settings/usePlatformMode. Why: one switch.
 - TanStack Start: src/app holds guards/providers, pages render client-side, /demo is a router rewrite, links use router-compat. Why: same guards, demo isolation.
-- Brokers-only hides reward/commission displays at the shared components (PropertyCommissionIcons, RewardIcons, CommissionTierBadges, LeadPricingDialog, DeveloperCommissionBadges) and peer messaging (SendProfileMessage, CommunityPeerActions); charge_lead_commission and public-lead-gate skip per-lead charges/partner refs in that mode. Workspace screening questions live in workspace_lead_screening via save_workspace_lead_screening. Why: one switch, no scattered checks.
+- Brokers-only gating lives in shared reward/messaging components and lead-charge paths; details in src/components/public/AGENTS.md. Why: one switch.
