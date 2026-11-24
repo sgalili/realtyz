@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { SwipeChatCard } from '@/components/inbox/SwipeChatCard';
 import { activeChatAutopilot } from '@/lib/chatAutopilot';
 import { WhatsAppTicks } from '@/components/inbox/WhatsAppTicks';
@@ -145,7 +146,10 @@ const ChannelIcon = ({ channel, size = 'sm' }: { channel: string | null; size?: 
 const OmnichannelInbox = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const routeLocation = useLocation();
-  const [inboxSection, setInboxSection] = useState(searchParams.get('section') === 'community' || searchParams.has('community') ? 'community' : 'leads');
+  const brokersOnly = useBrokersOnly();
+  const [rawInboxSection, setInboxSection] = useState(searchParams.get('section') === 'community' || searchParams.has('community') ? 'community' : 'leads');
+  // Brokers-only mode hides the community section; chats always stay available.
+  const inboxSection = brokersOnly ? 'leads' : rawInboxSection;
   // `chat` is the deep-link parameter used by the notification center; `lead`
   // stays supported for existing links.
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(
@@ -1098,9 +1102,9 @@ const OmnichannelInbox = () => {
         }).catch(() => toast.error('הליד נשמר, אך לא ניתן לאשר את שליחת הודעת הפתיחה'));
       }} />
       {contactDetailsId && <InboxLeadDetails leadId={contactDetailsId} onClose={() => setContactDetailsId(null)} />}
-      <TabsContent value="community" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
+      {!brokersOnly && <TabsContent value="community" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
         <CommunityInbox key={`${user?.id}:${workspaceScope}`} active={inboxSection === 'community'} />
-      </TabsContent>
+      </TabsContent>}
       <TabsContent value="leads" forceMount className="m-0 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden data-[state=inactive]:hidden">
       {favoritesOpen && <InboxFavoritesDialog open onOpenChange={setFavoritesOpen} renderLeadActions={leadActions} />}
       <div className={`${favoritesOpen ? "hidden" : "grid"} min-h-0 flex-1 w-full grid-cols-1 overflow-hidden bg-card lg:grid-cols-[20rem_minmax(0,1fr)]`}>

@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 /**
  * Unified Hero / Control Zone shown directly under the top header on every page.
  *
@@ -271,6 +272,7 @@ export function PageHero() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const brokersOnly = useBrokersOnly();
   const { user } = useAuth();
   const communityUserId = location.pathname.match(/^\/broker\/([^/]+)$/)?.[1];
   const { isPartnerMode } = useAppMode();
@@ -425,12 +427,12 @@ export function PageHero() {
           </div>
         ) : location.pathname.startsWith('/inbox') ? (
           <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1">
-            <div role="tablist" aria-label="צ׳אטים וקהילה" className="flex items-center gap-1">
+            {brokersOnly ? <h1 className="whitespace-nowrap text-xl font-bold tracking-tight text-primary-foreground sm:text-2xl">צ׳אטים</h1> : <div role="tablist" aria-label="צ׳אטים וקהילה" className="flex items-center gap-1">
             {([['leads', 'צ׳אטים'], ['community', 'קהילה']] as const).map(([value, label]) => {
               const selected = value === (searchParams.get('section') === 'community' || searchParams.has('community') ? 'community' : 'leads');
               return <Button key={value} role="tab" aria-selected={selected} variant="ghost" className={cn('h-9 px-2 text-base font-bold text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground', selected && 'bg-primary-foreground/15')} onClick={() => setSearchParams(current => { const next = new URLSearchParams(current); next.set('section', value); if (value === 'leads') next.delete('community'); next.delete('lead'); next.delete('chat'); return next; }, { replace: true })}>{label}</Button>;
             })}
-            </div>
+            </div>}
           </div>
         ) : !isFaqPage && !isProfilePage ? (
           <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
