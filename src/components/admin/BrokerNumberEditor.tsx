@@ -1,23 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Loader2, Search, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { supabase } from '@/integrations/supabase/client';
+import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 type Job = { id: string; status: string; discovered_phone?: string | null; last_error?: string | null };
 async function call(fn: string, body: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke(fn, { body });
-  if (error) {
-    const detail = error instanceof FunctionsHttpError ? await error.context.json().catch(() => null) : null;
-    throw new Error(detail?.error ?? error.message);
-  }
-  if (data?.error) throw new Error(String(data.error));
-  return data as { job?: Job | null; phone?: string | null; contact?: { whatsapp_phone: string } | null };
+  return brokerWhatsAppRequest<{ job?: Job | null; phone?: string | null; contact?: { whatsapp_phone: string } | null }>(fn, body);
 }
 
 /** Telephone discovery only suggests a value; the existing authorized save confirms any login change. */
@@ -30,7 +23,7 @@ export function BrokerNumberEditor({ brokerId, name, phone, kind, discoveryBusy 
   const label = kind === 'phone' ? 'טלפון' : 'וואטסאפ';
   const status = useQuery({ queryKey: ['broker-whatsapp-job', brokerId], enabled: open && tracking, retry: false,
     queryFn: () => call('broker-whatsapp-worker', { action: 'status', broker_id: brokerId }),
-    refetchInterval: query => ['pending', 'running', 'retry'].includes(query.state.data?.job?.status ?? '') ? 4000 : false });
+    refetchInterval: query => query.state.error || ['pending', 'running', 'retry'].includes(query.state.data?.job?.status ?? '') ? 4000 : false });
   const job = status.data?.job;
   const discover = useMutation({ mutationFn: () => call('broker-whatsapp-worker', { action: 'enqueue', broker_id: brokerId }),
     onSuccess: data => { processed.current = null; qc.setQueryData<{ job?: Job | null; contact?: { whatsapp_phone: string } | null }>(['broker-whatsapp-job', brokerId], previous => ({ ...previous, ...data })); setTracking(true); },
@@ -59,7 +52,7 @@ export function BrokerNumberEditor({ brokerId, name, phone, kind, discoveryBusy 
     else if (kind === 'whatsapp' && job.status === 'completed') { setOpen(false); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-whatsapp-invitation-eligibility', brokerId] }); }
     else toast.info(job.last_error === 'worker_not_connected_no_progress_180s' ? 'העובד לא התקדם במשך שלוש דקות. המשימה שוחררה; יש לבדוק את שירות Railway.' : 'לא נמצא מספר חד־משמעי במודעה');
   }, [tracking, job, kind, qc]);
-  useEffect(() => { if (tracking && status.error) { setTracking(false); toast.error(status.error.message); } }, [tracking, status.error]);
+  // Keep tracking and the editor draft intact when a background read fails; the next poll retries.
   const busy = discover.isPending || tracking;
   return <>
     <Button variant="ghost" className={`h-8 min-w-0 shrink-0 px-0.5 font-normal ${phone ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'}`} dir={phone ? 'ltr' : 'rtl'} aria-label={`${phone ? 'עריכת' : 'הוספת'} ${label} של ${name}`} onClick={() => { setValue(phone ? formatPhoneDisplay(phone) : ''); setTracking(false); setOpen(true); }}>{phone ? formatPhoneDisplay(phone) : `הוסף ${label}`}</Button>

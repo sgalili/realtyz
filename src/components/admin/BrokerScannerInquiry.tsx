@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { BrokerNumberEditor } from './BrokerNumberEditor';
 import { scannerCall } from './BrokerScannerPanel';
 import { formatCountdown, scannerBlockReason, scannerEta } from '@/lib/brokerScannerState';
+import { brokerUserError } from '../../../supabase/functions/_shared/brokerRecovery';
 export const scannerLabels: Record<string, string> = { pending_source: 'ממתין לקריאת המודעה', reading_source: 'קורא את המודעה', ready: 'ממתין בתור לשליחה', sending: 'שולח פנייה', awaiting_reply: 'ממתין לתשובת יד2', completed: 'המספר נשמר', needs_manual: 'נדרשת בדיקה ידנית', cancelled: 'בוטל', failed: 'נכשל' };
 const live = ['pending_source','reading_source','ready','sending','awaiting_reply'];
 
@@ -15,7 +16,7 @@ export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsAp
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const status = useQuery({ queryKey: ['broker-wa-scanner-job', brokerId], retry: false, enabled: !hasWhatsApp, queryFn: () => scannerCall({ action: 'status', broker_id: brokerId }),
-    refetchInterval: q => live.includes(q.state.data?.job?.status ?? '') ? 15000 : false });
+    refetchInterval: q => q.state.error || live.includes(q.state.data?.job?.status ?? '') ? 15000 : false });
   const job = status.data?.job;
   // A correlated reply saved the number: refresh the card so it switches to the invitation button.
   useEffect(() => { if (job?.status === 'completed' || status.data?.contact) void qc.invalidateQueries({ queryKey: ['broker-whatsapp-job', brokerId] }); }, [job?.status, status.data?.contact, brokerId, qc]);
@@ -37,7 +38,8 @@ export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsAp
   if (hasWhatsApp || status.data?.contact || (!lookupStatus && (!job || job.status === 'completed'))) return null;
   const blocked = queued && st ? scannerBlockReason(st, now) : null;
   const label = job ? scannerLabels[job.status] ?? job.status : lookupStatus === 'running' ? 'מאתר מספר במודעה' : 'ממתין לקריאת המודעה';
-  const tip = `${label}${blocked ? ` · ${blocked}` : ''}${job?.last_error ? ` · ${job.last_error}` : ''}`;
+  const errorText = job?.last_error ? brokerUserError(job.last_error) : '';
+  const tip = `${label}${blocked ? ` · ${blocked}` : ''}${errorText ? ` · ${errorText}` : ''}`;
   const time = formatCountdown(target ? target - now : now - lookupStarted);
   return <>
     <Button variant="ghost" className={`h-8 shrink-0 gap-1 whitespace-nowrap px-1 text-xs tabular-nums ${blocked ? 'text-destructive' : 'text-muted-foreground'}`} title={tip} aria-label={`פרטי גילוי וואטסאפ של ${name}`} onClick={() => setOpen(true)}>
@@ -47,7 +49,7 @@ export function BrokerScannerInquiry({ brokerId, name = 'מתווך', hasWhatsAp
       <p role="status" className="text-sm">{blocked ?? (status.data?.outstanding && queued ? 'הקו ממתין לתשובה לפנייה קודמת' : 'מצב הפנייה מתעדכן אוטומטית')}</p>
       {ticking && <p className="text-sm text-muted-foreground">{target ? job?.status === 'awaiting_reply' ? 'הזמן שנותר לקבלת תשובה' : 'הזמן המשוער לשלב הבא' : 'זמן שחלף באיתור'}: <span dir="ltr" className="inline-block tabular-nums">{time}</span>{target > 0 && now >= target && <span className="block">ממתין לעדכון מהסריקה</span>}</p>}
       {queued && <p className="text-sm text-muted-foreground">מיקום בתור: {(status.data?.queue_ahead ?? 0) + 1} · פניות היום: {status.data?.used_today ?? 0}/{st?.daily_cap ?? 0}</p>}
-      {job?.last_error && <p className="break-words text-sm text-destructive">{job.last_error}</p>}
+      {errorText && <p className="break-words text-sm text-destructive">{errorText}</p>}
       <BrokerNumberEditor brokerId={brokerId} name={name} kind="whatsapp" discoveryBusy={ticking} />
       {job && ['pending_source', 'ready'].includes(job.status) && <Button variant="outline" disabled={promote.isPending || (status.data?.queue_ahead ?? 0) === 0} onClick={() => promote.mutate()}>{promote.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpToLine className="h-4 w-4" />}קידום לראש התור</Button>}
     </DialogContent></Dialog>

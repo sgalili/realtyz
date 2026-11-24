@@ -7,20 +7,14 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSuperAdminGate } from '@/hooks/useSuperAdminGate';
-import { supabase } from '@/integrations/supabase/client';
+import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
+import { brokerUserError } from '../../../supabase/functions/_shared/brokerRecovery';
 import { scannerWorkerState, workerStateLabels } from '@/lib/brokerScannerState';
 
 export type ScannerSettings = { enabled: boolean; paused: boolean; pause_reason: string | null; daily_cap: number; jitter_min_seconds: number; jitter_max_seconds: number; start_hour: number; end_hour: number; error_threshold: number; next_send_at?: string | null; connected?: boolean; webhook_ready?: boolean; worker_seen_at?: string | null; worker_rejected_at?: string | null; config_checked_at?: string | null };
 export type ScannerStatus = { settings: ScannerSettings; credentials_ready: boolean; used_today: number; manual_replies: number; queue_ahead?: number; outstanding?: boolean; outstanding_until?: string | null; job?: { id: string; status: string; last_error: string | null; reply_deadline?: string | null; next_source_at?: string | null; lease_until?: string | null; send_reserved_at?: string | null } | null; contact?: { whatsapp_phone: string } | null };
 export async function scannerCall(body: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke('broker-whatsapp-scanner', { body });
-  if (data?.error) throw new Error(data.error === 'scanner_operation_failed' ? 'הבדיקה מול Green API נכשלה; נסו שוב בעוד דקה' : data.error);
-  if (error) {
-    // Non-2xx responses arrive only in error.context; read the server's message instead of a generic failure.
-    const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
-    throw new Error(body?.error === 'forbidden' ? 'אין הרשאת Super Admin' : body?.error === 'scanner_operation_failed' ? 'הבדיקה מול Green API נכשלה; נסו שוב בעוד דקה' : body?.error || 'פעולת קו הסריקה נכשלה');
-  }
-  return data as ScannerStatus & { ok?: boolean; reason?: string; error?: string };
+  return brokerWhatsAppRequest<ScannerStatus & { ok?: boolean; reason?: string; error?: string }>('broker-whatsapp-scanner', body);
 }
 const reasons: Record<string, string> = { not_configured: 'טרם הוגדר', configuration_changed: 'ההגדרות השתנו — יש לבדוק ולהפעיל', user_paused: 'הושהה ידנית', scanner_disconnected: 'הקו מנותק', scanner_webhook_not_configured: 'הוובהוק אינו מוגדר בקו', scanner_phone_not_dedicated: 'הקו אינו ייעודי', scanner_instance_in_use_by_workspace: 'הקו כבר משמש חשבון אחר', scanner_credentials_missing: 'חסרים פרטי קו', scanner_phone_is_broker_contact: 'מספר הקו שמור כמספר של מתווך', save_settings_first: 'יש לשמור הגדרות תחילה', scanner_not_ready: 'הקו אינו מוכן' };
 
@@ -37,7 +31,7 @@ export function BrokerScannerPanel() {
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const report = (ok: boolean, text: string) => { setResult({ ok, text }); (ok ? toast.success : toast.error)(text); };
   const act = useMutation({ mutationFn: (body: Record<string, unknown>) => scannerCall(body), onMutate: () => setResult(null), onSuccess: (data, body) => {
-    if (data.ok === false) report(false, `${reasons[data.reason ?? ''] ?? data.error ?? 'הקו אינו מוכן'}${body.action === 'resume' || body.action === 'test_connection' ? '; הסריקה לא הופעלה' : ''}`);
+    if (data.ok === false) report(false, `${reasons[data.reason ?? ''] ?? brokerUserError(data.error ?? data.reason, 'הקו אינו מוכן')}${body.action === 'resume' || body.action === 'test_connection' ? '; הסריקה לא הופעלה' : ''}`);
     else if (body.action === 'configure') { setDraft({}); report(true, 'נשמר. הקו מושהה עד בדיקה והפעלה'); }
     else if (body.action === 'test_connection') report(true, s?.enabled && !s.paused ? 'החיבור תקין והקו פעיל' : 'החיבור תקין. הקו עדיין מושהה — לחצו על סמל התקע כדי להפעיל');
     else report(true, body.action === 'pause' ? 'הסריקה הושהתה' : 'הסריקה פעילה');
@@ -45,7 +39,7 @@ export function BrokerScannerPanel() {
     void qc.invalidateQueries({ queryKey: ['broker-wa-scanner-job'] });
   }, onError: (e: Error) => report(false, e.message) });
   if (status.isLoading) return <Loader2 className="h-4 w-4 animate-spin" aria-label="טוען קו סריקה" />;
-  if (status.isError || !s) return <p className="text-sm text-destructive">לא ניתן לקרוא את מצב קו הסריקה</p>;
+  if (!s) return <p className="text-sm text-destructive">לא ניתן לקרוא את מצב קו הסריקה</p>;
   const field = (key: keyof ScannerSettings, label: string, min: number, max: number) => <label className="flex items-center gap-1 text-sm">{label}<Input type="number" min={min} max={max} className="h-8 w-16" value={value(key)} onChange={e => setDraft(d => ({ ...d, [key]: Number(e.target.value) }))} /></label>;
   const active = s.enabled && !s.paused;
   const ready = !!(s.connected && s.webhook_ready && status.data.credentials_ready);

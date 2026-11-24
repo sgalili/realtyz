@@ -4,6 +4,7 @@ import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
 import { validWorkerCredential } from '../_shared/externalImportWorker.ts';
 import { brokerWhatsAppRetry, inspectBrokerWhatsApp, discoverBrokerTelephone, normalizeBrokerWhatsApp } from '../_shared/brokerWhatsApp.ts';
 import { continueBrokerScanner } from '../_shared/brokerScannerContinuation.ts';
+import { brokerUserError, recoverBrokerWhatsAppJobs } from '../_shared/brokerRecovery.ts';
 
 const scope = { worker_id: z.string().min(1).max(100), job_id: z.string().uuid(), lease_token: z.string().uuid() };
 const schema = z.discriminatedUnion('action', [
@@ -64,8 +65,8 @@ Deno.serve(async req => {
       return json({brokers});
     }
     if (userAction || input.action==='claim') {
-      const {error}=await admin.rpc('recover_broker_whatsapp_jobs');
-      if(error)throw error;
+      const recovery = await recoverBrokerWhatsAppJobs(admin);
+      if (!recovery.recovered) console.warn('[broker-whatsapp-recovery-deferred]', { action: input.action, attempts: recovery.attempts, transient: recovery.transient });
     }
     if (input.action === 'batch_status' || input.action === 'start_batch' || input.action === 'cancel_batch') {
       if (caller?.kind !== 'user') return json({error:'forbidden'},403);
@@ -144,7 +145,7 @@ Deno.serve(async req => {
         if(ce)throw ce;
         if(contact){results.push({broker_id:row.user_id,status:'already_set'});continue;}
         try {await enqueue(row.user_id,input.batch_id);results.push({broker_id:row.user_id,status:'queued'});}
-        catch(reason){if((reason as Error).message.includes('whatsapp_batch_stopped'))return json({results,next:null,stopped:true});results.push({broker_id:row.user_id,status:'skipped',error:(reason as Error).message});}
+        catch(reason){if((reason as Error).message.includes('whatsapp_batch_stopped'))return json({results,next:null,stopped:true});results.push({broker_id:row.user_id,status:'skipped',error:brokerUserError(reason)});}
       }
       const next=rows?.length===20?rows[rows.length-1]?.user_id:null;
       if(!next) {
@@ -210,6 +211,6 @@ Deno.serve(async req => {
   } catch (reason) {
     const error = reason as { message?: string; code?: string };
     console.error('[broker-whatsapp-worker]', { action: input.action, code: error.code, error: error.message });
-    return json({ error: error.message ?? 'worker_failed' }, error.code === '40001' ? 409 : error.code === '42501' ? 403 : 500);
+    return json({ error: brokerUserError(reason) }, error.code === '40001' ? 409 : error.code === '42501' ? 403 : 500);
   }
 });

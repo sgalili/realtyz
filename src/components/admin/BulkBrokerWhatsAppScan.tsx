@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Search, Square } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
 import { useAuth } from '@/hooks/useAuth';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SelectAllRow, SelectBox } from '@/components/ui/multi-select-controls';
@@ -12,9 +12,7 @@ import { newestImportsFirst } from '@/lib/adminImportPresentation';
 
 type Batch = { id: string; status: 'running' | 'stopped' | 'completed' };
 async function call(body: Record<string, unknown>) {
-  const {data,error}=await supabase.functions.invoke('broker-whatsapp-worker',{body});
-  if(error || data?.error)throw new Error(data?.error || error?.message || 'הפעולה נכשלה');
-  return data as {batch?:Batch|null;results?:{status:string}[];next?:string|null;stopped?:boolean};
+  return brokerWhatsAppRequest<{batch?:Batch|null;results?:{status:string}[];next?:string|null;stopped?:boolean}>('broker-whatsapp-worker', body);
 }
 
 export function BulkBrokerWhatsAppScan() {
@@ -25,8 +23,7 @@ export function BulkBrokerWhatsAppScan() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const targets = useQuery({ queryKey: ['broker-whatsapp-bulk-targets', gate.uid], enabled: open && gate.enabled, retry: false, queryFn: async () => {
-    const { data, error } = await supabase.functions.invoke('broker-whatsapp-worker', { body: { action: 'bulk_targets' } });
-    if (error || data?.error) throw new Error('לא ניתן לקרוא את המתווכים הזמינים לגילוי');
+    const data = await brokerWhatsAppRequest<{brokers?: { user_id: string; full_name: string; created_at: string }[]}>('broker-whatsapp-worker', { action: 'bulk_targets' });
     const rows = newestImportsFirst((data?.brokers ?? []) as { user_id: string; full_name: string; created_at: string }[]);
     setSelected(new Set(rows.map(row => row.user_id)));
     return rows;
@@ -35,7 +32,7 @@ export function BulkBrokerWhatsAppScan() {
   const stopping=useRef(false);
   const working=useRef(false);
   const currentBatch=useRef<string|null>(null);
-  const status=useQuery({queryKey:key,enabled:!!user,retry:false,queryFn:()=>call({action:'batch_status'}),refetchInterval:query=>query.state.data?.batch?.status==='running'?4000:false});
+  const status=useQuery({queryKey:key,enabled:!!user,retry:false,queryFn:()=>call({action:'batch_status'}),refetchInterval:query=>query.state.error || query.state.data?.batch?.status==='running'?4000:false});
   const cancel=useMutation({mutationFn:(id:string)=>call({action:'cancel_batch',batch_id:id}),onSuccess:()=>{
     qc.setQueryData(key,{batch:null});void qc.invalidateQueries({queryKey:['broker-whatsapp-job']});toast.success('איתור WhatsApp נעצר. המספרים שנמצאו נשמרו.');
   },onError:()=>{stopping.current=false;toast.error('העצירה לא אושרה. אפשר לנסות שוב.');}});

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
+import { brokerUserError } from '../../../supabase/functions/_shared/brokerRecovery';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
@@ -18,12 +18,7 @@ type Job = { id: string; status: string; last_error: string | null; attempts: nu
 const activeStates = ['pending', 'running', 'retry'];
 const labels: Record<string, string> = { pending: 'ממתין לגילוי', running: 'מאתר מספר WhatsApp', retry: 'ממתין לניסיון נוסף', completed: 'המשימה הושלמה', not_found: 'לא נמצא קישור WhatsApp חד־משמעי במודעה', failed: 'הגילוי נכשל' };
 async function invoke(body: Record<string, unknown>): Promise<{ job: Job | null; contact?: { whatsapp_phone: string } | null }> {
-  const { data, error } = await supabase.functions.invoke('broker-whatsapp-worker', { body });
-  if (error) {
-    const details = error instanceof FunctionsHttpError ? await error.context.json().catch(() => null) : null;
-    throw new Error(details?.error ?? error.message);
-  }
-  return data;
+  return brokerWhatsAppRequest('broker-whatsapp-worker', body);
 }
 
 /** Admin-only contact source: never mount on a public or peer broker profile. */
@@ -34,7 +29,7 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
   const currentBroker = useRef(brokerId);
   currentBroker.current = brokerId;
   const [sendOpen, setSendOpen] = useState(false);
-  const status = useQuery({ queryKey: ['broker-whatsapp-job', brokerId], retry: false, queryFn: () => invoke({ action: 'status', broker_id: brokerId }), refetchInterval: query => activeStates.includes(query.state.data?.job?.status ?? '') ? 4000 : false });
+  const status = useQuery({ queryKey: ['broker-whatsapp-job', brokerId], retry: false, queryFn: () => invoke({ action: 'status', broker_id: brokerId }), refetchInterval: query => query.state.error || activeStates.includes(query.state.data?.job?.status ?? '') ? 4000 : false });
   const job = status.data?.job;
   // Inquiry component owns polling; subscribing to the same key keeps the action locked through both queues.
   const scanner = useQuery<ScannerStatus>({ queryKey: ['broker-wa-scanner-job', brokerId], enabled: false, queryFn: () => scannerCall({ action: 'status', broker_id: brokerId }) });
@@ -46,7 +41,8 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
   useEffect(() => { setTracking(activeStates.includes(qc.getQueryData<{job:Job|null}>(['broker-whatsapp-job',brokerId])?.job?.status??'')); starting.current=false;setSendOpen(false); }, [brokerId,qc]);
   useEffect(() => {
     if (!tracking) { if(!status.error && job && activeStates.includes(job.status))setTracking(true); return; }
-    if (status.error) { starting.current=false;setTracking(false);toast.error(status.error.message);return; }
+    // A failed background read is not a failed discovery. Retain its last known state and poll again.
+    if (status.error) return;
     if(!job&&status.data&&!status.isLoading&&!enqueue.isPending){starting.current=false;setTracking(false);return;}
     if (job && !activeStates.includes(job.status)) {
       starting.current=false;setTracking(false);
@@ -54,7 +50,7 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
         void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] });
         void qc.invalidateQueries({ queryKey: ['broker-whatsapp-invitation-eligibility', brokerId] });
       }
-      else if(job.status==='failed' && job.last_error!=='user_cancelled')toast.error(job.last_error === 'whatsapp_contact_changed_requires_review' ? 'המספר במקור שונה ממספר WhatsApp השמור. המספר השמור לא שונה; נדרשת בדיקה ידנית.' : job.last_error||labels.failed);
+      else if(job.status==='failed' && job.last_error!=='user_cancelled')toast.error(job.last_error === 'whatsapp_contact_changed_requires_review' ? 'המספר במקור שונה ממספר WhatsApp השמור. המספר השמור לא שונה; נדרשת בדיקה ידנית.' : brokerUserError(job.last_error, labels.failed));
       else if(job.status==='not_found') void qc.invalidateQueries({ queryKey: ['broker-wa-scanner-job', brokerId] });
     }
   }, [job?.status, tracking, status.error, brokerId, qc]);
