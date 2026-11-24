@@ -56,10 +56,11 @@ export function BrokerScannerPanel({ prioritySort = 'off', onPrioritySort }: { p
     <div className="flex items-center gap-2 text-sm">
       <Button variant="ghost" className="h-auto min-w-0 flex-1 gap-1 p-0 font-semibold" aria-expanded={open} onClick={() => setOpen(o => !o)}><span className="truncate">סריקת מספרי וואטסאפ</span><ChevronDown className={`h-4 w-4 shrink-0 ${open ? 'rotate-180' : ''}`} /></Button>
       <span className={`truncate text-xs ${active ? 'text-lead-whatsapp' : 'text-muted-foreground'}`}>{stateText}</span>
-      <span className="tabular-nums text-xs text-muted-foreground" dir="ltr" title="פניות היום">{status.data?.used_today}/{s.daily_cap}</span>
-      <div className="ms-auto flex shrink-0 items-center [&>button]:h-8 [&>button]:w-8">
+      <div className="ms-auto flex shrink-0 items-center gap-0.5 [&>button]:h-8 [&>button]:w-8">
+        <span className="px-1 tabular-nums text-xs text-muted-foreground" dir="ltr" title="וואטסאפ שהושלמו מתוך התור">{status.data?.overview?.done ?? 0}/{status.data?.overview?.total ?? 0}</span>
         <Button size="icon" variant="ghost" aria-label={plugLabel} title={plugLabel} disabled={act.isPending} className={active ? 'text-lead-whatsapp' : 'text-muted-foreground'} onClick={() => setConfirm(active ? 'pause' : 'resume')}>{act.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : active ? <Plug className="h-4 w-4" /> : <Unplug className="h-4 w-4" />}</Button>
         <BulkBrokerWhatsAppScan />
+        <span className="px-1 tabular-nums text-xs text-muted-foreground" dir="ltr" title="אימות רישיונות">{registryResult.match(/\d+\/\d+/)?.[0] ?? '0/0'}</span>
         <BulkBrokerRegistryRecheck onProgress={setRegistryResult} />
         {onPrioritySort && <Button size="icon" variant="ghost" aria-label={prioritySort === 'progress' ? 'מיון: עם וואטסאפ קודם' : 'מיון: בתהליך קודם'} title={prioritySort === 'progress' ? 'בתהליך לפי זמן, נמצאו, ממתינים. לחיצה: נמצאו קודם' : prioritySort === 'found' ? 'נמצאו, בתהליך, ממתינים. לחיצה: בתהליך קודם' : 'בתהליך לפי זמן, נמצאו, ממתינים'} aria-pressed={prioritySort !== 'off'} className={prioritySort !== 'off' ? 'text-primary' : 'text-muted-foreground'} onClick={onPrioritySort}><ArrowDownWideNarrow className="h-4 w-4" /></Button>}
       </div>

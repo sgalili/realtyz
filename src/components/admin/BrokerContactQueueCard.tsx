@@ -131,8 +131,8 @@ function OfficeNameField({ b, showLogo = true }: { b: ContactBroker; showLogo?: 
     onError: (e: Error) => toast.error(e.message),
   });
   const commit = () => { if (value.trim().length < 2) { toast.error('שם המשרד קצר מדי'); return; } save.mutate(); };
-  if (editing) return <span className="flex min-w-0 items-center gap-1">
-    <Input autoFocus aria-label="שם משרד התיווך" className="h-8 min-w-0 w-40 px-2 text-sm sm:text-base" value={value} onChange={e => setValue(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false); }} />
+  if (editing) return <span className="flex w-full min-w-0 items-start gap-1">
+    <textarea autoFocus dir="rtl" rows={2} aria-label="שם משרד התיווך" className="min-h-[2.5rem] w-full min-w-0 flex-1 resize-y rounded-md border border-input bg-background px-2 py-1 text-right text-sm leading-snug [unicode-bidi:plaintext] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-base" value={value} onChange={e => setValue(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); } if (e.key === 'Escape') setEditing(false); }} />
     <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="שמירת שם המשרד" disabled={save.isPending} onClick={commit}>{save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</Button>
     <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="ביטול" onClick={() => { setValue(b.office_name ?? ''); setEditing(false); }}><X className="h-4 w-4" /></Button>
   </span>;
@@ -190,7 +190,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
         </>;
   return <li data-broker-card={b.is_developer ? undefined : b.user_id} className="space-y-2 rounded-xl border border-border/70 p-3 sm:p-4">
     <div className={b.is_developer ? "flex flex-wrap items-center gap-1" : "flex flex-col gap-2"}>
-      <div data-broker-row="identity" className="flex min-w-0 flex-1 items-start justify-between gap-2">
+      <div data-broker-row="identity" className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-x-2 gap-y-1">
         <div className="flex min-w-0 flex-1 items-center gap-1">
         {b.license_verified ? <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-label="אומת מול המאגר הממשלתי" /> : !b.is_developer && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense??''} noMatch={b.registry_no_match ?? false} onUpdated={() => void qc.invalidateQueries({queryKey:['broker-contact-queue']})} />}
         <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
@@ -199,7 +199,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
         </button>
         {!b.is_developer && !hasSelectedGender && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'גבר', '\u2642\uFE0E'], ['female', 'אישה', '\u2640\uFE0E']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role="radio" aria-checked={false} aria-label={label} title={label} className={`h-7 w-7 text-base ${g === 'male' ? 'text-gender-male' : 'text-gender-female'}`} disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>}
         </div>
-        {!b.is_developer && <div className="flex min-w-0 max-w-[45%] items-center justify-end gap-2">{b.city && <span className="min-w-0 break-words text-sm text-muted-foreground sm:text-base">{b.city}</span>}<OfficeNameField b={b} /></div>}
+        {!b.is_developer && <div data-broker-row="office" className="flex w-full min-w-0 flex-wrap items-center justify-start gap-x-2 gap-y-0.5">{b.city && <span className="min-w-0 break-words text-sm text-muted-foreground sm:text-base">{b.city}</span>}<OfficeNameField b={b} /></div>}
       </div>
       <div data-broker-row="contacts" className={b.is_developer ? "flex max-w-full flex-wrap items-center gap-0" : "flex min-w-0 max-w-full flex-nowrap items-center gap-x-1 gap-y-0"}>
         {phoneControls}
