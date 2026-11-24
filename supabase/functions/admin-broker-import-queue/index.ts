@@ -47,6 +47,13 @@ async function call(name: string, body: unknown) {
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   return readWorkerResponse(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${name}`,{method:'POST',headers:{Authorization:`Bearer ${key}`,apikey:key,'Content-Type':'application/json'},body:JSON.stringify(body)});
 }
+async function activeJobFor(admin:any,userId:string,error:{code?:string;message?:string}){
+  if(error.code!=='23505' && !String(error.message??'').includes('הפעולה הקודמת עדיין מסתיימת')) return null;
+  const {data}=await admin.from('broker_import_jobs').select('id').eq('created_by',userId).in('status',['running','queued','pending','paused']).order('updated_at',{ascending:false}).limit(1).maybeSingle();
+  if(data?.id) return data.id as string;
+  const {data:leased}=await admin.from('broker_import_jobs').select('id').eq('created_by',userId).gt('lease_until',new Date().toISOString()).order('updated_at',{ascending:false}).limit(1).maybeSingle();
+  return (leased?.id as string)??null;
+}
 Deno.serve(async req => {
   if(req.method==='OPTIONS') return new Response('ok',{headers:corsHeaders});
   const caller=await requireCaller(req,['user','service','cron']); if(caller instanceof Response) return caller;
@@ -58,14 +65,14 @@ Deno.serve(async req => {
     if(input.action==='start') {
       if(caller.kind!=='user' || input.max_listings<input.min_listings) return json({error:'טווח נכסים לא תקין'},400);
       const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:input.target_brokers,_min:input.min_listings,_max:input.max_listings,_checkpoint:{...freshImportCheckpoint(),execution:'external',requestType:'brokers'}});
-      if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
+      if(error){ const busy=await activeJobFor(admin,caller.userId,error); if(busy) return json({job_id:busy,attached:true,already_running:true}); throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message); }
       return json({job_id:data});
     }
     if(input.action==='start_auto_developers') {
       if(caller.kind!=='user') return json({error:'forbidden'},403);
       const checkpoint={...freshImportCheckpoint(),execution:'external',requestType:'developers',source:'urls',autoDevelopers:true,phase:'developer_discovering',directoryUrl:DEVELOPER_DIRECTORY_URL,directoryVisited:[],developerUrls:[],developerIndex:0,developerResults:[],expectedProjects:input.max_projects,maxProjects:input.max_projects,totalBrokerUrls:0,totalDeveloperUrls:input.target_developers,targetDevelopers:input.target_developers,enriched:0};
       const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:input.target_developers,_min:1,_max:10,_checkpoint:checkpoint});
-      if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
+      if(error){ const busy=await activeJobFor(admin,caller.userId,error); if(busy) return json({job_id:busy,attached:true,already_running:true}); throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message); }
       return json({job_id:data,accepted:input.target_developers,developers:input.target_developers,automatic:true});
     }
     if(input.action==='start_urls') {
@@ -76,7 +83,7 @@ Deno.serve(async req => {
       if(!accepted) return json({error:'לא נמצאו קישורי משרד/מתווך או יזם תקינים של יד2'},400);
       const checkpoint={...freshImportCheckpoint(),execution:'external',requestType:developerUrls.length?(brokerUrls.length?'mixed':'developers'):'brokers',source:'urls',phase:developerUrls.length?'developer_scanning':'enriching',enrichUrls:brokerUrls,developerUrls,developerIndex:0,developerResults:[],expectedProjects:input.expected_projects??1,maxProjects:input.max_projects??null,totalBrokerUrls:brokerUrls.length,totalDeveloperUrls:developerUrls.length,enriched:0,invalidUrls:input.urls.length-accepted};
       const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:accepted,_min:1,_max:input.max_listings??10,_checkpoint:checkpoint});
-      if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
+      if(error){ const busy=await activeJobFor(admin,caller.userId,error); if(busy) return json({job_id:busy,attached:true,already_running:true}); throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message); }
       return json({job_id:data,accepted,developers:developerUrls.length,brokers:brokerUrls.length,rejected:input.urls.length-accepted});
     }
     const {data:existing,error:readError}=await admin.from('broker_import_jobs').select('*').eq('id',input.job_id).single();
