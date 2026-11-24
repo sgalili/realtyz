@@ -11,7 +11,8 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { OfficialBrokerInvitationPanel } from './OfficialBrokerInvitationDialog';
 import { BrokerNumberEditor } from './BrokerNumberEditor';
 import { BrokerScannerInquiry } from './BrokerScannerInquiry';
-import { scannerCall } from './BrokerScannerPanel';
+import { scannerCall, type ScannerStatus } from './BrokerScannerPanel';
+import { discoveryInProgress } from '@/lib/adminImportPresentation';
 
 type Job = { id: string; status: string; last_error: string | null; attempts: number };
 const activeStates = ['pending', 'running', 'retry'];
@@ -35,6 +36,8 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
   const [sendOpen, setSendOpen] = useState(false);
   const status = useQuery({ queryKey: ['broker-whatsapp-job', brokerId], retry: false, queryFn: () => invoke({ action: 'status', broker_id: brokerId }), refetchInterval: query => activeStates.includes(query.state.data?.job?.status ?? '') ? 4000 : false });
   const job = status.data?.job;
+  // Inquiry component owns polling; subscribing to the same key keeps the action locked through both queues.
+  const scanner = useQuery<ScannerStatus>({ queryKey: ['broker-wa-scanner-job', brokerId], enabled: false, queryFn: () => scannerCall({ action: 'status', broker_id: brokerId }) });
   // Read the persisted contact even when completion happened while this card was unmounted.
   const savedPhone = status.data?.contact !== undefined ? status.data.contact?.whatsapp_phone : phone;
   const enqueue = useMutation({ mutationFn: (target: string) => invoke({ action: 'enqueue', broker_id: target }),
@@ -68,13 +71,13 @@ export function BrokerWhatsAppContact({ brokerId, name, phone }: { brokerId: str
       }
     }
   }, [job?.status, tracking, status.error, brokerId, qc]);
-  const busy = enqueue.isPending || (!status.isError && activeStates.includes(job?.status ?? '')) || (tracking && status.isLoading);
+  const busy = enqueue.isPending || discoveryInProgress(job?.status, scanner.data?.job?.status) || (tracking && status.isLoading);
   return <span className="inline-flex max-w-full flex-wrap items-center gap-0.5">
     <BrokerNumberEditor brokerId={brokerId} name={name} phone={savedPhone} kind="whatsapp" />
     {savedPhone && <>
       <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-lead-whatsapp" aria-label={`WhatsApp רשמי אל ${name}`} title={`שליחה רשמית אל ${formatPhoneDisplay(savedPhone)}`} onClick={() => setSendOpen(true)}><WhatsAppIcon className="h-4 w-4" /></Button>
     </>}
-    {!savedPhone && <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-lead-whatsapp" aria-label={`גילוי WhatsApp של ${name}`} aria-busy={busy} disabled={busy} title={busy ? labels[job?.status ?? 'running'] : 'גילוי WhatsApp במודעת יד2'} onClick={() => { if(starting.current||busy)return;starting.current=true;enqueue.mutate(brokerId); }}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}</Button>}
+    {!savedPhone && <Button variant="ghost" size="icon" className={`h-7 w-7 shrink-0 ${busy ? 'text-muted-foreground' : 'text-lead-whatsapp'}`} aria-label={`גילוי WhatsApp של ${name}`} aria-busy={busy} disabled={busy} title={busy ? 'הגילוי בתהליך או ממתין בתור' : 'גילוי WhatsApp במודעת יד2'} onClick={() => { if(starting.current||busy)return;starting.current=true;enqueue.mutate(brokerId); }}><Search className="h-4 w-4" /></Button>}
     <BrokerScannerInquiry brokerId={brokerId} name={name} hasWhatsApp={!!savedPhone} />
     <Dialog open={sendOpen} onOpenChange={setSendOpen}><DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto text-right"><DialogHeader><DialogTitle>הזמנה ב־WhatsApp ל־{name}</DialogTitle><DialogDescription>מספר וואטסאפ: <span dir="ltr">{savedPhone ? formatPhoneDisplay(savedPhone) : ''}</span></DialogDescription></DialogHeader>
       {sendOpen && <OfficialBrokerInvitationPanel broker={{ id: brokerId, full_name: name }} useDiscoveredWhatsApp onClose={() => setSendOpen(false)} />}

@@ -1,5 +1,10 @@
 # Roadmap
 
+## Import controls cleanup November 24
+- [x] Compact WhatsApp settings, prevent repeat row discovery, confirm selected bulk targets with server eligibility and existing batch cancellation.
+- [x] Import-tab controls, counts, newest-first waiting list, hero search and import actions; last completed run read separately from the five recent jobs.
+- [x] 31 focused tests and signed-in 411px/1280px checks passed; selection, cancellation and search verified without starting imports or messages. Both changed Cloud handlers deployed.
+
 ## Dedicated Green API discovery request November 22
 - [x] Inspect live broker_whatsapp_jobs/contacts/batches/shared-number schema and claim/finish/recovery functions, discovery Worker/Cloud handler, Green webhook/helpers and broker-card/invitation mapping. Existing discovery is HTML-only; outreach is disabled and the Green webhook drops messages. No sends or live data changes.
 - [x] Implemented isolated scanner tables/RPCs (0273), broker-whatsapp-scanner and authenticated webhook, Worker lane and Super Admin panel/card control. 15/day, 45–180s jitter, 09–18 Israel hours, single outstanding inquiry, no resend of unknown outcomes, pause on disconnect/3 errors. Tests passed; unauthenticated calls return 401. No messages sent.

@@ -26,11 +26,12 @@ import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 import { BrokerWhatsAppContact } from './BrokerWhatsAppContact';
 import { BrokerNumberEditor } from './BrokerNumberEditor';
 import { BrokerScannerPanel } from './BrokerScannerPanel';
+import { emptyImportSearch, matchesImportSearch, newestImportsFirst, type ImportSearch } from '@/lib/adminImportPresentation';
 import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
 import { activeImportHistoryIds } from '@/lib/importHistoryActivity';
 import { coldInvitationBody } from '../../../supabase/functions/_shared/brokerInvitationTemplate';
 
-export type ContactBroker = { user_id: string; full_name: string; phone: string | null; whatsapp_phone?: string | null; whatsapp_link?: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
+export type ContactBroker = { created_at?: string; user_id: string; full_name: string; phone: string | null; whatsapp_phone?: string | null; whatsapp_link?: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
 async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(fn, { body });
@@ -254,9 +255,13 @@ function SendHistoryContent({ item }: { item: HistoryItem }) {
   </> : item.content?.template ? <p>נשלחה תבנית WhatsApp מאושרת: <span dir="ltr">{item.content.template}</span></p> : <p className="text-muted-foreground">התוכן המלא לא נשמר עבור שליחה זו (נשלחה לפני הוספת התיעוד).</p>;
 }
 
-function SendHistory() {
+export function useSendHistoryRows() {
   const gate = useAdminGate();
-  const q = useQuery({ queryKey: ['broker-contact-history', gate.uid], enabled: gate.enabled, queryFn: () => invoke<{ items: HistoryItem[] }>('admin-broker-contact', { action: 'history' }) });
+  return useQuery({ queryKey: ['broker-contact-history', gate.uid], enabled: gate.enabled, queryFn: () => invoke<{ items: HistoryItem[] }>('admin-broker-contact', { action: 'history' }) });
+}
+
+function SendHistory({ search }: { search: ImportSearch }) {
+  const q = useSendHistoryRows();
   const items = threadInvitationHistory(q.data?.items ?? []);
   const ownerIds = Array.from(new Set(items.map(i => i.user_id))).sort();
   const contacts = useQuery({ queryKey: ['marketing-contacts', ownerIds.join(',')], enabled: ownerIds.length > 0, queryFn: async () => {
@@ -266,7 +271,8 @@ function SendHistory() {
   const [group, setGroup] = useState<RecipientGroup>(() => readSuperAdminViewState().sendGroup ?? 'broker');
   useEffect(() => saveSuperAdminViewState({ sendGroup: group }), [group]);
   const sendCount = (g: RecipientGroup) => items.filter(i => recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) === g).length;
-  const shown = items.filter(i => recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) === group);
+  const searching = search.text.trim() || search.kind !== 'all' || search.channel !== 'all';
+  const shown = items.filter(i => (searching || recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) === group) && matchesImportSearch({ ...i, kind: recipientGroup(i, contacts.data?.get(i.user_id)?.company_name) }, { ...search, whatsapp: 'all' }));
   const [openKey, setOpenKey] = useState<string | null>(() => readSuperAdminViewState().openSendKey ?? null);
   const toggleOpen = (key: string) => {
     const next = openKey === key ? null : key;
@@ -321,7 +327,12 @@ function ImportCount({ item, running }: { item: ImportItem; running: boolean }) 
   </span>;
 }
 
-export function ImportHistory() {
+export function useImportHistoryRows() {
+  const gate = useAdminGate();
+  return useQuery({ queryKey: ['broker-import-history', gate.uid], enabled: gate.enabled, queryFn: () => invoke<{ items: ImportItem[] }>('admin-broker-contact', { action: 'imports' }) });
+}
+
+export function ImportHistory({ search = emptyImportSearch }: { search?: ImportSearch }) {
   const { data: progress } = useAdminImportJobs();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -341,15 +352,16 @@ export function ImportHistory() {
     catch { /* workspace provider shows authorization errors */ }
     finally { setOpening(null); }
   };
-  const gate = useAdminGate();
-  const q = useQuery({ queryKey: ['broker-import-history', gate.uid], enabled: gate.enabled, queryFn: () => invoke<{ items: ImportItem[] }>('admin-broker-contact', { action: 'imports' }), refetchInterval: query => progress?.[0]?.status === 'running' || query.state.data?.items.some(i => i.status === 'running') ? 4000 : false });
+  const q = useImportHistoryRows();
+  useEffect(() => { if (progress?.[0]?.status !== 'running') return; const timer = setInterval(() => void q.refetch(), 4000); return () => clearInterval(timer); }, [progress?.[0]?.status, q.refetch]);
   const [kind, setKind] = useState<'broker' | 'developer'>(() => readSuperAdminViewState().importKind ?? 'broker');
   useEffect(() => saveSuperAdminViewState({ importKind: kind }), [kind]);
   const allImports = q.data?.items ?? [];
   const activeIds = activeImportHistoryIds(allImports, progress);
   // Rows whose account was removed have no workspace and render grayed out: list them last and leave them out of tab counts.
   const isRemoved = (i: ImportItem) => !i.workspace_owner_id;
-  const items = allImports.filter(i => i.kind === kind).sort((a, b) => Number(isRemoved(a)) - Number(isRemoved(b)));
+  const searching = search.text.trim() || search.kind !== 'all';
+  const items = allImports.filter(i => (searching || i.kind === kind) && matchesImportSearch({ ...i }, { ...search, channel: 'all', whatsapp: 'all' })).sort((a, b) => Number(isRemoved(a)) - Number(isRemoved(b)));
   const kindTabs = <Tabs value={kind} onValueChange={v => setKind(v as 'broker' | 'developer')} dir="rtl" className="mb-3"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="broker">מתווכים ({allImports.filter(i => i.kind === 'broker' && !isRemoved(i)).length})</TabsTrigger><TabsTrigger value="developer">יזמים ({allImports.filter(i => i.kind === 'developer' && !isRemoved(i)).length})</TabsTrigger></TabsList></Tabs>;
   if (q.isLoading) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
   if (q.isError) return <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p>;
@@ -374,9 +386,9 @@ export function usePendingInvitations() {
   return useQuery({ queryKey: ['broker-contact-queue', gate.uid], enabled: gate.enabled, queryFn: () => invoke<{ brokers: ContactBroker[] }>('admin-broker-contact', { action: 'list' }), refetchOnWindowFocus: true, refetchInterval: 30000 });
 }
 
-function PendingInvitations() {
+function PendingInvitations({ search }: { search: ImportSearch }) {
   const q = usePendingInvitations();
-  const all = q.data?.brokers ?? [];
+  const all = newestImportsFirst(q.data?.brokers ?? []);
   const [group, setGroup] = useState<RecipientGroup>(() => readSuperAdminViewState().pendingGroup ?? 'broker');
   useEffect(() => saveSuperAdminViewState({ pendingGroup: group }), [group]);
   const devIds = all.filter(b => b.is_developer).map(b => b.user_id);
@@ -386,7 +398,8 @@ function PendingInvitations() {
   } });
   const groupOf = (b: ContactBroker) => recipientGroup({ recipient_kind: b.is_developer ? 'developer' : 'broker' }, marketing.data?.get(b.user_id)?.company_name);
   const count = (g: RecipientGroup) => all.filter(b => groupOf(b) === g).length;
-  const brokers = all.filter(b => groupOf(b) === group);
+  const searching = search.text.trim() || search.kind !== 'all' || search.whatsapp !== 'all';
+  const brokers = all.filter(b => (searching || groupOf(b) === group) && matchesImportSearch({ ...b, kind: groupOf(b) }, { ...search, channel: 'all' }));
   return <div className="space-y-4">
     {/* The scrollport has 20px top padding and the primary band is 76px high. A 56px
         offset therefore joins this row to it, with an opaque background over passing cards. */}
@@ -403,8 +416,8 @@ function PendingInvitations() {
 
 export type BrokerContactView = 'pending' | 'imports' | 'sends';
 
-export function BrokerContactQueueCard({ view = 'pending' }: { view?: BrokerContactView }) {
+export function BrokerContactQueueCard({ view = 'pending', search = emptyImportSearch }: { view?: BrokerContactView; search?: ImportSearch }) {
   return <section dir="rtl" className="pb-5 pt-3 text-right">
-    {view === 'pending' ? <PendingInvitations /> : view === 'imports' ? <ImportHistory /> : <SendHistory />}
+    {view === 'pending' ? <PendingInvitations search={search} /> : view === 'imports' ? <ImportHistory search={search} /> : <SendHistory search={search} />}
   </section>;
 }

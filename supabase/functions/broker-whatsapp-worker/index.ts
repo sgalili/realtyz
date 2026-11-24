@@ -9,9 +9,10 @@ const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('enqueue'), broker_id: z.string().uuid() }).strict(),
   z.object({ action: z.literal('status'), broker_id: z.string().uuid() }).strict(),
   z.object({ action: z.literal('batch_status') }).strict(),
+  z.object({ action: z.literal('bulk_targets') }).strict(),
   z.object({ action: z.literal('start_batch') }).strict(),
   z.object({ action: z.literal('cancel_batch'), batch_id: z.string().uuid() }).strict(),
-  z.object({ action: z.literal('enqueue_missing'), batch_id: z.string().uuid(), after: z.string().uuid().optional() }).strict(),
+  z.object({ action: z.literal('enqueue_missing'), batch_id: z.string().uuid(), after: z.string().uuid().optional(), broker_ids: z.array(z.string().uuid()).min(1).max(5000).optional() }).strict(),
   z.object({ action: z.literal('save_contact'), broker_id: z.string().uuid(), phone: z.string().min(5).max(25) }).strict(),
   z.object({ action: z.literal('heartbeat'), ...scope }).strict(),
   z.object({ action: z.literal('claim'), worker_id: scope.worker_id }).strict(),
@@ -34,9 +35,33 @@ Deno.serve(async req => {
   const parsed = schema.safeParse(await Promise.resolve().then(() => JSON.parse(raw)).catch(() => null));
   if (!parsed.success) return json({ error: 'invalid_input' }, 400);
   const input = parsed.data;
-  const userAction = ['enqueue', 'status', 'enqueue_missing', 'save_contact', 'batch_status', 'start_batch', 'cancel_batch'].includes(input.action);
+  const userAction = ['enqueue', 'status', 'enqueue_missing', 'save_contact', 'batch_status', 'start_batch', 'cancel_batch', 'bulk_targets'].includes(input.action);
   if ((machine && userAction) || (!machine && !userAction)) return json({ error: 'forbidden_action' }, 403);
   try {
+    if (input.action === 'bulk_targets') {
+      // Same eligibility as enqueue, without source reads, queue creation or sending.
+      const all = async (make: (from: number, to: number) => any) => {
+        const rows: any[] = [];
+        for (let from = 0; ; from += 500) { const {data,error} = await make(from, from + 499); if(error)throw error; rows.push(...(data ?? [])); if((data?.length ?? 0) < 500)return rows; }
+      };
+      const [onboarding, roles, demos, contacts, jobs, inquiries, listings, profiles] = await Promise.all([
+        all((f,t) => admin.from('admin_broker_onboarding').select('user_id,imported_license_number,created_at').not('import_source','is',null).order('user_id').range(f,t)),
+        all((f,t) => admin.from('user_roles').select('user_id,role').order('id').range(f,t)),
+        all((f,t) => admin.from('demo_view_accounts').select('user_id').order('user_id').range(f,t)),
+        all((f,t) => admin.from('broker_whatsapp_contacts').select('broker_id').order('broker_id').range(f,t)),
+        all((f,t) => admin.from('broker_whatsapp_jobs').select('broker_id').in('status',['pending','running','retry']).order('id').range(f,t)),
+        all((f,t) => admin.from('broker_wa_scanner_jobs').select('broker_id').in('status',['pending_source','reading_source','ready','sending','awaiting_reply']).order('id').range(f,t)),
+        all((f,t) => admin.from('listings').select('user_id,workspace_owner_id,source_url').eq('source','yad2').not('source_url','is',null).order('id').range(f,t)),
+        all((f,t) => admin.from('profiles').select('id,full_name').order('id').range(f,t)),
+      ]);
+      const excluded = new Set([...demos.map(r=>r.user_id), ...contacts.map(r=>r.broker_id), ...jobs.map(r=>r.broker_id), ...inquiries.map(r=>r.broker_id)]);
+      const sources = new Set(listings.filter(r=>r.user_id===r.workspace_owner_id && /^https:\/\/www\.yad2\.co\.il\/realestate\/item\/[a-zA-Z0-9]+(?:\?.*)?$/.test(r.source_url)).map(r=>r.user_id));
+      const brokers = onboarding.filter(r => {
+        const own = roles.filter(role=>role.user_id===r.user_id).map(role=>role.role);
+        return !excluded.has(r.user_id) && sources.has(r.user_id) && !own.some(role=>['developer','marketing_company'].includes(role)) && (r.imported_license_number || own.some(role=>['agent','lead_agent','managing_broker','junior_agent'].includes(role)));
+      }).map(r=>({user_id:r.user_id,created_at:r.created_at,full_name:profiles.find(p=>p.id===r.user_id)?.full_name ?? ''}));
+      return json({brokers});
+    }
     if (userAction || input.action==='claim') {
       const {error}=await admin.rpc('recover_broker_whatsapp_jobs');
       if(error)throw error;
@@ -77,6 +102,9 @@ Deno.serve(async req => {
       const {data: existing, error: existingError} = await activeJob();
       if(existingError)throw existingError;
       if(existing)return {ok:true,job:existing};
+      const {data: inquiry,error: ie} = await admin.from('broker_wa_scanner_jobs').select('id').eq('broker_id',brokerId).in('status',['pending_source','reading_source','ready','sending','awaiting_reply']).limit(1).maybeSingle();
+      if(ie)throw ie;
+      if(inquiry)throw new Error('גילוי המספר כבר ממתין בתור הסריקה');
       const { data: listings, error } = await admin.from('listings').select('id,source_url').eq('workspace_owner_id', brokerId).eq('user_id', brokerId).eq('source', 'yad2').not('source_url', 'is', null).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
       const listing = listings?.find(l => /^https:\/\/www\.yad2\.co\.il\/realestate\/item\/[a-zA-Z0-9]+(?:\?.*)?$/.test(l.source_url ?? ''));
@@ -105,6 +133,7 @@ Deno.serve(async req => {
       if(!batch)return json({error:'forbidden_batch'},403);
       if(batch.status!=='running')return json({results:[],next:null,stopped:true});
       let query = admin.from('admin_broker_onboarding').select('user_id').not('import_source','is',null).order('user_id').limit(20);
+      if (input.broker_ids) query = query.in('user_id', input.broker_ids);
       if (input.after) query = query.gt('user_id',input.after);
       const {data: rows,error} = await query;
       if(error)throw error;

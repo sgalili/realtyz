@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Plug, Settings2, Unplug } from 'lucide-react';
+import { ChevronDown, Loader2, Plug, Unplug } from 'lucide-react';
 import { BulkBrokerWhatsAppScan } from './BulkBrokerWhatsAppScan';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -53,23 +53,21 @@ export function BrokerScannerPanel() {
   const plugLabel = active ? 'מחובר וסורק · לחיצה להשהיה' : 'חיבור והפעלת הסריקה';
   return <section dir="rtl" className="space-y-2 rounded-md bg-muted/40 p-2" aria-label="קו סריקת WhatsApp ייעודי">
     <div className="flex items-center gap-2 text-sm">
-      <strong className="truncate">קו סריקה ייעודי</strong>
+      <Button variant="ghost" className="h-auto min-w-0 gap-1 p-0 font-semibold" aria-expanded={open} onClick={() => setOpen(o => !o)}><span className="truncate">סריקת מספרי וואטסאפ</span><ChevronDown className={`h-4 w-4 shrink-0 ${open ? 'rotate-180' : ''}`} /></Button>
       <span className={`truncate text-xs ${active ? 'text-lead-whatsapp' : 'text-muted-foreground'}`}>{stateText}</span>
       <span className="tabular-nums text-xs text-muted-foreground" dir="ltr" title="פניות היום">{status.data.used_today}/{s.daily_cap}</span>
       <div className="ms-auto flex items-center">
         <Button size="icon" variant="ghost" aria-label={plugLabel} title={plugLabel} disabled={act.isPending} className={active ? 'text-lead-whatsapp' : 'text-muted-foreground'} onClick={() => act.mutate({ action: active ? 'pause' : 'resume' })}>{act.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : active ? <Plug className="h-4 w-4" /> : <Unplug className="h-4 w-4" />}</Button>
         <BulkBrokerWhatsAppScan />
-        <Button size="icon" variant="ghost" aria-label="הגדרות הקו" aria-expanded={open} onClick={() => setOpen(o => !o)}><Settings2 className="h-4 w-4" /></Button>
       </div>
     </div>
-    {(status.data.manual_replies > 0 || !status.data.credentials_ready || w !== 'connected') && <p className="text-xs text-destructive">{[status.data.manual_replies > 0 && `${status.data.manual_replies} תשובות לבדיקה ידנית`, !status.data.credentials_ready && 'חסרים פרטי קו', w !== 'connected' && workerStateLabels[w]].filter(Boolean).join(' · ')}</p>}
+    {open && (!status.data.credentials_ready || w !== 'connected') && <p className="text-xs text-destructive">{[!status.data.credentials_ready && 'חסרים פרטי קו', w !== 'connected' && workerStateLabels[w]].filter(Boolean).join(' · ')}</p>}
     {result && <p role="status" aria-live="polite" className={`text-xs ${result.ok ? 'text-lead-whatsapp' : 'text-destructive'}`}>{result.text}</p>}
     {open && <div className="space-y-2 border-t pt-2">
       <div className="flex flex-wrap items-center gap-2">
         {field('daily_cap','מכסה יומית',1,50)}{field('jitter_min_seconds','השהיה מ־',45,600)}{field('jitter_max_seconds','עד',45,600)}{field('error_threshold','עצירה אחרי שגיאות',1,5)}
         <Button size="sm" variant="outline" disabled={act.isPending} onClick={() => act.mutate({ action: 'configure', daily_cap: value('daily_cap'), jitter_min_seconds: value('jitter_min_seconds'), jitter_max_seconds: value('jitter_max_seconds'), error_threshold: value('error_threshold') })}>שמירה</Button>
       </div>
-      <p className="text-xs text-muted-foreground">הקו פועל 24/7 לפי המכסה היומית וההשהיה האקראית. נשלח רק נוסח הפנייה שמופיע במודעה. ההגבלות מפחיתות סיכון אך אינן מבטיחות שהקו לא ייחסם.</p>
     </div>}
   </section>;
 }

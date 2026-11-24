@@ -383,6 +383,7 @@ export function PageHero() {
       >
         {/* Visual right (RTL flex start): Burger / nav toggle + AI response + optional history */}
         <div className="flex items-center gap-1">
+          {isAdminImport && <Button size="icon" variant="ghost" aria-label="חיפוש בייבוא ובשליחות" title="חיפוש" className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => window.dispatchEvent(new Event('admin-broker-import:search'))}><Search className="h-5 w-5" /></Button>}
           {access.projects && location.pathname === '/developer-dashboard' && <div className="relative">
             <Button size="icon" variant="ghost" aria-label="חיפוש פרויקטים" title="חיפוש פרויקטים" aria-expanded={searchParams.get('search') === '1'} aria-controls="developer-project-search" className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => setSearchParams(current => { const next = new URLSearchParams(current); next.set('search', '1'); return next; }, { replace: true })}><Search className="!h-5 !w-5" /></Button>
             {searchParams.get('search') === '1' && <Button size="icon" variant="ghost" aria-label="סגירת חיפוש פרויקטים" title="סגירת חיפוש" className="absolute -end-1 -top-1 h-5 w-5 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => setSearchParams(current => { const next = new URLSearchParams(current); next.delete('search'); return next; }, { replace: true })}><X className="!h-3 !w-3" /></Button>}
@@ -444,6 +445,7 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
+          {isAdminImport && <Button size="icon" variant="ghost" aria-label="איתור וייבוא" title="איתור וייבוא" className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => window.dispatchEvent(new Event('admin-broker-import:new'))}><ScanSearch className="h-5 w-5" /></Button>}
           {location.pathname.startsWith('/inbox') && <Button variant="ghost" size="icon" className="h-[46.8px] w-[46.8px] text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" aria-label="הוסף משתמש" title="הוסף משתמש" onClick={() => window.dispatchEvent(new Event('inbox:add-user'))}><UserPlus className="!h-[26px] !w-[26px]" /></Button>}
           {location.pathname.startsWith('/wallet') && <Button size="icon" variant="ghost" onClick={() => {
             const returnTo = location.state?.walletReturnTo;

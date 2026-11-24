@@ -41,6 +41,13 @@ it('blocks another job while discovery is running', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' }));
   expect(state.invoke.mock.calls.filter(([,args])=>args.body.action==='enqueue')).toHaveLength(0);
 });
+it('blocks another discovery while the dedicated scanner inquiry is awaiting a reply', async () => {
+  state.invoke.mockImplementation((fn) => Promise.resolve({ data: fn === 'broker-whatsapp-scanner' ? { job: { id: 'inquiry', status: 'awaiting_reply' } } : { job: { id: 'source', status: 'not_found' } }, error: null }));
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><BrokerWhatsAppContact brokerId="broker-id" name="Broker" /></QueryClientProvider>);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' })).toBeDisabled());
+  fireEvent.click(screen.getByRole('button', { name: 'גילוי WhatsApp של Broker' }));
+  expect(state.invoke.mock.calls.some(([,args]) => args.body.action === 'enqueue')).toBe(false);
+});
 it('uses the saved WhatsApp contact through the official sender, not a private-device link', () => {
   setup(null, '972502222222'); fireEvent.click(screen.getByRole('button', { name: 'WhatsApp רשמי אל Broker' }));
   expect(screen.getByTestId('official-recipient')).toHaveTextContent('true');

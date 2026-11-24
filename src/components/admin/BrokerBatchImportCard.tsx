@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSuperAdminGate } from '@/hooks/useSuperAdminGate';
 import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Pause, Play, Loader2, ScanSearch, Building2, UserRound, ChevronDown } from 'lucide-react';
@@ -19,6 +20,7 @@ import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY } from '../../
 import { importJobTargetKind } from '@/lib/importJobMonitoring';
 import { refreshImportedInventory } from '@/lib/refreshImportedInventory';
 import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
+import { importRunTime } from '@/lib/adminImportPresentation';
 
 const LINKS_KEY = 'toraff-broker-import-links';
 const LIMIT_KEY = 'toraff-broker-import-link-limit';
@@ -33,7 +35,7 @@ const stages: Record<string, string> = {
   developer_creating: 'יצירת חשבון יזם פעיל ללא הודעות', developer_saving: 'שמירת פרויקטים ויחידות', completed: 'הייבוא הסתיים',
 };
 
-export function BrokerBatchImportCard() {
+export function BrokerBatchImportCard({ visible = true }: { visible?: boolean }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'brokers' | 'developers'>('brokers');
   const [autoDiscovery, setAutoDiscovery] = useState(true);
@@ -58,6 +60,13 @@ export function BrokerBatchImportCard() {
   const qc = useQueryClient();
   const { data: jobs } = useAdminImportJobs();
   const current = jobs?.[0];
+  const gate = useSuperAdminGate();
+  const lastCompleted = useQuery({ queryKey: ['admin-import-last-completed', gate.uid, current?.updated_at], enabled: gate.enabled, queryFn: async () => {
+    const { data, error } = await supabase.from('broker_import_jobs').select('updated_at').eq('status', 'completed').order('updated_at', { ascending: false }).limit(1).maybeSingle();
+    if (error) throw error;
+    return data;
+  } });
+  const completed = lastCompleted.data ?? jobs?.find(job => job.status === 'completed');
   const [statusExpanded, setStatusExpanded] = useState(false);
   useEffect(() => {
     if (!current?.id) return;
@@ -134,12 +143,14 @@ export function BrokerBatchImportCard() {
 
   const runActive = Boolean(current && ['running', 'paused'].includes(current.status));
   const automaticallyRecovering = current?.status === 'paused' && checkpoint?.autoContinue === true && checkpoint.pauseReason !== 'user';
-  const canToggle = Boolean(current && !automaticallyRecovering && ['running', 'paused', 'failed'].includes(current.status));
-  const stopControl = <Button variant="ghost" size="icon" className="h-12 w-12 shrink-0 border-0 bg-transparent shadow-none" aria-label={automaticallyRecovering ? 'המשך אוטומטי' : current?.status === 'running' ? 'עצירה' : 'המשך'} title={automaticallyRecovering ? 'המשך אוטומטי' : current?.status === 'running' ? 'עצירה' : 'המשך'} disabled={!canToggle || busy || (checkpoint?.waitReason === 'rate_limit' && waitSeconds > 0 && current?.status !== 'running')} onClick={() => void action(current?.status === 'running' ? 'pause' : 'resume')}>{automaticallyRecovering ? <Loader2 className="!h-7 !w-7 animate-spin" /> : current?.status === 'running' ? <Pause className="!h-7 !w-7" /> : <Play className="!h-7 !w-7" />}</Button>;
+  const canToggle = Boolean(current && !automaticallyRecovering && (current.status === 'running' || (current.status === 'paused' && checkpoint?.pauseReason === 'user')));
+  const stopControl = canToggle ? <Button variant="ghost" size="icon" className="h-12 w-12 shrink-0 border-0 bg-transparent shadow-none" aria-label={automaticallyRecovering ? 'המשך אוטומטי' : current?.status === 'running' ? 'עצירה' : 'המשך'} title={automaticallyRecovering ? 'המשך אוטומטי' : current?.status === 'running' ? 'עצירה' : 'המשך'} disabled={!canToggle || busy || (checkpoint?.waitReason === 'rate_limit' && waitSeconds > 0 && current?.status !== 'running')} onClick={() => void action(current?.status === 'running' ? 'pause' : 'resume')}>{automaticallyRecovering ? <Loader2 className="!h-7 !w-7 animate-spin" /> : current?.status === 'running' ? <Pause className="!h-7 !w-7" /> : <Play className="!h-7 !w-7" />}</Button> : null;
   const importButton = <Button variant="ghost" size="icon" className="h-12 w-12 shrink-0 border-0 bg-transparent shadow-none" aria-label="איתור וייבוא" title="איתור וייבוא" onClick={() => { setError(''); setTarget(10); setMin(3); setMax(10); setOpen(true); }}><ScanSearch className="!h-7 !w-7" /></Button>;
-  return <section dir="rtl" className="space-y-4 border-b border-border py-5 text-right">
+  return <section dir="rtl" className="text-right">
+    <div hidden={!visible} className="space-y-2 py-2">
     {notice && <p className="text-base text-muted-foreground">{notice}</p>}
-    <div role="status" className="space-y-3 rounded-xl border border-border/70 p-4">
+    <div role="status" className="space-y-2 rounded-md border border-border/70 p-2">
+      {completed && <p className="text-xs text-muted-foreground">ייבוא אחרון · {importRunTime(completed.updated_at)}</p>}
       {current ? <div className="flex items-start gap-2"><Button variant="ghost" type="button" aria-label={statusExpanded ? 'כיווץ פרטי הייבוא' : 'הרחבת פרטי הייבוא'} aria-expanded={statusExpanded} aria-controls="import-status-details" className="h-auto min-w-0 flex-1 flex-col items-start gap-1 whitespace-normal p-0 text-right hover:bg-transparent" onClick={toggleStatus}><span className="flex min-w-0 items-center gap-2 whitespace-nowrap text-base font-semibold sm:text-lg"><ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${statusExpanded ? 'rotate-180' : ''}`} />{current.status === 'running' && !stalled && <Loader2 className="h-5 w-5 shrink-0 animate-spin" />}<span className="min-w-0 truncate">{current.status === 'paused' ? 'מושהה · ' : ''}{stages[current.stage] ?? current.stage}</span></span><span className="flex min-w-0 flex-wrap gap-x-2 gap-y-0.5 text-sm tabular-nums text-muted-foreground sm:text-base">{[targetKind === 'developers' ? `${current.developers_done ?? 0}/${current.target_brokers} יזמים` : targetKind === 'links' ? `${entitiesDone}/${current.target_brokers} קישורים` : `${current.brokers_done}/${current.target_brokers} מתווכים`, `${current.listings_done} טיוטות`, ...((current.developers_done ?? 0) > 0 ? [`${current.developers_done} יזמים`, `${current.projects_done} פרויקטים`, `${current.units_done} יחידות`] : []), ...(current.skipped > 0 ? [`${current.skipped} דולגו`] : [])].map(item => <span key={item} className="whitespace-nowrap">{item}</span>)}</span></Button><div className="flex shrink-0 items-center gap-1">{stopControl}{importButton}</div></div> : <div className="flex items-center gap-2"><span className="flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap text-base font-semibold sm:text-lg"><ScanSearch className="h-5 w-5 shrink-0 text-muted-foreground" /><span className="truncate">סטטוס ייבוא</span><span className="truncate text-sm font-normal text-muted-foreground sm:text-base">· אין ייבוא פעיל</span></span><div className="flex shrink-0 items-center gap-1">{stopControl}{importButton}</div></div>}
       {current && statusExpanded && <div id="import-status-details" className="space-y-3">
       {checkpoint?.lastError?.message && current.status !== 'completed' && !current.error && <p role="alert" className="break-words text-sm font-medium text-destructive sm:text-base">שגיאה אחרונה{checkpoint.lastError.status ? ` (${checkpoint.lastError.status})` : ''}{checkpoint.lastError.at ? ` · ${new Date(checkpoint.lastError.at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : ''}: {checkpoint.lastError.message}</p>}
@@ -156,6 +167,7 @@ export function BrokerBatchImportCard() {
       {current.error && <p role="alert" className="text-base font-medium text-destructive">{current.error}</p>}
       {error && !open && <p role="alert" className="text-base text-destructive">{error}</p>}
       </div>}
+    </div>
     </div>
     <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" className="max-h-[85dvh] max-w-lg overflow-y-auto"><DialogHeader><DialogTitle className="text-2xl">איתור וייבוא</DialogTitle></DialogHeader>
       <Tabs dir="rtl" value={mode} onValueChange={value => { if (value === 'brokers' || value === 'developers') { setMode(value); setError(''); } }}>

@@ -178,7 +178,7 @@ Deno.serve(async req => {
     const brokers = eligible.map(r => {
       const p = profiles?.find(x => x.id === r.user_id);
       const counts = inventory.find((x: { user_id: string }) => x.user_id === r.user_id);
-      return { user_id: r.user_id, full_name: p?.full_name ?? '', phone: p?.phone ?? null, email: realEmail(p?.email) ? p?.email : null,
+      return { user_id: r.user_id, created_at: r.created_at, full_name: p?.full_name ?? '', phone: p?.phone ?? null, email: realEmail(p?.email) ? p?.email : null,
         whatsapp_phone: whatsappContacts?.find(c => c.broker_id === r.user_id)?.whatsapp_phone ?? null,
         whatsapp_link: whatsappContacts?.find(c => c.broker_id === r.user_id)?.whatsapp_link ?? null,
         license_number: verified?.find(l => l.user_id === r.user_id)?.license_number ?? licenses?.find(l => l.user_id === r.user_id)?.license_number ?? r.imported_license_number ?? null,
