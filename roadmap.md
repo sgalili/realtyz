@@ -1,5 +1,12 @@
 # Roadmap
 
+## Rita brain and voice connection November 24
+- [x] Reused canonical masterAgentPrompt Rita identity/persona/format/brevity text via a pure rendering module; legacy auth resolver and prompt exports retain their API. Existing IVR Rita/Zina voice and v3 settings reused; ElevenLabs connector verified linked, Vapi settings fallback retained.
+- [x] Both stages read bounded global_ai_documents plus exact broker-local draft facts, first name and saved gender. No active-workspace lookup, private broker KB or sender persona. Stage 2 first generates a short script through streaming Responses and then narrates it with ElevenLabs; Stage 3 injects the same identity/global brain/facts with the short no-tools demo instructions.
+- [x] Consent, original 60-second deadline and cancellation remain unchanged. 29 focused tests plus isolated PostgreSQL tests passed; sample-only real AI script succeeded with name, feminine language, property and official support. TTS and Vapi payloads verified with mocks only; no voice, send or call performed.
+- [x] Connected files/parameters and manual provider setup reported in Hebrew. No new database changes, secrets, public route or outgoing messages created.
+- [ ] Live ElevenLabs narration and Vapi/Twilio call/cancel remain unverified without an approved recipient test; Vapi dashboard must have the Twilio number and ElevenLabs provider credential with Rita voice access. Publish required for the new TanStack script/call helpers; Meta template/service-window setup from the prior task remains outstanding.
+
 ## Broker opt-in outreach and first-login demo call November 24
 - [x] Inspect existing invitations, consumed-OTP helpers, first-entry RPC, signed Meta/Resend receivers and Vapi/Twilio paths. ElevenLabs is connected; Vapi/Twilio configurations exist but their live capability is unverified.
 - [x] Add separately enrolled property-aware outreach through the existing template-approval and email-consent paths. Exact sender/reply checks and transactional positive/opt-out state feed Rita's existing voice via ElevenLabs v3; WhatsApp replies receive official audio, email replies receive the voice attachment by email. Legacy invitation bodies stay unchanged.

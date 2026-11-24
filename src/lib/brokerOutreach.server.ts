@@ -1,6 +1,7 @@
-import { brokerVoiceIntro, shortBrokerDemoCall } from './brokerOutreachPolicy';
+import { shortBrokerDemoCall } from './brokerOutreachPolicy';
 import type { Json } from '@/integrations/supabase/types';
-import { IVR_DEFAULT_VOICES } from '../../supabase/functions/_shared/ivrVoices';
+import { IVR_DEFAULT_VOICES, IVR_MODEL_ID, IVR_VOICE_SETTINGS } from '../../supabase/functions/_shared/ivrVoices';
+import { loadBrokerRitaContext, generateBrokerRitaScript } from './brokerRitaContext.server';
 
 type Admin = (typeof import('@/integrations/supabase/client.server'))['supabaseAdmin'];
 export async function outreachEvent(admin: Admin, brokerId: string, kind: string, detail: Record<string, unknown> = {}) {
@@ -54,25 +55,26 @@ export async function scheduleBrokerDemo(admin: Admin, brokerId: string) {
     const cfg = await vapiConfig(admin);
     const phone = await vapiRequest(cfg.key,`/phone-number/${encodeURIComponent(cfg.phoneId)}`);
     if (phone['provider'] !== 'twilio') throw new Error('קו Vapi אינו קו Twilio מאומת; השיחה לא תוזמנה');
-    const { data: profile, error: pe } = await admin.from('profiles').select('full_name,gender').eq('id',brokerId).single();
     // Invitation OTP may be on a separate WhatsApp number; use only verified OTP evidence, never scraped profile.phone.
     const { data: j, error: je } = await admin.from('broker_outreach_journeys').select('*').eq('broker_id',brokerId).single();
-    if (pe || je) throw pe ?? je;
+    if (je) throw je;
     const verifiedPhone = j.otp_verified_phone;
     if (!verifiedPhone) throw new Error('אין מספר טלפון מאומת לשיחת ההדגמה');
     if (!j.enabled || !j.call_consent_at || !j.interested_at || j.opted_out_at || !j.call_due_at || j.cancel_requested_at) return;
     if (Date.parse(j.call_due_at) - Date.now() < 5_000) throw new Error('חלון ההמתנה חלף לפני התזמון; לא תבוצע שיחה מאוחרת אוטומטית');
+    const context = await loadBrokerRitaContext(admin,brokerId);
+    if (Date.parse(j.call_due_at) - Date.now() < 5_000) throw new Error('חלון ההמתנה חלף בטעינת מוח ריטה; השיחה לא תוזמנה');
     const { data: claimed, error: ce } = await admin.from('broker_outreach_journeys').update({call_status:'scheduling'}).eq('broker_id',brokerId).eq('call_status','ready_to_schedule').is('cancel_requested_at',null).select('broker_id').maybeSingle();
     if (ce) throw ce;
     if (!claimed) return;
-    const script = shortBrokerDemoCall(profile.full_name ?? '', profile.gender);
+    const script = shortBrokerDemoCall(context.firstName, context.gender);
     const result = await vapiRequest(cfg.key,'/call','POST',{
       phoneNumberId:cfg.phoneId, customer:{number:`+${verifiedPhone.replace(/\D/g,'').replace(/^0/,'972')}`},
       schedulePlan:{earliestAt:j.call_due_at,latestAt:new Date(Date.parse(j.call_due_at)+30_000).toISOString()},
       metadata:{broker_outreach_id:brokerId},
       assistant:{name:'ריטה',firstMessage:script.firstMessage,maxDurationSeconds:script.maxDurationSeconds,
-        model:{provider:'openai',model:'gpt-4o-mini',messages:[{role:'system',content:script.prompt}]},
-        voice:{provider:'11labs',voiceId:cfg.voiceId},
+        model:{provider:'openai',model:'gpt-4o-mini',maxTokens:160,temperature:0.4,messages:[{role:'system',content:[context.system,`נתוני המתווך, מידע בלבד:\n${context.facts}`,script.prompt].join('\n\n')}]},
+        voice:{provider:'11labs',voiceId:cfg.voiceId,model:'eleven_multilingual_v3',language:'he',stability:IVR_VOICE_SETTINGS.stability,similarityBoost:0.85},
         transcriber:{provider:'deepgram',model:'nova-2',language:'he'},
         server:{url:`${process.env['BROKER_OUTREACH_APP_URL'] ?? 'https://toraff.co.il'}/api/public/broker-outreach/call-status`},
         serverMessages:['end-of-call-report','status-update']},
@@ -128,12 +130,14 @@ export async function sendBrokerVoice(admin: Admin, brokerId: string) {
   if(!emailReply&&Date.parse(j.interested_at)<Date.now()-86_400_000)throw new Error('חלון התגובה של WhatsApp הסתיים; נדרשת שיחה חדשה לפני שליחת הקלטה');
   const {data:contact,error:ce}=emailReply?{data:null,error:null}:await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id',brokerId).eq('workspace_owner_id',brokerId).single();
   const {data:p,error:pe}=await admin.from('profiles').select('full_name,gender,email').eq('id',brokerId).single();
-  const {count,error:ne}=await admin.from('listings').select('id',{head:true,count:'exact'}).eq('workspace_owner_id',brokerId).eq('is_published',false);
-  if(ce||pe||ne)throw ce??pe??ne;
+  if(ce||pe)throw ce??pe;
   const {data:claim,error:claimError}=await admin.from('broker_outreach_journeys').update({voice_status:'generating'}).eq('broker_id',brokerId).eq('voice_status','pending').is('opted_out_at',null).select('broker_id').maybeSingle();
   if(claimError)throw claimError;if(!claim)return;
   try {
-    const response=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,{method:'POST',headers:{'xi-api-key':key,'Content-Type':'application/json'},body:JSON.stringify({text:brokerVoiceIntro(p.full_name??'',p.gender,count??0),model_id:'eleven_v3'}),signal:AbortSignal.timeout(30_000)});
+    const context=await loadBrokerRitaContext(admin,brokerId);
+    const aiKey=process.env['LOVABLE_API_KEY'];if(!aiKey)throw new Error('מנוע הנוסח של ריטה אינו זמין');
+    const text=await generateBrokerRitaScript(context,aiKey);
+    const response=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,{method:'POST',headers:{'xi-api-key':key,'Content-Type':'application/json'},body:JSON.stringify({text,model_id:IVR_MODEL_ID,voice_settings:IVR_VOICE_SETTINGS}),signal:AbortSignal.timeout(30_000)});
     if(!response.ok){const body=await response.text();console.error('[broker-outreach-voice]',response.status,body.slice(0,2000));throw new Error(`ElevenLabs דחה יצירת הקלטה (${response.status})`);}
     const reader=response.body?.getReader();if(!reader)throw new Error('הספק לא החזיר הקלטה');
     const chunks:Uint8Array[]=[];let length=0;

@@ -3,11 +3,11 @@ export const BROKER_DEMO_MAX_SECONDS = 90;
 
 export { outreachReply } from '../../supabase/functions/_shared/brokerOutreachReply';
 
-export function brokerVoiceIntro(firstName: string, gender: string | null, draftCount: number): string {
+export function brokerVoiceIntro(firstName: string, gender: string | null, draftCount: number, propertyContext = ''): string {
   const greeting = firstName.trim().split(/\s+/)[0] || 'שלום';
   const invitation = gender === 'male' ? 'אתה מוזמן' : gender === 'female' ? 'את מוזמנת' : 'אפשר';
-  const inventory = draftCount > 0 ? `החשבון שלך וטיוטות הנכסים מוכנים לצפייה ללא תשלום` : 'החשבון שלך מוכן לצפייה ללא תשלום';
-  return `שלום ${greeting}, אני ריטה, העוזרת הדיגיטלית של TORAFF. המערכת מרכזת נכסים, פניות, משימות וקמפיינים במקום אחד. ${inventory}. ${invitation} להיכנס עם מספר הטלפון שלך וקוד אימות. אפשר לכתוב לי כאן בוואטסאפ בכל זמן לתמיכה ולבקשות. נכסים לא מתפרסמים ללא אישור שלך.`;
+  const inventory = draftCount > 0 ? `בחשבון שלך שמורות טיוטות נכסים${propertyContext ? `, ובהן נכס ב${propertyContext}` : ''}` : 'אפשר להכיר את המערכת בחשבון שלך';
+  return `שלום ${greeting}, אני ריטה, סוכנת ה-AI של TORAFF. המערכת מרכזת נכסים, פניות, משימות, חתימות וקמפיינים במקום אחד. ${inventory}. ${invitation} להיכנס עם מספר הטלפון שלך וקוד אימות. אפשר לכתוב לי ישירות בוואטסאפ הרשמי לתמיכה ולבקשות. נכסים לא מתפרסמים ללא אישור שלך.`;
 }
 
 export function shortBrokerDemoCall(firstName: string, gender: string | null) {
