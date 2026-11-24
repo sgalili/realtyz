@@ -2,6 +2,7 @@ import { z } from 'npm:zod@3';
 import { adminClient } from '../_shared/authz.ts';
 import { commitExternalEntity } from '../_shared/externalImportCommit.ts';
 import { validExternalCounts, validWorkerCredential } from '../_shared/externalImportWorker.ts';
+import { alertImportBalance } from '../_shared/importBalanceAlert.ts';
 
 const scope = { worker_id: z.string().trim().min(1).max(100), job_id: z.string().uuid(), lease_token: z.string().uuid() };
 const schema = z.discriminatedUnion('action', [
@@ -54,6 +55,7 @@ Deno.serve(async req => {
       _status: input.status, _error: input.error, _release: input.release,
     });
     if (error) throw error;
+    if (input.error) await alertImportBalance(admin, input.job_id, typeof input.checkpoint.lastError === 'object' && input.checkpoint.lastError ? (input.checkpoint.lastError as { status?: number }).status : undefined, input.error);
     return json(data);
   } catch (reason) {
     const error = reason as { message?: string; code?: string; status?: number };

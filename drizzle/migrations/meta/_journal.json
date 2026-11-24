@@ -2031,6 +2031,27 @@
       "when": 1795497101977,
       "tag": "0289_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 290,
+      "version": "7",
+      "when": 1795497975697,
+      "tag": "0290_import_repeat_and_balance_alerts",
+      "breakpoints": true
+    },
+    {
+      "idx": 291,
+      "version": "7",
+      "when": 1795498079771,
+      "tag": "0291_import_actual_property_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 292,
+      "version": "7",
+      "when": 1795498431381,
+      "tag": "0292_protect_repeat_configuration_and_developer_cursor",
+      "breakpoints": true
     }
   ]
 }

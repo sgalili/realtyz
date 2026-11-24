@@ -45,7 +45,7 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
   const [max, setMax] = useState(10);
   const [links, setLinksState] = useState(() => { try { return localStorage.getItem(LINKS_KEY) ?? ''; } catch { return ''; } });
   const setLinks = (value: string) => { setLinksState(value); try { value ? localStorage.setItem(LINKS_KEY, value) : localStorage.removeItem(LINKS_KEY); } catch { /* storage unavailable */ } };
-  const [linkLimit, setLinkLimitState] = useState(() => { const n = Number((() => { try { return localStorage.getItem(LIMIT_KEY); } catch { return null; } })()); return n >= 1 && n <= 10 ? n : 10; });
+  const [linkLimit, setLinkLimitState] = useState(() => { const n = Number((() => { try { return localStorage.getItem(LIMIT_KEY); } catch { return null; } })()); return n >= 1 && n <= 50 ? n : 10; });
   const setLinkLimit = (value: number) => { setLinkLimitState(value); try { localStorage.setItem(LIMIT_KEY, String(value)); } catch { /* storage unavailable */ } };
   const [expectedProjects, setExpectedProjectsState] = useState(() => { const n = Number((() => { try { return localStorage.getItem(EXPECTED_PROJECTS_KEY); } catch { return null; } })()); return n >= 1 && n <= 100 ? n : 1; });
   const setExpectedProjects = (value: number) => { setExpectedProjectsState(value); try { localStorage.setItem(EXPECTED_PROJECTS_KEY, String(value)); } catch { /* storage unavailable */ } };
@@ -56,11 +56,25 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
   const useLinks = !autoDiscovery && links.trim().length > 0;
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [repeatBusy, setRepeatBusy] = useState(false);
+  const [repeatDraft, setRepeatDraft] = useState(false);
   const [error, setError] = useState('');
   const qc = useQueryClient();
   const { data: jobs } = useAdminImportJobs();
   const current = jobs?.[0];
   const gate = useSuperAdminGate();
+  const repeatEnabled = current?.repeat_enabled ?? repeatDraft;
+  const setRepeat = async (enabled: boolean) => {
+    if (!current) { setRepeatDraft(enabled); return; }
+    setRepeatBusy(true); setError('');
+    try {
+      const { error: repeatError } = await supabase.rpc('set_import_repeat', { _id: current.id, _enabled: enabled });
+      if (repeatError) throw repeatError;
+      setRepeatDraft(enabled);
+      await qc.invalidateQueries({ queryKey: ['admin-broker-import-jobs'] });
+    } catch { setError('לא ניתן לעדכן חזרתיות כרגע. ההתקדמות נשמרה.'); }
+    finally { setRepeatBusy(false); }
+  };
   const lastCompleted = useQuery({ queryKey: ['admin-import-last-completed', gate.uid, current?.updated_at], enabled: gate.enabled, queryFn: async () => {
     const { data, error } = await supabase.from('broker_import_jobs').select('updated_at').eq('status', 'completed').order('updated_at', { ascending: false }).limit(1).maybeSingle();
     if (error) throw error;
@@ -68,6 +82,12 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
   } });
   const completed = lastCompleted.data ?? jobs?.find(job => job.status === 'completed');
   const [statusExpanded, setStatusExpanded] = useState(false);
+  const savedCounts = useQuery({ queryKey: ['admin-import-broker-counts', gate.uid, current?.id, current?.updated_at], enabled: gate.enabled && statusExpanded && Boolean(current?.id), queryFn: async () => {
+    if (!current) return [];
+    const { data, error: countError } = await supabase.rpc('get_import_broker_property_counts', { _id: current.id });
+    if (countError) throw countError;
+    return data;
+  } });
   useEffect(() => {
     if (!current?.id) return;
     const saved = readSuperAdminViewState().importStatus;
@@ -99,6 +119,10 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
       });
       if (error) { const details = error instanceof FunctionsHttpError ? await error.context.json().catch(() => null) : null; throw new Error(details?.error ?? 'הבקשה נכשלה'); }
       if (data?.error) throw new Error(data.error);
+      if (data?.job_id && repeatEnabled && !useLinks) {
+        const { error: repeatError } = await supabase.rpc('set_import_repeat', { _id: data.job_id, _enabled: true });
+        if (repeatError) { setNotice('הייבוא התחיל ללא חזרתיות. ניתן להפעיל אותה בשורת הסטטוס.'); }
+      }
       await qc.invalidateQueries({ queryKey: ['admin-broker-import-jobs'] });
       if (kind !== 'pause' && kind !== 'resume') setOpen(false);
       if (kind === 'start_urls') {
@@ -147,12 +171,15 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
   const stopControl = canToggle ? <Button variant="ghost" size="icon" className="h-12 w-12 shrink-0 border-0 bg-transparent shadow-none" aria-label={automaticallyRecovering ? 'המשך אוטומטי' : current?.status === 'running' ? 'עצירה' : 'המשך'} title={automaticallyRecovering ? 'המשך אוטומטי' : current?.status === 'running' ? 'עצירה' : 'המשך'} disabled={!canToggle || busy || (checkpoint?.waitReason === 'rate_limit' && waitSeconds > 0 && current?.status !== 'running')} onClick={() => void action(current?.status === 'running' ? 'pause' : 'resume')}>{automaticallyRecovering ? <Loader2 className="!h-7 !w-7 animate-spin" /> : current?.status === 'running' ? <Pause className="!h-7 !w-7" /> : <Play className="!h-7 !w-7" />}</Button> : null;
   const importButton = <Button variant="ghost" size="icon" className="h-12 w-12 shrink-0 border-0 bg-transparent shadow-none" aria-label="איתור וייבוא" title="איתור וייבוא" onClick={() => { setError(''); setTarget(10); setMin(3); setMax(10); setOpen(true); }}><ScanSearch className="!h-7 !w-7" /></Button>;
   return <section dir="rtl" className="text-right">
-    <div hidden={!visible} className="space-y-2 py-2">
+    <div hidden={!visible && !runActive} className="space-y-2 py-2">
     {notice && <p className="text-base text-muted-foreground">{notice}</p>}
     <div role="status" className="space-y-2 rounded-md border border-border/70 p-2">
       {completed && <p className="text-xs text-muted-foreground">ייבוא אחרון · {importRunTime(completed.updated_at)}</p>}
       {current ? <div className="flex items-start gap-2"><Button variant="ghost" type="button" aria-label={statusExpanded ? 'כיווץ פרטי הייבוא' : 'הרחבת פרטי הייבוא'} aria-expanded={statusExpanded} aria-controls="import-status-details" className="h-auto min-w-0 flex-1 flex-col items-start gap-1 whitespace-normal p-0 text-right hover:bg-transparent" onClick={toggleStatus}><span className="flex min-w-0 items-center gap-2 whitespace-nowrap text-base font-semibold sm:text-lg"><ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${statusExpanded ? 'rotate-180' : ''}`} />{current.status === 'running' && !stalled && <Loader2 className="h-5 w-5 shrink-0 animate-spin" />}<span className="min-w-0 truncate">{current.status === 'paused' ? 'מושהה · ' : ''}{stages[current.stage] ?? current.stage}</span></span><span className="flex min-w-0 flex-wrap gap-x-2 gap-y-0.5 text-sm tabular-nums text-muted-foreground sm:text-base">{[targetKind === 'developers' ? `${current.developers_done ?? 0}/${current.target_brokers} יזמים` : targetKind === 'links' ? `${entitiesDone}/${current.target_brokers} קישורים` : `${current.brokers_done}/${current.target_brokers} מתווכים`, `${current.listings_done} טיוטות`, ...((current.developers_done ?? 0) > 0 ? [`${current.developers_done} יזמים`, `${current.projects_done} פרויקטים`, `${current.units_done} יחידות`] : []), ...(current.skipped > 0 ? [`${current.skipped} דולגו`] : [])].map(item => <span key={item} className="whitespace-nowrap">{item}</span>)}</span></Button><div className="flex shrink-0 items-center gap-1">{stopControl}{importButton}</div></div> : <div className="flex items-center gap-2"><span className="flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap text-base font-semibold sm:text-lg"><ScanSearch className="h-5 w-5 shrink-0 text-muted-foreground" /><span className="truncate">סטטוס ייבוא</span><span className="truncate text-sm font-normal text-muted-foreground sm:text-base">· אין ייבוא פעיל</span></span><div className="flex shrink-0 items-center gap-1">{stopControl}{importButton}</div></div>}
       {current && statusExpanded && <div id="import-status-details" className="space-y-3">
+      {targetKind === 'brokers' && <p className="text-base text-muted-foreground">תקרת הריצה: עד {current.max_listings} נכסים למתווך</p>}
+      <div className="max-h-48 space-y-1 overflow-y-auto">{savedCounts.data?.map(broker => <p key={broker.broker_id} className="text-sm text-muted-foreground">{((current.checkpoint as { brokerResults?: { broker_id: string; full_name?: string }[] })?.brokerResults ?? []).find(item => item.broker_id === broker.broker_id)?.full_name ?? 'מתווך'} · {broker.saved_count} נכסים נשמרו</p>)}</div>
+      {savedCounts.isError && <p role="alert" className="text-sm text-muted-foreground">ספירת הנכסים אינה זמינה כרגע</p>}
       {checkpoint?.lastError?.message && current.status !== 'completed' && !current.error && <p role="alert" className="break-words text-sm font-medium text-destructive sm:text-base">שגיאה אחרונה{checkpoint.lastError.status ? ` (${checkpoint.lastError.status})` : ''}{checkpoint.lastError.at ? ` · ${new Date(checkpoint.lastError.at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : ''}: {checkpoint.lastError.message}</p>}
       <Progress className="h-3" value={current.status === 'completed' ? 100 : Math.min(99, (entitiesDone + (developerStage && checkpoint?.developerWork ? (checkpoint.developerWork.visitedUrls?.length ?? 0) / Math.max(1, (checkpoint.developerWork.visitedUrls?.length ?? 0) + (checkpoint.developerWork.pendingUrls?.length ?? 0) + 1) : 0)) / Math.max(1, current.target_brokers) * 100)} />
       {current.status === 'completed' && <ImportSummary checkpoint={checkpoint} job={current} />}
@@ -169,6 +196,12 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
       </div>}
     </div>
     </div>
+    <div className="flex items-center justify-between gap-2 py-1">
+      <Label htmlFor="import-repeat" className="text-base">חזרתיות</Label>
+      <div className="flex items-center gap-2"><span className="text-sm text-muted-foreground">{repeatBusy ? 'מעדכן…' : repeatEnabled ? 'פעילה' : 'כבויה'}</span><Switch id="import-repeat" checked={repeatEnabled} disabled={repeatBusy || !gate.enabled} onCheckedChange={enabled => void setRepeat(enabled)} /></div>
+    </div>
+    {error && !open && !statusExpanded && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    {repeatEnabled && (current?.checkpoint as { source?: string; autoDevelopers?: boolean })?.source === 'urls' && !(current?.checkpoint as { autoDevelopers?: boolean })?.autoDevelopers && <p className="text-sm text-muted-foreground">רשימת הקישורים תסתיים ללא סריקה נוספת. חזרתיות זמינה באיתור אוטומטי.</p>}
     <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" className="max-h-[85dvh] max-w-lg overflow-y-auto"><DialogHeader><DialogTitle className="text-2xl">איתור וייבוא</DialogTitle></DialogHeader>
       <Tabs dir="rtl" value={mode} onValueChange={value => { if (value === 'brokers' || value === 'developers') { setMode(value); setError(''); } }}>
         <TabsList className="grid h-12 w-full grid-cols-2"><TabsTrigger value="brokers" className="gap-2 text-base"><UserRound className="h-4 w-4" />מתווכים</TabsTrigger><TabsTrigger value="developers" className="gap-2 text-base"><Building2 className="h-4 w-4" />יזמים</TabsTrigger></TabsList>
@@ -181,10 +214,10 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
           {(invalidCount > 0 || mismatchedCount > 0) && <p role="alert" className="text-base text-destructive">יש להזין קישורים תקינים התואמים ללשונית שנבחרה.</p>}
         </>}
         {mode === 'developers' ? <>{autoDiscovery && <CountField id="developer-target" label="מספר יזמים לאיתור" value={targetDevelopers} min={1} max={100} onChange={setTargetDevelopers} />}
-          <CountField id="project-limit" label="מספר פרויקטים ליזם" value={expectedProjects} min={1} max={100} onChange={setExpectedProjects} />
+          <CountField id="project-limit" label="עד כמה פרויקטים ליזם" value={expectedProjects} min={1} max={100} onChange={setExpectedProjects} />
         </> : <>
           {autoDiscovery && <><CountField id="broker-target" label="מספר מתווכים רצוי" value={target} min={1} max={100} onChange={setTarget} /><CountField id="broker-min" label="מינימום נכסים פעילים למתווך" value={min} min={1} max={max} onChange={setMin} /></>}
-          <CountField id="broker-max" label="מקסימום נכסים למתווך" value={useLinks ? linkLimit : max} min={useLinks ? 1 : min} max={50} onChange={useLinks ? setLinkLimit : setMax} />
+          <CountField id="broker-max" label="עד כמה נכסים למתווך" value={useLinks ? linkLimit : max} min={useLinks ? 1 : min} max={50} onChange={useLinks ? setLinkLimit : setMax} />
         </>}
         {error && <p role="alert" className="text-base text-destructive">{error}</p>}
         <div className="flex justify-between gap-2"><Button className="text-base" variant="outline" onClick={() => setOpen(false)}>ביטול</Button><Button className="text-base" disabled={busy || (!runActive && Boolean(current?.lease_until && Date.parse(current.lease_until) > now)) || (useLinks && (invalidCount > 0 || mismatchedCount > 0)) || (!autoDiscovery && !links.trim()) || (mode === 'brokers' && autoDiscovery && !validImportParameters(target, min, max))} onClick={async () => { if (runActive && !window.confirm('להפסיק את הייבוא הפעיל ולהתחיל ייבוא חדש? הטיוטות והפרויקטים שכבר נשמרו לא יימחקו.')) return; if (current?.status === 'running') { setBusy(true); const { data, error } = await supabase.functions.invoke('admin-broker-import-queue', { body: { action: 'pause', job_id: current.id } }); setBusy(false); if (error || data?.error) { setError('לא ניתן היה לעצור את הייבוא הפעיל; ייבוא חדש לא התחיל'); return; } } void action(useLinks ? 'start_urls' : mode === 'developers' ? 'start_auto_developers' : 'start'); }}><ScanSearch className="h-5 w-5" />{busy ? 'מתחיל…' : runActive ? 'עצור והתחל' : 'התחלת ייבוא'}</Button></div>

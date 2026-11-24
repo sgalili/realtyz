@@ -1368,6 +1368,9 @@ export type Database = {
           max_listings: number
           min_listings: number
           projects_done: number
+          repeat_enabled: boolean
+          repeat_parent_id: string | null
+          repeat_seed: Json | null
           skipped: number
           stage: string
           status: string
@@ -1392,6 +1395,9 @@ export type Database = {
           max_listings: number
           min_listings: number
           projects_done?: number
+          repeat_enabled?: boolean
+          repeat_parent_id?: string | null
+          repeat_seed?: Json | null
           skipped?: number
           stage?: string
           status?: string
@@ -1416,6 +1422,9 @@ export type Database = {
           max_listings?: number
           min_listings?: number
           projects_done?: number
+          repeat_enabled?: boolean
+          repeat_parent_id?: string | null
+          repeat_seed?: Json | null
           skipped?: number
           stage?: string
           status?: string
@@ -1426,7 +1435,15 @@ export type Database = {
           updated_at?: string
           workspace_owner_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "broker_import_jobs_repeat_parent_id_fkey"
+            columns: ["repeat_parent_id"]
+            isOneToOne: false
+            referencedRelation: "broker_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       broker_import_scrape_cache: {
         Row: {
@@ -5836,6 +5853,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      import_balance_alerts: {
+        Row: {
+          job_id: string | null
+          last_attempt_at: string
+          notification_id: string | null
+          recipient_id: string
+          result: Json | null
+        }
+        Insert: {
+          job_id?: string | null
+          last_attempt_at?: string
+          notification_id?: string | null
+          recipient_id: string
+          result?: Json | null
+        }
+        Update: {
+          job_id?: string | null
+          last_attempt_at?: string
+          notification_id?: string | null
+          recipient_id?: string
+          result?: Json | null
+        }
+        Relationships: []
       }
       import_history_deleted_records: {
         Row: {
@@ -11448,6 +11489,9 @@ export type Database = {
           max_listings: number
           min_listings: number
           projects_done: number
+          repeat_enabled: boolean
+          repeat_parent_id: string | null
+          repeat_seed: Json | null
           skipped: number
           stage: string
           status: string
@@ -11597,6 +11641,9 @@ export type Database = {
           max_listings: number
           min_listings: number
           projects_done: number
+          repeat_enabled: boolean
+          repeat_parent_id: string | null
+          repeat_seed: Json | null
           skipped: number
           stage: string
           status: string
@@ -11616,6 +11663,10 @@ export type Database = {
       }
       claim_fb_group_post_slot: {
         Args: { _group: string; _limit: number; _owner: string }
+        Returns: boolean
+      }
+      claim_import_balance_alert: {
+        Args: { _job: string; _recipient: string }
         Returns: boolean
       }
       claim_market_scrape_slot: { Args: { _source?: string }; Returns: Json }
@@ -12413,6 +12464,13 @@ export type Database = {
       get_growth_analytics: { Args: never; Returns: Json }
       get_homely_admin_overview: { Args: never; Returns: Json }
       get_homely_password: { Args: { _user_id: string }; Returns: string }
+      get_import_broker_property_counts: {
+        Args: { _id: string }
+        Returns: {
+          broker_id: string
+          saved_count: number
+        }[]
+      }
       get_invite_bonus_settings: { Args: never; Returns: Json }
       get_lead_enrichment: { Args: { _lead_id: string }; Returns: Json }
       get_lead_price_recommendation: {
@@ -13172,6 +13230,10 @@ export type Database = {
       set_homely_password: {
         Args: { _password: string; _user_id: string }
         Returns: undefined
+      }
+      set_import_repeat: {
+        Args: { _enabled: boolean; _id: string }
+        Returns: Json
       }
       set_invite_bonus_settings: {
         Args: { _friend: number; _referrer: number }

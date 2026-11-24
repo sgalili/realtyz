@@ -6,8 +6,8 @@ export function batchPhone(v: string): string | null {
   return /^9725\d{8}$/.test(d) ? d : null;
 }
 
-/** Keeps only exact Yad2 ad links, deduplicated, max 10 per broker. */
-export function batchListingUrls(urls: string[]): string[] {
+/** Legacy callers default to ten; queued imports pass their explicit maximum (up to fifty). */
+export function batchListingUrls(urls: string[], limit = 10): string[] {
   const out = new Set<string>();
   for (const u of urls) {
     try {
@@ -16,7 +16,7 @@ export function batchListingUrls(urls: string[]): string[] {
       if (x.protocol === 'https:' && /(^|\.)yad2\.co\.il$/i.test(x.hostname) && id) out.add(`https://www.yad2.co.il/realestate/item/${id.toLowerCase()}`);
     } catch { /* skip */ }
   }
-  return [...out].slice(0, 10);
+  return [...out].slice(0, Math.max(1, Math.min(50, Math.trunc(limit))));
 }
 
 export function normalizeBatchBroker(b: { full_name: string; phone: string; email?: string | null; license_number: string; office_name?: string | null; listing_urls: string[] }) {

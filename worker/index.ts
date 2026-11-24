@@ -7,6 +7,7 @@ import { advanceExternalFailedSource, fatalImportFailure, finishFailedImportItem
 import { parseAgencies, agencyDirectoryUrl, agencyVolumeAllowed } from '../supabase/functions/_shared/yad2Agencies.ts';
 import { parseDeveloperDirectory, DEVELOPER_DIRECTORY_URL } from '../supabase/functions/_shared/yad2DeveloperDirectory.ts';
 import { readPage, newDeveloperQueueWork, mergeDeveloperQueuePage, detailedUnitCount } from '../supabase/functions/_shared/yad2DeveloperImport.ts';
+import { brightDataBalanceExhausted } from '../supabase/functions/_shared/brightDataBalance.ts';
 
 type Job = any;
 class WorkerError extends Error { constructor(message: string, public status = 500, public retryAfterMs = 0, public sourceUrl?: string) { super(message); } }
@@ -45,7 +46,9 @@ export async function startImportWorker() {
     const html = await response.text();
     const providerError = `${response.headers.get('x-brd-err-code') ?? ''} ${response.headers.get('x-brd-error') ?? ''}`.trim();
     console.log(JSON.stringify({event:'source_response',url,status:response.status,zone:config.zone,transport:'Web Unlocker REST',bytes:html.length,provider_error:providerError.split(config.token).join('[redacted]')}));
-    if (/client_10020|account.*suspend|billing.*inactive/i.test(providerError+' '+html.slice(0,500))) {providerSuspended=true;throw new WorkerError('Bright Data account suspended',407);}
+    const providerDetail = `Bright Data ${providerError} ${html.slice(0,500)}`.split(config.token).join('[redacted]');
+    if (brightDataBalanceExhausted(response.status, providerDetail)) { providerSuspended = true; throw new WorkerError(providerDetail, 402, 0, url); }
+    if (/client_10020|account.*suspend|billing.*inactive/i.test(providerDetail)) {providerSuspended=true;throw new WorkerError(providerDetail,407);}
     if (!response.ok || providerError.trim()) {
       const header = response.headers.get('retry-after') ?? '';
       const retry = /^\d+$/.test(header) ? Number(header)*1000 : Math.max(0,Date.parse(header)-Date.now());

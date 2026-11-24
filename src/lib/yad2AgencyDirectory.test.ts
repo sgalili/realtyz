@@ -29,9 +29,15 @@ describe('current Yad2 agencies directory', () => {
     expect(row.active_listing_count).toBe(80);
   });
   it('never assigns a license when no broker matches it', () => {
+    // Identity must remain source-bound even when extra property pages are requested.
     const row = parseAgencyProfile(page({ agencyData: { details: { officeName: 'משרד', licenseNumber: '3172967' }, brokers: [{ name: 'אחר', licenseNumber: '1111111' }], feed: [{ token: 'abcd1234' }] } }), 'https://www.yad2.co.il/realestate/agency/111').results[0];
     expect(row.publisher.broker_license_number).toBeUndefined();
     expect(row.listing_urls).toEqual([]);
+  });
+  it('continues beyond the five-ad feed using the source total when totalPages is absent', () => {
+    const result = parseAgencyProfile(page({ agencyData: { details: { licenseNumber: '3172967' }, brokers: [{ name: 'דנה כהן', licenseNumber: '3172967' }], feed: Array.from({ length: 5 }, (_, i) => ({ token: `abcd${i}` })), pagination: { total: 10 } } }), 'https://www.yad2.co.il/realestate/agency/111', 10);
+    expect('total_pages' in result ? result.total_pages : null).toBe(2);
+    expect(result.results[0]?.listing_urls).toHaveLength(5);
   });
   it('keeps scanning while geography nodes remain, then completes', () => {
     const c: any = { ...freshImportCheckpoint(), directoryQueue: ['topArea=2'], directoryVisited: 1 };

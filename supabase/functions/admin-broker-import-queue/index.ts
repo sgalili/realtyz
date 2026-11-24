@@ -14,6 +14,7 @@ import { matchingDevelopers, normalizeDeveloperName } from '../_shared/developer
 import { DEVELOPER_DIRECTORY_URL } from '../_shared/yad2DeveloperDirectory.ts';
 import { scheduleImportRateLimitRetry, scheduleImportTransientRetry } from '../_shared/importRateLimitRetry.ts';
 import { fatalImportFailure, finishFailedImportItem, recordImportItemFailure, IMPORT_ITEM_ATTEMPTS } from '../_shared/importItemFailure.ts';
+import { alertImportBalance } from '../_shared/importBalanceAlert.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(50)}).strict(),
@@ -498,7 +499,7 @@ Deno.serve(async req => {
       if(e instanceof ProviderAccountError || fatalImportFailure(status,message)) {
         c.terminalReason='authorization_or_provider_configuration';
         c.lastError={message:message.slice(0,500),status:status??null,at:new Date().toISOString(),stage:c.phase};
-        await save({status:'failed',error:message});return json({ok:false,failed:true});
+        await save({status:'failed',error:message});await alertImportBalance(admin,job.id,status,message);return json({ok:false,failed:true});
       }
       const url=c.activeRequest?.url??`phase:${c.phase}:broker:${c.brokerIndex??0}:listing:${c.listingIndex??0}`;
       const failure=recordImportItemFailure(c,url,message,status);

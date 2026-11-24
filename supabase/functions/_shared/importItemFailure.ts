@@ -1,7 +1,7 @@
 /** Item-local budgets survive sibling successes and orchestrator restarts. */
 export const IMPORT_ITEM_ATTEMPTS = 3;
 export function fatalImportFailure(status: number | undefined, message: string) {
-  return [401, 403, 407].includes(status ?? 0) || /client_10020|account.*suspend|billing.*inactive|invalid.*(api.?key|zone)/i.test(message);
+  return [401, 402, 403, 407].includes(status ?? 0) || /client_10020|account.*suspend|billing.*inactive|invalid.*(api.?key|zone)/i.test(message);
 }
 
 export function recordImportItemFailure(c: Record<string, any>, url: string, message: string, status?: number, now = Date.now()) {

@@ -77,7 +77,7 @@ async function readAndCommit(items, read, commit) {
 // supabase/functions/_shared/importItemFailure.ts
 var IMPORT_ITEM_ATTEMPTS = 3;
 function fatalImportFailure(status, message) {
-  return [401, 403, 407].includes(status ?? 0) || /client_10020|account.*suspend|billing.*inactive|invalid.*(api.?key|zone)/i.test(message);
+  return [401, 402, 403, 407].includes(status ?? 0) || /client_10020|account.*suspend|billing.*inactive|invalid.*(api.?key|zone)/i.test(message);
 }
 function recordImportItemFailure(c, url, message, status, now = Date.now()) {
   c.autoContinue = true;
@@ -134,7 +134,7 @@ function batchPhone(v) {
   if (/^05\d{8}$/.test(d)) return `972${d.slice(1)}`;
   return /^9725\d{8}$/.test(d) ? d : null;
 }
-function batchListingUrls(urls) {
+function batchListingUrls(urls, limit = 10) {
   const out = /* @__PURE__ */ new Set();
   for (const u of urls) {
     try {
@@ -144,7 +144,7 @@ function batchListingUrls(urls) {
     } catch {
     }
   }
-  return [...out].slice(0, 10);
+  return [...out].slice(0, Math.max(1, Math.min(50, Math.trunc(limit))));
 }
 
 // supabase/functions/_shared/yad2Agencies.ts
@@ -860,6 +860,11 @@ function parseDeveloperDirectory(html, pageUrl) {
   return { urls, next_url: next ? developerDirectoryUrl(`${DEVELOPER_DIRECTORY_URL}?page=${next}`) : null };
 }
 
+// supabase/functions/_shared/brightDataBalance.ts
+function brightDataBalanceExhausted(status, message) {
+  return /bright\s*data|brightdata|x-brd|client_\d+/i.test(message) && (status === 402 || /(?:insufficient|exhausted|depleted|no|zero|out of)\s+(?:account\s+)?(?:credits?|balance|funds)|(?:credits?|balance|funds|quota|spending limit).{0,50}(?:exhausted|depleted|exceeded|reached|empty)|(?:billing|payment).{0,25}(?:required|limit reached)/i.test(message));
+}
+
 // worker/index.ts
 var WorkerError = class extends Error {
   constructor(message, status = 500, retryAfterMs = 0, sourceUrl2) {
@@ -908,9 +913,14 @@ async function startImportWorker() {
     const html = await response.text();
     const providerError = `${response.headers.get("x-brd-err-code") ?? ""} ${response.headers.get("x-brd-error") ?? ""}`.trim();
     console.log(JSON.stringify({ event: "source_response", url, status: response.status, zone: config.zone, transport: "Web Unlocker REST", bytes: html.length, provider_error: providerError.split(config.token).join("[redacted]") }));
-    if (/client_10020|account.*suspend|billing.*inactive/i.test(providerError + " " + html.slice(0, 500))) {
+    const providerDetail = `Bright Data ${providerError} ${html.slice(0, 500)}`.split(config.token).join("[redacted]");
+    if (brightDataBalanceExhausted(response.status, providerDetail)) {
       providerSuspended = true;
-      throw new WorkerError("Bright Data account suspended", 407);
+      throw new WorkerError(providerDetail, 402, 0, url);
+    }
+    if (/client_10020|account.*suspend|billing.*inactive/i.test(providerDetail)) {
+      providerSuspended = true;
+      throw new WorkerError(providerDetail, 407);
     }
     if (!response.ok || providerError.trim()) {
       const header = response.headers.get("retry-after") ?? "";

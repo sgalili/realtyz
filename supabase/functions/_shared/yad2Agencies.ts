@@ -100,8 +100,12 @@ export function parseAgencyProfileData(agency: any, sourceUrl: string, maxListin
     if (!/^[a-z0-9]{4,20}$/i.test(token) || NON_RESIDENTIAL_RE.test(kind)) return [];
     return [`https://www.yad2.co.il/realestate/item/${token}`];
   });
-  const listingUrls = batchListingUrls(links).slice(0, Math.max(1, maxListings));
+  const listingUrls = batchListingUrls(links, maxListings);
   const total = agencyListingCount(agency?.pagination?.total);
+  const pageSize = Array.isArray(agency?.feed) ? agency.feed.length : 0;
+  const explicitPages = Number(agency?.pagination?.totalPages);
+  // The observed payload can omit totalPages. Its own total and feed length still establish pagination.
+  const totalPages = explicitPages > 0 ? Math.ceil(explicitPages) : total && pageSize > 0 ? Math.ceil(total / pageSize) : 1;
   return { results: [{
     source_url: agencyUrl(sourceUrl.split('?')[0]), active_listing_count: total ?? listingUrls.length,
     owner_name: name || null, owner_phone: batchPhone(details.phone ?? '') ?? null, owner_email: null,
@@ -110,7 +114,7 @@ export function parseAgencyProfileData(agency: any, sourceUrl: string, maxListin
       agency_description: text(details.description).slice(0, 5000) || null,
       ...(validLicense ? { broker_license_number: license } : {}) },
     directory_next_url: null,
-  }], next_url: null, total_pages: Number(agency?.pagination?.totalPages) || 1 };
+  }], next_url: null, total_pages: totalPages };
 }
 
 /** Each identity and its listings are read only from its own card, not office-wide ads. */
@@ -256,7 +260,7 @@ export function parseAgencyProfile($: any, sourceUrl: string, maxListings = 10) 
     try { links.push(new URL(a.attr('href'), sourceUrl).href); } catch { /* skip */ }
   });
   // Keep a few spare candidates: some may fail the per-listing live/residential check.
-  const listingUrls = batchListingUrls(links).slice(0, Math.max(1, maxListings) * 2);
+  const listingUrls = batchListingUrls(links, maxListings);
   const validLicense = /^[1-9]\d{3,9}$/.test(license) && Boolean(name);
   if (!name && !office) throw new Error('לא זוהו פרטי מתווך בעמוד; ההתקדמות נשמרה לבדיקה');
   return { results: [{

@@ -55,6 +55,19 @@ test('account suspension fails the job and stops claiming more jobs',async()=>{
   });
   assert.equal(claims,1);assert.equal(final.status,'failed');assert.match(final.error,/suspended/);
 });
+test('explicit credit exhaustion stops paid reads and forwards balance evidence to the alert hook',async()=>{
+  let claims=0;let reads=0;let final:any;
+  await withFetch(async(body,source)=>{
+    if(source){reads++;return new Response('insufficient credits: top up your balance',{status:402});}
+    if(body.action==='claim'){claims++;return {job:{id:'j',lease_token:'l',target_brokers:1,checkpoint:{source:'urls',enrichUrls:['https://www.yad2.co.il/realestate/agency/1234']}}};}
+    if(body.action==='known')return {known:false};
+    if(body.action==='progress'){if(body.status==='failed')final=body;return {stop:false};}
+    throw new Error('Unexpected action');
+  });
+  assert.equal(claims,1);assert.equal(reads,1);
+  assert.equal(final.status,'failed');assert.equal(final.checkpoint.lastError.status,402);
+  assert.match(final.error,/Bright Data.*insufficient credits/);
+});
 test('developer identity and partial hierarchy are saved before final completion',async()=>{
   const saves:any[]=[];let final:any;
   await withFetch(async(body,source)=>{

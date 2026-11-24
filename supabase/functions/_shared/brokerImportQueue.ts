@@ -19,7 +19,7 @@ export function collectBrokers(rows: Record<string, any>[], min: number, max: nu
     if (!b.imported_bio && typeof p.imported_bio === 'string') b.imported_bio = p.imported_bio.trim().slice(0, 5000);
     if (!b.agency_description && typeof p.agency_description === 'string') b.agency_description = p.agency_description.trim().slice(0, 5000);
     if (!b.email && typeof row.owner_email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.owner_email)) b.email = row.owner_email;
-    b.listing_urls = batchListingUrls([...b.listing_urls, ...(row.listing_urls ?? []), row.source_url]); grouped.set(key, b);
+    b.listing_urls = batchListingUrls([...b.listing_urls, ...(row.listing_urls ?? []), row.source_url], max); grouped.set(key, b);
   }
   return [...grouped.values()].filter(b => b.listing_urls.length >= min).map(b => ({ ...b, listing_urls: b.listing_urls.slice(0, max) }));
 }

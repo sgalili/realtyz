@@ -1,5 +1,13 @@
 # Roadmap
 
+## Import recurrence and Bright Data balance November 24
+- [x] Persist repeat independently of active checkpoints; chain clean discovery batches with exact configuration/remaining directory entities. OFF follows the active successor; pasted finite lists have no automatic next set. Failed batches never repeat, and developer working-project state never carries into the next batch.
+- [x] Remove the hidden ten-property parser cap for explicit maxima up to 50; derive source page counts when totalPages is absent, using the existing multi-page worker handoff. Label limits as ceilings and show actual workspace/source-matched saved property counts, bounded in the expanded view.
+- [x] Explicit Bright Data balance evidence triggers a service-only six-hour per-Super-Admin claim, persisted notification/send outcome and existing force-official WhatsApp sender; rate limits/generic suspension do not trigger balance alerts. Two existing Cloud entrypoints deployed.
+- [x] Isolated PostgreSQL tests cover active progress, leases, successor config/frontier, developer work exclusion, OFF, failures, role denial, saved counts and alert dedup. 31 focused UI/parser/alert tests and worker-only runtime tests passed. Signed-in mobile/desktop verified toggle readback through intercepted requests only, real ceiling/counts and no runtime errors. Existing active job remained running with repeat OFF; no paid scan or WhatsApp sent.
+- [ ] Updated standalone Railway import bundle needs deployment by its owner; no Railway deployment access exists here.
+- [ ] Real WhatsApp alert delivery is unverified: no matching approved balance-alert template exists, so outside an active Meta service window the current official free-text send may be refused. An approved template is required for guaranteed out-of-window alerts; failures remain recorded rather than marked delivered.
+
 ## Scanner persistent runs and toolbar November 24
 - [x] Read scanner card, both browser loops, registry lookup/save/identity checks, both worker lanes and persisted pending/history/job states. Registry and bulk enqueue previously depended on the browser; actual queued discovery/scanner work already uses independent workers.
 - [x] New confirmed discovery selections persist all eligible targets atomically; registry snapshots the authorized full red waiting list into serial leased batches/items. Shared transactional identity save rejects stale/borrowed licenses and post-cancel writes. Event wakes plus active-only minute recovery unschedule on completion/cancel. New batches link both discovery stages and recover paused/missed continuation using the existing scanner tick, without launching historical jobs or changing limits.
