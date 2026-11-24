@@ -263,7 +263,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       });
   }, [audience, features, access.projects, access.properties, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError, identity.label, isPartnerMode]);
   // Brokers-only SaaS hides partner/affiliate and referral-reward screens (code and data stay intact).
-  const navItems = useMemo(() => brokersOnly ? allNavItems.filter(i => !['/affiliate-network', '/partner/chats', '/sharing-pool'].includes(i.url)) : allNavItems, [allNavItems, brokersOnly]);
+  const navItems = useMemo(() => brokersOnly ? allNavItems.filter(i => !['/affiliate-network', '/partner/chats', '/partner/contacts', '/sharing-pool', '/posts'].includes(i.url) || (i.url === '/posts' && !PARTNER_NAV_ITEMS.includes(i))) : allNavItems, [allNavItems, brokersOnly]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts || audience !== 'professional') return undefined;
@@ -370,7 +370,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
             <SidebarMenu>
               {/* Shared public board: always the first menu entry. */}
               {!user && <SidebarMenuItem><SidebarMenuButton asChild><NavLink to="/demo" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Eye className="h-4 w-4 text-primary" />{!collapsed && <span className="text-sm font-medium">מרחב הדגמה</span>}</NavLink></SidebarMenuButton></SidebarMenuItem>}
-              <SidebarMenuItem key="public-listings">
+              {/* Brokers-only SaaS hides the shared public board entry (route and data stay for full_marketplace). */}
+              {!brokersOnly && <SidebarMenuItem key="public-listings">
                 <SidebarMenuButton asChild isActive={location.pathname === '/' || location.pathname.startsWith('/public-listings')}>
                   <NavLink
                     to="/public-listings"
@@ -385,7 +386,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   </NavLink>
                 </SidebarMenuButton>
                 {!collapsed && <HelpHint path="/public-listings" className="absolute left-1 top-1/2 -translate-y-1/2" />}
-              </SidebarMenuItem>
+              </SidebarMenuItem>}
               {user && audience === 'partner' && !brokersOnly && (
                 <SidebarMenuItem key="partner-pool">
                   <SidebarMenuButton asChild><NavLink to="/sharing-pool" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Home className="h-4 w-4 text-primary" />{!collapsed && <span className="text-sm font-medium">נכסים פתוחים לשיתוף</span>}</NavLink></SidebarMenuButton>
