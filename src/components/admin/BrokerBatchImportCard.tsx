@@ -76,6 +76,20 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
     } catch { setError('לא ניתן לעדכן חזרתיות כרגע. ההתקדמות נשמרה.'); }
     finally { setRepeatBusy(false); }
   };
+  const [repeatRetrying, setRepeatRetrying] = useState(false);
+  const [repeatReason, setRepeatReason] = useState('');
+  const repeatReasons: Record<string, string> = { busy: 'יש ייבוא פעיל או מושהה אחר. הריצה הבאה תתחיל אחריו.', urls: 'רשימת קישורים אינה ממשיכה בחזרתיות.', forbidden: 'אין הרשאה להתחיל ריצה חוזרת.', disabled: 'החזרתיות כבויה.', not_completed: 'הריצה עדיין לא הסתיימה.', exists: 'הריצה הבאה כבר נוצרה.' };
+  const retryRepeat = async () => {
+    if (!current) return;
+    setRepeatRetrying(true); setRepeatReason('');
+    const { data, error: retryError } = await supabase.rpc('retry_import_repeat', { _id: current.id });
+    setRepeatRetrying(false);
+    if (retryError) { setRepeatReason('לא ניתן להתחיל את הריצה הבאה כרגע. הנתונים הקיימים נשמרו.'); return; }
+    if (data !== 'started') setRepeatReason(repeatReasons[String(data)] ?? 'הריצה הבאה לא התחילה.');
+    await qc.invalidateQueries({ queryKey: ['admin-broker-import-jobs'] });
+  };
+  // A repeating job that stays current after completion means the server could not queue its successor.
+  const repeatStuck = Boolean(current && current.status === 'completed' && current.repeat_enabled && Date.now() - Date.parse(current.updated_at) > 20000);
   const lastCompleted = useQuery({ queryKey: ['admin-import-last-completed', gate.uid, current?.updated_at], enabled: gate.enabled, queryFn: async () => {
     const { data, error } = await supabase.from('broker_import_jobs').select('updated_at').eq('status', 'completed').order('updated_at', { ascending: false }).limit(1).maybeSingle();
     if (error) throw error;
@@ -199,6 +213,7 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
     </div>
     </div>
     {error && !open && !statusExpanded && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    {repeatStuck && <div role="alert" className="flex items-center justify-between gap-2 text-sm text-destructive"><span>{current?.error ? `הריצה הבאה לא התחילה: ${current.error}` : repeatReason || 'החזרתיות פעילה אך הריצה הבאה לא התחילה.'}</span><Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="ניסיון חוזר להפעלת הריצה הבאה" title="ניסיון חוזר" disabled={repeatRetrying} onClick={() => void retryRepeat()}>{repeatRetrying ? <Loader2 className="h-5 w-5 animate-spin" /> : <Repeat2 className="h-5 w-5" />}</Button></div>}
     {repeatEnabled && (current?.checkpoint as { source?: string; autoDevelopers?: boolean })?.source === 'urls' && !(current?.checkpoint as { autoDevelopers?: boolean })?.autoDevelopers && <p className="text-sm text-muted-foreground">רשימת הקישורים תסתיים ללא סריקה נוספת. חזרתיות זמינה באיתור אוטומטי.</p>}
     <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" className="max-h-[85dvh] max-w-lg overflow-y-auto"><DialogHeader><DialogTitle className="text-2xl">איתור וייבוא</DialogTitle></DialogHeader>
       <Tabs dir="rtl" value={mode} onValueChange={value => { if (value === 'brokers' || value === 'developers') { setMode(value); setError(''); } }}>

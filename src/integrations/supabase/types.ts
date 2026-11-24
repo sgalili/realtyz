@@ -13324,6 +13324,7 @@ export type Database = {
         Args: { _campaign_log_id: string }
         Returns: number
       }
+      retry_import_repeat: { Args: { _id: string }; Returns: string }
       review_affiliate_license: {
         Args: { _approve: boolean; _reason?: string; _user_id: string }
         Returns: Json
@@ -13465,6 +13466,10 @@ export type Database = {
         Returns: boolean
       }
       social_identity_key: { Args: { _raw: string }; Returns: string }
+      spawn_repeated_import: {
+        Args: { j: Database["public"]["Tables"]["broker_import_jobs"]["Row"] }
+        Returns: string
+      }
       start_broker_registry_batch: {
         Args: { _actor: string; _targets: string[] }
         Returns: string
