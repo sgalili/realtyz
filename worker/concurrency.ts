@@ -35,3 +35,8 @@ export async function readAndCommit<T>(items: string[], read: (url: string) => P
   if (suspended) throw suspended.reason;
   if (failures.length) throw failures[0].reason;
 }
+/** Pick inventory before more identities; keep active cursor and the remaining backlog intact. */
+export function activatePendingInventory<T>(c: { activeBroker?: T | null; workerEnrichment: T[] }) {
+  if (!c.activeBroker) c.activeBroker = c.workerEnrichment.shift() ?? null;
+  return c.activeBroker;
+}

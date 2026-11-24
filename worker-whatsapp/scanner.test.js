@@ -9,19 +9,25 @@ test('scanner stays off unless explicitly enabled and uses a separate secret', (
 
 test('scanner reads one claimed source then lets Cloud decide sending', async () => {
   const calls = []; let stop = false;
-  const api = async body => { calls.push(body.action); if (body.action === 'claim_source') return { job: { id: 'j', lease_token: 't', source_url: 'u' } }; if (body.action === 'tick') stop = true; return {}; };
+  const api = async body => { calls.push(body.action); if (body.action === 'claim_source') return { job: { id: 'j', lease_token: 't', source_url: 'u' } }; if (body.action === 'tick' && calls.includes('source_result')) stop = true; return {}; };
   await runScanner({ tick: 0 }, { source: async () => '<html>', isStopping: () => stop }, api);
-  assert.deepEqual(calls, ['claim_source', 'source_result', 'tick']);
+  assert.deepEqual(calls, ['tick', 'claim_source', 'source_result', 'tick']);
 });
 test('a lost result response never becomes a source failure or an immediate duplicate commit',async()=>{
   const calls=[];let claims=0,stop=false;
-  const api=async body=>{calls.push(body.action);if(body.action==='claim_source')return{job:claims++===0?{id:'job',lease_token:'lease',source_url:'source'}:null};if(body.action==='source_result')throw new TypeError('connection reset');if(body.action==='tick')stop=true;return{};};
+  const api=async body=>{calls.push(body.action);if(body.action==='claim_source')return{job:claims++===0?{id:'job',lease_token:'lease',source_url:'source'}:null};if(body.action==='source_result')throw new TypeError('connection reset');if(body.action==='tick'&&claims>1)stop=true;return{};};
   await runScanner({tick:0},{source:async()=>'<html>',isStopping:()=>stop},api);
-  assert.deepEqual(calls,['claim_source','source_result','claim_source','tick']);
+  assert.deepEqual(calls,['tick','claim_source','source_result','tick','claim_source','tick']);
 });
 test('worker API never retries a claim or tick whose response was lost',async()=>{
   for(const action of ['claim_source','tick','source_result']){
     let calls=0;const api=createScannerApi({api:'https://example.test/scanner',secret:'test-only'},async()=>{calls++;throw new TypeError('connection reset');});
     await assert.rejects(api({action}),/connection reset/);assert.equal(calls,1);
   }
+});
+test('drains source backlog without the idle interval and still ticks between reads',async()=>{
+ const calls=[];let claims=0,stop=false;
+ const api=async body=>{calls.push(body.action);if(body.action==='claim_source')return{job:claims++<2?{id:`job${claims}`,lease_token:'lease',source_url:'source'}:null};if(body.action==='tick'&&claims===2&&calls.filter(c=>c==='source_result').length===2)stop=true;return{};};
+ await runScanner({tick:60000},{source:async()=>'<html>',isStopping:()=>stop},api);
+ assert.deepEqual(calls,['tick','claim_source','source_result','tick','tick','claim_source','source_result','tick']);
 });

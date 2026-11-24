@@ -23,6 +23,8 @@ export async function runScanner(config, { source, isStopping }, api = createSca
   try { const u = new URL(config.api); console.log(JSON.stringify({ event: 'broker_wa_scanner_lane_started', api_host: u.host, path: u.pathname })); } catch { /* test doubles */ }
   while (!isStopping()) {
     try {
+      // Wake serial sending before a potentially slow source read; Cloud still enforces every safety gate.
+      await api({ action: 'tick' });
       const { job } = await api({ action: 'claim_source' });
       if (job) {
         let html;
@@ -33,12 +35,14 @@ export async function runScanner(config, { source, isStopping }, api = createSca
       }
       // Cloud owns quota, jitter (24/7) and circuit state; this only wakes it.
       await api({ action: 'tick' });
+      if (job && !isStopping()) continue; // No idle polling delay between successfully processed source items.
     } catch (error) {
       const denied = [401, 403].includes(error.status);
       // Never stop silently: a rejected secret is logged and retried slowly until Railway's value matches Cloud.
       console.error(JSON.stringify({ event: denied ? 'broker_wa_scanner_auth_rejected' : 'broker_wa_scanner_error', status: error.status ?? null, hint: denied ? 'BROKER_WA_SCANNER_WORKER_SECRET differs from Cloud' : undefined }));
       if (denied) { await delay(300000); continue; }
     }
+    if (isStopping()) break;
     await delay(config.tick);
   }
 }

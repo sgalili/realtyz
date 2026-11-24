@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSuperAdminGate } from '@/hooks/useSuperAdminGate';
 import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { Pause, Play, Loader2, ScanSearch, Building2, UserRound, ChevronDown } from 'lucide-react';
+import { Pause, Play, Loader2, ScanSearch, Building2, UserRound, ChevronDown, Repeat2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ImportQuantityInput } from './ImportQuantityInput';
@@ -19,7 +19,6 @@ import { developerImportUrl } from '@/lib/developerImportUrl';
 import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY } from '../../../supabase/functions/_shared/developerImportRetry';
 import { importJobTargetKind } from '@/lib/importJobMonitoring';
 import { refreshImportedInventory } from '@/lib/refreshImportedInventory';
-import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
 import { importRunTime } from '@/lib/adminImportPresentation';
 
 const LINKS_KEY = 'toraff-broker-import-links';
@@ -88,16 +87,11 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
     if (countError) throw countError;
     return data;
   } });
-  useEffect(() => {
-    if (!current?.id) return;
-    const saved = readSuperAdminViewState().importStatus;
-    setStatusExpanded(saved?.jobId === current.id && saved.expanded);
-  }, [current?.id]);
+  useEffect(() => { setStatusExpanded(false); }, [current?.id]);
   const toggleStatus = () => {
     if (!current) return;
     const expanded = !statusExpanded;
     setStatusExpanded(expanded);
-    saveSuperAdminViewState({ importStatus: { jobId: current.id, expanded } });
   };
   // Each saved checkpoint (including final completion) may add inventory for an account.
   useEffect(() => {
@@ -170,15 +164,16 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
   const canToggle = Boolean(current && !automaticallyRecovering && (current.status === 'running' || (current.status === 'paused' && checkpoint?.pauseReason === 'user')));
   const stopControl = canToggle ? <Button variant="ghost" size="icon" className="h-12 w-12 shrink-0 border-0 bg-transparent shadow-none" aria-label={automaticallyRecovering ? 'המשך אוטומטי' : current?.status === 'running' ? 'עצירה' : 'המשך'} title={automaticallyRecovering ? 'המשך אוטומטי' : current?.status === 'running' ? 'עצירה' : 'המשך'} disabled={!canToggle || busy || (checkpoint?.waitReason === 'rate_limit' && waitSeconds > 0 && current?.status !== 'running')} onClick={() => void action(current?.status === 'running' ? 'pause' : 'resume')}>{automaticallyRecovering ? <Loader2 className="!h-7 !w-7 animate-spin" /> : current?.status === 'running' ? <Pause className="!h-7 !w-7" /> : <Play className="!h-7 !w-7" />}</Button> : null;
   const importButton = <Button variant="ghost" size="icon" className="h-12 w-12 shrink-0 border-0 bg-transparent shadow-none" aria-label="איתור וייבוא" title="איתור וייבוא" onClick={() => { setError(''); setTarget(10); setMin(3); setMax(10); setOpen(true); }}><ScanSearch className="!h-7 !w-7" /></Button>;
+  const repeatButton = <Button type="button" variant="ghost" size="icon" className={`h-10 w-10 shrink-0 border-0 shadow-none ${repeatEnabled ? 'bg-muted text-foreground' : 'text-muted-foreground'}`} aria-label={repeatEnabled ? 'כיבוי חזרתיות' : 'הפעלת חזרתיות'} title={repeatEnabled ? 'כיבוי חזרתיות' : 'הפעלת חזרתיות'} aria-pressed={repeatEnabled} disabled={repeatBusy || !gate.enabled} onClick={() => void setRepeat(!repeatEnabled)}>{repeatBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Repeat2 className="h-5 w-5" />}</Button>;
   return <section dir="rtl" className="text-right">
     <div hidden={!visible && !runActive} className="space-y-2 py-2">
     {notice && <p className="text-base text-muted-foreground">{notice}</p>}
     <div role="status" className="space-y-2 rounded-md border border-border/70 p-2">
       {completed && <p className="text-xs text-muted-foreground">ייבוא אחרון · {importRunTime(completed.updated_at)}</p>}
-      {current ? <div className="flex items-start gap-2"><Button variant="ghost" type="button" aria-label={statusExpanded ? 'כיווץ פרטי הייבוא' : 'הרחבת פרטי הייבוא'} aria-expanded={statusExpanded} aria-controls="import-status-details" className="h-auto min-w-0 flex-1 flex-col items-start gap-1 whitespace-normal p-0 text-right hover:bg-transparent" onClick={toggleStatus}><span className="flex min-w-0 items-center gap-2 whitespace-nowrap text-base font-semibold sm:text-lg"><ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${statusExpanded ? 'rotate-180' : ''}`} />{current.status === 'running' && !stalled && <Loader2 className="h-5 w-5 shrink-0 animate-spin" />}<span className="min-w-0 truncate">{current.status === 'paused' ? 'מושהה · ' : ''}{stages[current.stage] ?? current.stage}</span></span><span className="flex min-w-0 flex-wrap gap-x-2 gap-y-0.5 text-sm tabular-nums text-muted-foreground sm:text-base">{[targetKind === 'developers' ? `${current.developers_done ?? 0}/${current.target_brokers} יזמים` : targetKind === 'links' ? `${entitiesDone}/${current.target_brokers} קישורים` : `${current.brokers_done}/${current.target_brokers} מתווכים`, `${current.listings_done} טיוטות`, ...((current.developers_done ?? 0) > 0 ? [`${current.developers_done} יזמים`, `${current.projects_done} פרויקטים`, `${current.units_done} יחידות`] : []), ...(current.skipped > 0 ? [`${current.skipped} דולגו`] : [])].map(item => <span key={item} className="whitespace-nowrap">{item}</span>)}</span></Button><div className="flex shrink-0 items-center gap-1">{stopControl}{importButton}</div></div> : <div className="flex items-center gap-2"><span className="flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap text-base font-semibold sm:text-lg"><ScanSearch className="h-5 w-5 shrink-0 text-muted-foreground" /><span className="truncate">סטטוס ייבוא</span><span className="truncate text-sm font-normal text-muted-foreground sm:text-base">· אין ייבוא פעיל</span></span><div className="flex shrink-0 items-center gap-1">{stopControl}{importButton}</div></div>}
+      {current ? <div className="flex items-start gap-2"><Button variant="ghost" type="button" aria-label={statusExpanded ? 'כיווץ פרטי הייבוא' : 'הרחבת פרטי הייבוא'} aria-expanded={statusExpanded} aria-controls="import-status-details" className="h-auto min-w-0 flex-1 flex-col items-start gap-1 whitespace-normal p-0 text-right hover:bg-transparent" onClick={toggleStatus}><span className="flex min-w-0 items-center gap-2 whitespace-nowrap text-base font-semibold sm:text-lg"><ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${statusExpanded ? 'rotate-180' : ''}`} />{current.status === 'running' && !stalled && <Loader2 className="h-5 w-5 shrink-0 animate-spin" />}<span className="min-w-0 truncate">{current.status === 'paused' ? 'מושהה · ' : ''}{stages[current.stage] ?? current.stage}</span></span><span className="flex min-w-0 flex-wrap gap-x-2 gap-y-0.5 text-sm tabular-nums text-muted-foreground sm:text-base">{[targetKind === 'developers' ? `${current.developers_done ?? 0}/${current.target_brokers} יזמים` : targetKind === 'links' ? `${entitiesDone}/${current.target_brokers} קישורים` : `${current.brokers_done}/${current.target_brokers} מתווכים`, `${current.listings_done} טיוטות`, ...((current.developers_done ?? 0) > 0 ? [`${current.developers_done} יזמים`, `${current.projects_done} פרויקטים`, `${current.units_done} יחידות`] : []), ...(current.skipped > 0 ? [`${current.skipped} דולגו`] : [])].map(item => <span key={item} className="whitespace-nowrap">{item}</span>)}</span></Button><div className="flex shrink-0 items-center gap-1">{stopControl}{repeatButton}{importButton}</div></div> : <div className="flex items-center gap-2"><span className="flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap text-base font-semibold sm:text-lg"><ScanSearch className="h-5 w-5 shrink-0 text-muted-foreground" /><span className="truncate">סטטוס ייבוא</span><span className="truncate text-sm font-normal text-muted-foreground sm:text-base">· אין ייבוא פעיל</span></span><div className="flex shrink-0 items-center gap-1">{stopControl}{repeatButton}{importButton}</div></div>}
       {current && statusExpanded && <div id="import-status-details" className="space-y-3">
       {targetKind === 'brokers' && <p className="text-base text-muted-foreground">תקרת הריצה: עד {current.max_listings} נכסים למתווך</p>}
-      <div className="max-h-48 space-y-1 overflow-y-auto">{savedCounts.data?.map(broker => <p key={broker.broker_id} className="text-sm text-muted-foreground">{((current.checkpoint as { brokerResults?: { broker_id: string; full_name?: string }[] })?.brokerResults ?? []).find(item => item.broker_id === broker.broker_id)?.full_name ?? 'מתווך'} · {broker.saved_count} נכסים נשמרו</p>)}</div>
+      <details><summary className="cursor-pointer text-sm text-muted-foreground">מתווכים שיובאו ({savedCounts.data?.length ?? 0})</summary><div className="max-h-48 space-y-1 overflow-y-auto">{savedCounts.data?.map(broker => <p key={broker.broker_id} className="text-sm text-muted-foreground">{((current.checkpoint as { brokerResults?: { broker_id: string; full_name?: string }[] })?.brokerResults ?? []).find(item => item.broker_id === broker.broker_id)?.full_name ?? 'מתווך'} · {broker.saved_count} נכסים נשמרו</p>)}</div></details>
       {savedCounts.isError && <p role="alert" className="text-sm text-muted-foreground">ספירת הנכסים אינה זמינה כרגע</p>}
       {checkpoint?.lastError?.message && current.status !== 'completed' && !current.error && <p role="alert" className="break-words text-sm font-medium text-destructive sm:text-base">שגיאה אחרונה{checkpoint.lastError.status ? ` (${checkpoint.lastError.status})` : ''}{checkpoint.lastError.at ? ` · ${new Date(checkpoint.lastError.at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : ''}: {checkpoint.lastError.message}</p>}
       <Progress className="h-3" value={current.status === 'completed' ? 100 : Math.min(99, (entitiesDone + (developerStage && checkpoint?.developerWork ? (checkpoint.developerWork.visitedUrls?.length ?? 0) / Math.max(1, (checkpoint.developerWork.visitedUrls?.length ?? 0) + (checkpoint.developerWork.pendingUrls?.length ?? 0) + 1) : 0)) / Math.max(1, current.target_brokers) * 100)} />
@@ -195,10 +190,6 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
       {error && !open && <p role="alert" className="text-base text-destructive">{error}</p>}
       </div>}
     </div>
-    </div>
-    <div className="flex items-center justify-between gap-2 py-1">
-      <Label htmlFor="import-repeat" className="text-base">חזרתיות</Label>
-      <div className="flex items-center gap-2"><span className="text-sm text-muted-foreground">{repeatBusy ? 'מעדכן…' : repeatEnabled ? 'פעילה' : 'כבויה'}</span><Switch id="import-repeat" checked={repeatEnabled} disabled={repeatBusy || !gate.enabled} onCheckedChange={enabled => void setRepeat(enabled)} /></div>
     </div>
     {error && !open && !statusExpanded && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {repeatEnabled && (current?.checkpoint as { source?: string; autoDevelopers?: boolean })?.source === 'urls' && !(current?.checkpoint as { autoDevelopers?: boolean })?.autoDevelopers && <p className="text-sm text-muted-foreground">רשימת הקישורים תסתיים ללא סריקה נוספת. חזרתיות זמינה באיתור אוטומטי.</p>}
@@ -242,9 +233,9 @@ function ImportSummary({ checkpoint, job }: { checkpoint: any; job: any }) {
   const brokers = ((checkpoint?.brokerResults ?? []) as any[]).filter(r => r.full_name || r.office_name);
   const skipped = ((checkpoint?.skippedExisting ?? []) as any[]).filter(x => (x.kind === 'developer' ? wantsDevelopers : wantsBrokers));
   const names = (list: string[]) => list.join('، ');
-  return <div className="space-y-1 text-base">
+  return <details><summary className="cursor-pointer truncate text-sm text-muted-foreground">יובאו {brokers.length} מתווכים ו־{developers.length} יזמים · {job.listings_done} טיוטות</summary><div className="space-y-1 text-base">
     {wantsDevelopers && <p className="font-medium">{developers.length ? `יובאו ${developers.length} יזמים: ${names(developers.map(r => `${r.company_name} (${r.projects} פרויקטים, ${r.units} דירות)`))}` : 'לא יובאו יזמים חדשים בתהליך זה'}</p>}
     {wantsBrokers && <p className="font-medium">{brokers.length ? `יובאו ${brokers.length} מתווכים: ${names(brokers.map(r => r.full_name ? `${r.full_name}${r.office_name ? ` (${r.office_name})` : ''}` : r.office_name))} · ${job.listings_done} נכסים כטיוטות` : 'לא יובאו מתווכים חדשים בתהליך זה'}</p>}
     {skipped.length > 0 && <p className="text-muted-foreground">דולגו כי כבר קיימים במערכת: {names(skipped.map(x => x.name).filter(Boolean))}</p>}
-  </div>;
+  </div></details>;
 }

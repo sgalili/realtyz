@@ -1,4 +1,5 @@
 # User credit management
+- Registry no-match persists per exact broker/license through a service-only fenced RPC and is excluded from batch inserts; outages remain retryable and no identity, gender or role is inferred. Why: stable gray state without weakening verification.
 - Import repetition is a persisted job column, never a worker checkpoint flag; clean completion atomically queues one successor with its original configuration and remaining frontier. Why: mid-run toggles cannot overwrite progress or be lost to worker reports.
 - Import property totals count saved workspace/source-matched listings, separately from the requested maximum; billing alerts require explicit provider balance evidence and a service-only per-recipient cooldown. Why: no invented counts, quota guesses or alert floods.
 - Bulk registry rechecks snapshot the authorized fresh red waiting list into a server-owned serial leased queue; shared identity-save RPCs fence cancellation and stale licenses, event wakes plus active-only recovery survive logout, and UI reads persisted totals. Why: no borrowed identities, browser-dependent execution or late saves.

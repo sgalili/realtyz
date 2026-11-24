@@ -1,6 +1,6 @@
-export type RegistryTarget = { user_id: string; full_name?: string; is_developer?: boolean; license_verified?: boolean; profile_license?: string | null; license_number?: string | null };
+export type RegistryTarget = { user_id: string; full_name?: string; is_developer?: boolean; license_verified?: boolean; registry_no_match?: boolean; profile_license?: string | null; license_number?: string | null };
 export const registryLicense = (row: RegistryTarget) => row.profile_license?.trim() || row.license_number?.trim() || '';
-export const redWaitingBrokers = (rows: RegistryTarget[]) => [...new Map(rows.filter(row => !row.is_developer && !row.license_verified).map(row => [row.user_id, row])).values()];
+export const redWaitingBrokers = (rows: RegistryTarget[]) => [...new Map(rows.filter(row => !row.is_developer && !row.license_verified && !row.registry_no_match).map(row => [row.user_id, row])).values()];
 export type RegistryProgress = { total: number; done: number; verified: number; failed: number; missing: number; name?: string };
 
 /** One existing server-authorized check at a time; stop starting calls when the admin scope changes. */

@@ -1,9 +1,9 @@
-// worker/index.ts
+// index.ts
 import * as cheerio from "cheerio";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 
-// worker/policy.ts
+// policy.ts
 function retryDelay(attempt, retryAfterMs = 0) {
   return Math.min(18e4, Math.max(Math.min(12e4, 15e3 * 2 ** Math.max(0, attempt - 1)), retryAfterMs));
 }
@@ -30,7 +30,7 @@ function configuration(env) {
   };
 }
 
-// worker/concurrency.ts
+// concurrency.ts
 var delay = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
 var RequestGate = class {
   constructor(interval, now = Date.now, wait = delay) {
@@ -73,8 +73,12 @@ async function readAndCommit(items, read, commit) {
   if (suspended) throw suspended.reason;
   if (failures.length) throw failures[0].reason;
 }
+function activatePendingInventory(c) {
+  if (!c.activeBroker) c.activeBroker = c.workerEnrichment.shift() ?? null;
+  return c.activeBroker;
+}
 
-// supabase/functions/_shared/importItemFailure.ts
+// ../supabase/functions/_shared/importItemFailure.ts
 var IMPORT_ITEM_ATTEMPTS = 3;
 function fatalImportFailure(status, message) {
   return [401, 402, 403, 407].includes(status ?? 0) || /client_10020|account.*suspend|billing.*inactive|invalid.*(api.?key|zone)/i.test(message);
@@ -128,7 +132,7 @@ function advanceExternalFailedSource(c, url) {
   return true;
 }
 
-// supabase/functions/_shared/brokerBatchImport.ts
+// ../supabase/functions/_shared/brokerBatchImport.ts
 function batchPhone(v) {
   const d = String(v ?? "").replace(/\D/g, "");
   if (/^05\d{8}$/.test(d)) return `972${d.slice(1)}`;
@@ -147,7 +151,7 @@ function batchListingUrls(urls, limit = 10) {
   return [...out].slice(0, Math.max(1, Math.min(50, Math.trunc(limit))));
 }
 
-// supabase/functions/_shared/yad2Agencies.ts
+// ../supabase/functions/_shared/yad2Agencies.ts
 var AGENCIES_URL = "https://www.yad2.co.il/realestate/agencies";
 var AGENCY_REGISTRY_TTL_MS = 7 * 864e5;
 function agencyListingCount(value) {
@@ -331,7 +335,7 @@ function parseAgencies($, sourceUrl2) {
   return { results, next_url: nextUrl };
 }
 
-// supabase/functions/_shared/projectHierarchy.ts
+// ../supabase/functions/_shared/projectHierarchy.ts
 var sourceRecord = (value) => value && typeof value === "object" && !Array.isArray(value) ? value : {};
 var string = (value) => typeof value === "string" || typeof value === "number" ? String(value) : null;
 var first = (row, keys) => keys.map((key) => row[key]).find((value) => value != null && value !== "");
@@ -458,7 +462,7 @@ function savedProjectHierarchy(project) {
   return { buildings: grouped, apartments: [...units.values()], unassigned: [...units.values()].filter((unit) => !unit.building_id) };
 }
 
-// supabase/functions/_shared/yad2DeveloperImport.ts
+// ../supabase/functions/_shared/yad2DeveloperImport.ts
 var record = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 var text = (v) => typeof v === "string" || typeof v === "number" ? String(v).trim() || null : null;
 var pick = (o, keys) => keys.map((k) => text(k.split(".").reduce((v, key) => record(v) ? v[key] : void 0, o))).find(Boolean) ?? null;
@@ -837,7 +841,7 @@ function detailedUnitCount(project) {
   return savedProjectHierarchy(project).apartments.length;
 }
 
-// supabase/functions/_shared/yad2DeveloperDirectory.ts
+// ../supabase/functions/_shared/yad2DeveloperDirectory.ts
 var DEVELOPER_DIRECTORY_URL = "https://www.yad2.co.il/yad1/developers";
 function developerDirectoryUrl(value) {
   try {
@@ -860,12 +864,12 @@ function parseDeveloperDirectory(html, pageUrl) {
   return { urls, next_url: next ? developerDirectoryUrl(`${DEVELOPER_DIRECTORY_URL}?page=${next}`) : null };
 }
 
-// supabase/functions/_shared/brightDataBalance.ts
+// ../supabase/functions/_shared/brightDataBalance.ts
 function brightDataBalanceExhausted(status, message) {
   return /bright\s*data|brightdata|x-brd|client_\d+/i.test(message) && (status === 402 || /(?:insufficient|exhausted|depleted|no|zero|out of)\s+(?:account\s+)?(?:credits?|balance|funds)|(?:credits?|balance|funds|quota|spending limit).{0,50}(?:exhausted|depleted|exceeded|reached|empty)|(?:billing|payment).{0,25}(?:required|limit reached)/i.test(message));
 }
 
-// worker/index.ts
+// index.ts
 var WorkerError = class extends Error {
   constructor(message, status = 500, retryAfterMs = 0, sourceUrl2) {
     super(message);
@@ -979,8 +983,7 @@ async function startImportWorker() {
         if (!c.workerProcessed.includes(saved.source_url)) c.workerProcessed.push(saved.source_url);
       }
       while (!stopping && !lost) {
-        const identitiesDone = counts.brokers_done + counts.developers_done >= job.target_brokers || !c.workerEntities.some((e) => !c.workerProcessed.includes(e.url)) && !c.workerFrontier.length;
-        if (identitiesDone && !c.activeBroker) c.activeBroker = c.workerEnrichment.shift() ?? null;
+        activatePendingInventory(c);
         if (c.activeBroker) {
           stage = "importing";
           const broker = c.activeBroker;

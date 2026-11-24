@@ -23,3 +23,7 @@ it('defers temporary registry failures through the persisted retry state',async(
  const s=setup();await runRegistryBatchStep(s.admin,'batch',vi.fn(async()=>{throw Object.assign(new Error('unavailable'),{status:503});}));
  expect(s.rpc).toHaveBeenCalledWith('finish_broker_registry_item',expect.objectContaining({_status:'failed',_retry:true}));
 });
+it('records a definitive registry no-match as missing, never as a transient failure',async()=>{
+ const s=setup();await runRegistryBatchStep(s.admin,'batch',vi.fn(async()=>{throw Object.assign(new Error('no match'),{code:'license_not_found',status:404});}));
+ expect(s.rpc).toHaveBeenCalledWith('finish_broker_registry_item',expect.objectContaining({_status:'missing',_retry:false}));
+});

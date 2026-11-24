@@ -1,0 +1,10 @@
+REVOKE ALL ON public.broker_registry_no_matches FROM anon,authenticated;
+GRANT SELECT ON public.broker_registry_no_matches TO authenticated;
+GRANT ALL ON public.broker_registry_no_matches TO service_role;
+ALTER TABLE public.broker_registry_no_matches ADD COLUMN workspace_owner_id uuid;
+UPDATE public.broker_registry_no_matches SET workspace_owner_id=broker_id;
+ALTER TABLE public.broker_registry_no_matches ADD CONSTRAINT registry_result_workspace CHECK(workspace_owner_id IS NOT NULL AND workspace_owner_id=broker_id);
+CREATE FUNCTION public.scope_registry_no_match() RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$ BEGIN NEW.workspace_owner_id:=NEW.broker_id; RETURN NEW; END $$;
+REVOKE ALL ON FUNCTION public.scope_registry_no_match() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.scope_registry_no_match() TO service_role;
+CREATE TRIGGER scope_registry_no_match BEFORE INSERT OR UPDATE ON public.broker_registry_no_matches FOR EACH ROW EXECUTE FUNCTION public.scope_registry_no_match();

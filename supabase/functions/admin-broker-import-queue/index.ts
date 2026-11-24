@@ -2,7 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
-import { collectBrokers, mergeBrokers, flushFoundBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
+import { collectBrokers, mergeBrokers, flushFoundBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport, upgradeDiscoveryCheckpoint } from '../_shared/brokerImportQueue.ts';
 import { readWorkerResponse, ImportAvailabilityError, WorkerResponseError, ProviderAccountError } from '../_shared/brightDataDiagnostics.ts';
 import { agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck, agencyDirectoryQuery, agencyDirectoryUrl, isAgencyProfileUrl, AGENCY_DIRECTORY_MAX_NODES } from '../_shared/yad2Agencies.ts';
 import { ProviderRateLimitError, rateCooldownRemaining, adaptPaceGap, MAX_PACE_GAP_MS } from '../_shared/brightDataThrottle.ts';
@@ -115,10 +115,7 @@ Deno.serve(async req => {
       const {error}=await admin.from('broker_import_agency_registry').upsert({agency_key:key,criteria_key:criteriaKey,outcome,reason,listing_count:row.active_listing_count??null,checked_at:new Date().toISOString()});
       if(error)throw error;
     };
-    if (c.source !== 'urls' && ['scanning','enriching'].includes(c.phase) && (c.source !== 'agencies' || c.discoveryVersion !== freshImportCheckpoint().discoveryVersion)) {
-      Object.assign(c, freshImportCheckpoint()); delete c.deal; delete c.enrichUrls; delete c.enriched;
-      delete c.directoryNextUrl; delete c.directoryPages; delete c.directoryExhausted;
-    }
+    upgradeDiscoveryCheckpoint(c);
     const save=async (patch:Record<string,unknown>={})=> {
       const duration=Date.now()-started;
       const {error}=await admin.from('broker_import_jobs').update({checkpoint:c,stage:c.phase,lease_token:null,lease_until:null,step_average_ms:job.step_average_ms?Number(job.step_average_ms)*0.7+duration*0.3:duration,updated_at:new Date().toISOString(),...patch}).eq('id',job.id).eq('lease_token',job.lease_token);
@@ -138,7 +135,7 @@ Deno.serve(async req => {
         await admin.from('broker_import_jobs').update({checkpoint:c,updated_at:new Date().toISOString()}).eq('id',job.id).eq('lease_token',job.lease_token);
         // Only the small queue gap is held here; the transport already serializes provider calls.
         await new Promise(resolve=>setTimeout(resolve,Math.min(wait,MAX_PACE_GAP_MS)));
-        await save();return null;
+        // Continue within this lease after the short pace gap, avoiding an extra worker round trip.
       }
       const {data:state}=await admin.from('broker_import_jobs').select('status,lease_token').eq('id',job.id).single();
       if(state?.status!=='running'||state.lease_token!==job.lease_token)throw new Error('הייבוא הושהה לפני הבקשה הבאה');

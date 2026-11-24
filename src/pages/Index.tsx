@@ -339,7 +339,6 @@ const RealEstateDashboard = () => {
   return (
     <div className="realtyz-dashboard-scale space-y-6" dir="rtl">
       <div className="dashboard-hero relative overflow-hidden rounded-2xl px-5 py-6 text-center text-primary-foreground shadow-lg">
-        <Sparkles aria-hidden className="absolute left-4 top-4 h-6 w-6 opacity-40" />
         <h1 className="text-2xl font-bold tracking-tight">לוח בקרה</h1>
         <p className="mt-1 text-sm opacity-90">
           תמונת מצב חיה של הנכסים, הלידים והפעילות שלך

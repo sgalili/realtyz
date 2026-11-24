@@ -31,7 +31,8 @@ it('handles a completed no-match lookup without applying identity or verificatio
   fireEvent.click(screen.getByRole('button'));
   await screen.findByRole('alert');
   expect(updated).not.toHaveBeenCalled();
-  expect(screen.getByRole('button')).toBeEnabled();
+  expect(screen.getByRole('button')).toBeDisabled();
+  fireEvent.click(screen.getByRole('button'));expect(state.invoke).toHaveBeenCalledTimes(1);
 });
 it('applies the official returned name without comparing it to the old account name', async () => {
   const profile={id:'target',broker_license_number:'36484',full_name:'פנינה דיין'};
@@ -86,4 +87,10 @@ it('does not allow self verification against a different account', () => {
   state.admin=false;
   render(<BrokerRegistryNameButton presentation="approved" ownAccount userId="other" license="31927721" onUpdated={vi.fn()} />);
   expect(screen.queryByRole('button')).toBeNull();expect(state.invoke).not.toHaveBeenCalled();
+});
+it('does not recheck a persisted exact no-match after remount',()=>{
+ const view=render(<BrokerRegistryNameButton userId="target" license="123" noMatch onUpdated={vi.fn()} />);
+ fireEvent.click(screen.getByRole('button'));view.unmount();
+ render(<BrokerRegistryNameButton userId="target" license="123" noMatch onUpdated={vi.fn()} />);
+ fireEvent.click(screen.getByRole('button'));expect(state.invoke).not.toHaveBeenCalled();
 });

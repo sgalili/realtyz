@@ -25,7 +25,7 @@ Deno.serve(async req => {
       const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/admin-broker-contact`, { method: 'POST', headers: { Authorization: `Bearer ${caller.token}`, apikey: Deno.env.get('SUPABASE_ANON_KEY') ?? '', 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) });
       const list = await response.json();
       if (!response.ok || !Array.isArray(list.brokers)) throw new Error('לא ניתן לקרוא את רשימת המתווכים');
-      const targets = list.brokers.filter((r: { is_developer?: boolean; license_verified?: boolean }) => !r.is_developer && !r.license_verified).map((r: { user_id: string }) => r.user_id);
+      const targets = list.brokers.filter((r: { is_developer?: boolean; license_verified?: boolean; registry_no_match?: boolean }) => !r.is_developer && !r.license_verified && !r.registry_no_match).map((r: { user_id: string }) => r.user_id);
       const result = await admin.rpc('start_broker_registry_batch', { _actor: caller.userId, _targets: targets });
       if (result.error) throw result.error; id = result.data;
     }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RequestGate, readAndCommit } from './concurrency.ts';
+import { RequestGate, readAndCommit, activatePendingInventory } from './concurrency.ts';
 import { configuration } from './policy.ts';
 
 const env={TORAFF_IMPORT_API_URL:'https://worker.example.test',IMPORT_WORKER_SHARED_SECRET:'test',BRIGHT_DATA_API_KEY:'test',BRIGHTDATA_UNLOCKER_ZONE:'test'};
@@ -49,4 +49,11 @@ test('suspended provider error takes priority over temporary sibling failures',a
   await assert.rejects(readAndCommit(['temporary','suspended'],async url=>{
     throw Object.assign(new Error(url),{status:url==='suspended'?407:503});
   },async()=>{}),/suspended/);
+});
+test('imports the first queued broker before more identity discovery and retains the backlog',()=>{
+  const first={broker_id:'first'},second={broker_id:'second'};
+  const c={activeBroker:null as null|typeof first,workerEnrichment:[first,second],workerListingIndex:3,workerListingDoneUrls:['saved']};
+  assert.equal(activatePendingInventory(c),first);assert.deepEqual(c.workerEnrichment,[second]);
+  assert.equal(activatePendingInventory(c),first);assert.deepEqual(c.workerEnrichment,[second]);
+  assert.equal(c.workerListingIndex,3);assert.deepEqual(c.workerListingDoneUrls,['saved']);
 });

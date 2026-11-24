@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { collectBrokers, nextImportPoint, validImportParameters, freshImportCheckpoint, skipRestrictedImport, advanceSearchPoint } from '../../supabase/functions/_shared/brokerImportQueue';
+import { collectBrokers, nextImportPoint, validImportParameters, freshImportCheckpoint, skipRestrictedImport, advanceSearchPoint, upgradeDiscoveryCheckpoint } from '../../supabase/functions/_shared/brokerImportQueue';
 import { readWorkerResponse } from '../../supabase/functions/_shared/brightDataDiagnostics';
 describe('broker discovery and resume',()=>{
   const rows=Array.from({length:5},(_,i)=>({source_url:`https://www.yad2.co.il/realestate/item/a${i}`,owner_phone:'0521234567',publisher:{publisher_kind:'broker',broker_name:'טל זנו',broker_license_number:'12345'}}));
@@ -72,4 +72,15 @@ describe('pasted-link imports', () => {
     const c: Record<string, any> = { source: 'urls', page: 1, phase: 'enriching', brokers: [] };
     advanceUrls(c); expect(c.phase).toBe('completed'); expect(c.page).toBe(1);
   });
+});
+
+it('upgrades old discovery without losing imported brokers, properties or cursor',()=>{
+  const brokers=[{license_number:'12345',listing_urls:['saved','next']}];
+  const c={source:'search',discoveryVersion:3,phase:'enriching',brokers,brokerIndex:1,listingIndex:2,brokerResults:[{broker_id:'saved'}],savedListingIds:['property'],enrichUrls:['remaining'],page:8};
+  expect(upgradeDiscoveryCheckpoint(c)).toBe(true);
+  expect(c).toMatchObject({brokers,brokerIndex:1,listingIndex:2,brokerResults:[{broker_id:'saved'}],savedListingIds:['property'],enrichUrls:['remaining'],page:8});
+});
+it('never changes an active property-import checkpoint',()=>{
+  const c={source:'search',phase:'importing',brokerIndex:2,listingIndex:3,brokerId:'saved'};
+  expect(upgradeDiscoveryCheckpoint(c)).toBe(false);expect(c).toEqual({source:'search',phase:'importing',brokerIndex:2,listingIndex:3,brokerId:'saved'});
 });

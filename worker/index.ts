@@ -2,7 +2,7 @@ import * as cheerio from 'cheerio';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { configuration, retryDelay } from './policy.ts';
-import { delay, RequestGate, readAndCommit } from './concurrency.ts';
+import { delay, RequestGate, readAndCommit, activatePendingInventory } from './concurrency.ts';
 import { advanceExternalFailedSource, fatalImportFailure, finishFailedImportItem, recordImportItemFailure } from '../supabase/functions/_shared/importItemFailure.ts';
 import { parseAgencies, agencyDirectoryUrl, agencyVolumeAllowed } from '../supabase/functions/_shared/yad2Agencies.ts';
 import { parseDeveloperDirectory, DEVELOPER_DIRECTORY_URL } from '../supabase/functions/_shared/yad2DeveloperDirectory.ts';
@@ -95,10 +95,9 @@ export async function startImportWorker() {
         if(!c.workerEnrichedIds.includes(saved.broker_id)&&c.activeBroker?.broker_id!==saved.broker_id&&!c.workerEnrichment.some((b:any)=>b.broker_id===saved.broker_id))c.workerEnrichment.push(saved);
         if(!c.workerProcessed.includes(saved.source_url))c.workerProcessed.push(saved.source_url);
       }
-      // Saved identities are collected first; their private properties are completed afterwards.
+      // Drain private inventory immediately, including the backlog recovered from a previous worker version.
       while(!stopping&&!lost) {
-        const identitiesDone=counts.brokers_done+counts.developers_done>=job.target_brokers || (!c.workerEntities.some((e:any)=>!c.workerProcessed.includes(e.url))&&!c.workerFrontier.length);
-        if(identitiesDone&&!c.activeBroker)c.activeBroker=c.workerEnrichment.shift()??null;
+        activatePendingInventory(c);
         if(c.activeBroker) {
           stage='importing';
           const broker=c.activeBroker;

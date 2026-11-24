@@ -19,6 +19,7 @@ export async function runRegistryBatchStep(admin: any, id: string, refresh = ref
         const saved = await refresh(admin, item.broker_id, item.license_number, batch.created_by, { id, token: batch.lease_token });
         if (saved.profile?.id === item.broker_id && saved.profile.broker_license_number === item.license_number) outcome = 'verified';
       } catch (reason) {
+        if ((reason as {code?: string}).code === 'license_not_found') outcome = 'missing';
         retry = (reason as { status?: number }).status === 503 || transientBrokerConnectionError(reason);
       }
       const { data: done, error: finishError } = await admin.rpc('finish_broker_registry_item', { _batch: id, _token: batch.lease_token, _item: item.id, _status: outcome, _retry: retry });

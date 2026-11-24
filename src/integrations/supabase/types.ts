@@ -1941,6 +1941,45 @@ export type Database = {
           },
         ]
       }
+      broker_registry_no_matches: {
+        Row: {
+          broker_id: string
+          checked_at: string
+          checked_by: string
+          license_number: string
+          workspace_owner_id: string | null
+        }
+        Insert: {
+          broker_id: string
+          checked_at?: string
+          checked_by: string
+          license_number: string
+          workspace_owner_id?: string | null
+        }
+        Update: {
+          broker_id?: string
+          checked_at?: string
+          checked_by?: string
+          license_number?: string
+          workspace_owner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_registry_no_matches_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_registry_no_matches_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_role_suspensions: {
         Row: {
           reason: string
@@ -13313,6 +13352,16 @@ export type Database = {
           _user: string
         }
         Returns: Json
+      }
+      save_admin_registry_no_match: {
+        Args: {
+          _actor: string
+          _batch?: string
+          _license: string
+          _token?: string
+          _user: string
+        }
+        Returns: boolean
       }
       save_grow_card_reference: {
         Args: {

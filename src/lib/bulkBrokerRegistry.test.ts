@@ -14,3 +14,6 @@ it('reports missing/invalid licenses without sending invalid checks', async () =
 });
 it('continues after a not-found result and a failed check, without false success',async()=>{const check=vi.fn().mockResolvedValueOnce(false).mockRejectedValueOnce(Error()).mockResolvedValueOnce(true);expect(await recheckRedBrokers([red,{...red,user_id:'b'},{...red,user_id:'c'}],check,vi.fn(),()=>true)).toMatchObject({done:3,failed:2,verified:1});});
 it('stops starting checks when the authorized account changes',async()=>{let current=true;const check=vi.fn(async()=>{current=false;return true;});expect(await recheckRedBrokers([red,{...red,user_id:'b'}],check,vi.fn(),()=>current)).toBeNull();expect(check).toHaveBeenCalledTimes(1);});
+it('excludes previously checked no-match cards across new batch runs',()=>{
+  expect(redWaitingBrokers([red,{...red,user_id:'gray',registry_no_match:true}]).map(r=>r.user_id)).toEqual(['red']);
+});

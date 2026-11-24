@@ -33,7 +33,7 @@ import { coldInvitationBody } from '../../../supabase/functions/_shared/brokerIn
 import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
 import { brokerUserError } from '../../../supabase/functions/_shared/brokerRecovery';
 
-export type ContactBroker = { created_at?: string; user_id: string; full_name: string; phone: string | null; whatsapp_phone?: string | null; whatsapp_link?: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
+export type ContactBroker = { created_at?: string; user_id: string; full_name: string; phone: string | null; whatsapp_phone?: string | null; whatsapp_link?: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; registry_no_match?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
 async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> {
   return brokerWhatsAppRequest<T>(fn, body);
@@ -189,12 +189,12 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
     <div className={b.is_developer ? "flex flex-wrap items-center gap-1" : "flex flex-col gap-2"}>
       <div data-broker-row="identity" className="flex min-w-0 flex-1 items-start justify-between gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-1">
-        {b.license_verified ? <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-label="אומת מול המאגר הממשלתי" /> : !b.is_developer && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense??''} onUpdated={() => void qc.invalidateQueries({queryKey:['broker-contact-queue']})} />}
+        {b.license_verified ? <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-label="אומת מול המאגר הממשלתי" /> : !b.is_developer && <BrokerRegistryNameButton compact userId={b.user_id} license={regLicense??''} noMatch={b.registry_no_match ?? false} onUpdated={() => void qc.invalidateQueries({queryKey:['broker-contact-queue']})} />}
         <button type="button" onClick={() => void openWs(b.user_id, b.is_developer)} className="flex min-w-0 items-center gap-2 rounded-lg text-right hover:opacity-90" aria-label={`מעבר אל ${dest} של ${b.full_name}`}>
           {b.is_developer ? <DeveloperLogo name={b.full_name} logoUrl={b.office_logo_url} className="h-9 w-9" /> : b.avatar_url ? <img src={b.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
           <span className="flex min-w-0 items-center gap-1 text-base sm:text-lg"><span className="min-w-0 break-words font-bold">{b.full_name || 'ללא שם'}</span>{!b.is_developer && regLicense && <span dir="ltr" className="shrink-0 whitespace-nowrap text-sm font-normal text-muted-foreground sm:text-base">{regLicense}</span>}</span>
         </button>
-        {!b.is_developer && !hasSelectedGender && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'זכר', '\u2642\uFE0E'], ['female', 'נקבה', '\u2640\uFE0E']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role="radio" aria-checked={false} aria-label={label} title={label} className={`h-7 w-7 text-base ${g === 'male' ? 'text-gender-male' : 'text-gender-female'}`} disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>}
+        {!b.is_developer && !hasSelectedGender && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'גבר', '\u2642\uFE0E'], ['female', 'אישה', '\u2640\uFE0E']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role="radio" aria-checked={false} aria-label={label} title={label} className={`h-7 w-7 text-base ${g === 'male' ? 'text-gender-male' : 'text-gender-female'}`} disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>}
         </div>
         {!b.is_developer && <div className="flex min-w-0 max-w-[45%] items-center justify-end gap-2">{b.city && <span className="min-w-0 break-words text-sm text-muted-foreground sm:text-base">{b.city}</span>}<OfficeNameField b={b} /></div>}
       </div>
@@ -283,7 +283,7 @@ function SendHistory({ search }: { search: ImportSearch }) {
     saveSuperAdminViewState({ openSendKey: next });
   };
   return <div className="space-y-3">
-    <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList className="grid w-full grid-cols-3">
+    <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList secondary className="grid w-full grid-cols-3">
       <TabsTrigger value="broker" className="px-1">מתווכים ({sendCount('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({sendCount('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({sendCount('marketing')})</TabsTrigger>
     </TabsList></Tabs>
     {group === 'broker' && <BrokerScannerPanel prioritySort={prioritySort} onPrioritySort={() => setPrioritySort(nextDiscoverySort)} />}
@@ -365,7 +365,7 @@ export function ImportHistory({ search = emptyImportSearch }: { search?: ImportS
   const isRemoved = (i: ImportItem) => !i.workspace_owner_id;
   const searching = search.text.trim() || search.kind !== 'all';
   const items = allImports.filter(i => (searching || i.kind === kind) && matchesImportSearch({ ...i }, { ...search, channel: 'all', whatsapp: 'all' })).sort((a, b) => Number(isRemoved(a)) - Number(isRemoved(b)));
-  const kindTabs = <Tabs value={kind} onValueChange={v => setKind(v as 'broker' | 'developer')} dir="rtl" className="mb-3"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="broker">מתווכים ({allImports.filter(i => i.kind === 'broker' && !isRemoved(i)).length})</TabsTrigger><TabsTrigger value="developer">יזמים ({allImports.filter(i => i.kind === 'developer' && !isRemoved(i)).length})</TabsTrigger></TabsList></Tabs>;
+  const kindTabs = <Tabs value={kind} onValueChange={v => setKind(v as 'broker' | 'developer')} dir="rtl" className="mb-3"><TabsList secondary className="grid w-full grid-cols-2"><TabsTrigger value="broker">מתווכים ({allImports.filter(i => i.kind === 'broker' && !isRemoved(i)).length})</TabsTrigger><TabsTrigger value="developer">יזמים ({allImports.filter(i => i.kind === 'developer' && !isRemoved(i)).length})</TabsTrigger></TabsList></Tabs>;
   if (q.isLoading) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
   if (q.isError && !q.data) return <p role="alert" className="text-base text-destructive">{brokerUserError(q.error)}</p>;
   if (!items.length) return <div>{kindTabs}<p className="text-base text-muted-foreground">אין יבואים בלשונית זו.</p></div>;
@@ -411,7 +411,7 @@ function PendingInvitations({ search }: { search: ImportSearch }) {
     {/* The scrollport has 20px top padding and the primary band is 76px high. A 56px
         offset therefore joins this row to it, with an opaque background over passing cards. */}
     <div data-import-secondary-tabs className="sticky top-[36px] z-20 -mx-[15px] bg-background px-[15px]">
-      <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList className="grid w-full grid-cols-3">
+      <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList secondary className="grid w-full grid-cols-3">
         <TabsTrigger value="broker" className="px-1">מתווכים ({count('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({count('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({count('marketing')})</TabsTrigger>
       </TabsList></Tabs>
     </div>

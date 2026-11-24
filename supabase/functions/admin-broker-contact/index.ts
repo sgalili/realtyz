@@ -203,6 +203,9 @@ Deno.serve(async req => {
     const by = <T,>(rows: T[] | null | undefined, k: (x: T) => string) => { const m = new Map<string, T>(); for (const x of rows ?? []) if (!m.has(k(x))) m.set(k(x), x); return m; };
     const pM = by(profiles, (x: any) => x.id), invM = by(inventory as any[], (x: any) => x.user_id), waM = by(whatsappContacts, (x: any) => x.broker_id), verM = by(verified, (x: any) => x.user_id), licM = by(licenses, (x: any) => x.user_id), offM = by(offices, (x: any) => x.user_id), devM = by(devCompanies, (x: any) => x.workspace_owner_id);
     const devRoleSet = new Set((devRoles ?? []).map(d => d.user_id));
+    const {data: noMatches,error: noMatchError}=await admin.from('broker_registry_no_matches').select('broker_id,license_number').in('broker_id',ids);
+    if(noMatchError)return json({error:'לא ניתן לקרוא את תוצאות האימות כרגע'},503);
+    const noMatchKeys=new Set((noMatches??[]).map(r=>`${r.broker_id}:${r.license_number}`));
     const brokers = eligible.map(r => {
       const p = pM.get(r.user_id);
       const counts: any = invM.get(r.user_id);
@@ -213,7 +216,8 @@ Deno.serve(async req => {
         office_name: offM.get(r.user_id)?.agency_name ?? devM.get(r.user_id)?.company_name ?? null,
         office_logo_url: offM.get(r.user_id)?.logo_url ?? devM.get(r.user_id)?.logo_url ?? null, avatar_url: (p as any)?.avatar_url ?? null,
         profile_license: (p as any)?.broker_license_number ?? null, gender: (p as any)?.gender ?? null, city: (p as any)?.city ?? null,
-        license_verified: !!(verified ?? []).find(l => l.user_id === r.user_id && l.verified_at) || !!(p as any)?.locked_broker_name,
+        registry_no_match: noMatchKeys.has(`${r.user_id}:${p?.broker_license_number || verM.get(r.user_id)?.license_number || licM.get(r.user_id)?.license_number || r.imported_license_number || ''}`),
+        license_verified: !!verM.get(r.user_id)?.verified_at || !!(p as any)?.locked_broker_name,
         is_developer: devRoleSet.has(r.user_id),
         drafts: Number(counts?.drafts ?? 0),
         projects: Number(counts?.projects ?? 0),

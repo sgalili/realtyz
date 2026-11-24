@@ -1,4 +1,5 @@
 # External import execution
+- Drain saved-broker inventory before more identity discovery, retaining active cursors and recovered backlogs. Why: immediate properties without resetting live progress.
 - Railway owns native Bright Data discovery and recursive page reads; the app only enqueues/polls, while fenced machine actions reuse existing private inventory savers and server license checks. Why: long scans must not run in browsers or short-lived Cloud requests.
 - Never use a Cloud service-role key outside Cloud or expose the import shared secret to the browser; Railway uses the dedicated machine endpoint. Why: a worker credential must not grant arbitrary database access.
 - Preserve the existing Production web process when enabling this background worker; no HTTP server is provided here. Why: replacing the web start command with a queue consumer would take the existing service offline.

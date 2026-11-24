@@ -2066,6 +2066,20 @@
       "when": 1795499200107,
       "tag": "0294_broker_outreach_verified_phone_and_reply_fence",
       "breakpoints": true
+    },
+    {
+      "idx": 295,
+      "version": "7",
+      "when": 1795501266276,
+      "tag": "0295_durable_registry_no_match",
+      "breakpoints": true
+    },
+    {
+      "idx": 296,
+      "version": "7",
+      "when": 1795501516130,
+      "tag": "0296_registry_result_access_grants",
+      "breakpoints": true
     }
   ]
 }

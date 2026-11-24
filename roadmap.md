@@ -1,5 +1,12 @@
 # Roadmap
 
+## Import and registry refinement November 24
+- [x] Icon-only repeat beside pause/discovery uses the same set_import_repeat RPC; old labeled row removed. Imported summaries default collapsed; secondary tabs gray and dashboard badge removed.
+- [x] Railway worker drains each saved broker's inventory before further discovery, including recovered backlogs, retaining active cursors. Fallback discovery upgrades no longer reset entities; short pace sleeps avoid an extra step. Scanner source work skips idle delay, ticks before slow reads and retains serial/quota/jitter/reply/error safeguards.
+- [x] Durable exact broker/license no-match via protected broker_registry_no_matches and fenced service-only RPC; gray state read back by admin list, no-match batch inserts excluded. Temporary failures stay red/retryable. User confirmed manual gender only; no saved genders changed.
+- [x] 55 focused app tests, 17 worker tests (including two-broker property-before-next flow), and 5 scanner tests passed; preview builds OK. Signed-in 411x801/1280x1800 checks show 285 real broker/import rows, gray secondary tabs, compact controls and expandable summary; dashboard corner badge absent. No registry checks/imports/messages launched; active job continued from 1 to 9 drafts without reset. Four existing Cloud functions deployed and schema applied; no-match writes validated by tests, not a live verification.
+- [ ] Deploy updated worker and worker-whatsapp services on Railway: external deployment unavailable here. Existing active job and saved inventory were not reset; full live pacing after deployment remains unverified.
+
 ## Broker guest home and OTP entry November 24
 - [x] Brokers-only guest root now mounts BrokerGuestHome in AppLayout with concise benefits and signup/login/demo actions; old Landing and full-marketplace board retained. Guest home scroll ends above the legal footer; page headings opt out of hero hiding.
 - [x] Guest sidebar has home/signup/login/direct broker demo/FAQ/accessibility, without professional or marketplace entries. Auth defaults to OTP login in broker mode, preserves explicit signup/login via URL and existing invitation binding, uses clean wordmark and offers immediate or failed-OTP read-only demo. Server verification unchanged; guest private prefetch prevented.

@@ -1,4 +1,5 @@
 # Broker WhatsApp execution
+- Wake scanner sending before source reads and skip idle delay only after source completion; retain quota, jitter, reply deadlines and uncertain-send safeguards. Why: faster backlog handling without duplicate or premature sends.
 - This independent Node service claims only broker WhatsApp jobs through a dedicated machine credential; it never writes import jobs or holds database credentials. Why: isolate discovery failures and prevent import interference.
 - Source pages come only from Cloud-authorized saved broker listings; Cloud validates extracted contact evidence and preserves the primary phone. Why: avoid unrelated contact attribution.
 - Cloud extraction verifies the saved listing token and keeps only its observed primary sticky agency contact section; shared card/editor cache preserves and immediately updates persisted contacts. Why: no unrelated contacts or stale numbers during repeat discovery and manual saves.

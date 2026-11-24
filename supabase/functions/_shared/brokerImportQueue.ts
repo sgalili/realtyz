@@ -80,3 +80,13 @@ export function skipRestrictedImport(c: Record<string, any>) {
   if (movedBroker) { c.phase = 'validating'; delete c.brokerId; delete c.brokerListingsDone; }
   return { brokerFinished };
 }
+/** Upgrade discovery transport only; never reset saved entities or an active inventory cursor. */
+export function upgradeDiscoveryCheckpoint(c: Record<string, any>) {
+  if (c.source === 'urls' || !['scanning', 'enriching'].includes(c.phase)) return false;
+  const fresh = freshImportCheckpoint();
+  if (c.source === fresh.source && c.discoveryVersion === fresh.discoveryVersion) return false;
+  c.source = fresh.source; c.discoveryVersion = fresh.discoveryVersion;
+  c.directoryQueue ??= fresh.directoryQueue; c.directoryVisited ??= 0;
+  c.freshSearch = true;
+  return true;
+}
