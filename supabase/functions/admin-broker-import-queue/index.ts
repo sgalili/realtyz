@@ -1,3 +1,4 @@
+import { classifyHebrewName } from '../_shared/hebrewNameGender.ts';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -457,6 +458,7 @@ Deno.serve(async req => {
               throw err;
             }
             if(!d.user_id)throw new Error('יצירת המתווך נכשלה');brokerId=d.user_id;
+            {const g=classifyHebrewName(b.full_name);if(g.confidence==='high'&&g.gender!=='unknown'){const {error}=await admin.from('profiles').update({gender:g.gender}).eq('id',brokerId).is('gender',null);if(error)console.error('[broker-import-gender]',error.message);}}
           }
           if(b.office_name) {
             const {data:office}=await admin.from('white_label_settings').select('id,agency_name,agency_description').eq('user_id',brokerId).maybeSingle();
