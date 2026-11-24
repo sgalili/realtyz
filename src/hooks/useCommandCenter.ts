@@ -31,6 +31,15 @@ const PRIORITY_WEIGHT: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
 const CLOSED_TASK_STATUSES = new Set(['completed', 'done', 'cancelled', 'sent', 'archived']);
 
+// `property_type` is not a listings column. Keep the task card's property-type
+// label by reading the existing JSON fields used by the property detail page.
+export const COMMAND_CENTER_LISTING_COLUMNS = 'id, property_title, address, house_number, city, neighborhood, deal_type, media_photos, image_url, features, attributes';
+
+export function listingPropertyTypeOf(listing: any): string | null {
+  const value = listing?.features?.property_type ?? listing?.attributes?.property_type ?? listing?.attributes?.text;
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
 export const ACTION_TYPE_LABEL: Record<string, string> = {
   follow_up: '\n',
   property_search: 'איתור נכס',
@@ -129,7 +138,7 @@ export function useCommandCenterTasks() {
         listingIds.size
           ? (supabase as any)
               .from('listings')
-              .select('id, property_title, property_type, address, house_number, city, neighborhood, deal_type, media_photos, image_url')
+              .select(COMMAND_CENTER_LISTING_COLUMNS)
               .in('id', Array.from(listingIds))
           : Promise.resolve({ data: [] }),
       ]);
@@ -146,7 +155,7 @@ export function useCommandCenterTasks() {
         if (!l) return null;
         const street = [l.address, l.house_number].filter(Boolean).join(' ');
         return [
-          l.property_type,
+          listingPropertyTypeOf(l),
           l.city,
           l.neighborhood,
           l.deal_type === 'rent' ? 'השכרה' : l.deal_type ? 'מכירה' : null,
