@@ -16,6 +16,7 @@ import { ritaChatKeyAction } from '@/lib/ritaChatKeys';
 import { RITA_CHAT_GREETING, resizeRitaTextarea } from '@/lib/ritaChatPresentation';
 import { RitaUserAvatar } from '@/components/rita/RitaUserAvatar';
 import { ADMIN_REPLY_PREFIX, ritaLiveLog, ritaLivePoll, type LiveMode } from '@/lib/ritaLive';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 
 const KEY = 'toraff-visitor-rita-history';
 // Keeps the newest bubble visible: scrolls the transcript to its bottom whenever a message is added or grows.
@@ -32,6 +33,7 @@ function readHistory(): UIMessage[] {
 }
 
 export function VisitorRitaChat() {
+  const brokersOnly = useBrokersOnly();
   const [expanded, setExpanded] = useState(false);
   // PromptInputTextarea does not forward refs, so reach the textarea through the wrapper instead.
   const inputWrapRef = useRef<HTMLDivElement>(null);
@@ -39,8 +41,8 @@ export function VisitorRitaChat() {
   const transport = useMemo(() => new DefaultChatTransport({
     api: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/visitor-rita`,
     headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-    prepareSendMessagesRequest: ({ messages }) => ({ body: { messages: messages.slice(-24).map(m => ({ id: m.id, role: m.role, parts: m.parts.filter(p => p.type === 'text').map(p => ({ type: 'text', text: p.text })) })) } }),
-  }), []);
+    prepareSendMessagesRequest: ({ messages }) => ({ body: { presentation: brokersOnly ? 'brokers_only' : 'full_marketplace', messages: messages.slice(-24).map(m => ({ id: m.id, role: m.role, parts: m.parts.filter(p => p.type === 'text').map(p => ({ type: 'text', text: p.text })) })) } }),
+  }), [brokersOnly]);
   const [initial] = useState(readHistory);
   const { messages, sendMessage, status, error, stop, setMessages } = useChat({ id: 'toraff-visitor', messages: initial, transport,
     onFinish: ({ message }) => { const t = message.parts.map(p => p.type === 'text' ? p.text : '').join(''); if (t) void ritaLiveLog('assistant', t, true); } });

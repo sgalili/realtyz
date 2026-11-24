@@ -124,17 +124,18 @@ const Auth = () => {
       setFailure(message); toast.error(message);
     } finally { setLoading(false); }
   };
-  return <div dir="rtl" className="auth-gradient-shell relative flex h-[100dvh] flex-col overflow-hidden bg-background px-4 pb-14 text-foreground">
+  return <div dir="rtl" className={`auth-gradient-shell relative flex h-[100dvh] flex-col overflow-hidden bg-background px-4 pb-14 text-foreground ${brokersOnly ? 'broker-auth-shell' : ''}`}>
     <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההרשמה וחזרה לדף הבית" className="absolute left-4 top-4 z-20 h-10 w-10 bg-transparent p-1 hover:bg-transparent" onClick={() => navigate('/')}><X className="h-8 w-8" /></Button>
     {/* Back arrow only where there is a previous step to return to: the SMS code slide. */}
     {codeSent && <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" onClick={switchPhone}><ArrowRight className="h-8 w-8" /></Button>}
 
     <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center pt-[40px]">
       <img src={brokersOnly ? toraffWordmark : realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
-      <h1 className={`mb-8 mt-[50px] text-center !font-normal ${codeSent ? 'text-xl' : 'text-[17px]'}`}>{codeSent ? `הזינו את הקוד שקיבלתם ${delivery === 'whatsapp' ? 'בוואטסאפ' : 'ב-SMS'}` : signup ? 'להרשמה מהירה בחינם:' : 'כניסה לחשבון'}</h1>
-      <div className="min-h-0 w-full overflow-y-auto overscroll-contain">
+      <h1 className={brokersOnly ? 'broker-auth-heading mb-3 mt-8 text-center text-3xl font-bold' : `mb-8 mt-[50px] text-center !font-normal ${codeSent ? 'text-xl' : 'text-[17px]'}`}>{codeSent ? `הזינו את הקוד שקיבלתם ${delivery === 'whatsapp' ? 'בוואטסאפ' : 'ב-SMS'}` : brokersOnly ? signup ? 'מתחילים לעבוד חכם' : 'טוב לראות אתכם שוב!' : signup ? 'להרשמה מהירה בחינם:' : 'כניסה לחשבון'}</h1>
+      {brokersOnly && <p className="mb-5 text-center text-base leading-relaxed text-muted-foreground">{codeSent ? 'עוד רגע ואתם בפנים.' : signup ? 'הרשמה חינם, עם ריטה לצידכם.' : 'מספר הנייד שלכם, קוד קצר ואתם בפנים.'}</p>}
+      <div className={`min-h-0 w-full overflow-y-auto overscroll-contain ${brokersOnly ? 'broker-auth-form rounded-lg px-5 py-5' : ''}`}>
         {codeSent ? <div className="space-y-5 text-center">
-          <p className="-mt-6 text-base text-muted-foreground">נשלח למספר <span dir="ltr" className="font-medium text-foreground">{phone}</span> <button type="button" className="ms-1 text-sm text-primary underline underline-offset-2" onClick={switchPhone}>החלפה</button></p>
+          <p className={`${brokersOnly ? '' : '-mt-6'} text-base text-muted-foreground`}>נשלח למספר <span dir="ltr" className="font-medium text-foreground">{phone}</span> <Button type="button" variant="link" className="ms-1 h-auto p-0 text-sm" onClick={switchPhone}>החלפה</Button></p>
           <InputOTP maxLength={4} value={otp} onChange={raw => { const value = raw.replace(/\D/g, '').slice(0, 4); setOtp(value); if (value.length === 4) void verify(value); }} pasteTransformer={text => { const d = text.replace(/\D/g, ''); return d.length > 4 ? d.slice(-4) : d; }} inputMode="numeric" autoComplete="one-time-code" containerClassName="justify-center" dir="ltr" disabled={loading || needsNewCode || attempts >= 3}>
             <InputOTPGroup className="flex-row-reverse gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-[38px] font-bold text-primary focus-visible:outline-hidden focus-visible:ring-0 aria-[current=true]:ring-0" />)}</InputOTPGroup>
           </InputOTP>
@@ -145,18 +146,19 @@ const Auth = () => {
             <Input aria-label="שם פרטי" placeholder="שם פרטי" autoComplete="given-name" maxLength={80} className={fieldClass} value={firstName} onChange={e => setFirstName(e.target.value)} />
             <Input aria-label="שם משפחה" placeholder="שם משפחה" autoComplete="family-name" maxLength={80} className={fieldClass} value={lastName} onChange={e => setLastName(e.target.value)} />
           </div>}
+          {brokersOnly && <label htmlFor="auth-mobile" className="block text-base font-semibold">{invitedBroker ? 'מספר וואטסאפ אישי' : 'מספר הטלפון הנייד שלכם'}</label>}
           <div className={signup ? 'grid grid-cols-2 gap-3' : ''}>
-            <Input type="tel" inputMode="tel" autoComplete="tel" aria-label={invitedBroker ? 'מספר וואטסאפ אישי' : 'מספר טלפון נייד'} placeholder={invitedBroker ? 'מספר וואטסאפ אישי' : 'מספר טלפון נייד'} maxLength={11} className={fieldClass} dir={phone ? 'ltr' : 'rtl'} value={phone} onChange={e => setPhone(formatAuthMobile(e.target.value))} />
+            <Input id="auth-mobile" type="tel" inputMode="tel" autoComplete="tel" aria-label={invitedBroker ? 'מספר וואטסאפ אישי' : 'מספר טלפון נייד'} placeholder={brokersOnly ? '05X-XXXXXXX' : invitedBroker ? 'מספר וואטסאפ אישי' : 'מספר טלפון נייד'} maxLength={11} className={fieldClass} dir={phone || brokersOnly ? 'ltr' : 'rtl'} value={phone} onChange={e => setPhone(formatAuthMobile(e.target.value))} />
             {signup && <div role="group" aria-label="מגדר" className="flex min-w-0 gap-1">{[['male', 'גבר', User], ['female', 'אישה', UserRound]].map(([value, label, Icon]) => <Button key={value as string} type="button" variant={gender === value ? 'default' : 'outline'} aria-pressed={gender === value} className="h-12 min-w-0 flex-1 gap-1 px-2 text-lg font-normal" onClick={() => setGender(value as string)}><Icon className="h-5 w-5 shrink-0" />{label as string}</Button>)}</div>}
           </div>
-          {ready && <Button type="submit" disabled={loading} className="h-12 w-full text-xl font-bold">{loading ? 'שולח...' : invitedBroker ? 'שלחו לי קוד בוואטסאפ' : 'שלחו לי קוד ב-SMS'}</Button>}
+          {(ready || brokersOnly) && <Button type="submit" disabled={loading || !ready} className={`h-12 w-full text-xl font-bold ${brokersOnly ? 'broker-auth-submit' : ''}`}>{loading ? 'שולח...' : invitedBroker ? 'שלחו לי קוד בוואטסאפ' : 'שלחו לי קוד ב-SMS'}</Button>}
         </form>}
         {failure && <div className="mt-4 space-y-3"><p role="alert" className="text-center text-sm text-destructive">{failure}</p><OtpFailureActions disabled={loading || (codeSent && (needsNewCode || attempts >= 3) && resendSeconds > 0)} retryLabel={codeSent && (needsNewCode || attempts >= 3) ? resendSeconds > 0 ? `קוד חדש בעוד ${resendSeconds}` : 'בקשת קוד חדש' : 'ניסיון נוסף'} onRetry={() => { if (codeSent && !needsNewCode && attempts < 3) { setFailure(null); setOtp(''); } else void sendCode(); }} /></div>}
-        {brokersOnly && !failure && <div className="mt-6 border-t border-border pt-4 text-center"><Button asChild variant="outline" disabled={loading} className="h-11 gap-2 text-base"><a href="/demo/broker/properties"><Eye className="h-5 w-5" />כניסה למרחב דמו</a></Button><p className="mt-2 text-sm text-muted-foreground">אפשר להתרשם גם בלי קוד, בהדגמה לקריאה בלבד.</p></div>}
+        {brokersOnly && !failure && <div className="mt-6 border-t border-border pt-4 text-center"><p className="mb-3 text-base font-semibold">רוצים קודם להכיר?</p><Button asChild variant="outline" className="h-11 w-full gap-2 text-base"><a href="/demo/broker/properties"><Eye className="h-5 w-5" />כניסה למרחב דמו</a></Button><p className="mt-2 text-sm text-muted-foreground">לקריאה בלבד, בלי להתחבר.</p></div>}
       </div>
     </div>
-    {!codeSent && <div className="absolute inset-x-0 bottom-[68px] flex justify-center">
-      <Button type="button" variant="link" className="text-base text-muted-foreground underline decoration-dotted underline-offset-4" onClick={() => { setSignup(value => !value); setOtp(''); }}>{signup ? 'יש לי חשבון' : 'פתח חשבון חדש'}</Button>
+    {!codeSent && <div className={brokersOnly ? 'flex shrink-0 justify-center py-3' : 'absolute inset-x-0 bottom-[68px] flex justify-center'}>
+      <Button type="button" variant="link" className="text-base text-muted-foreground underline decoration-dotted underline-offset-4" onClick={() => { setSignup(value => !value); setOtp(''); }}>{signup ? 'יש לי חשבון' : brokersOnly ? 'הרשמה חינם' : 'פתח חשבון חדש'}</Button>
     </div>}
   </div>;
 };

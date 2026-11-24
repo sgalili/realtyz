@@ -18,6 +18,10 @@
  * Ported from the former tailwind.config.ts.
  */
 @theme inline {
+  --color-guest-stage: var(--guest-stage);
+  --color-guest-on-stage: var(--guest-on-stage);
+  --color-guest-sun: var(--guest-sun);
+  --color-guest-ink: var(--guest-ink);
   --font-sans: "Plus Jakarta Sans", "Assistant", "Heebo", "Inter", system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
   --font-heading: "Playfair Display", "Assistant", "Heebo", "Inter", system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", serif;
   --font-display: "Playfair Display", "Assistant", "Heebo", "Inter", system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", serif;
@@ -2486,3 +2490,46 @@ svg.lucide-megaphone {
 .dashboard-hero {
   background: linear-gradient(135deg, hsl(var(--brand-deep)), hsl(var(--primary)) 60%, hsl(var(--nav-chats)));
 }
+
+/* Broker visitor welcome: shared colors, portrait and compositor-only motion. */
+:root {
+  --guest-stage: oklch(0.42 0.09 182);
+  --guest-on-stage: oklch(0.99 0.005 180);
+  --guest-sun: oklch(0.89 0.15 91);
+  --guest-ink: oklch(0.25 0.04 182);
+  --guest-coral: oklch(0.61 0.19 28);
+  --guest-sky: oklch(0.57 0.17 252);
+  --guest-violet: oklch(0.54 0.18 310);
+}
+.dark { --guest-coral: oklch(0.76 0.14 28); --guest-sky: oklch(0.76 0.12 252); --guest-violet: oklch(0.76 0.12 310); }
+.broker-guest-welcome { font-family: var(--font-hebrew); letter-spacing: 0; }
+.broker-guest-intro { --foreground: var(--primary-foreground); --muted-foreground: var(--primary-foreground); background: var(--guest-stage); color: var(--guest-on-stage); }
+.broker-guest-intro h1, .broker-guest-intro h1 + p { color: var(--guest-on-stage) !important; }
+@media (max-width: 639px) { .broker-guest-intro > div:last-child { min-height: 112px; } .broker-guest-rita { height: 172px; } }
+.broker-guest-art svg { position: absolute; width: 110px; height: 110px; opacity: .1; animation: broker-guest-drift 9s ease-in-out infinite alternate; }
+.broker-guest-art svg:nth-child(1) { right: 65%; top: 5%; }
+.broker-guest-art svg:nth-child(2) { right: 8%; top: 65%; animation-delay: -3s; }
+.broker-guest-art svg:nth-child(3) { left: 2%; top: 30%; animation-delay: -5s; }
+.broker-guest-art svg:nth-child(4) { left: 30%; top: 15%; animation-delay: -7s; }
+.broker-guest-track { animation: broker-guest-ticker 24s linear infinite; }
+.broker-guest-strip:hover .broker-guest-track { animation-play-state: paused; }
+.broker-guest-benefit { --benefit-color: var(--guest-stage); background: color-mix(in oklab, var(--benefit-color) 7%, hsl(var(--background))); }
+.broker-guest-benefit > svg { color: var(--benefit-color); }
+.broker-guest-benefit[data-tone="1"] { --benefit-color: var(--guest-coral); }
+.broker-guest-benefit[data-tone="2"] { --benefit-color: var(--guest-sky); }
+.broker-guest-benefit[data-tone="3"] { --benefit-color: var(--guest-violet); }
+.dark .broker-guest-benefit[data-tone="0"] { --benefit-color: var(--guest-on-stage); }
+.broker-auth-shell { background: color-mix(in oklab, var(--guest-stage) 6%, hsl(var(--background))); }
+.broker-auth-heading { color: var(--guest-stage); }
+.dark .broker-auth-heading { color: var(--guest-on-stage); }
+.broker-auth-shell .broker-auth-form { border-top: 4px solid var(--guest-stage); background: hsl(var(--background)); }
+.broker-auth-shell .broker-auth-submit { background: var(--guest-stage); color: var(--guest-on-stage); }
+.broker-auth-shell .broker-auth-submit:hover { background: color-mix(in oklab, var(--guest-stage) 90%, var(--guest-ink)); }
+.broker-visitor-menu [data-visitor-auth-actions] > button:first-child { background: var(--guest-stage); color: var(--guest-on-stage); }
+.broker-visitor-menu nav > button:nth-of-type(1) > svg { color: var(--guest-stage); }
+.broker-visitor-menu nav > button:nth-of-type(2) > svg { color: var(--guest-sky); }
+.broker-visitor-menu nav > button:nth-of-type(3) > svg { color: var(--guest-coral); }
+.broker-visitor-menu nav > button:nth-of-type(4) > svg { color: var(--guest-violet); }
+@keyframes broker-guest-drift { to { transform: translate3d(12px, -16px, 0) rotate(8deg); } }
+@keyframes broker-guest-ticker { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .broker-guest-art svg, .broker-guest-track { animation: none; } }

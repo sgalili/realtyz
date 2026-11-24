@@ -1,7 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { convertToModelMessages } from 'npm:ai@7';
 import { createResponsesCall } from './responses.ts';
-import { visitorBody, VISITOR_PROMPT } from './policy.ts';
+import { visitorBody, visitorPrompt } from './policy.ts';
 
 const json = (message: string, status: number) => new Response(JSON.stringify({ error: message }), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
@@ -17,7 +17,7 @@ Deno.serve(async req => {
     const key = Deno.env.get('LOVABLE_API_KEY');
     if (!key) return json('ריטה אינה זמינה כרגע. ניתן להמשיך להרשמה.', 503);
     const messages = parsed.data.messages;
-    const call = createResponsesCall(req, { baseURL: 'https://ai.gateway.lovable.dev/v1', apiKey: key, model: 'openai/gpt-6-astra' }, await convertToModelMessages(messages), VISITOR_PROMPT);
+    const call = createResponsesCall(req, { baseURL: 'https://ai.gateway.lovable.dev/v1', apiKey: key, model: 'openai/gpt-6-astra' }, await convertToModelMessages(messages), visitorPrompt(parsed.data.presentation));
     return call.response(messages, corsHeaders);
   } catch {
     return json('לא ניתן לפתוח את השיחה כרגע. נסו שוב מאוחר יותר.', 400);

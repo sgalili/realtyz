@@ -1,5 +1,10 @@
 # Roadmap
 
+## Vibrant broker visitor experience November 24
+- [x] Refresh inline guest welcome with existing Rita artwork, colored benefit bands and reduced-motion-aware icons/logo strip.
+- [x] Restore VisitorMenu/VisitorRitaChat in broker-only app header; remove guest standalone sign-in icon, preserve marketplace/signed-in headers. Existing public chat uses a validated broker presentation, no private context/tools; deployed visitor-rita.
+- [x] Refine OTP presentation and immediate demo fallback without changing authentication. 24 focused app tests and 5 public-chat boundary tests passed. Mobile/desktop menu, full chat, auth/demo navigation and rejected OTP fallback checked; live Rita replied with broker-only guidance. Reduced motion disabled animations and full-marketplace kept its original root. No real OTP sent or account data changed. Frontend requires publishing.
+
 ## Import and registry refinement November 24
 - [x] Icon-only repeat beside pause/discovery uses the same set_import_repeat RPC; old labeled row removed. Imported summaries default collapsed; secondary tabs gray and dashboard badge removed.
 - [x] Railway worker drains each saved broker's inventory before further discovery, including recovered backlogs, retaining active cursors. Fallback discovery upgrades no longer reset entities; short pace sleeps avoid an extra step. Scanner source work skips idle delay, ticks before slow reads and retains serial/quota/jitter/reply/error safeguards.

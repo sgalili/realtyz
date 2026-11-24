@@ -7,6 +7,7 @@ import { Link, useLocation, useNavigate } from '@/lib/router-compat';
 import { Input } from '@/components/ui/input';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { VisitorMenu } from '@/components/public/VisitorMenu';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { shouldShowWelcome, WELCOME_REOPEN_EVENT } from '@/lib/welcomePreference';
 import { Bot, Zap, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu, LayoutDashboard } from "lucide-react";
@@ -487,7 +488,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* A negative wallet locks the app until the balance is topped up. */}
       <WalletLockGate />
       <div className={`realtyz-app-shell h-[100dvh] max-h-[100dvh] overflow-hidden flex w-full bg-background ${brokerGuestHome ? '!h-full !max-h-full' : ''}`}>
-        <AppSidebar />
+        {!(brokersOnly && !user) && <AppSidebar />}
         <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
           {/* RTL header, right to left: burger menu at the far right, then the
               workspace logo, then the workspace name with the signed-in user's
@@ -496,8 +497,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <header className="relative flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-[15px] pt-[env(safe-area-inset-top)] text-foreground z-30" dir="rtl">
             <div className="app-header-content flex w-full items-center justify-between gap-2">
             <div className="relative z-40 flex shrink-0 items-center gap-1">
-              <HeaderProfileLink />
-              <NotificationCenter />
+              {brokersOnly && !user ? <VisitorMenu onSignup={() => navigate('/auth?mode=signup')} /> : <HeaderProfileLink />}
+              {!(brokersOnly && !user) && <NotificationCenter />}
               {!brokersOnly && <HomeActivityPill />}
             </div>
 
@@ -513,7 +514,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
-              {brokersOnly ? user ? <Link to="/dashboard" aria-label="לוח בקרה" title="לוח בקרה" className="grid h-10 w-10 place-items-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"><LayoutDashboard className="h-6 w-6" /></Link> : <Button asChild variant="ghost" size="icon" aria-label="התחברות" title="התחברות"><Link to="/auth?mode=login"><Smartphone className="h-6 w-6" /></Link></Button> : <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />}
+              {brokersOnly ? user ? <Link to="/dashboard" aria-label="לוח בקרה" title="לוח בקרה" className="grid h-10 w-10 place-items-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"><LayoutDashboard className="h-6 w-6" /></Link> : null : <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />}
             </div>
             </div>
           </header>
@@ -525,7 +526,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <DemoSidebarPeek />
             </div>
           </PageLoadingRegion>
-          <AiAgentDrawer key={`${user?.id}:${activeWorkspaceId}`} />
+          {!(brokersOnly && !user) && <AiAgentDrawer key={`${user?.id}:${activeWorkspaceId}`} />}
           <QuickActionDrawer />
           <TutorialHost />
           <GlobalAppTour />
