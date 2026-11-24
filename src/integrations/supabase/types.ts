@@ -12364,6 +12364,13 @@ export type Database = {
         Returns: string
       }
       get_public_lead_price_bounds: { Args: never; Returns: Json }
+      get_public_platform_settings: {
+        Args: never
+        Returns: {
+          monthly_free_credits: number
+          platform_mode: string
+        }[]
+      }
       get_publishing_history: {
         Args: { _limit?: number; _offset?: number }
         Returns: {

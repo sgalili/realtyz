@@ -1982,6 +1982,13 @@
       "when": 1795484537836,
       "tag": "0282_broker_saas_rotating_messages",
       "breakpoints": true
+    },
+    {
+      "idx": 283,
+      "version": "7",
+      "when": 1795484849371,
+      "tag": "0283_restrict_platform_settings_reads",
+      "breakpoints": true
     }
   ]
 }
