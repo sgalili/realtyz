@@ -31,12 +31,8 @@ import { AgentPersonaPanel } from '@/components/AgentPersonaPanel';
 import { PersonaCalibrationPanel } from '@/components/PersonaCalibrationPanel';
 import { ProductionPrepPanel } from '@/components/ProductionPrepPanel';
 import { WebtivHomelySyncCard } from '@/components/integrations/WebtivHomelySyncCard';
-import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { SuperAdminUsersTable } from '@/components/admin/SuperAdminUsersTable';
-import { ActionPricingCard } from '@/components/billing/ActionPricingCard';
-import { SignupBonusSettings } from '@/components/billing/SignupBonusSettings';
-import { InviteBonusSettings } from '@/components/billing/InviteBonusSettings';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
 import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnectionModeCard';
@@ -873,9 +869,6 @@ const ApiSettings = () => {
       </div>
 
       {isSuperAdmin && <SectionShell title="משתמשים" subtitle="ניהול משתמשים"><SuperAdminUsersTable /></SectionShell>}
-      {isSuperAdmin && <ActionPricingCard />}
-      {isSuperAdmin && <SignupBonusSettings />}
-      {isSuperAdmin && <InviteBonusSettings />}
       <UsageMeterPanel />
 
       <SectionShell title="פרטיות ו-GDPR" subtitle="מסכת PII, ביקורת ומחיקת ליד לצמיתות">
@@ -957,9 +950,6 @@ const ApiSettings = () => {
         <ServiceAreasPanel />
       </SectionShell>
 
-      <SectionShell title="AI Voice Agent" subtitle="עוזר טלפוני שעונה כשאת/ה לא זמין/ה">
-        <VoiceAgentPanel />
-      </SectionShell>
 
       <SectionShell title="התראות חכמות" subtitle="Smart Notifications ב-WhatsApp על אירועים קריטיים">
         <NotificationPreferencesPanel />

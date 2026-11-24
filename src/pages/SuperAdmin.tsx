@@ -27,6 +27,7 @@ import { ScrapingUsageReport } from '@/components/admin/ScrapingUsageReport';
 import { RotatingMessagesManager } from '@/components/admin/RotatingMessagesManager';
 import { DynamicQrManager } from '@/components/admin/DynamicQrManager';
 import { toast } from 'sonner';
+import { VoiceProvidersTab } from '@/components/admin/VoiceProvidersTab';
 import { PlatformModeToggle } from '@/components/admin/PlatformModeToggle';
 import { format } from 'date-fns';
 
@@ -190,6 +191,7 @@ const SuperAdmin = () => {
       )}
 
       {section === 'scraping' && <ScrapingUsageReport />}
+      {section === 'voice' && <VoiceProvidersTab />}
 
       {section === 'connections' && (
         <div className="space-y-4">

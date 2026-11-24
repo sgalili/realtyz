@@ -13,7 +13,7 @@ export async function outreachEvent(admin: Admin, brokerId: string, kind: string
 export async function vapiConfig(admin: Admin) {
   let key = process.env['VAPI_API_KEY'] ?? '';
   let phoneId = process.env['VAPI_PHONE_NUMBER_ID'] ?? '';
-  const voiceId = process.env['ELEVENLABS_VOICE_ID'] ?? IVR_DEFAULT_VOICES[0].voice_id;
+  const voiceId = IVR_DEFAULT_VOICES[0].voice_id;
   if (!key || !phoneId) {
     const { data, error } = await admin.from('api_configs').select('api_key').eq('service_name','Vapi').maybeSingle();
     if (error) throw error;
@@ -122,7 +122,7 @@ export async function officialOutreachSend(admin: Admin, ownerId: string, payloa
 }
 
 export async function sendBrokerVoice(admin: Admin, brokerId: string) {
-  const key=process.env['ELEVENLABS_API_KEY'];const voiceId=process.env['ELEVENLABS_VOICE_ID']??IVR_DEFAULT_VOICES[0].voice_id;
+  const key=process.env['ELEVENLABS_API_KEY'];const voiceId=IVR_DEFAULT_VOICES[0].voice_id;
   if(!key||!voiceId)throw new Error('נדרש חיבור ElevenLabs וקול ריטה שמור');
   const {data:j,error:je}=await admin.from('broker_outreach_journeys').select('*').eq('broker_id',brokerId).single();
   if(je)throw je;

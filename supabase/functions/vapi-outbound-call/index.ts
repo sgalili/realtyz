@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
     let VAPI_API_KEY = Deno.env.get("VAPI_API_KEY") ?? "";
     let VAPI_PHONE_NUMBER_ID = Deno.env.get("VAPI_PHONE_NUMBER_ID") ?? "";
     let VAPI_ASSISTANT_ID = Deno.env.get("VAPI_ASSISTANT_ID") ?? "";
-    const ELEVENLABS_VOICE_ID = Deno.env.get("ELEVENLABS_VOICE_ID") || "xeyWdsOOLrNAAaGf4Y8m";
+    const ELEVENLABS_VOICE_ID = "t1FxSQNdBrLMfytJMHmg";
 
     // Fallback: read user-saved credentials from api_configs
     if (!VAPI_API_KEY || !VAPI_PHONE_NUMBER_ID) {

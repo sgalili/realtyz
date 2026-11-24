@@ -11,7 +11,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace, useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnectionModeCard';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
-import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
 import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
 import { CalendarSyncCard } from '@/components/profile/CalendarSyncCard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
@@ -628,20 +627,6 @@ export function ConnectionsTab() {
 
     // Voice calls and the real-estate portals are platform-level services:
     // only a Super Admin may see or configure them.
-    ...(isSuperAdmin ? [{
-      id: 'voice',
-      title: 'טלפון',
-      titleLead: (
-        <Phone
-          className={cn('h-5 w-5 shrink-0 text-[#0B62F5]', !(voicePhone || voiceReady) && 'grayscale opacity-40')}
-          strokeWidth={2.25}
-        />
-      ),
-      status: voicePhone ? formatPhoneDisplay(voicePhone) : voiceReady ? 'מחובר' : 'לא הוגדר',
-      tone: (voicePhone || voiceReady ? 'ok' : 'idle') as Tone,
-      node: <VoiceGatewayCard />,
-      restricted: true,
-    }] : []),
     ...(isSuperAdmin ? [{
       id: 'portals',
       title: 'יד2 / הומלי',

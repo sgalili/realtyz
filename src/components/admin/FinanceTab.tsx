@@ -10,6 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Wallet, Plus, Minus } from 'lucide-react';
 import { toast } from 'sonner';
+import { ActionPricingCard } from '@/components/billing/ActionPricingCard';
+import { SignupBonusSettings } from '@/components/billing/SignupBonusSettings';
+import { InviteBonusSettings } from '@/components/billing/InviteBonusSettings';
 import { GrowthPromoCard } from '@/components/admin/GrowthPromoCard';
 import { fmtCredits, ilsToCredits } from '@/lib/credits';
 import { isSyntheticEmail } from '@/lib/friendlyUserDisplayName';
@@ -69,6 +72,9 @@ export function FinanceTab() {
 
   return (
     <div className="space-y-4">
+      <ActionPricingCard />
+      <SignupBonusSettings />
+      <InviteBonusSettings />
       <GrowthPromoCard />
       <Card>
         <CardHeader>

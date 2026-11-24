@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
         ? `שלום, הגעת ל${agentName}. אני העוזרת הקולית שלו ואשמח לעזור — איך אפשר לקרוא לך?`
         : `Hi, you've reached ${agentName}'s line. I'm the AI assistant — may I have your name?`);
 
-    const voiceId = voiceCfg?.elevenlabs_voice_id || "EXAVITQu4vr4xnSDxMaL";
+    const voiceId = voiceCfg?.elevenlabs_voice_id || "t1FxSQNdBrLMfytJMHmg";
 
     // Tool definition: callback request
     const clientTools = [

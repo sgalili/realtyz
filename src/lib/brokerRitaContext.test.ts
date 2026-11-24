@@ -5,7 +5,7 @@ import { buildRitaOutreachPrompt, RITA_IDENTITY_RULES } from '../../supabase/fun
 import { shortBrokerDemoCall } from './brokerOutreachPolicy';
 describe('shared Rita outreach context',()=>{
  it('uses the existing Rita voice and v3 narration settings',()=>{
-  expect(IVR_DEFAULT_VOICES[0].voice_id).toBe('Tbj9UQjXon5RB9MPEyc2');
+  expect(IVR_DEFAULT_VOICES[0].voice_id).toBe('t1FxSQNdBrLMfytJMHmg');
   expect(IVR_MODEL_ID).toBe('eleven_v3');expect(IVR_VOICE_SETTINGS.similarity_boost).toBe(0.9);
  });
  it('loads only the intended broker drafts and shared global brain',async()=>{

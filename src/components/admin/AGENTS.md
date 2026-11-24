@@ -20,3 +20,5 @@
 - Super Admin platform-mode switch lives in the system section (PlatformModeToggle). Why: one place to toggle marketplace mode.
 - Broker outreach is separately enrolled with recorded message/call consent; OTP proof, provider replies and call state are server-owned, and Vapi schedules the bounded tool-free demo with a cancellable deadline. Why: legacy silent onboarding stays unchanged and browser refresh must not cancel an accepted provider schedule.
 - First contact (email and WhatsApp outreach) is a link-free opt-in naming the broker and their Yad2 address; login link and Rita voice follow only after a positive reply via the outreach journey. Why: anti-spam consent before any account link.
+
+- Vapi, Twilio and ElevenLabs management lives only in the Super Admin "voice" section (VoiceProvidersTab), storing through manage-api-configs; credit/bonus pricing tools live in FinanceTab, not API Settings. Why: one privileged home for platform credentials and pricing.

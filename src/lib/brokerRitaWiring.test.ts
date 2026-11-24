@@ -21,7 +21,7 @@ describe('Rita stage payloads',()=>{
   const fetchMock=vi.fn(async(_url:string,_init?:RequestInit)=>new Response(new Uint8Array([1,2])));vi.stubGlobal('fetch',fetchMock);
   await sendBrokerVoice(client().admin as never,'broker');
   expect(fetchMock).toHaveBeenCalledTimes(1);
-  const call=fetchMock.mock.calls[0];expect(call?.[0]).toContain('/Tbj9UQjXon5RB9MPEyc2?output_format=mp3_44100_128');
+  const call=fetchMock.mock.calls[0];expect(call?.[0]).toContain('/t1FxSQNdBrLMfytJMHmg?output_format=mp3_44100_128');
   const body=JSON.parse(String(call?.[1]?.body));expect(body.model_id).toBe('eleven_v3');expect(body.voice_settings.similarity_boost).toBe(0.9);expect(body.text).toContain('שלום דנה');
  });
  it('passes canonical brain and scoped facts into a tool-free Vapi call with the original deadline',async()=>{
@@ -31,7 +31,7 @@ describe('Rita stage payloads',()=>{
   expect(fetchMock).toHaveBeenCalledTimes(2);
   const body=JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
   expect(body.schedulePlan.earliestAt).toBe(due);expect(body.assistant.maxDurationSeconds).toBe(90);
-  expect(body.assistant.voice.voiceId).toBe('Tbj9UQjXon5RB9MPEyc2');
+  expect(body.assistant.voice.voiceId).toBe('t1FxSQNdBrLMfytJMHmg');
   expect(body.assistant.model.messages[0].content).toContain(context.system);
   expect(body.assistant.model.messages[0].content).toContain(context.facts);
   expect(body.assistant.model.tools).toBeUndefined();expect(body.customer.number).toBe('+972500000000');

@@ -23,6 +23,7 @@ interface VoiceAgentRow {
 }
 
 const VOICES = [
+  { id: 't1FxSQNdBrLMfytJMHmg', label: 'ריטה' },
   { id: 'EXAVITQu4vr4xnSDxMaL', label: 'Sarah (חמה, אישה)' },
   { id: 'XrExE9yKIg1WjnnlVkGX', label: 'Matilda (רגועה, אישה)' },
   { id: 'JBFqnCBsd6RMkjVDRZzb', label: 'George (בוגר, גבר)' },
@@ -130,13 +131,13 @@ export function VoiceAgentPanel() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>קול</Label>
-            <select
-              className="w-full h-10 rounded-md border bg-background px-3 text-sm"
-              value={row.elevenlabs_voice_id || VOICES[0].id}
-              onChange={(e) => update({ elevenlabs_voice_id: e.target.value })}
-            >
-              {VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
-            </select>
+            <Input
+              dir="ltr"
+              list="voice-agent-voices"
+              defaultValue={row.elevenlabs_voice_id || VOICES[0].id}
+              onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== row.elevenlabs_voice_id) update({ elevenlabs_voice_id: v }); }}
+            />
+            <datalist id="voice-agent-voices">{VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}</datalist>
           </div>
           <div className="space-y-2">
             <Label>שפה</Label>
