@@ -1,7 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
-import { coldInvitationBody, firstContactBody, FIRST_CONTACT_WHATSAPP, invitationTextFor, invitationTargetPhone, officialBrokerPhone, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName } from '../_shared/brokerInvitationTemplate.ts';
+import { coldInvitationBody, firstContactBody, FIRST_CONTACT_WHATSAPP, firstContactWhatsApp, invitationTextFor, invitationTargetPhone, officialBrokerPhone, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName } from '../_shared/brokerInvitationTemplate.ts';
 import { loadAttachment, attachmentSignedUrl, markAttachmentSent } from '../_shared/invitationAttachment.ts';
 import { publicSiteOrigin, invitationLink, demoInvitationLink } from '../_shared/importInvitationPolicy.ts';
 
@@ -100,15 +100,15 @@ Deno.serve(async req => {
     if(!j?.enabled||!j.message_consent_at||j.opted_out_at)return json({error:'נדרשת הסכמה מתועדת להפעלת מסלול הפנייה'},409);
     if(!listing?.address||!listing.city)return json({error:'אין כתובת ועיר מאומתות ממודעת יד2 לפנייה האישית'},409);
     outreachAddress=[listing.address,listing.city].join(', ');
-    text=FIRST_CONTACT_WHATSAPP;
+    text=firstContactWhatsApp(gender);
   }
   // Every first WhatsApp invitation uses the fixed short opt-in template; saved/legacy long texts never reach the recipient.
   if(!input.outreach && input.action!=='save_text'){
     const {data:listing}=input.broker_id?await admin.from('listings').select('address,city').eq('workspace_owner_id',input.broker_id).eq('source','yad2').not('address','is',null).order('created_at',{ascending:false}).limit(1).maybeSingle():{data:null};
     outreachAddress=listing?.address?[listing.address,listing.city].filter(Boolean).join(', '):'יד2';
-    text=FIRST_CONTACT_WHATSAPP;
+    text=firstContactWhatsApp(gender);
   }
-  const firstContact = text===FIRST_CONTACT_WHATSAPP;
+  const firstContact = text===FIRST_CONTACT_WHATSAPP || text===firstContactWhatsApp('female');
   let body: string;
   try { body = firstContact ? text : templateBody(text); } catch (e) { return json({ error: e instanceof Error ? e.message : 'Invalid template' }, 400); }
   const name = await invitationTemplateName(body);

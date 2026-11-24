@@ -9,6 +9,9 @@ export const FIRST_CONTACT_WHATSAPP = `היי {{1}},
 אם לא מתאים, אפשר להשיב ״הסרה״ ולא נפנה שוב.
 
 ריטה | TORAFF`;
+/** Feminine variant, used only when the recipient's saved gender is female (never inferred from names). */
+export const FIRST_CONTACT_WHATSAPP_FEMALE = FIRST_CONTACT_WHATSAPP.replace('פשוט השב ״כן״', 'פשוט השיבי ״כן״');
+export const firstContactWhatsApp = (gender: unknown) => gender === 'female' ? FIRST_CONTACT_WHATSAPP_FEMALE : FIRST_CONTACT_WHATSAPP;
 export function firstContactBody(channel: 'whatsapp' | 'email' = 'email') {
   if (channel === 'whatsapp') return FIRST_CONTACT_WHATSAPP.replace('{{1}}', '{brokerName}').replace('{{2}}', '{propertyAddress}');
   return `היי {brokerName},

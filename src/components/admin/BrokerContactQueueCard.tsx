@@ -100,7 +100,6 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
         <label className="block space-y-1"><span className="text-sm font-medium">כותרת המייל</span><Input aria-label="כותרת המייל" className="h-11 text-base" maxLength={200} value={subject} onChange={e => setSubject(e.target.value)} /></label>
         <Textarea aria-label="נוסח המייל" className="min-h-[200px] text-base" value={body} onChange={e => { bodyTouched.current = true; setBody(e.target.value); }} />
         <InvitationAttachmentPicker compact value={attachmentId} onChange={setAttachmentId} recipientRole={contactPhone ? 'marketing_company' : b.is_developer ? 'developer' : 'broker'} />
-        <p className="text-sm text-muted-foreground">כפתור לפתיחת שיחת וואטסאפ איתנו וקישור הסרה מתווספים אוטומטית. כתובת הנכס ממודעת יד2 נכנסת אוטומטית במקום {'{propertyAddress}'}.</p>
         {b.email_invited_at && <p className="text-sm text-muted-foreground">כבר נשלחה פנייה במייל למתווך זה.</p>}
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
           <div className="flex gap-2"><Button variant="outline" disabled={send.isPending} onClick={() => setOpen(false)}>ביטול</Button><Button variant="outline" disabled={saveGlobal.isPending || body.trim().length < 20} onClick={() => saveGlobal.mutate()}>{saveGlobal.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}שמירה כללית</Button></div>

@@ -74,6 +74,7 @@ export function InvitationAttachmentPicker({ value, onChange, recipientRole, com
           {others.length > 0 && <SelectGroup><SelectLabel>קבצים נוספים</SelectLabel>{others.map(a => <FileRow key={a.id} id={a.id} label={a.file_name} />)}</SelectGroup>}
         </SelectContent>
       </Select>
+      {value && <Button type="button" size="icon" variant="ghost" aria-label="צפייה בקובץ המצורף" title="צפייה בקובץ" onClick={() => void previewAttachment(value)}><ExternalLink className="h-4 w-4" /></Button>}
       {value && <Button type="button" size="icon" variant="ghost" aria-label="הסרת הקובץ המצורף" onClick={() => choose(null)}><X className="h-4 w-4" /></Button>}
       <input ref={input} type="file" className="hidden" onChange={e => void upload(e.target.files?.[0])} />
       {!compact && <Button type="button" size="icon" variant="outline" disabled={busy} aria-label="העלאת קובץ (אפשר גם לגרור לכאן)" title="העלאת קובץ (אפשר גם לגרור לכאן)" onClick={() => input.current?.click()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}</Button>}
