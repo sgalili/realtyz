@@ -77,7 +77,7 @@ export function VisitorMenu({ onSignup }: { onSignup: () => void }) {
           <Button className="min-h-12 gap-2 text-base" onClick={signup}><UserPlus className="h-5 w-5" aria-hidden="true" />הרשמה חינם</Button>
           <Button variant="outline" className="min-h-12 gap-2 border-primary text-base text-primary hover:bg-primary/10" onClick={login}><LogIn className="h-5 w-5" aria-hidden="true" />{brokersOnly ? 'התחברות' : 'כניסה'}</Button>
         </div>
-        <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base" onClick={() => { if (brokersOnly) window.location.assign('/demo/broker/properties'); else go('/demo'); }}><Eye className="!h-[26px] !w-[26px] text-primary" />{brokersOnly ? 'כניסה למרחב דמו' : 'מרחב הדגמה'}</Button>
+        <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base" onClick={() => { if (brokersOnly) window.location.assign('/demo/broker/properties'); else go('/demo'); }}><Eye className="!h-[26px] !w-[26px] text-primary" />מרחב הדגמה</Button>
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base" onClick={() => go('/faq')}><CircleHelp className="!h-[26px] !w-[26px]" />שאלות ותשובות</Button>
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base" onClick={() => go('/about-toraff')}><Info className="!h-[26px] !w-[26px]" />מה זה TORAFF</Button>
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-base" aria-expanded={legal} onClick={() => setLegal(v => !v)}><Scale className="!h-[26px] !w-[26px]" />מידע משפטי<ChevronDown className="ms-auto h-4 w-4" /></Button>

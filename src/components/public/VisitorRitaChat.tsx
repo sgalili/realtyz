@@ -32,14 +32,16 @@ function readHistory(key: string): UIMessage[] {
   } catch { return []; }
 }
 
-export function VisitorRitaChat() {
+/** `dialogOnly` opens Rita's full chat window directly (no sidebar), closing via `onClose`. */
+export function VisitorRitaChat({ dialogOnly = false, onClose }: { dialogOnly?: boolean; onClose?: () => void } = {}) {
   const brokersOnly = useBrokersOnly();
   const scope = visitorChatScope(brokersOnly ? 'brokers_only' : 'full_marketplace');
-  return <VisitorRitaConversation key={scope} brokersOnly={brokersOnly} scope={scope} />;
+  return <VisitorRitaConversation key={scope} brokersOnly={brokersOnly} scope={scope} dialogOnly={dialogOnly} onClose={onClose} />;
 }
 
-function VisitorRitaConversation({ brokersOnly, scope }: { brokersOnly: boolean; scope: string }) {
-  const [expanded, setExpanded] = useState(false);
+function VisitorRitaConversation({ brokersOnly, scope, dialogOnly, onClose }: { brokersOnly: boolean; scope: string; dialogOnly: boolean; onClose?: () => void }) {
+  const [expanded, setExpandedState] = useState(dialogOnly);
+  const setExpanded = (open: boolean) => { setExpandedState(open); if (!open && dialogOnly) onClose?.(); };
   // PromptInputTextarea does not forward refs, so reach the textarea through the wrapper instead.
   const inputWrapRef = useRef<HTMLDivElement>(null);
   const getTextarea = () => inputWrapRef.current?.querySelector('textarea') ?? null;
@@ -155,7 +157,7 @@ function VisitorRitaConversation({ brokersOnly, scope }: { brokersOnly: boolean;
     </PromptInput></div>
   </div>;
   return <>
-    <div className="relative border-t border-border px-3 pb-2 pt-3">
+    {!dialogOnly && <div className="relative border-t border-border px-3 pb-2 pt-3">
       {!expanded && <div role="separator" aria-orientation="horizontal" aria-label="גרירה להגדלת שיחת ריטה" className="absolute inset-x-0 -top-2 z-10 flex h-4 cursor-row-resize touch-none items-center justify-center" onPointerDown={startDrag}><span className="h-1 w-10 rounded-full bg-border" /></div>}
       {/* Actions sit on the divider line itself: expand on the far right edge, reset on the far left edge. */}
       {!expanded && <div className="pointer-events-none absolute inset-x-0 -top-4 z-20 flex h-8 items-center justify-between">
@@ -163,7 +165,7 @@ function VisitorRitaConversation({ brokersOnly, scope }: { brokersOnly: boolean;
         {messages.length > 0 && <Button variant="ghost" size="icon" className="pointer-events-auto h-8 w-8 rounded-none bg-background" aria-label="איפוס שיחת ריטה" disabled={busy} onClick={() => { if (window.confirm('למחוק את שיחת ריטה שנשמרה בדפדפן?')) setMessages([]); }}><Trash2 className="h-4 w-4" /></Button>}
       </div>}
       {!expanded && content}
-    </div>
+    </div>}
     <Dialog open={expanded} onOpenChange={setExpanded}><DialogContent className="flex h-[85dvh] max-w-2xl flex-col" dir="rtl">{messages.length > 0 && <Button variant="ghost" size="icon" className="absolute end-3 top-3 z-50 h-8 w-8" aria-label="איפוס שיחת ריטה" disabled={busy} onClick={() => { if (window.confirm('למחוק את שיחת ריטה שנשמרה בדפדפן?')) setMessages([]); }}><Trash2 className="h-4 w-4" /></Button>}<DialogHeader><DialogTitle className="flex items-center gap-3"><RitaAvatar className="h-10 w-10" />ריטה</DialogTitle><DialogDescription>נעים להכיר</DialogDescription></DialogHeader>{expanded && content}</DialogContent></Dialog>
   </>;
 }

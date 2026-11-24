@@ -37,7 +37,7 @@ export function scannerDelayReason(s: ScannerWorkerFields & {
   const blocked = scannerBlockReason(s, now);
   if (blocked) return blocked;
   if (s.used_today >= s.daily_cap) return 'המכסה היומית מוצתה. המשך לאחר חצות בישראל';
-  if (Date.parse(s.outstanding_until ?? '') > now) return 'ממתין לתשובת יד2 לפנייה קודמת. פנייה אחת בכל פעם';
+  if (Date.parse(s.outstanding_until ?? '') > now) return null;
   if (Date.parse(s.next_send_at ?? '') > now) return 'השהיה בטוחה בין פניות';
   return null;
 }

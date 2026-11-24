@@ -7,7 +7,7 @@ import logo019 from '@/assets/brands/019-mobile.png';
    Social platforms use their official brand colors (BrandLogo).
    Infrastructure row shows the operating tech stack logos + wordmarks. */
 
-const PLATFORMS = [
+export const PLATFORMS = [
   'whatsapp', 'instagram', 'facebook', 'messenger', 'telegram',
   'linkedin', 'x', 'tiktok', 'youtube', 'gmail', 'sms', 'google_drive',
 ];

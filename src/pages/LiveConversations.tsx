@@ -291,7 +291,6 @@ const LiveConversations = () => {
 
   const handleSendManual = async () => {
     if (isDemoMode) {
-      toast.info('במצב הדגמה מוצגות פעילויות חיות בלבד');
       return;
     }
     if (!manualMsg.trim() || !selectedVoterId || !voterProfile) return;

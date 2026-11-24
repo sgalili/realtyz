@@ -324,6 +324,10 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   return (
     <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
       <SidebarContent className="realtyz-sidebar-menu gap-0 pt-3">
+        {!collapsed && !user && brokersOnly && <div data-visitor-auth-actions className="mb-3 grid grid-cols-2 gap-2 px-3">
+          <Button asChild className="min-h-12 gap-2 text-base"><NavLink to="/auth?mode=signup" onClick={handleNavClick}><UserPlus className="h-5 w-5" aria-hidden="true" />הרשמה חינם</NavLink></Button>
+          <Button asChild variant="outline" className="min-h-12 gap-2 border-primary text-base text-primary hover:bg-primary/10"><NavLink to="/auth?mode=login" onClick={handleNavClick}><LogIn className="h-5 w-5" aria-hidden="true" />התחברות</NavLink></Button>
+        </div>}
         {!collapsed && user && <SidebarWalletIndicator />}
         {/* TOP: ACTIVE WORKSPACE identity + switcher (never the personal profile) */}
         {!collapsed && user && (
@@ -395,10 +399,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               {/* Shared public board: always the first menu entry. */}
               {!user && brokersOnly && <>
                 <SidebarMenuItem><SidebarMenuButton asChild><NavLink to="/" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Home className="h-4 w-4 text-primary" /><span className="text-sm font-medium">דף הבית</span></NavLink></SidebarMenuButton></SidebarMenuItem>
-                <SidebarMenuItem><SidebarMenuButton asChild><NavLink to="/auth?mode=signup" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><UserPlus className="h-4 w-4 text-primary" /><span className="text-sm font-medium">הרשמה חינם</span></NavLink></SidebarMenuButton></SidebarMenuItem>
-                <SidebarMenuItem><SidebarMenuButton asChild><NavLink to="/auth?mode=login" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><LogIn className="h-4 w-4 text-primary" /><span className="text-sm font-medium">התחברות</span></NavLink></SidebarMenuButton></SidebarMenuItem>
               </>}
-              {!user && <SidebarMenuItem><SidebarMenuButton asChild>{brokersOnly ? <a href="/demo/broker/properties" className="flex items-center gap-3 px-3 py-2.5"><Eye className="h-4 w-4 text-primary" /><span className="text-sm font-medium">כניסה למרחב דמו</span></a> : <NavLink to="/demo" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Eye className="h-4 w-4 text-primary" />{!collapsed && <span className="text-sm font-medium">מרחב הדגמה</span>}</NavLink>}</SidebarMenuButton></SidebarMenuItem>}
+              {!user && <SidebarMenuItem><SidebarMenuButton asChild>{brokersOnly ? <a href="/demo/broker/properties" className="flex items-center gap-3 px-3 py-2.5"><Eye className="h-4 w-4 text-primary" /><span className="text-sm font-medium">מרחב הדגמה</span></a> : <NavLink to="/demo" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Eye className="h-4 w-4 text-primary" />{!collapsed && <span className="text-sm font-medium">מרחב הדגמה</span>}</NavLink>}</SidebarMenuButton></SidebarMenuItem>}
               {!user && brokersOnly && <SidebarMenuItem><SidebarMenuButton asChild><NavLink to="/faq" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><HelpCircle className="h-4 w-4 text-primary" /><span className="text-sm font-medium">שאלות ותשובות</span></NavLink></SidebarMenuButton></SidebarMenuItem>}
               {/* Brokers-only SaaS hides the shared public board entry (route and data stay for full_marketplace). */}
               {!brokersOnly && <SidebarMenuItem key="public-listings">

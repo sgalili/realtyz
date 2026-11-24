@@ -2505,13 +2505,18 @@ svg.lucide-megaphone {
 .broker-guest-welcome { font-family: var(--font-hebrew); letter-spacing: 0; }
 .broker-guest-intro { --foreground: var(--primary-foreground); --muted-foreground: var(--primary-foreground); background: var(--guest-stage); color: var(--guest-on-stage); }
 .broker-guest-intro h1, .broker-guest-intro h1 + p { color: var(--guest-on-stage) !important; }
-@media (max-width: 639px) { .broker-guest-intro > div:last-child { min-height: 112px; } .broker-guest-rita { height: 172px; } }
+@media (max-width: 639px) { .broker-guest-rita { height: 200px; } }
+.broker-guest-art svg * { stroke-width: 3px; vector-effect: non-scaling-stroke; }
+.broker-guest-slides { scrollbar-width: none; overscroll-behavior-x: contain; }
+.broker-guest-slides::-webkit-scrollbar { display: none; }
+.broker-guest-benefit { transition: box-shadow .25s, background-color .25s; }
+.broker-guest-benefit[data-active="true"] { box-shadow: inset 0 0 0 2px var(--benefit-color); background: color-mix(in oklab, var(--benefit-color) 16%, hsl(var(--background))); }
 .broker-guest-art svg { position: absolute; width: 110px; height: 110px; opacity: .1; animation: broker-guest-drift 9s ease-in-out infinite alternate; }
 .broker-guest-art svg:nth-child(1) { right: 65%; top: 5%; }
 .broker-guest-art svg:nth-child(2) { right: 8%; top: 65%; animation-delay: -3s; }
 .broker-guest-art svg:nth-child(3) { left: 2%; top: 30%; animation-delay: -5s; }
 .broker-guest-art svg:nth-child(4) { left: 30%; top: 15%; animation-delay: -7s; }
-.broker-guest-track { animation: broker-guest-ticker 24s linear infinite; }
+.broker-guest-track { animation: broker-guest-ticker 40s linear infinite; will-change: transform; }
 .broker-guest-strip:hover .broker-guest-track { animation-play-state: paused; }
 .broker-guest-benefit { --benefit-color: var(--guest-stage); background: color-mix(in oklab, var(--benefit-color) 7%, hsl(var(--background))); }
 .broker-guest-benefit > svg { color: var(--benefit-color); }

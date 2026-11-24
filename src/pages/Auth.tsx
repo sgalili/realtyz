@@ -132,7 +132,7 @@ const Auth = () => {
     <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center pt-[40px]">
       <img src={brokersOnly ? toraffWordmark : realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
       <h1 className={brokersOnly ? 'broker-auth-heading mb-3 mt-8 text-center text-3xl font-bold' : `mb-8 mt-[50px] text-center !font-normal ${codeSent ? 'text-xl' : 'text-[17px]'}`}>{codeSent ? `הזינו את הקוד שקיבלתם ${delivery === 'whatsapp' ? 'בוואטסאפ' : 'ב-SMS'}` : brokersOnly ? signup ? 'מתחילים לעבוד חכם' : 'טוב לראות אתכם שוב!' : signup ? 'להרשמה מהירה בחינם:' : 'כניסה לחשבון'}</h1>
-      {brokersOnly && <p className="mb-5 text-center text-base leading-relaxed text-muted-foreground">{codeSent ? 'עוד רגע ואתם בפנים.' : signup ? 'הרשמה חינם, עם ריטה לצידכם.' : 'מספר הנייד שלכם, קוד קצר ואתם בפנים.'}</p>}
+      {brokersOnly && (codeSent || signup) && <p className="mb-5 text-center text-base leading-relaxed text-muted-foreground">{codeSent ? 'עוד רגע ואתם בפנים.' : signup ? 'הרשמה חינם, עם ריטה לצידכם.' : ''}</p>}
       <div className={`min-h-0 w-full overflow-y-auto overscroll-contain ${brokersOnly ? 'broker-auth-form rounded-lg px-5 py-5' : ''}`}>
         {codeSent ? <div className="space-y-5 text-center">
           <p className={`${brokersOnly ? '' : '-mt-6'} text-base text-muted-foreground`}>נשלח למספר <span dir="ltr" className="font-medium text-foreground">{phone}</span> <Button type="button" variant="link" className="ms-1 h-auto p-0 text-sm" onClick={switchPhone}>החלפה</Button></p>
@@ -154,7 +154,6 @@ const Auth = () => {
           {(ready || brokersOnly) && <Button type="submit" disabled={loading || !ready} className={`h-12 w-full text-xl font-bold ${brokersOnly ? 'broker-auth-submit' : ''}`}>{loading ? 'שולח...' : invitedBroker ? 'שלחו לי קוד בוואטסאפ' : 'שלחו לי קוד ב-SMS'}</Button>}
         </form>}
         {failure && <div className="mt-4 space-y-3"><p role="alert" className="text-center text-sm text-destructive">{failure}</p><OtpFailureActions disabled={loading || (codeSent && (needsNewCode || attempts >= 3) && resendSeconds > 0)} retryLabel={codeSent && (needsNewCode || attempts >= 3) ? resendSeconds > 0 ? `קוד חדש בעוד ${resendSeconds}` : 'בקשת קוד חדש' : 'ניסיון נוסף'} onRetry={() => { if (codeSent && !needsNewCode && attempts < 3) { setFailure(null); setOtp(''); } else void sendCode(); }} /></div>}
-        {brokersOnly && !failure && <div className="mt-6 border-t border-border pt-4 text-center"><p className="mb-3 text-base font-semibold">רוצים קודם להכיר?</p><Button asChild variant="outline" className="h-11 w-full gap-2 text-base"><a href="/demo/broker/properties"><Eye className="h-5 w-5" />כניסה למרחב דמו</a></Button><p className="mt-2 text-sm text-muted-foreground">לקריאה בלבד, בלי להתחבר.</p></div>}
       </div>
     </div>
     {!codeSent && <div className={brokersOnly ? 'flex shrink-0 justify-center py-3' : 'absolute inset-x-0 bottom-[68px] flex justify-center'}>
