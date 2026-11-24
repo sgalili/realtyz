@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SentPartnerLeads from './SentPartnerLeads';
 import { useIncomingLeadsCount } from '@/components/billing/SidebarWalletIndicator';
 import { useMySubmissions } from '@/hooks/useAffiliate';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 
 /** Direction is navigation state; membership and data access stay server-authorized. */
 export default function LeadDirectionTabs({ children }: { children: ReactNode }) {
@@ -13,7 +14,9 @@ export default function LeadDirectionTabs({ children }: { children: ReactNode })
   const navigate = useNavigate();
   const received = useIncomingLeadsCount('workspace');
   const { data: sentRows = [] } = useMySubmissions();
-  if (loading || error || !isAffiliate) return <>{children}</>;
+  // Brokers-only SaaS hides the partner "leads I sold" tab; the data stays for full_marketplace.
+  const brokersOnly = useBrokersOnly();
+  if (loading || error || !isAffiliate || brokersOnly) return <>{children}</>;
   const params = new URLSearchParams(location.search);
   const direction = params.get('direction') === 'sent' ? 'sent' : 'received';
   return <Tabs value={direction} dir="rtl" onValueChange={(value) => {

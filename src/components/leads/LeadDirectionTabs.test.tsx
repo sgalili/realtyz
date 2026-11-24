@@ -4,7 +4,8 @@ import { MemoryRouter } from 'react-router-dom';
 import LeadDirectionTabs from './LeadDirectionTabs';
 import SentPartnerLeads from './SentPartnerLeads';
 
-const mocks = vi.hoisted(() => ({ affiliate: true, loading: false, error: false, licensed: false, submissions: [] as any[], incoming: vi.fn(() => 7) }));
+const mocks = vi.hoisted(() => ({ brokersOnly: false, affiliate: true, loading: false, error: false, licensed: false, submissions: [] as any[], incoming: vi.fn(() => 7) }));
+vi.mock('@/hooks/usePlatformMode', () => ({ useBrokersOnly: () => mocks.brokersOnly }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isAffiliate: mocks.affiliate, loading: mocks.loading, error: mocks.error }) }));
 vi.mock('@/components/billing/SidebarWalletIndicator', () => ({ useIncomingLeadsCount: mocks.incoming }));
 vi.mock('@/hooks/useAffiliateLicense', () => ({ useAffiliateLicense: () => ({ level4Unlocked: mocks.licensed }) }));
@@ -15,8 +16,13 @@ vi.mock('@/hooks/useAffiliate', () => ({
 }));
 
 describe('lead direction tabs', () => {
-  beforeEach(() => { mocks.affiliate = true; mocks.loading = false; mocks.error = false; mocks.licensed = false; mocks.submissions = []; });
+  beforeEach(() => { mocks.brokersOnly = false; mocks.affiliate = true; mocks.loading = false; mocks.error = false; mocks.licensed = false; mocks.submissions = []; });
   const show = (path = '/lead-crm?filter=untreated') => render(<MemoryRouter initialEntries={[path]}><LeadDirectionTabs><p>לידים במרחב הנוכחי</p></LeadDirectionTabs></MemoryRouter>);
+  it('hides the partner sold-leads tab in brokers-only mode', () => {
+    mocks.brokersOnly = true; show();
+    expect(screen.queryByRole('tab', { name: '0 לידים שמכרתי' })).toBeNull();
+    expect(screen.getByText('לידים במרחב הנוכחי')).toBeVisible();
+  });
   it('defaults to received and lets an existing partner view sent leads then return', () => {
     show();
     expect(mocks.incoming).toHaveBeenCalledWith('workspace');
