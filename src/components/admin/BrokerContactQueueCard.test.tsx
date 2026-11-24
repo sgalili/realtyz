@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -122,4 +122,16 @@ it.each(['male', 'female'])('does not offer gender icons for saved %s broker gen
  expect(screen.queryByRole('radiogroup', {name:'מגדר המתווך'})).toBeNull();
  expect(screen.queryByRole('button', {name:'זכר'})).toBeNull();
  expect(screen.queryByRole('button', {name:'נקבה'})).toBeNull();
+});
+it.each(['pending','sends'] as const)('keeps the same broker row mounted when the %s parent query fails in the background',async(view)=>{
+  sessionStorage.clear();
+  const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:Infinity}}});
+  const key=view==='pending'?['broker-contact-queue','admin']:['broker-contact-history','admin'];
+  const data=view==='pending'?{brokers:[account]}:{items:[{...historyItem,user_id:account.user_id,recipient_kind:'broker',full_name:account.full_name}]};
+  client.setQueryData(key,data);
+  state.invoke.mockResolvedValue({data:{job:null,items:[]},error:null});
+  render(<MemoryRouter><QueryClientProvider client={client}><BrokerContactQueueCard view={view}/></QueryClientProvider></MemoryRouter>);
+  await screen.findByText(account.full_name);
+  await act(async()=>{client.getQueryCache().find({queryKey:key})?.setState({status:'error',error:new TypeError('connection reset')});});
+  expect(client.getQueryData(key)).toBe(data);expect(screen.getByText(account.full_name)).toBeVisible();
 });

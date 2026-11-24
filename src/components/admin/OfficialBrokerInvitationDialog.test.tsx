@@ -26,7 +26,7 @@ it('sends only after consent and approval, binding the saved WhatsApp contact ra
   fireEvent.click(screen.getByRole('checkbox', { name: 'הנמען הסכים לקבל הזמנה ב־WhatsApp' }));
   await waitFor(() => expect(send).toBeEnabled());
   fireEvent.click(send);
-  await waitFor(() => expect(state.invoke).toHaveBeenCalledWith('admin-broker-invitation', { body: expect.objectContaining({ action: 'send', broker_id: 'broker-1', use_discovered_whatsapp: true, consent: true, demo: true }) }));
+  await waitFor(() => expect(state.invoke).toHaveBeenCalledWith('admin-broker-invitation', { body: expect.objectContaining({ action: 'send', broker_id: 'broker-1', use_discovered_whatsapp: true, consent: true, demo: false }) }));
 });
 it('registering new copy submits approval only and cannot send an invitation', async () => {
   state.status = 'NOT_REGISTERED'; mount();

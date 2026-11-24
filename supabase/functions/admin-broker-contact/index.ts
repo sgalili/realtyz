@@ -53,11 +53,13 @@ Deno.serve(async req => {
 
   if (input.action === 'history') {
     // Every invitation sent from the hub: official WhatsApp sends plus recorded email invitations.
-    const [{ data: wa }, { data: em }, { data: logs }] = await Promise.all([
+    const historyReads = await Promise.all([
       admin.from('broker_invitation_sends').select('broker_id,status,created_at,template_name').order('created_at', { ascending: false }).limit(300),
       admin.from('admin_broker_onboarding').select('user_id,email_invited_at,email_message_id').not('email_invited_at', 'is', null).order('email_invited_at', { ascending: false }).limit(300),
       admin.from('broker_invitation_emails').select('broker_id,to_email,subject,body_text,links,is_demo,status,error,created_at,message_id').order('created_at', { ascending: false }).limit(300),
     ]);
+    if(historyReads.some(result=>result.error))return json({error:'לא ניתן לקרוא את היסטוריית השליחות כרגע'},503);
+    const [{data:wa},{data:em},{data:logs}]=historyReads;
     const logged = new Set((logs ?? []).map(l => l.message_id).filter(Boolean));
     const items = [
       ...(wa ?? []).map(r => ({ user_id: r.broker_id, channel: 'whatsapp', status: r.status, sent_at: r.created_at, content: { template: r.template_name } })),
@@ -66,12 +68,15 @@ Deno.serve(async req => {
     ].sort((a, b) => String(b.sent_at).localeCompare(String(a.sent_at))).slice(0, 300);
     const ids = [...new Set(items.map(i => i.user_id))];
     if (!ids.length) return json({ items: [] });
-    const [{ data: profiles }, { data: offices }, { data: roles }] = await Promise.all([
+    const identityReads = await Promise.all([
       admin.from('profiles').select('id,full_name,avatar_url,phone').in('id', ids),
       admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', ids),
       admin.from('user_roles').select('user_id,role').in('user_id', ids).in('role', ['developer', 'marketing_company']),
     ]);
-    const { data: histDevs } = await admin.from('developers').select('workspace_owner_id,logo_url').in('workspace_owner_id', ids);
+    if(identityReads.some(result=>result.error))return json({error:'לא ניתן לקרוא את פרטי השליחות כרגע'},503);
+    const [{data:profiles},{data:offices},{data:roles}]=identityReads;
+    const { data: histDevs,error:logoError } = await admin.from('developers').select('workspace_owner_id,logo_url').in('workspace_owner_id', ids);
+    if(logoError)return json({error:'לא ניתן לקרוא את פרטי השליחות כרגע'},503);
     const kindOf = (id: string) => (roles ?? []).some(r => r.user_id === id && r.role === 'marketing_company') ? 'marketing_company' : (roles ?? []).some(r => r.user_id === id && r.role === 'developer') ? 'developer' : 'broker';
     return json({ items: items.map(i => { const p = profiles?.find(x => x.id === i.user_id); const o = offices?.find(x => x.user_id === i.user_id);
       return { ...i, recipient_kind: kindOf(i.user_id), full_name: p?.full_name ?? '', avatar_url: (p as any)?.avatar_url ?? null, phone: (p as any)?.phone ?? null, developer_logo_url: histDevs?.find(d => d.workspace_owner_id === i.user_id)?.logo_url ?? o?.logo_url ?? null, office_name: o?.agency_name ?? null, office_logo_url: o?.logo_url ?? null }; }) });
@@ -163,7 +168,7 @@ Deno.serve(async req => {
     }
     const ids = eligible.map(r => r.user_id);
     if (!ids.length) return json({ brokers: [] });
-    const [{ data: profiles }, { data: offices }, { data: licenses }, { data: inventory, error: inventoryError }, { data: verified }, { data: devRoles }] = await Promise.all([
+    const brokerReads = await Promise.all([
       admin.from('profiles').select('id,full_name,phone,email,avatar_url,city,broker_license_number,locked_broker_name,gender').in('id', ids),
       admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', ids),
       admin.from('admin_approved_broker_licenses').select('user_id,license_number').in('user_id', ids),
@@ -171,8 +176,11 @@ Deno.serve(async req => {
       admin.from('broker_license_verifications').select('user_id,license_number,verified_at').in('user_id', ids),
       admin.from('user_roles').select('user_id').in('user_id', ids).eq('role', 'developer'),
     ]);
+    if(brokerReads.some(result=>result.error))return json({error:'לא ניתן לקרוא את פרטי המתווכים כרגע'},503);
+    const [{data:profiles},{data:offices},{data:licenses},{data:inventory,error:inventoryError},{data:verified},{data:devRoles}]=brokerReads;
     if (inventoryError || !inventory || inventory.length !== ids.length) return json({ error: 'קריאת ספירת הפרויקטים והדירות נכשלה; יש לרענן ולנסות שוב' }, 500);
-    const { data: devCompanies } = await admin.from('developers').select('workspace_owner_id,company_name,logo_url').in('workspace_owner_id', ids);
+    const { data: devCompanies,error:companyError } = await admin.from('developers').select('workspace_owner_id,company_name,logo_url').in('workspace_owner_id', ids);
+    if(companyError)return json({error:'לא ניתן לקרוא את פרטי המתווכים כרגע'},503);
     const { data: whatsappContacts, error: whatsappError } = await admin.from('broker_whatsapp_contacts').select('broker_id,whatsapp_phone,whatsapp_link').in('broker_id', ids);
     if (whatsappError) return json({ error: 'קריאת פרטי WhatsApp נכשלה' }, 500);
     const brokers = eligible.map(r => {

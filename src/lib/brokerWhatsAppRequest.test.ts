@@ -17,8 +17,14 @@ it('bounds exhausted status retries and emits a sanitized error', async()=>{
   await vi.runAllTimersAsync();
   expect(state.invoke).toHaveBeenCalledTimes(3);expect((await result).message).not.toMatch(/connection reset|127\.0\.0\.1|443/);
 });
-it.each(['enqueue','save_contact','start_batch','enqueue_missing','resume'])('never replays a %s mutation on a network error',async(action)=>{
+it.each(['enqueue','save_contact','start_batch','enqueue_missing','resume','send','register','save_text'])('never replays a %s mutation on a network error',async(action)=>{
   state.invoke.mockRejectedValue(new TypeError('connection reset'));
   await expect(brokerWhatsAppRequest('broker-whatsapp-worker',{action})).rejects.toBeInstanceOf(Error);
   expect(state.invoke).toHaveBeenCalledTimes(1);
+});
+it.each(['list','history','imports'])('retries the read-only %s view without changing its saved rows',async(action)=>{
+  vi.useFakeTimers();const data={items:[{id:'settled',status:'sent'}]};
+  state.invoke.mockRejectedValueOnce(new TypeError('connection reset')).mockResolvedValueOnce({data});
+  const work=brokerWhatsAppRequest('admin-broker-contact',{action});await vi.runAllTimersAsync();
+  expect(await work).toBe(data);expect(state.invoke).toHaveBeenCalledTimes(2);
 });

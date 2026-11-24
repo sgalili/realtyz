@@ -4,6 +4,7 @@ import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
 import { validWorkerCredential } from '../_shared/externalImportWorker.ts';
 import { extractYad2Inquiry, scannerDefaults, scannerJitter } from '../_shared/brokerScannerPolicy.ts';
 import { checkScannerConnection, processScannerEvent, scannerCredentials, scannerError, scannerGreen } from '../_shared/brokerScannerRuntime.ts';
+import { brokerFailure, brokerUserError, transientBrokerConnectionError } from '../_shared/brokerRecovery.ts';
 
 const schema = z.discriminatedUnion('action',[
   z.object({action:z.literal('status'),broker_id:z.string().uuid().optional()}).strict(),
@@ -46,21 +47,21 @@ Deno.serve(async req=>{
   if(machine!==machineAction)return json({error:'forbidden_action'},403);
   try {
     const {data:settings,error:se}=await admin.from('broker_wa_scanner_settings').select('*').eq('id',true).maybeSingle();
-    if(se)throw new Error('scanner_settings_read_failed');
+    if(se)throw brokerFailure('scanner_settings_read_failed',se);
     if(body.action==='status') {
       const {data:job,error:je}=body.broker_id?await admin.from('broker_wa_scanner_jobs').select('id,status,last_error,provider_status,reply_deadline,updated_at,created_at,queue_priority,next_source_at,lease_until,send_reserved_at').eq('broker_id',body.broker_id).order('created_at',{ascending:false}).limit(1).maybeSingle():{data:null,error:null};
-      if(je)throw new Error('scanner_job_read_failed');
+      if(je)throw brokerFailure('scanner_job_read_failed',je);
       const {count,error:ce}=await admin.from('broker_wa_scanner_events').select('id',{head:true,count:'exact'}).eq('status','needs_manual');
-      if(ce)throw new Error('scanner_event_count_failed');
+      if(ce)throw brokerFailure('scanner_event_count_failed',ce);
       const {data:contact,error:co}=body.broker_id?await admin.from('broker_whatsapp_contacts').select('whatsapp_phone').eq('broker_id',body.broker_id).eq('workspace_owner_id',body.broker_id).maybeSingle():{data:null,error:null};
-      if(co)throw new Error('scanner_contact_read_failed');
+      if(co)throw brokerFailure('scanner_contact_read_failed',co);
       // Queue order for the live countdown: jobs created earlier that will consume a send slot first.
       let queue_ahead=0, outstanding=false, outstanding_until:string|null=null;
       if(job&&['pending_source','reading_source','ready'].includes(job.status)){
         const {count:ahead,error:ae}=await admin.from('broker_wa_scanner_jobs').select('id',{head:true,count:'exact'}).in('status',['pending_source','reading_source','ready']).or(`queue_priority.gt.${job.queue_priority},and(queue_priority.eq.${job.queue_priority},created_at.lt.${job.created_at}),and(queue_priority.eq.${job.queue_priority},created_at.eq.${job.created_at},id.lt.${job.id})`);
-        if(ae)throw new Error('scanner_queue_read_failed');queue_ahead=ahead??0;
+        if(ae)throw brokerFailure('scanner_queue_read_failed',ae);queue_ahead=ahead??0;
         const {data:busy,error:be}=await admin.from('broker_wa_scanner_jobs').select('status,reply_deadline,send_reserved_at').in('status',['sending','awaiting_reply']).limit(1).maybeSingle();
-        if(be)throw new Error('scanner_queue_read_failed');outstanding=!!busy;
+        if(be)throw brokerFailure('scanner_queue_read_failed',be);outstanding=!!busy;
         outstanding_until=busy?.status==='awaiting_reply'?busy.reply_deadline:busy?.send_reserved_at?new Date(Date.parse(busy.send_reserved_at)+90000).toISOString():null;
       }
       const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem'}).format(new Date());
@@ -70,12 +71,12 @@ Deno.serve(async req=>{
       if(body.jitter_max_seconds<body.jitter_min_seconds)return json({ok:false,error:'טווח ההשהיה אינו תקין'});
       const {action,...values}=body;
       const {error}=await admin.from('broker_wa_scanner_settings').upsert({id:true,...values,paused:true,pause_reason:'configuration_changed',updated_by:caller?.kind==='user'?caller.userId:null,updated_at:new Date().toISOString()});
-      if(error)throw new Error('scanner_settings_save_failed');
+      if(error)throw brokerFailure('scanner_settings_save_failed',error);
       return json({ok:true});
     }
     if(body.action==='pause') {
       const {error}=await admin.from('broker_wa_scanner_settings').update({paused:true,pause_reason:'user_paused',updated_at:new Date().toISOString()}).eq('id',true);
-      if(error)throw new Error('scanner_pause_failed');return json({ok:true});
+      if(error)throw brokerFailure('scanner_pause_failed',error);return json({ok:true});
     }
     if(body.action==='test_connection'||body.action==='resume') {
       if(!settings)return json({ok:false,reason:'save_settings_first'});
@@ -83,82 +84,85 @@ Deno.serve(async req=>{
       if(!check.ok){await scannerError('send',check.reason??'scanner_not_ready',true,admin);return json(check);}
       if(body.action==='resume') {
         const {error}=await admin.from('broker_wa_scanner_settings').update({enabled:true,paused:false,pause_reason:null,send_errors:0,webhook_errors:0,updated_at:new Date().toISOString()}).eq('id',true);
-        if(error)throw new Error('scanner_resume_failed');
+        if(error)throw brokerFailure('scanner_resume_failed',error);
       }
       return json(check);
     }
     if(body.action==='cancel') {
       const {error}=await admin.from('broker_wa_scanner_jobs').update({status:'cancelled',last_error:'user_cancelled',lease_token:null,lease_until:null,updated_at:new Date().toISOString()}).eq('id',body.job_id).in('status',active);
-      if(error)throw new Error('scanner_cancel_failed');return json({ok:true});
+      if(error)throw brokerFailure('scanner_cancel_failed',error);return json({ok:true});
     }
     if(body.action==='promote') {
       if(caller?.kind!=='user')return json({error:'forbidden'},403);
       const {data,error}=await admin.rpc('promote_broker_wa_scanner_job',{_job:body.job_id,_actor:caller.userId});
-      if(error)throw new Error('scanner_promote_failed');
+      if(error)throw brokerFailure('scanner_promote_failed',error);
       return data?json({ok:true}):json({ok:false,error:'ניתן לקדם רק פנייה שממתינה בתור וללא מספר שמור'});
     }
     if(body.action==='enqueue') {
       if(caller?.kind!=='user')return json({error:'forbidden'},403);
       if(!settings?.enabled||settings.paused||!scannerCredentials())return json({ok:false,error:'קו הסריקה אינו פעיל'});
       const {data:contact,error:ce}=await admin.from('broker_whatsapp_contacts').select('broker_id').eq('broker_id',body.broker_id).maybeSingle();
-      if(ce)throw new Error('scanner_contact_read_failed');
+      if(ce)throw brokerFailure('scanner_contact_read_failed',ce);
       if(contact)return json({ok:false,error:'כבר שמור מספר WhatsApp אישי'});
       const {data:listings,error:le}=await admin.from('listings').select('id,source_url').eq('workspace_owner_id',body.broker_id).eq('user_id',body.broker_id).eq('source','yad2').not('source_url','is',null).order('created_at',{ascending:false}).limit(50);
-      if(le)throw new Error('scanner_source_read_failed');
+      if(le)throw brokerFailure('scanner_source_read_failed',le);
       const source=listings?.find(row=>/^https:\/\/www\.yad2\.co\.il\/realestate\/item\/[a-zA-Z0-9]+(?:\?.*)?$/.test(row.source_url??''));
       if(!source?.source_url)return json({ok:false,error:'אין למתווך מודעת יד2 שמורה'});
       const {data:eligible,error:ee}=await admin.rpc('scanner_broker_eligible',{_broker:body.broker_id,_listing:source.id,_creator:caller.userId,_source:source.source_url});
-      if(ee)throw new Error('scanner_eligibility_check_failed');if(!eligible)return json({error:'forbidden_broker'},403);
+      if(ee)throw brokerFailure('scanner_eligibility_check_failed',ee);if(!eligible)return json({error:'forbidden_broker'},403);
       const {data:job,error:ie}=await admin.from('broker_wa_scanner_jobs').insert({broker_id:body.broker_id,workspace_owner_id:body.broker_id,listing_id:source.id,source_url:source.source_url,created_by:caller.userId,consent_at:new Date().toISOString()}).select('id,status').single();
       if(ie?.code==='23505')return json({ok:false,error:'כבר קיימת פנייה למתווך או למודעה זו; לא תישלח פנייה כפולה'});
-      if(ie)throw new Error('scanner_enqueue_failed');return json({ok:true,job});
+      if(ie)throw brokerFailure('scanner_enqueue_failed',ie);return json({ok:true,job});
     }
     if(body.action==='claim_source') {
-      const {data,error}=await admin.rpc('claim_broker_wa_scanner_source');if(error)throw new Error('scanner_source_claim_failed');return json({job:data?.[0]??null});
+      const {data,error}=await admin.rpc('claim_broker_wa_scanner_source');if(error)throw brokerFailure('scanner_source_claim_failed',error);return json({job:data?.[0]??null});
     }
     if(body.action==='source_result'||body.action==='source_failure') {
       const {data:job,error}=await admin.from('broker_wa_scanner_jobs').select('*').eq('id',body.job_id).eq('status','reading_source').eq('lease_token',body.lease_token).gt('lease_until',new Date().toISOString()).maybeSingle();
-      if(error)throw new Error('scanner_source_job_read_failed');if(!job)return json({error:'stale_source_lease'},409);
+      if(error)throw brokerFailure('scanner_source_job_read_failed',error);if(!job)return json({error:'stale_source_lease'},409);
       if(body.action==='source_failure') {
         const retry=[429,500,502,503,504].includes(body.status)&&job.source_attempts<3;
         const {error:ue}=await admin.from('broker_wa_scanner_jobs').update({status:retry?'pending_source':'needs_manual',next_source_at:new Date(Date.now()+180000).toISOString(),last_error:`source_http_${body.status}`,provider_status:body.status,lease_token:null,lease_until:null,updated_at:new Date().toISOString()}).eq('id',job.id).eq('status','reading_source').eq('lease_token',body.lease_token);
-        if(ue)throw new Error('scanner_source_failure_save_failed');
+        if(ue)throw brokerFailure('scanner_source_failure_save_failed',ue);
         if([401,403,407].includes(body.status))await scannerError('send',`source_access_denied_${body.status}`,true,admin);
         return json({ok:true});
       }
       const extraction=extractYad2Inquiry(body.html,job.source_url);
       const {error:ue}=await admin.from('broker_wa_scanner_jobs').update({status:extraction.inquiry?'ready':'needs_manual',target_phone:extraction.inquiry?.target_phone??null,prefilled_message:extraction.inquiry?.prefilled_message??null,last_error:extraction.inquiry?null:extraction.reason,lease_token:null,lease_until:null,updated_at:new Date().toISOString()}).eq('id',job.id).eq('status','reading_source').eq('lease_token',body.lease_token);
-      if(ue)throw new Error('scanner_source_save_failed');return json({ok:true,reason:extraction.reason});
+      if(ue)throw brokerFailure('scanner_source_save_failed',ue);return json({ok:true,reason:extraction.reason});
     }
     if(body.action==='tick') {
       // Heartbeat first, even while paused, so the admin card can tell "worker connected" apart from "line paused".
       if(settings){const {error:heartbeatError}=await admin.from('broker_wa_scanner_settings').update({worker_seen_at:new Date().toISOString()}).eq('id',true);
-      if(heartbeatError)throw new Error('scanner_heartbeat_save_failed');}
+      if(heartbeatError)throw brokerFailure('scanner_heartbeat_save_failed',heartbeatError);}
       if(!settings?.enabled||settings.paused)return json({ok:true,idle:true});
       const {data:events,error:ev}=await admin.from('broker_wa_scanner_events').select('id').eq('status','received').order('created_at').limit(5);
-      if(ev)throw new Error('scanner_replay_read_failed');
-      for(const event of events??[])await processScannerEvent(event.id,admin);
+      if(ev)throw brokerFailure('scanner_replay_read_failed',ev);
+      for(const event of events??[]) {
+        try { await processScannerEvent(event.id,admin); }
+        catch(error) { if (!transientBrokerConnectionError(error)) throw error; console.warn('[broker-wa-scanner] event_replay_deferred',{event_id:event.id}); }
+      }
       const credentials=scannerCredentials();if(!credentials){await scannerError('send','scanner_credentials_missing',true,admin);return json({ok:false,reason:'scanner_credentials_missing'});}
       // Preflight only when a send might be due; never poll the provider while idle.
       const {count,error:re}=await admin.from('broker_wa_scanner_jobs').select('id',{head:true,count:'exact'}).eq('status','ready');
-      if(re)throw new Error('scanner_ready_read_failed');
+      if(re)throw brokerFailure('scanner_ready_read_failed',re);
       if(!count)return json({ok:true,idle:true});
       // 24/7: no daytime window; pacing (next_send_at), daily quota and the error circuit breaker remain.
       if(Date.parse(settings.next_send_at??'')>Date.now())return json({ok:true,idle:true});
       const {count:waiting,error:we}=await admin.from('broker_wa_scanner_jobs').select('id',{head:true,count:'exact'}).in('status',['sending','awaiting_reply']);
-      if(we)throw new Error('scanner_waiting_read_failed');
+      if(we)throw brokerFailure('scanner_waiting_read_failed',we);
       if(waiting) {
         // Recovery only, no provider call: stale sends are manual, never resent.
         const now=new Date().toISOString();
         const {error:expired}=await admin.from('broker_wa_scanner_jobs').update({status:'needs_manual',last_error:'reply_timeout_or_unknown_send',updated_at:now}).or(`and(status.eq.sending,send_reserved_at.lt.${new Date(Date.now()-90000).toISOString()}),and(status.eq.awaiting_reply,reply_deadline.lt.${now})`);
-        if(expired)throw new Error('scanner_timeout_update_failed');return json({ok:true,idle:true});
+        if(expired)throw brokerFailure('scanner_timeout_update_failed',expired);return json({ok:true,idle:true});
       }
       const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem'}).format(new Date());
       if(settings.budget_day===today&&settings.day_attempts>=settings.daily_cap)return json({ok:true,idle:true});
       const check=await checkScannerConnection(admin);
       if(!check.ok||!check.phone){await scannerError('send',check.reason??'scanner_not_ready',true,admin);return json(check);}
       const {data:claimed,error:cl}=await admin.rpc('reserve_broker_wa_scanner_send',{_instance:credentials.instance,_phone:check.phone,_jitter:scannerJitter(settings.jitter_min_seconds,settings.jitter_max_seconds)});
-      if(cl)throw new Error('scanner_send_reserve_failed');
+      if(cl)throw brokerFailure('scanner_send_reserve_failed',cl);
       const job=claimed?.[0];if(!job)return json({ok:true,idle:true});
       // Reserve consumed quota before networking; ambiguous outcomes never get retried.
       try {
@@ -183,7 +187,10 @@ Deno.serve(async req=>{
     return json({error:'unsupported_action'},400);
   } catch(error) {
     console.error('[broker-wa-scanner]',{action:body.action,error:(error as Error).message});
-    if(machineAction||body.action==='test_connection'||body.action==='resume')await scannerError('send','scanner_operation_error',true,admin).catch(()=>{});
-    return json({error:'scanner_operation_failed'},500);
+    const transient = transientBrokerConnectionError(error);
+    // A failed infrastructure read is not evidence of a disconnected line or a failed send.
+    // Actual send failures still take the reserved-send/manual-review path above and retain the circuit breaker.
+    if(!transient&&(machineAction||body.action==='test_connection'||body.action==='resume'))await scannerError('send','scanner_operation_error',true,admin).catch(()=>{});
+    return json({error:brokerUserError(error,'פעולת קו הסריקה לא הושלמה. נסו שוב בעוד רגע.'),retryable:transient},transient?503:500);
   }
 });

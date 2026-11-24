@@ -1,7 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
-import { brokerUserError, recoverBrokerWhatsAppJobs } from '../../supabase/functions/_shared/brokerRecovery';
+import { brokerFailure, brokerUserError, recoverBrokerWhatsAppJobs, transientBrokerConnectionError } from '../../supabase/functions/_shared/brokerRecovery';
 
 describe('auxiliary broker recovery', () => {
+  it('preserves nested transport causes so infrastructure resets are not treated as scanner circuit failures',()=>{
+    const wrapped=brokerFailure('scanner_heartbeat_save_failed',new TypeError('connection reset'));
+    expect(transientBrokerConnectionError(wrapped)).toBe(true);
+    expect(transientBrokerConnectionError(brokerFailure('scanner_error',{code:'42501'}))).toBe(false);
+  });
+  it('keeps an explicit accepted-send warning instead of encouraging a retry',()=>{
+    const message='Meta קיבלה את ההודעה אך עדכון שלב ההצטרפות נכשל. אין לשלוח שוב.';
+    expect(brokerUserError({message,status:500})).toBe(message);
+  });
   it('retries returned connection reset and thrown transport error then succeeds', async () => {
     const rpc = vi.fn().mockResolvedValueOnce({error:{message:'connection reset'}})
       .mockRejectedValueOnce(new TypeError('error sending request (SendRequest)'))

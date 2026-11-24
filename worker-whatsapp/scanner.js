@@ -25,8 +25,11 @@ export async function runScanner(config, { source, isStopping }, api = createSca
     try {
       const { job } = await api({ action: 'claim_source' });
       if (job) {
-        try { await api({ action: 'source_result', job_id: job.id, lease_token: job.lease_token, html: await source(job.source_url) }); }
+        let html;
+        try { html = await source(job.source_url); }
         catch (error) { await api({ action: 'source_failure', job_id: job.id, lease_token: job.lease_token, status: error.status >= 400 && error.status <= 599 ? error.status : 504 }); }
+        // A result response may be lost after Cloud saved it. Never misreport that as a failed source read.
+        if (html !== undefined) await api({ action: 'source_result', job_id: job.id, lease_token: job.lease_token, html });
       }
       // Cloud owns quota, jitter (24/7) and circuit state; this only wakes it.
       await api({ action: 'tick' });

@@ -2,6 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { adminClient, safeEqual } from '../_shared/authz.ts';
 import { processScannerEvent, scannerCredentials, scannerError, scannerReply } from '../_shared/brokerScannerRuntime.ts';
+import { brokerFailure, transientBrokerConnectionError } from '../_shared/brokerRecovery.ts';
 const schema=z.object({typeWebhook:z.string().max(100),instanceData:z.object({idInstance:z.union([z.string(),z.number()]),wid:z.string().max(100)}),idMessage:z.string().min(1).max(200).optional(),timestamp:z.number().finite().optional(),senderData:z.object({chatId:z.string().max(100),sender:z.string().max(100)}).optional(),messageData:z.record(z.unknown()).optional(),stateInstance:z.string().max(100).optional()});
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
 Deno.serve(async req=>{
@@ -16,7 +17,7 @@ Deno.serve(async req=>{
     if(!parsed.success){await scannerError('webhook','invalid_authenticated_webhook',false,admin);return json({error:'invalid_webhook'},400);}
     const payload=parsed.data;
     const {data:settings,error:se}=await admin.from('broker_wa_scanner_settings').select('instance_id,scanner_phone').eq('id',true).maybeSingle();
-    if(se)throw new Error('scanner_settings_read_failed');
+    if(se)throw brokerFailure('scanner_settings_read_failed',se);
     const widDigits=payload.instanceData.wid.replace(/\D/g,'');
     // Green may send wid with a different suffix; compare the line's digits, and log any mismatch instead of failing silently.
     if(String(payload.instanceData.idInstance)!==credentials.instance||settings?.instance_id!==credentials.instance||!settings?.scanner_phone||(widDigits!==''&&widDigits!==String(settings.scanner_phone).replace(/\D/g,''))){
@@ -26,11 +27,12 @@ Deno.serve(async req=>{
     if(payload.typeWebhook==='stateInstanceChanged') {
       // Fail closed on disconnect; an authorized body never resumes the circuit breaker.
       // Ignore delayed state events older than the last successful connection check: a replayed backlog must not pause a healthy line.
-      const {data:chk}=await admin.from('broker_wa_scanner_settings').select('config_checked_at').eq('id',true).maybeSingle();
+      const {data:chk,error:checkError}=await admin.from('broker_wa_scanner_settings').select('config_checked_at').eq('id',true).maybeSingle();
+      if(checkError)throw brokerFailure('scanner_state_check_failed',checkError);
       const stale=!!payload.timestamp&&!!chk?.config_checked_at&&payload.timestamp*1000<Date.parse(chk.config_checked_at);
       if(payload.stateInstance!=='authorized'&&!stale) {
         const {error}=await admin.from('broker_wa_scanner_settings').update({connected:false,paused:true,pause_reason:'scanner_disconnected',webhook_seen_at:new Date().toISOString()}).eq('id',true);
-        if(error)throw new Error('scanner_disconnect_save_failed');
+        if(error)throw brokerFailure('scanner_disconnect_save_failed',error);
       }
       return json({ok:true});
     }
@@ -41,14 +43,17 @@ Deno.serve(async req=>{
     if(reply.chat_id!==reply.sender||!/^\d+@c\.us$/.test(reply.chat_id))return json({ok:true,ignored:'not_direct_service_reply'});
     const eventAt=new Date(payload.timestamp*1000);if(!Number.isFinite(eventAt.getTime())||eventAt.getTime()>Date.now()+60000)return json({error:'invalid_timestamp'},400);
     const {data:event,error}=await admin.from('broker_wa_scanner_events').insert({instance_id:credentials.instance,message_id:payload.idMessage,event_type:payload.typeWebhook,chat_id:reply.chat_id,sender:reply.sender,quoted_id:reply.quoted_id,reply_text:reply.text,event_at:eventAt.toISOString()}).select('id').single();
-    if(error&&error.code!=='23505')throw new Error('scanner_event_save_failed');
+    if(error&&error.code!=='23505')throw brokerFailure('scanner_event_save_failed',error);
     const {error:ue}=await admin.from('broker_wa_scanner_settings').update({webhook_seen_at:new Date().toISOString(),webhook_errors:0}).eq('id',true);
-    if(ue)throw new Error('scanner_webhook_health_save_failed');
+    if(ue)throw brokerFailure('scanner_webhook_health_save_failed',ue);
     if(event)await processScannerEvent(event.id,admin);
     return json({ok:true,duplicate:!event});
   } catch(error) {
     console.error('[broker-wa-scanner-webhook]',{error:(error as Error).message});
-    await scannerError('webhook','scanner_webhook_processing_error',false,admin).catch(()=>{});
-    return json({error:'webhook_processing_failed'},500);
+    const transient=transientBrokerConnectionError(error);
+    // Return a retryable receipt failure; never count a database reset as a bad authenticated reply.
+    // Saved received events remain available to the existing tick replay, with message-ID deduplication.
+    if(!transient)await scannerError('webhook','scanner_webhook_processing_error',false,admin).catch(()=>{});
+    return json({error:'webhook_processing_failed'},transient?503:500);
   }
 });

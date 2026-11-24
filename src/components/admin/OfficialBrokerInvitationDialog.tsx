@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Send, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -13,17 +12,10 @@ import { getOfficialWaNumber } from '@/lib/officialWa';
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { agorotToCredits } from '@/lib/credits';
 import { publicUrl } from '@/lib/publicUrl';
+import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
 
 async function invoke(body: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke('admin-broker-invitation', { body });
-  if (error) {
-    if (error instanceof FunctionsHttpError) {
-      const details = await error.context.json().catch(() => null);
-      throw new Error(typeof details?.error === 'string' ? details.error : 'בדיקת ההזמנה נכשלה');
-    }
-    throw error;
-  }
-  return data;
+  return brokerWhatsAppRequest('admin-broker-invitation', body);
 }
 
 function useBrokerWhatsAppEligibility(brokerId: string) {

@@ -7,6 +7,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { supabase } from '@/integrations/supabase/client';
 import { useSuperAdminGate } from '@/hooks/useSuperAdminGate';
 import { recheckRedBrokers, type RegistryProgress, type RegistryTarget } from '@/lib/bulkBrokerRegistry';
+import { brokerUserError } from '../../../supabase/functions/_shared/brokerRecovery';
+import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
 
 export const registryProgressText = (p: RegistryProgress) => `נבדקו ${p.done}/${p.total} · אומתו ${p.verified}${p.failed ? ` · לא אומתו ${p.failed}` : ''}${p.missing ? ` · ללא רישיון תקין ${p.missing}` : ''}`;
 export function BulkBrokerRegistryRecheck({ onProgress }: { onProgress: (text: string) => void }) {
@@ -27,9 +29,9 @@ export function BulkBrokerRegistryRecheck({ onProgress }: { onProgress: (text: s
     working.current = true; setBusy(true); onProgress('קורא את המתווכים שממתינים לאימות…');
     try {
       // Fresh complete list, independent of the current search or rendered cards.
-      const { data, error } = await supabase.functions.invoke('admin-broker-contact', { body: { action: 'list' } });
+      const data = await brokerWhatsAppRequest('admin-broker-contact', { action: 'list' });
       if (!current()) return;
-      if (error || data?.error || !Array.isArray(data?.brokers)) throw new Error('לא ניתן לקרוא את רשימת המתווכים');
+      if (!Array.isArray(data?.brokers)) throw new Error('לא ניתן לקרוא את רשימת המתווכים');
       const outcome = await recheckRedBrokers(data.brokers as RegistryTarget[], async (row, license) => {
         const response = await supabase.functions.invoke('admin-broker-registry-name', { body: { user_id: row.user_id, license_number: license } });
         if (!current()) return false;
@@ -44,7 +46,7 @@ export function BulkBrokerRegistryRecheck({ onProgress }: { onProgress: (text: s
       const text = outcome.total ? `הבדיקה הושלמה. ${registryProgressText(outcome)}` : 'אין מתווכים שמסומנים באדום';
       onProgress(text); toast.info(text);
       await Promise.all(['broker-contact-queue', 'admin-profiles', 'workspaces', 'workspace-owner-profile', 'account-identity'].map(key => qc.invalidateQueries({ queryKey: [key] })));
-    } catch (error) { if (current()) { const text = error instanceof Error ? error.message : 'הבדיקה נכשלה'; onProgress(text); toast.error(text); } }
+    } catch (error) { if (current()) { const text = brokerUserError(error, 'הבדיקה נכשלה'); onProgress(text); toast.error(text); } }
     finally { if (current()) { working.current = false; setBusy(false); } }
   };
   const label = 'אימות מחדש מול המאגר הלאומי לכל המסומנים באדום';

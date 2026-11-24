@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Save, Loader2, Mail, UserRoundSearch, Check, X, Trash2, ShieldCheck, ChevronDown, Phone } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
@@ -30,14 +29,13 @@ import { emptyImportSearch, matchesImportSearch, newestImportsFirst, type Import
 import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
 import { activeImportHistoryIds } from '@/lib/importHistoryActivity';
 import { coldInvitationBody } from '../../../supabase/functions/_shared/brokerInvitationTemplate';
+import { brokerWhatsAppRequest } from '@/lib/brokerWhatsAppRequest';
+import { brokerUserError } from '../../../supabase/functions/_shared/brokerRecovery';
 
 export type ContactBroker = { created_at?: string; user_id: string; full_name: string; phone: string | null; whatsapp_phone?: string | null; whatsapp_link?: string | null; email: string | null; license_number: string | null; office_name: string | null; office_logo_url?: string | null; avatar_url?: string | null; is_developer?: boolean; profile_license?: string | null; city?: string | null; license_verified?: boolean; gender?: string | null; drafts: number; projects?: number; apartments?: number; contact_status: 'pending_contact' | 'complete'; first_login_at: string | null; email_consent_at: string | null; email_invited_at: string | null };
 
 async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(fn, { body });
-  if (error) { const d = error instanceof FunctionsHttpError ? await error.context.json().catch(() => null) : null; throw new Error(typeof d?.error === 'string' ? d.error : 'הפעולה נכשלה'); }
-  if (data?.error) throw new Error(String(data.error));
-  return data as T;
+  return brokerWhatsAppRequest<T>(fn, body);
 }
 
 const DEFAULT_SUBJECT = 'TORAFF · המערכת היחידה שכל מתווך חייב';
@@ -69,7 +67,7 @@ function EmailSendDialog({ b, contactPhone, contactName }: { b: ContactBroker; c
   });
   const send = useMutation({
     mutationFn: () => invoke<{ sent: number; results?: { status: string; error?: string }[] }>('admin-broker-email-invitation', { action: 'send_batch', broker_id: b.user_id, limit: 1, message: body.trim(), demo, subject: subject.trim() || DEFAULT_SUBJECT, attachment_id: attachmentId }),
-    onSuccess: d => { if (d.sent) { toast.success('המייל נשלח'); setOpen(false); } else { const r = d.results?.[0]; toast.error(r?.status === 'skipped' ? 'המייל לא נשלח: כבר נשלחה הזמנה או שהחשבון כבר נכנס' : `המייל לא נשלח${r?.error ? `: ${r.error}` : ''}`); } void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-contact-history'] }); },
+    onSuccess: d => { if (d.sent) { toast.success('המייל נשלח'); setOpen(false); } else { const r = d.results?.[0]; toast.error(r?.status === 'skipped' ? 'המייל לא נשלח: כבר נשלחה הזמנה או שהחשבון כבר נכנס' : `המייל לא נשלח${r?.error ? `: ${brokerUserError(r.error)}` : ''}`); } void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); void qc.invalidateQueries({ queryKey: ['broker-contact-history'] }); },
     onError: (e: Error) => toast.error(e.message),
   });
   const emailDirty = email.trim().toLowerCase() !== (b.email ?? '');
@@ -152,7 +150,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
     onSuccess: d => {
       toast.success(d.complete ? 'הנייד נשמר · אפשר לשלוח הזמנה' : 'נשמר · עדיין נדרש נייד'); setEditing(false); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] });
       // Pull the WhatsApp profile photo for the new number right away (never overwrites an existing photo).
-      void supabase.functions.invoke('sync-owner-wa-avatar', { body: { owner_id: b.user_id } }).then(({ data }) => { if (data?.updated) { toast.success('תמונת הפרופיל יובאה מ-WhatsApp'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); } });
+      void supabase.functions.invoke('sync-owner-wa-avatar', { body: { owner_id: b.user_id } }).then(({ data }) => { if (data?.updated) { toast.success('תמונת הפרופיל יובאה מ-WhatsApp'); void qc.invalidateQueries({ queryKey: ['broker-contact-queue'] }); } }).catch(() => {});
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -251,7 +249,7 @@ function SendHistoryContent({ item }: { item: HistoryItem }) {
     {item.content.demo && <p className="text-muted-foreground">נשלח כחשבון דמו לצפייה בלבד</p>}
     <p className="whitespace-pre-wrap break-words rounded-md border border-border/60 bg-background p-3 text-base leading-relaxed">{item.content.body}</p>
     {!!item.content.links?.length && <ul className="space-y-1">{item.content.links.map(l => <li key={l.url} className="break-all"><span className="font-semibold">{l.label}: </span><a href={l.url} target="_blank" rel="noreferrer" className="text-primary underline" dir="ltr">{l.url}</a></li>)}</ul>}
-    {item.content.error && <p className="text-destructive break-words">{item.content.error}</p>}
+    {item.content.error && <p className="text-destructive break-words">{brokerUserError(item.content.error)}</p>}
   </> : item.content?.template ? <p>נשלחה תבנית WhatsApp מאושרת: <span dir="ltr">{item.content.template}</span></p> : <p className="text-muted-foreground">התוכן המלא לא נשמר עבור שליחה זו (נשלחה לפני הוספת התיעוד).</p>;
 }
 
@@ -284,7 +282,7 @@ function SendHistory({ search }: { search: ImportSearch }) {
       <TabsTrigger value="broker" className="px-1">מתווכים ({sendCount('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({sendCount('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({sendCount('marketing')})</TabsTrigger>
     </TabsList></Tabs>
     {group === 'broker' && <BrokerScannerPanel />}
-    {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : shown.length === 0 ? <p className="text-base text-muted-foreground">אין שליחות בלשונית זו.</p> :
+    {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError && !q.data ? <p role="alert" className="text-base text-destructive">{brokerUserError(q.error)}</p> : shown.length === 0 ? <p className="text-base text-muted-foreground">אין שליחות בלשונית זו.</p> :
       <ul className="divide-y divide-border/70 rounded-xl border border-border/70">{shown.map(i => { const key = invitationHistoryKey(i); const isOpen = openKey === key; const contact = contacts.data?.get(i.user_id); return <li key={key}>
         {(() => { const isBroker = recipientGroup(i, contact?.company_name) === 'broker'; const statusLine = <p className="text-sm text-muted-foreground">{i.channel === 'whatsapp' ? 'וואטסאפ' : 'מייל'} · {STATUS[i.status] ?? i.status} · {new Date(i.sent_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</p>;
           return <div className="flex w-full items-start gap-3 p-3 text-right">
@@ -323,7 +321,7 @@ function ImportCount({ item, running }: { item: ImportItem; running: boolean }) 
   const label = item.kind === 'developer' ? 'פרויקטים' : 'נכסים';
   return <span role={running ? 'img' : undefined} aria-label={running ? `${label} נטענים · ${item.projects}` : undefined} className="relative inline-grid h-9 w-9 place-items-center">
     {running && <span aria-hidden="true" className="absolute inset-0 animate-spin rounded-full border-2 border-primary/25 border-t-primary motion-reduce:animate-none" />}
-    <span className={`text-sm font-bold tabular-nums ${!running && item.status === 'failed' ? 'text-destructive' : ''}`} title={!running && item.status === 'failed' ? (item.error ?? undefined) : undefined}>{item.projects}</span>
+    <span className={`text-sm font-bold tabular-nums ${!running && item.status === 'failed' ? 'text-destructive' : ''}`} title={!running && item.status === 'failed' && item.error ? brokerUserError(item.error) : undefined}>{item.projects}</span>
   </span>;
 }
 
@@ -364,7 +362,7 @@ export function ImportHistory({ search = emptyImportSearch }: { search?: ImportS
   const items = allImports.filter(i => (searching || i.kind === kind) && matchesImportSearch({ ...i }, { ...search, channel: 'all', whatsapp: 'all' })).sort((a, b) => Number(isRemoved(a)) - Number(isRemoved(b)));
   const kindTabs = <Tabs value={kind} onValueChange={v => setKind(v as 'broker' | 'developer')} dir="rtl" className="mb-3"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="broker">מתווכים ({allImports.filter(i => i.kind === 'broker' && !isRemoved(i)).length})</TabsTrigger><TabsTrigger value="developer">יזמים ({allImports.filter(i => i.kind === 'developer' && !isRemoved(i)).length})</TabsTrigger></TabsList></Tabs>;
   if (q.isLoading) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
-  if (q.isError) return <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p>;
+  if (q.isError && !q.data) return <p role="alert" className="text-base text-destructive">{brokerUserError(q.error)}</p>;
   if (!items.length) return <div>{kindTabs}<p className="text-base text-muted-foreground">אין יבואים בלשונית זו.</p></div>;
   return <div>{kindTabs}<div className="overflow-x-auto rounded-xl border border-border/70">
     <table className="w-full min-w-[380px] text-right text-sm">
@@ -409,7 +407,7 @@ function PendingInvitations({ search }: { search: ImportSearch }) {
       </TabsList></Tabs>
     </div>
     {group === 'broker' && <BrokerScannerPanel />}
-    {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
+    {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError && !q.data ? <p role="alert" className="text-base text-destructive">{brokerUserError(q.error)}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין חשבונות שממתינים להזמנה ראשונה.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} marketing={marketing.data?.get(b.user_id)} />)}</ul>}
   </div>;
 }

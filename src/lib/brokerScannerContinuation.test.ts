@@ -11,3 +11,11 @@ it('does not bypass an explicitly paused scanner',async()=>{const a=mockAdmin({p
 it('does not queue after a manual number has been saved',async()=>{const a=mockAdmin({contact:true});expect(await continueBrokerScanner(a,job)).toBe(false);expect(a.insert).not.toHaveBeenCalled();});
 it('does not queue an unauthorized source',async()=>{const a=mockAdmin({eligible:false});expect(await continueBrokerScanner(a,job)).toBe(false);expect(a.insert).not.toHaveBeenCalled();});
 it('does not create a duplicate inquiry on a retry',async()=>{expect(await continueBrokerScanner(mockAdmin({duplicate:true}),job)).toBe(false);});
+it('retries a transient eligibility read without re-reading a source or creating multiple inquiries',async()=>{
+  vi.useFakeTimers();
+  try {
+    const a=mockAdmin();a.rpc.mockResolvedValueOnce({error:new TypeError('connection reset')}).mockResolvedValueOnce({data:true});
+    const work=continueBrokerScanner(a,job);await vi.runAllTimersAsync();
+    expect(await work).toBe(true);expect(a.rpc).toHaveBeenCalledTimes(2);expect(a.insert).toHaveBeenCalledTimes(1);
+  } finally {vi.useRealTimers();}
+});
