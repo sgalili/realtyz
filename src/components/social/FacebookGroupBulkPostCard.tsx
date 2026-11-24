@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { ensureMandatoryComment } from '@/lib/mandatoryComment';
+import { loadFbTestMode, clampToTestTarget } from '@/lib/fbTestMode';
 import { Users, Send, Loader2, CheckCircle2, XCircle, Search, Eye, MessageCircle, Share2, Sparkles, CalendarClock, Megaphone } from 'lucide-react';
 
 type Group = {
@@ -118,6 +119,12 @@ export const FacebookGroupBulkPostCard = () => {
     setSelected((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
+      const test = loadFbTestMode(workspaceOwnerId);
+      if (test.enabled) {
+        const allowed = clampToTestTarget(Array.from(next), test);
+        if (allowed.length !== next.size) toast.info('מצב בדיקה פעיל: ניתן לבחור רק את קבוצת הבדיקה');
+        return new Set(allowed);
+      }
       return next;
     });
 

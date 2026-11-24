@@ -17,6 +17,8 @@ import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
 import { postNetwork, postNetworkCounts, togglePostNetwork } from '@/lib/postNetworkFilters';
 import { FacebookCloudConnectGate } from '@/components/social/FacebookCloudConnectGate';
+import { FacebookE2ETestPanel } from '@/components/social/FacebookE2ETestPanel';
+import { loadFbTestMode, subscribeFbTestMode, clampToTestTarget } from '@/lib/fbTestMode';
 import { InventoryToolSoftLock } from '@/components/InventoryCollection';
 import { showInventoryComingSoon } from '@/lib/inventoryCollection';
 import { InstagramConnectGate } from '@/components/social/InstagramConnectGate';
@@ -7630,6 +7632,16 @@ const CampaignCenter = () => {
       } catch {}
     }
   }, [bulkGlobalScheduleOpen, workspaceOwnerId]);
+  // Single-target test mode clamps any multi-group selection to the test group.
+  useEffect(() => {
+    const apply = () => {
+      const m = loadFbTestMode(workspaceOwnerId);
+      if (!m.enabled) return;
+      setBulkGroupIds((curr) => { const next = clampToTestTarget(curr, m); return JSON.stringify(next) === JSON.stringify(curr) ? curr : next; });
+    };
+    apply();
+    return subscribeFbTestMode(apply);
+  }, [workspaceOwnerId, bulkGroupIds]);
   useEffect(() => {
     // Never persist before hydration — that is what used to zero the count.
     if (!workspaceOwnerId || !groupsHydratedRef.current) return;
@@ -8722,6 +8734,7 @@ const CampaignCenter = () => {
         <TabsContent value="create" className="mt-6 space-y-4">
           <InventoryToolSoftLock tool={wizardChannel ?? ''}>
           {wizardChannel === 'facebook' && <FacebookCloudConnectGate connectionOnly onStatusChange={setFbReady} />}
+          {wizardChannel === 'facebook' && <FacebookE2ETestPanel />}
           <Dialog open={fbCloudConnectOpen} onOpenChange={setFbCloudConnectOpen}>
             <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg text-right">
               <DialogTitle className="text-center text-xl">חיבור לפייסבוק</DialogTitle>
