@@ -11,7 +11,7 @@ it('never creates payment for an unconfigured method despite valid preparation f
   open();
   await waitFor(() => expect(screen.getByRole('button', { name: 'ביט' })).toBeEnabled());
   fireEvent.click(screen.getByRole('button', { name: 'ביט' }));
-  fireEvent.change(screen.getByLabelText('סכום להפקדה (₪)'), { target: { value: '200.25' } });
+  setAmount('200.25');
   fireEvent.change(screen.getByLabelText('מה הטלפון הנייד שלך?'), { target: { value: '0501234567' } });
   expect(screen.getByRole('button', { name: 'תשלום מאובטח' })).toBeDisabled();
   expect(invoke).toHaveBeenCalledTimes(1);
@@ -21,7 +21,7 @@ it('requires provider-declared customer identity before enabling card checkout',
   open();
   await waitFor(() => expect(screen.getByRole('button', { name: 'כרטיס אשראי' })).toBeEnabled());
   fireEvent.click(screen.getByRole('button', { name: 'כרטיס אשראי' }));
-  fireEvent.change(screen.getByLabelText('סכום להפקדה (₪)'), { target: { value: '200.25' } });
+  setAmount('200.25');
   fireEvent.change(screen.getByLabelText('מה הטלפון הנייד שלך?'), { target: { value: '0501234567' } });
   expect(screen.getByRole('button', { name: 'תשלום מאובטח' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('תעודת זהות'), { target: { value: '123456789' } });
@@ -34,9 +34,16 @@ it('blocks an out-of-range custom package even with configured payment and valid
   fireEvent.click(screen.getByRole('button',{name:'ביט'}));
   fireEvent.change(screen.getByLabelText('מה הטלפון הנייד שלך?'),{target:{value:'0501234567'}});
   for(const value of ['4.99','2500.01']) {
-    fireEvent.change(screen.getByLabelText('סכום להפקדה (₪)'),{target:{value}});
+    setAmount(value);
     expect(screen.getByRole('button',{name:'תשלום מאובטח'})).toBeDisabled();
   }
-  fireEvent.change(screen.getByLabelText('סכום להפקדה (₪)'),{target:{value:'2500'}});
+  setAmount('2500');
   expect(screen.getByRole('button',{name:'תשלום מאובטח'})).toBeEnabled();
 });
+
+/** Edits the deposit amount through the inline price editor (click, type, confirm). */
+function setAmount(value: string) {
+  fireEvent.click(screen.getByRole('button', { name: 'עריכת סכום להפקדה בשקלים' }));
+  fireEvent.change(screen.getByLabelText('סכום להפקדה בשקלים'), { target: { value } });
+  fireEvent.click(screen.getByRole('button', { name: 'אישור' }));
+}

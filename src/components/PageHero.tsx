@@ -1,3 +1,5 @@
+import { useCreditWallet } from '@/hooks/useSubscription';
+import { fmtCompactCredits, ilsToCredits } from '@/lib/credits';
 import { useBrokersOnly } from '@/hooks/usePlatformMode';
 /**
  * Unified Hero / Control Zone shown directly under the top header on every page.
@@ -440,7 +442,7 @@ export function PageHero() {
           </div>
         ) : !isFaqPage && !isProfilePage ? (
           <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
-            {displayTitle}
+            {location.pathname.startsWith('/wallet') ? <WalletHeroBalance fallback={displayTitle} /> : displayTitle}
           </h1>
         ) : null}
 
@@ -448,12 +450,7 @@ export function PageHero() {
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
           {isAdminImport && <Button size="icon" variant="ghost" aria-label="איתור וייבוא" title="איתור וייבוא" className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => window.dispatchEvent(new Event('admin-broker-import:new'))}><ScanSearch className="h-5 w-5" /></Button>}
           {location.pathname.startsWith('/inbox') && <Button variant="ghost" size="icon" className="h-[46.8px] w-[46.8px] text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" aria-label="הוסף משתמש" title="הוסף משתמש" onClick={() => window.dispatchEvent(new Event('inbox:add-user'))}><UserPlus className="!h-[26px] !w-[26px]" /></Button>}
-          {location.pathname.startsWith('/wallet') && <Button size="icon" variant="ghost" onClick={() => {
-            const returnTo = location.state?.walletReturnTo;
-            if (typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//') && !returnTo.startsWith('/wallet')) navigate(returnTo);
-            else if (window.history.state?.idx > 0) navigate(-1);
-            else navigate('/');
-          }} aria-label="חזרה לעמוד הקודם" title="חזרה לעמוד הקודם" className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"><ChevronLeft className="!h-5 !w-5" strokeWidth={2.5} /></Button>}
+          {location.pathname.startsWith('/wallet') && <Button variant="ghost" onClick={() => window.dispatchEvent(new Event('wallet:toggle-topup'))} aria-label="טעינת ארנק" title="טעינת ארנק" className="h-9 gap-1 border-0 px-2 text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary-foreground/15 hover:text-primary-foreground"><Plus className="!h-5 !w-5" strokeWidth={2.5} />טעינת ארנק</Button>}
           {isPublicBoard && !user && (
             <Button
               size="sm"
@@ -551,3 +548,15 @@ export function PageHero() {
 }
 
 export default PageHero;
+
+
+/** Live wallet balance as the wallet page title: credits, then the shekel value in smaller type. */
+function WalletHeroBalance({ fallback }: { fallback: string }) {
+  const { data: wallet, isLoading } = useCreditWallet();
+  if (isLoading || !wallet) return <>{fallback}</>;
+  const balance = wallet.balance ?? 0;
+  return <>
+    {fmtCompactCredits(ilsToCredits(balance), 2)}
+    <span className="ms-1 text-base font-semibold text-primary-foreground/80">({balance.toLocaleString('he-IL', { maximumFractionDigits: 2 })} ₪)</span>
+  </>;
+}

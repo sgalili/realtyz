@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { AlertTriangle, ArrowDownLeft, CreditCard, Plus, Wallet as WalletIcon } from 'lucide-react';
+import { AlertTriangle, ArrowDownLeft, CreditCard, Wallet as WalletIcon, X } from 'lucide-react';
 import { ACTION_META, fmtCompactCredits, fmtCredits, ilsToCredits, parseActionNote } from '@/lib/credits';
 import { fmtILS } from '@/lib/formatCurrency';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,6 +47,12 @@ export default function Wallet() {
   const { data: wallet } = useCreditWallet();
   const [detail, setDetail] = useState<LedgerRow | null>(null);
   const [topupOpen, setTopupOpen] = useState(false);
+  // The hero "טעינת ארנק" button toggles the inline top-up section.
+  useEffect(() => {
+    const toggle = () => setTopupOpen(open => !open);
+    window.addEventListener('wallet:toggle-topup', toggle);
+    return () => window.removeEventListener('wallet:toggle-topup', toggle);
+  }, []);
 
   const { data: ledger = [] } = useQuery({
     queryKey: ['wallet-ledger', ws], enabled: !!ws,
@@ -86,7 +92,7 @@ export default function Wallet() {
 
   const statusOf = (r: LedgerRow) => ({ open: 'במחלוקת', pending: 'במחלוקת', accepted: 'הוחזר', refunded: 'הוחזר', rejected: 'הושלם' } as Record<string, string>)[r.dispute_status ?? ''] ?? 'הושלם';
   const rows = (list: LedgerRow[], withTarget: boolean) => (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto">
       <Table>
         <TableHeader><TableRow>
           <TableHead>מועד</TableHead>{withTarget && <TableHead>יעד</TableHead>}<TableHead>מטרה</TableHead><TableHead>סטטוס</TableHead><TableHead>סכום</TableHead>
@@ -111,7 +117,7 @@ export default function Wallet() {
   );
 
   return (
-    <div dir="rtl" className="mx-auto max-w-5xl space-y-5 p-4">
+    <div dir="rtl" className="mx-auto max-w-5xl space-y-5 px-2 py-4 sm:px-4">
       {locked && (
         <div role="alert" className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
@@ -127,21 +133,18 @@ export default function Wallet() {
         </div>
       )}
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between rounded-lg border bg-card p-5">
-          <div>
-             <p className={`text-right text-3xl font-bold ${(wallet?.balance ?? 0) <= 0 ? 'text-destructive' : ''}`}>{fmtCompactCredits(ilsToCredits(wallet?.balance ?? 0), 2)}</p>
-             <p className="text-sm text-muted-foreground" dir="ltr">{money(wallet?.balance ?? 0)}</p>
-          </div>
-          <Button onClick={() => setTopupOpen(true)}><Plus className="h-4 w-4" />טעינת ארנק</Button>
+      {topupOpen && <section aria-label="טעינת ארנק" className="space-y-4 border-b border-border pb-5">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-lg font-bold"><WalletIcon className="h-5 w-5" />טעינת ארנק</h2>
+          <Button variant="ghost" size="icon" aria-label="סגירת טעינת ארנק" onClick={() => setTopupOpen(false)}><X className="h-4 w-4" /></Button>
         </div>
-
-      </div>
+        <WalletTopUp />
+      </section>}
 
       <Tabs defaultValue="payments">
-        <TabsList>
-          <TabsTrigger value="payments">תשלומים ותנועות</TabsTrigger>
-          <TabsTrigger value="deposits">היסטוריית הפקדות</TabsTrigger>
+        <TabsList className="w-full">
+          <TabsTrigger value="payments" className="flex-1">תשלומים ותנועות</TabsTrigger>
+          <TabsTrigger value="deposits" className="flex-1">היסטוריית הפקדות</TabsTrigger>
         </TabsList>
         <TabsContent value="payments" className="mt-3">{rows(payments, true)}</TabsContent>
         <TabsContent value="deposits" className="mt-3">{rows(deposits, false)}</TabsContent>
@@ -170,12 +173,6 @@ export default function Wallet() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={topupOpen} onOpenChange={setTopupOpen}>
-        <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><WalletIcon className="h-5 w-5" />טעינת ארנק</DialogTitle></DialogHeader>
-          <WalletTopUp key={String(topupOpen)} />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
