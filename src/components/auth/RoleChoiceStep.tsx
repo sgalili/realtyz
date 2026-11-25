@@ -47,7 +47,6 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const continueBroker = () => {
     if (!signupDetailsValid('broker', details)) { setContinueError('יש להשלים את כל הפרטים לפני ההמשך.'); return; }
     // Unmatched registry numbers continue to a manual admin review instead of blocking.
-    if (!brokerLicenseSchema.safeParse(license).success) { setContinueError('יש להזין מספר רישיון בספרות בלבד.'); return; }
     // License photo/scan is collected later in the profile; registry check runs silently.
     void completeBroker();
   };
@@ -83,7 +82,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         queryClient.setQueryData(personalGenderKey(user.id), pendingSignup.gender);
       }
       let verified = false;
-      if (!licenseSuspended) {
+      if (!licenseSuspended && brokerLicenseSchema.safeParse(license).success) {
         try {
           await verifyBrokerLicense(license, 'verify');
           await signupRpc('complete_sms_signup_details', { _type: 'broker', _details: details });
@@ -100,7 +99,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
       onDone?.(); navigate('/properties', { replace: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
-      const friendly: Record<string, string> = { invalid_details: 'יש להשלים את כל הפרטים לפני ההמשך.', broker_grace_expired: 'תקופת הגישה הזמנית הסתיימה. יש לאמת את הרישיון בפרופיל.', broker_license_registry_verification_required: INVALID_BROKER_LICENSE };
+      const friendly: Record<string, string> = { invalid_details: 'יש להשלים את כל הפרטים לפני ההמשך.', broker_grace_expired: 'תקופת הגישה הזמנית הסתיימה. יש לאמת את הרישיון בפרופיל.', broker_license_registry_verification_required: INVALID_BROKER_LICENSE, broker_sms_verification_required: 'יש לאמת את מספר הטלפון בקוד לפני ההמשך.', primary_type_already_selected: 'סוג החשבון כבר נשמר. יש לרענן את העמוד.' };
       toast.error(friendly[message] ?? 'לא ניתן לשמור את הפרטים כרגע. אפשר לנסות שוב.');
     } finally { setBusy(false); }
   };

@@ -57,6 +57,7 @@ import { PostSignupWelcome } from '@/components/onboarding/PostSignupWelcome';
 import { useEarningsFeedback } from '@/hooks/useEarningsFeedback';
 import { useCreditWallet } from '@/hooks/useSubscription';
 import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
+import { readSmsSignup } from '@/lib/smsSignup';
 import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
 import { accountIdentity } from '@/lib/accountMode';
 import { activityAudience } from '@/lib/activityAudience';
@@ -216,16 +217,19 @@ export function ProtectedRoute({ children }: { children: React.ReactNode; allowG
   const partnerConsent = usePartnerConsent();
   const location = useLocation();
   const { isDeveloperWorkspace } = useWorkspaceFeatures();
-  if (loading) return user ? <AppLayout><PageLoader /></AppLayout> : (
+  // A fresh signup stays inside the registration flow: no app chrome flashes before the role step.
+  const freshSignup = !!readSmsSignup();
+  const signupLoader = <div className="flex min-h-[100dvh] items-center justify-center bg-background"><RealtyzLoader size="lg" label="טוען..." /></div>;
+  if (loading) return user ? (freshSignup ? signupLoader : <AppLayout><PageLoader /></AppLayout>) : (
     <div className="min-h-screen flex items-center justify-center">
       <RealtyzLoader size="lg" label="מאמת זהות..." />
     </div>
   );
   if (!user) return <Navigate to="/auth" replace />;
-  if (roleLoading || !rolesFetched || !roleApplied) return <AppLayout><PageLoader /></AppLayout>;
+  if (roleLoading || !rolesFetched || !roleApplied) return freshSignup ? signupLoader : <AppLayout><PageLoader /></AppLayout>;
 
   // Brand-new account (no role yet): pick מתווך / שותף once, then continue.
-  if (roleError) return <AppLayout><div className="min-h-[60vh] flex items-center justify-center"><RealtyzLoader size="lg" label="מסנכרן הרשאות..." /></div></AppLayout>;
+  if (roleError) return freshSignup ? signupLoader : <AppLayout><div className="min-h-[60vh] flex items-center justify-center"><RealtyzLoader size="lg" label="מסנכרן הרשאות..." /></div></AppLayout>;
 
   if (rolesFetched && !roleLoading && (accountRoles.length === 0 || accountRoles.every(role => role === 'user'))) {
     if (!roleApplied) return <PageLoader />;

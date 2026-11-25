@@ -36,7 +36,7 @@ export function BrokerLicenseGraceCard() {
   };
   return <section dir="rtl" className="space-y-3 rounded-xl border border-warning/40 bg-warning/5 p-4">
     <h3 className="text-base font-bold">השלמת אימות רישיון התיווך</h3>
-    <p className="text-sm">לא הצלחנו לאמת את מספר הרישיון {data.license_number}. החשבון פתוח במלואו עוד {daysLeft} ימים. בינתיים אפשר לעדכן את מספר הרישיון או להעלות צילום שלו.</p>
+    <p className="text-sm">{data.license_number ? `לא הצלחנו לאמת את מספר הרישיון ${data.license_number}.` : 'עדיין לא הוזן מספר רישיון תיווך.'} החשבון פתוח במלואו עוד {daysLeft} ימים. בינתיים אפשר לעדכן את מספר הרישיון או להעלות צילום שלו.</p>
     <BrokerLicenseField bare value={license} onChange={setLicense} onVerified={value => setVerified(value)} />
     {verified && verified === license && <Button type="button" className="w-full" disabled={busy} onClick={() => void run(async () => { await verifyBrokerLicense(license, 'verify'); toast.success('הרישיון אומת בהצלחה.'); })}>אימות הרישיון</Button>}
     <BrokerLicensePhotoUpload file={photo} onFile={setPhoto} />
