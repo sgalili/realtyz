@@ -46,7 +46,8 @@ Deno.serve(async req=>{
   const body=input.data;
   const machineAction=['claim_source','source_result','source_failure','tick'].includes(body.action);
   if(machine!==machineAction)return json({error:'forbidden_action'},403);
-  try {
+  // Browser actions get a hard deadline so a stalled provider/database call returns a retryable answer instead of a 150s gateway timeout.
+  const run=async():Promise<Response>=>{
     const {data:settings,error:se}=await admin.from('broker_wa_scanner_settings').select('*').eq('id',true).maybeSingle();
     if(se)throw brokerFailure('scanner_settings_read_failed',se);
     if(body.action==='status') {
@@ -194,9 +195,15 @@ Deno.serve(async req=>{
       }
     }
     return json({error:'unsupported_action'},400);
+  };
+  try {
+    if(machine)return await run();
+    let timer:number|undefined;
+    const deadline=new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(new Error('scanner_request_deadline'),{status:503,transient:true})),25000);});
+    try { return await Promise.race([run(),deadline]); } finally { clearTimeout(timer); }
   } catch(error) {
     console.error('[broker-wa-scanner]',{action:body.action,error:(error as Error).message});
-    const transient = transientBrokerConnectionError(error);
+    const transient = (error as Error).message==='scanner_request_deadline' || transientBrokerConnectionError(error);
     // A failed infrastructure read is not evidence of a disconnected line or a failed send.
     // Actual send failures still take the reserved-send/manual-review path above and retain the circuit breaker.
     if(!transient&&(machineAction||body.action==='test_connection'||body.action==='resume'))await scannerError('send','scanner_operation_error',true,admin).catch(()=>{});
