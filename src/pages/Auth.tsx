@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { toast } from '@/i18n/personalToast';
 import { ArrowRight, Eye, User, UserRound, X } from 'lucide-react';
+import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
-import toraffWordmark from '@/assets/toraff-wordmark.webp';
 import { useLocation, useNavigate } from '@/lib/router-compat';
 import { clearPendingSignupRole, clearPostSignupWelcome } from '@/lib/signupRole';
 import { clearSmsSignup, formatAuthMobile, israeliMobile, saveSmsSignup, smsSignupSchema } from '@/lib/smsSignup';
@@ -130,7 +130,7 @@ const Auth = () => {
     {codeSent && <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" onClick={switchPhone}><ArrowRight className="h-8 w-8" /></Button>}
 
     <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center pt-[40px]">
-      <img src={brokersOnly ? toraffWordmark : realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
+      {brokersOnly ? <PlatformBrand tagline className="h-10" /> : <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />}
       <h1 className={brokersOnly ? 'broker-auth-heading mb-3 mt-8 text-center text-3xl font-bold' : `mb-8 mt-[50px] text-center !font-normal ${codeSent ? 'text-xl' : 'text-[17px]'}`}>{codeSent ? `הזינו את הקוד שקיבלתם ${delivery === 'whatsapp' ? 'בוואטסאפ' : 'ב-SMS'}` : brokersOnly ? signup ? 'מתחילים לעבוד חכם' : 'טוב לראות אתכם שוב!' : signup ? 'להרשמה מהירה בחינם:' : 'כניסה לחשבון'}</h1>
       {brokersOnly && (codeSent || signup) && <p className="mb-5 text-center text-base leading-relaxed text-muted-foreground">{codeSent ? 'עוד רגע ואתם בפנים.' : signup ? 'הרשמה חינם, עם ריטה לצידכם.' : ''}</p>}
       <div className={`min-h-0 w-full overflow-y-auto overscroll-contain ${brokersOnly ? 'broker-auth-form rounded-lg px-5 py-5' : ''}`}>

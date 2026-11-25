@@ -14,6 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { useQueryClient } from '@tanstack/react-query';
+import { PlatformBrand } from '@/components/branding/PlatformBrand';
+import { useBrokersOnly as useTourBrokersOnly } from '@/hooks/usePlatformMode';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
 
 /* TORAFF — סיור מוצר לנרשמים חדשים.
@@ -83,6 +85,7 @@ const LOCAL_KEY = 'realtyz-product-tour-done';
 function startFacebookLogin() { openFacebookConnection(); }
 
 export function ProductTour() {
+  const tourBrokersOnly = useTourBrokersOnly();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -223,7 +226,7 @@ export function ProductTour() {
       >
         <div className="bg-primary/10 px-8 pt-8 pb-6">
           <div className="flex items-center justify-between gap-4">
-            <img src={realtyzLogo} alt="TORAFF" className="h-9 w-auto object-contain" />
+            {tourBrokersOnly ? <PlatformBrand tagline className="h-8" /> : <img src={realtyzLogo} alt="TORAFF" className="h-9 w-auto object-contain" />}
             <span className="text-sm font-bold text-muted-foreground">
               {index + 1} מתוך {steps.length}
             </span>

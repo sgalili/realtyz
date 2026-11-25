@@ -12,6 +12,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { RitaAvatar } from '@/components/RitaAvatar';
+import { PlatformBrand } from '@/components/branding/PlatformBrand';
+import { useBrokersOnly as useTourBrokersOnly } from '@/hooks/usePlatformMode';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { APP_TOUR_EVENT, buildWalkthrough, useWalkthrough, walkthroughStore } from '@/lib/appWalkthrough';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
@@ -19,6 +21,7 @@ import { shouldShowWelcome } from '@/lib/welcomePreference';
 import { openFaq } from '@/components/faq/FaqDialog';
 
 export function GlobalAppTour() {
+  const tourBrokersOnly = useTourBrokersOnly();
   const [showWelcome, setShowWelcome] = useState(false);
   const session = useWalkthrough();
   const { user } = useAuth();
@@ -147,7 +150,7 @@ export function GlobalAppTour() {
   return <Dialog open onOpenChange={(open) => { if (!open) close(); }}>
     <DialogContent dir="rtl" className="flex max-h-[90dvh] max-w-xl flex-col gap-4 p-6 sm:p-8">
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-        <img src={realtyzLogo} alt="TORAFF" className="mx-auto h-14 w-auto object-contain" />
+        {tourBrokersOnly ? <PlatformBrand tagline className="mx-auto h-10" /> : <img src={realtyzLogo} alt="TORAFF" className="mx-auto h-14 w-auto object-contain" />}
         <DialogTitle className="text-center text-3xl font-extrabold">ברוכים הבאים ל-TORAFF</DialogTitle>
         <DialogDescription className="text-center text-[19px] leading-relaxed text-foreground">
           נכסים, אנשים והזדמנויות נפגשים במקום אחד.

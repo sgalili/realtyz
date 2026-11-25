@@ -498,7 +498,7 @@ export default function Landing() {
       <header className="relative z-30 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-center px-4">
           <Link to="/" aria-label={platformName} className="mt-5">
-            <PlatformBrand className="h-[3.12rem]" />
+            <PlatformBrand tagline className="h-[3.12rem]" />
           </Link>
         </div>
       </header>

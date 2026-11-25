@@ -15,6 +15,7 @@ import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { userRolesQueryKey } from '@/hooks/useUserRole';
 import { clearPendingSignupRole, markPostSignupWelcome } from '@/lib/signupRole';
 import { prepareRewardSounds } from '@/lib/rewardFeedback';
+import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { BrokerCertificateCheck } from '@/components/auth/BrokerCertificateCheck';
@@ -159,7 +160,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   return <div dir="rtl" className="auth-gradient-shell relative flex h-[100dvh] flex-col items-center overflow-y-auto bg-background px-4 pb-16 pt-[50px]">
     <Button type="button" variant="ghost" size="icon" aria-label="סגירה ויציאה מהחשבון" title="סגירה ויציאה מהחשבון" className="absolute left-4 top-4 h-10 w-10" disabled={busy} onClick={async () => { await signOut(); navigate('/', { replace: true }); }}><X className="h-8 w-8" /></Button>
     {selected && !licenseSuspended && !(brokersOnly && selected === 'broker' && brokerStep === 'details') && <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" disabled={busy} onClick={() => { if (selected === 'broker' && brokerStep === 'certificate') { setBrokerStep('details'); setVerifiedLicense(null); setLicense(''); } else setSelected(null); }}><ArrowRight className="h-8 w-8" /></Button>}
-    <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
+    {brokersOnly ? <PlatformBrand tagline className="h-10" /> : <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />}
     {!selected && <h1 className="mb-8 mt-[100px] shrink-0 text-center text-[17px] !font-bold">{wording('מה סוג המשתמש שלך?', 'מה סוג המשתמשת שלך?', 'מה סוג החשבון שלך?')}</h1>}
     {selected && <div className="mt-[100px] shrink-0" aria-hidden />}
     {licenseSuspended && <div role="alert" className="mb-4 w-full max-w-lg border border-destructive p-3 text-destructive">{INVALID_BROKER_LICENSE}</div>}

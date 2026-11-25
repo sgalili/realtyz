@@ -56,7 +56,7 @@ export function BrandMark({ className = '', to = '/', fallbackLabel }: BrandMark
         />
       ) : (
         !hideRealtyz && (
-          <PlatformBrand className="h-[36.4px]" />
+          <PlatformBrand tagline className="h-[36.4px]" />
         )
       )}
       {labelToShow && <span className="font-bold tracking-tight">{labelToShow}</span>}
