@@ -126,6 +126,7 @@ const ConnectionSettings = () => {
       if (!res.ok) throw new Error('Failed to load configs');
       return (await res.json()) as ApiConfig[];
     },
+    enabled: isSuperAdmin,
   });
 
   useEffect(() => {

@@ -360,8 +360,8 @@ const ApiSettings = () => {
         // Test DB connectivity
         const { error } = await supabase.from('leads').select('id', { count: 'exact', head: true });
         // Test edge function connectivity
-        const res = await fetch(edgeFnBase, { headers: await edgeFnHeaders() });
-        setConnectionVerified(!error && res.ok);
+        const ok = isSuperAdmin ? (await fetch(edgeFnBase, { headers: await edgeFnHeaders() })).ok : true;
+        setConnectionVerified(!error && ok);
       } catch {
         setConnectionVerified(false);
       } finally {
@@ -369,7 +369,7 @@ const ApiSettings = () => {
       }
     };
     verify();
-  }, []);
+  }, [isSuperAdmin]);
 
   const { data: configs } = useQuery({
     queryKey: ['api-configs'],
@@ -378,6 +378,7 @@ const ApiSettings = () => {
       if (!res.ok) throw new Error('Failed to load configs');
       return (await res.json()) as ApiConfig[];
     },
+    enabled: isSuperAdmin,
   });
 
   // Load existing configs into form state

@@ -235,7 +235,7 @@ export function ConnectionsTab() {
 
   useEffect(() => {
     (async () => {
-      try {
+      if (isSuperAdmin) try {
         const { data } = await supabase.functions.invoke('manage-api-configs', { method: 'GET' });
         const rows = (data as any[]) || [];
         setGreenReady(!!rows.find((r) => r.service_name === 'Green API')?.api_key);
@@ -275,7 +275,7 @@ export function ConnectionsTab() {
         }
       } catch { /* silent */ }
     })();
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, isSuperAdmin]);
 
   // Keep the WhatsApp expanded panel in sync when the user toggles the method.
   useEffect(() => {
