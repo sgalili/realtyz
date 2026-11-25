@@ -590,7 +590,7 @@ export const IvrBroadcastPanel = () => {
   const audienceCount = targetLeads.length;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 [&_[role=combobox]]:font-bold" dir="rtl">
+    <div className="mx-auto w-full max-w-3xl space-y-6 pb-[calc(var(--app-footer-space)+6rem)] [&_[role=combobox]]:font-bold" dir="rtl">
       <div className="rounded-lg border border-border bg-card p-6">
           {/* Audience selector */}
           <div className="space-y-2">

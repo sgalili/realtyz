@@ -583,6 +583,9 @@ function WorkspaceTab() {
   const [officeDetails, setOfficeDetails] = useState({ office_address: '', office_city: '', public_email: '', brokerage_name: '', brokerage_license: '' });
   const [agencyDescription, setAgencyDescription] = useState('');
   const [savedAgencyDescription, setSavedAgencyDescription] = useState('');
+  const [savedMasterDetails, setSavedMasterDetails] = useState({ public_email: '', brokerage_name: '', brokerage_license: '' });
+  const [pendingAddress, setPendingAddress] = useState<string | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
   const [serviceAreas, setServiceAreas] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [savingField, setSavingField] = useState<string | null>(null);
@@ -620,6 +623,8 @@ function WorkspaceTab() {
         setAgencyName(name); setSavedAgencyName(name);
         setLogoUrl(data?.logo_url || activeWorkspace?.workspace_logo_url || '');
         setOfficeDetails({ office_address: data?.office_address || '', office_city: data?.office_city || '', public_email: data?.public_email || '', brokerage_name: data?.brokerage_name || '', brokerage_license: data?.brokerage_license || '' });
+        setSavedMasterDetails({ public_email: data?.public_email || '', brokerage_name: data?.brokerage_name || '', brokerage_license: data?.brokerage_license || '' });
+        setPendingAddress(null);
         setAgencyDescription(data?.agency_description || '');
         setSavedAgencyDescription(data?.agency_description || '');
         setServiceAreas(normalizeCitySelection(profile?.service_areas?.length ? profile.service_areas : [profile?.city || '']));
@@ -738,6 +743,31 @@ function WorkspaceTab() {
     finally { if (alive.current) setUploading(false); }
   };
 
+  const masterKeys = ['public_email', 'brokerage_name', 'brokerage_license'] as const;
+  const nameDirty = agencyName.trim() !== savedAgencyName.trim();
+  const descriptionDirty = agencyDescription.trim() !== savedAgencyDescription.trim();
+  const dirtyMaster = isMasterOffice ? masterKeys.filter(key => officeDetails[key].trim() !== savedMasterDetails[key].trim()) : [];
+  const addressDirty = pendingAddress !== null && pendingAddress.trim() !== officeDetails.office_address.trim();
+  const formDirty = nameDirty || descriptionDirty || dirtyMaster.length > 0 || addressDirty;
+  // One save button persists every changed office field; each write keeps its own server readback.
+  const saveAll = async () => {
+    if (!formDirty || savingAll) return;
+    setSavingAll(true);
+    try {
+      if (nameDirty && !(await saveOfficeField('agency_name', agencyName))) return;
+      if (addressDirty && !(await saveOfficeAddress(officeDetails.office_city, pendingAddress ?? ''))) return;
+      if (addressDirty) setPendingAddress(null);
+      if (descriptionDirty) {
+        if (!(await saveOfficeField('agency_description', agencyDescription))) return;
+        setSavedAgencyDescription(agencyDescription.trim());
+      }
+      for (const key of dirtyMaster) {
+        if (!(await saveOfficeField(key, officeDetails[key]))) return;
+        setSavedMasterDetails(previous => ({ ...previous, [key]: officeDetails[key].trim() }));
+      }
+      toast.success('הפרטים נשמרו');
+    } finally { if (alive.current) setSavingAll(false); }
+  };
   const busy = !ownerId || loading || loadError || uploading || savingField !== null;
   return (
     <div className="w-full min-w-0 space-y-4 pb-4">
@@ -750,24 +780,20 @@ function WorkspaceTab() {
         <LogoBox title="לוגו" url={logoUrl} disabled={busy} aspect="square" onUpload={onLogoUpload} onRemove={() => void saveOfficeField('logo_url', '')} />
         <div className="min-w-0 space-y-3">
           <div className="relative">
-            <Input dir="rtl" aria-label="שם תצוגה" placeholder="שם תצוגה" value={agencyName} disabled={busy} onChange={event => setAgencyName(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && agencyName !== savedAgencyName) void saveOfficeField('agency_name', agencyName); }} className="h-10 pe-10 text-right text-base font-bold" />
-            {agencyName !== savedAgencyName && <Button type="button" variant="ghost" size="icon" aria-label="שמירת שם תצוגה" disabled={busy} onClick={() => void saveOfficeField('agency_name', agencyName)} className="absolute inset-y-0 left-0 h-10 w-10"><Check className="h-4 w-4" /></Button>}
+            <Input dir="rtl" aria-label="שם המשרד" placeholder="שם המשרד" value={agencyName} disabled={busy && !savingAll} onChange={event => setAgencyName(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void saveAll(); }} className="h-10 text-right text-base font-bold" />
+            {false && <Button type="button" variant="ghost" size="icon" aria-label="שמירת שם תצוגה" disabled={busy} onClick={() => void saveOfficeField('agency_name', agencyName)} className="absolute inset-y-0 left-0 h-10 w-10"><Check className="h-4 w-4" /></Button>}
           </div>
           <IsraeliCityPicker value="" onChange={() => {}} selectedValues={serviceAreas} onSelectionChange={values => void saveServiceAreas(values)} firstOptions={['כל הארץ']} placeholder="אזורי שירות" disabled={busy} className="h-10 text-base" itemClassName="text-base" />
         </div>
       </div>
-      <AgencyAddressFields city={officeDetails.office_city} address={officeDetails.office_address} disabled={busy} onSave={saveOfficeAddress} />
-      <AgencyDescriptionField value={agencyDescription} savedValue={savedAgencyDescription} disabled={busy} saving={savingField === 'agency_description'} onChange={setAgencyDescription} onSave={() => {
-        void saveOfficeField('agency_description', agencyDescription).then(saved => {
-          if (saved) setSavedAgencyDescription(agencyDescription.trim());
-        });
-      }} />
+      <AgencyAddressFields city={officeDetails.office_city} address={officeDetails.office_address} disabled={busy} onSave={saveOfficeAddress} onDraftChange={setPendingAddress} />
+      <AgencyDescriptionField value={agencyDescription} savedValue={savedAgencyDescription} disabled={busy} saving={savingAll} dirty={formDirty} onChange={setAgencyDescription} onSave={() => void saveAll()} />
       {isMasterOffice && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {([['public_email', 'דוא״ל ציבורי'], ['brokerage_name', 'שם המתווך האחראי'], ['brokerage_license', 'רישיון תיווך']] as const).map(([key, label]) => <div key={key} className="space-y-1.5">
           <label htmlFor={`office-${key}`} className="text-base text-muted-foreground">{label}</label>
           <div className="relative">
-            <Input id={`office-${key}`} type={key === 'public_email' ? 'email' : 'text'} dir={key === 'public_email' || key === 'brokerage_license' ? 'ltr' : 'rtl'} value={officeDetails[key]} disabled={busy} className="pl-10" onChange={event => setOfficeDetails(previous => ({ ...previous, [key]: event.target.value }))} />
-            <Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 left-0 h-10 w-10" aria-label={`שמירת ${label}`} disabled={busy} onClick={() => void saveOfficeField(key, officeDetails[key])}><Check className="h-4 w-4" /></Button>
+            <Input id={`office-${key}`} type={key === 'public_email' ? 'email' : 'text'} dir={key === 'public_email' || key === 'brokerage_license' ? 'ltr' : 'rtl'} value={officeDetails[key]} disabled={busy} onChange={event => setOfficeDetails(previous => ({ ...previous, [key]: event.target.value }))} />
+            {false && <Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 left-0 h-10 w-10" aria-label={`שמירת ${label}`} disabled={busy} onClick={() => void saveOfficeField(key, officeDetails[key])}><Check className="h-4 w-4" /></Button>}
           </div>
         </div>)}
       </div>}
@@ -905,11 +931,11 @@ export default function Profile() {
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
         <div className="mx-auto mt-[15px] w-full max-w-2xl">
           <TabsList className={`grid h-[44px] w-full gap-1 rounded-xl border border-border/60 bg-muted/40 p-1 ${isAgency ? 'grid-cols-5' : 'grid-cols-4'}`}>
-            <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs" value="personal">הפרופיל שלי</TabsTrigger>
-            <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs" value="workspace">{officeLabel}</TabsTrigger>
-            <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs" value="aibrain">מח AI</TabsTrigger>
-            <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs" value="connections">חיבורים</TabsTrigger>
-            {isAgency && <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs" value="managers">מנהלים</TabsTrigger>}
+            <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none" value="personal">פרופיל</TabsTrigger>
+            <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none" value="workspace">{officeLabel}</TabsTrigger>
+            <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none" value="aibrain">מח AI</TabsTrigger>
+            <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none" value="connections">חיבורים</TabsTrigger>
+            {isAgency && <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none" value="managers">מנהלים</TabsTrigger>}
           </TabsList>
         </div>
         <TabsContent value="personal" className="mt-[15px] space-y-4">

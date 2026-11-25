@@ -751,7 +751,7 @@ export default function DealRoom() {
         <TabsList className="grid w-full max-w-sm grid-cols-2">
           <TabsTrigger
             value="sale"
-            className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className="gap-2 data-[state=active]:bg-muted data-[state=active]:text-foreground"
           >
             מכירה
             <Badge variant="secondary" className="text-[10px] font-normal bg-white/90 text-primary border border-primary/20">{saleCount}</Badge>

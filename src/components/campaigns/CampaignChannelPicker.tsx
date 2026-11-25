@@ -28,7 +28,7 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
     <section className="mx-auto w-full max-w-3xl space-y-6" dir="rtl">
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-3">
-          {channel && <Button type="button" variant="ghost" size="icon" onClick={onBack} aria-label="חזרה לבחירת ערוץ" className="shrink-0"><ArrowRight /></Button>}
+          {false && channel && <Button type="button" variant="ghost" size="icon" onClick={onBack} aria-label="חזרה לבחירת ערוץ" className="shrink-0"><ArrowRight /></Button>}
           <h2 className="flex min-w-0 flex-1 items-center gap-2 text-xl font-bold text-foreground">
             {channel && <CampaignServiceIcon channel={channel.id} className="h-6 w-6 shrink-0" />}
             <span className="min-w-0">{channel ? `קמפיין · ${channel.label}` : 'בחירת ערוץ להפצה'}</span>

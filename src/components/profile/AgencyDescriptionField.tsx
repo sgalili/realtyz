@@ -2,15 +2,17 @@ import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
-export function AgencyDescriptionField({ value, savedValue, disabled, saving, onChange, onSave }: {
+export function AgencyDescriptionField({ value, savedValue, disabled, saving, dirty: formDirty, onChange, onSave }: {
   value: string;
   savedValue: string;
   disabled: boolean;
   saving: boolean;
   onChange: (value: string) => void;
   onSave: () => void;
+  /** Whole-form dirty state when the button saves the full office form. */
+  dirty?: boolean;
 }) {
-  const dirty = value.trim() !== savedValue.trim();
+  const dirty = formDirty ?? value.trim() !== savedValue.trim();
   return <div className="space-y-1.5" dir="rtl">
     <label htmlFor="agency-description" className="text-base font-semibold">תוכן תיאור החברה</label>
     <Textarea
@@ -30,8 +32,8 @@ export function AgencyDescriptionField({ value, savedValue, disabled, saving, on
     />
     <div className="flex items-center justify-between gap-2">
       <output className="text-sm text-muted-foreground" aria-label="אורך תיאור החברה">{value.length} / 5000</output>
-      <Button type="button" size="sm" className="gap-2" disabled={disabled || saving || !dirty} onClick={onSave} aria-label="שמירת תיאור החברה">
-        <Check className="h-4 w-4" />{saving ? 'שומר…' : 'שמירת תיאור'}
+      <Button type="button" size="sm" className="gap-2" disabled={disabled || saving || !dirty} onClick={onSave} aria-label="שמירה">
+        <Check className="h-4 w-4" />{saving ? 'שומר…' : 'שמירה'}
       </Button>
     </div>
   </div>;

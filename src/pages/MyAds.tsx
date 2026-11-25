@@ -196,7 +196,7 @@ function ActivityProperties() {
   const owned = (ads.data ?? []).filter(row => row.relation === 'owned' && audience.isVisible(row.listing_id));
   if (ads.isLoading || audience.isLoading) return <p role="status" className="py-8 text-center text-muted-foreground">טוען נכסים…</p>;
   if (ads.isError) return <div role="alert" className="py-8 text-center">לא ניתן לטעון את הנכסים <Button variant="link" onClick={() => void ads.refetch()}>ניסיון נוסף</Button></div>;
-  if (!owned.length) return <p className="py-8 text-center text-muted-foreground">עדיין אין נכסים שפרסמתם בלוח.</p>;
+  if (!owned.length) return <div className="flex flex-col items-center gap-3 py-8 text-center text-muted-foreground"><Megaphone className="h-10 w-10" aria-hidden /><p>עדיין אין נכסים שפרסמתם בלוח.</p></div>;
   const ids = [...selected];
   const toggle = (id: string) => setSelected(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const share = async () => {
@@ -290,9 +290,9 @@ function MyAdsPage() {
   return <div dir="rtl" className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6">
     <Tabs defaultValue="ads" dir="rtl">
       <TabsList className="mb-1.5 grid h-[44px] w-full grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
-        <TabsTrigger value="ads" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{sharedIds?.size ?? 0}{'\u00a0'}נכסים משותפים</TabsTrigger>
-        <TabsTrigger value="failed" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{recovery.data?.length ?? 0} טיוטות</TabsTrigger>
-        <TabsTrigger value="favorites" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{favCount}{'\u00a0'}מועדפים</TabsTrigger>
+        <TabsTrigger value="ads" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-muted data-[state=active]:text-foreground">{sharedIds?.size ?? 0}{'\u00a0'}נכסים משותפים</TabsTrigger>
+        <TabsTrigger value="failed" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-muted data-[state=active]:text-foreground">{recovery.data?.length ?? 0} טיוטות</TabsTrigger>
+        <TabsTrigger value="favorites" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-muted data-[state=active]:text-foreground">{favCount}{'\u00a0'}מועדפים</TabsTrigger>
       </TabsList>
       <TabsContent value="favorites" className="pt-3"><MyFavoriteAds /></TabsContent>
       <TabsContent value="failed" className="space-y-3 pt-3">

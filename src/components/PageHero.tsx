@@ -205,8 +205,23 @@ function LeadsHeroAddButton() {
 }
 
 function CampaignsHeroAddButton() {
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const label = 'יצירת קמפיין חדש';
+  // Inside a specific channel view the hero offers a back action to the channel picker.
+  if (searchParams.get('channel')) {
+    return (
+      <Button
+        size="icon"
+        variant="ghost"
+        onClick={() => setSearchParams(newCampaignSearch(), { replace: true })}
+        aria-label="חזרה לבחירת ערוץ"
+        title="חזרה לבחירת ערוץ"
+        className="min-h-11 min-w-11 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+      >
+        <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
+      </Button>
+    );
+  }
   return (
     <Button
       size="icon"
@@ -342,7 +357,7 @@ export function PageHero() {
   // suffix (Homely/Webtiv/Yad2/etc.) is appended.
   void propertySuffix;
   void isPropertyDetail;
-  const displayTitle = isCampaignsCreate ? "פרסום קמפיין חדש" : isCampaignsCalendar ? "פרסומים מתוזמנים" : brokersOnly && (title === "מנגנון העמלות" || location.pathname === '/pricing') ? "תמחור וקרדיטים" : brokersOnly && location.pathname === '/contact' ? 'צרו קשר' : title;
+  const displayTitle = isCampaignsCreate ? "קמפיינים" : isCampaignsCalendar ? "פרסומים מתוזמנים" : brokersOnly && (title === "מנגנון העמלות" || location.pathname === '/pricing') ? "תמחור וקרדיטים" : brokersOnly && location.pathname === '/contact' ? 'צרו קשר' : title;
   const [inboxSearchOpen, setInboxSearchOpen] = React.useState(false);
   const inboxSection = searchParams.get('section') === 'community' || searchParams.has('community') ? 'community' : 'leads';
   React.useEffect(() => {

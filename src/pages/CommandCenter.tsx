@@ -1,3 +1,4 @@
+import { ListChecks } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
@@ -473,9 +474,10 @@ function ProfessionalCommandCenter() {
                 )}
               />
             ) : visible.length === 0 ? (
-              <p className="py-10 text-center text-sm text-muted-foreground">
-                אין כרטיסים בתצוגה הזו.
-              </p>
+              <div className="flex flex-col items-center gap-3 py-10 text-center text-sm text-muted-foreground">
+                <ListChecks className="h-10 w-10" aria-hidden />
+                <p>אין כרטיסים בתצוגה הזו.</p>
+              </div>
             ) : (
               <ul className="space-y-2">
                 {visible.map((task) => renderTaskCard(task))}
@@ -596,7 +598,7 @@ function ScrollableTabsRow({ tab, setTab, visibleTabs, counts }: {
       <div ref={ref} onScroll={update} className="overflow-x-auto rounded-xl border border-border/60 bg-muted/40 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <TabsList className="flex h-[44px] w-max min-w-full justify-start gap-1 bg-transparent p-1">
           {visibleTabs.map((key) => (
-            <TabsTrigger key={key} value={key} style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 flex-1 shrink-0 whitespace-nowrap rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
+            <TabsTrigger key={key} value={key} style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 flex-1 shrink-0 whitespace-nowrap rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none">
               {TABS_WITHOUT_COUNT.has(key) ? TAB_LABEL[key] : `${TAB_LABEL[key]} (${counts[key] ?? 0})`}
             </TabsTrigger>
           ))}

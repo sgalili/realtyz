@@ -8,7 +8,7 @@ describe('AgencyDescriptionField', () => {
     const onSave = vi.fn();
     render(<AgencyDescriptionField value="תיאור מעודכן" savedValue="תיאור מיובא" disabled={false} saving={false} onChange={onChange} onSave={onSave} />);
     fireEvent.change(screen.getByLabelText('תוכן תיאור החברה'), { target: { value: 'תיאור חדש' } });
-    fireEvent.click(screen.getByRole('button', { name: 'שמירת תיאור החברה' }));
+    fireEvent.click(screen.getByRole('button', { name: 'שמירה' }));
     expect(onChange).toHaveBeenCalled();
     expect(onSave).toHaveBeenCalledOnce();
   });

@@ -61,8 +61,8 @@ export function FaqContent() {
     {roleFaqs ? <Tabs value={tab} onValueChange={setTab} dir="rtl">
       {heroTabsHost && createPortal(
         <TabsList className="grid h-12 w-full grid-cols-2 rounded-lg bg-primary-foreground/15 text-primary-foreground">
-          <TabsTrigger value="general" className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:ring-0 data-[state=active]:bg-primary-foreground data-[state=active]:text-primary">שאלות כלליות</TabsTrigger>
-          <TabsTrigger value="role" className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:ring-0 data-[state=active]:bg-primary-foreground data-[state=active]:text-primary">{roleLabel}</TabsTrigger>
+          <TabsTrigger value="general" className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:ring-0 data-[state=active]:bg-muted-foreground data-[state=active]:text-primary">שאלות כלליות</TabsTrigger>
+          <TabsTrigger value="role" className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:ring-0 data-[state=active]:bg-muted-foreground data-[state=active]:text-primary">{roleLabel}</TabsTrigger>
         </TabsList>,
         heroTabsHost,
       )}

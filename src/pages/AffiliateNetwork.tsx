@@ -547,19 +547,19 @@ loading ? (
           <TabsList className="mx-auto grid flex-1 h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
             {!activityOnly && <TabsTrigger
               value="rewards"
-              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
+              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none"
             >
               {listings.length + projectRecords.length} נכסים
             </TabsTrigger>}
             <TabsTrigger
               value="tracking"
-              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
+              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none"
             >
               {new Set(referrals.flatMap(r => r.listing?.id ? [r.listing.id] : [])).size} בשיווק
             </TabsTrigger>
             <TabsTrigger
               value="submissions"
-              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
+              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:shadow-none"
             >
               {submissions.length} לידים
             </TabsTrigger>

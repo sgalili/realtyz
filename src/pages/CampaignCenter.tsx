@@ -1,3 +1,4 @@
+import { useUserRole } from '@/hooks/useUserRole';
 import { useBrokersOnly as useBrokersOnlyMode } from '@/hooks/usePlatformMode';
 import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { canRestorePropertyDraft, propertyCampaignSelection } from '@/lib/campaignPropertyContext';
@@ -6237,7 +6238,7 @@ const PublishedFeed = ({
               className={cn(
                 'relative flex h-9 items-center justify-center rounded-lg px-[6px] py-[6px] font-semibold transition',
                 subTab === t.v
-                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  ? 'bg-muted text-foreground shadow-none'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -7552,6 +7553,8 @@ const DraftCollapsibleCard = ({
 
 const CampaignCenter = () => {
   const brokersOnlyMode = useBrokersOnlyMode();
+  // Own-account Super Admin role, so the test panel also shows while viewing another workspace.
+  const { isSuperAdmin: isOwnSuperAdmin } = useUserRole();
   const demoView = useDemoViewStatus();
   const [wizardChannel, setWizardChannel] = useState<DistributionChannel | null>(null);
   // Facebook two-step flow: the publishing composer mounts only after the
@@ -8737,7 +8740,7 @@ const CampaignCenter = () => {
         <TabsContent value="create" className="mt-6 space-y-4">
           <InventoryToolSoftLock tool={wizardChannel ?? ''}>
           {wizardChannel === 'facebook' && <FacebookCloudConnectGate connectionOnly onStatusChange={setFbReady} />}
-          {wizardChannel === 'facebook' && <FacebookE2ETestPanel />}
+          {wizardChannel === 'facebook' && isOwnSuperAdmin && <FacebookE2ETestPanel />}
           <Dialog open={fbCloudConnectOpen} onOpenChange={setFbCloudConnectOpen}>
             <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg text-right">
               <DialogTitle className="text-center text-xl">חיבור לפייסבוק</DialogTitle>

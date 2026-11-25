@@ -66,11 +66,13 @@ function NationalCombobox({ label, value, placeholder, disabled, options, loadin
   </div>;
 }
 
-export function AgencyAddressFields({ city, address, disabled, onSave }: {
+export function AgencyAddressFields({ city, address, disabled, onSave, onDraftChange }: {
   city: string;
   address: string;
   disabled: boolean;
   onSave: (city: string, address: string) => Promise<boolean>;
+  /** Reports the unsaved street/house draft so a shared form button can save it. */
+  onDraftChange?: (address: string | null) => void;
 }) {
   const [cityDraft, setCityDraft] = useState(city);
   const [streetDraft, setStreetDraft] = useState(() => parseOfficeAddress(address).street);
@@ -85,6 +87,11 @@ export function AgencyAddressFields({ city, address, disabled, onSave }: {
     setSelectedCityCode(null);
   }, [city, address]);
 
+  useEffect(() => {
+    if (!onDraftChange) return;
+    const draft = formatOfficeAddress(streetDraft, houseDraft);
+    onDraftChange(draft.trim() !== address.trim() && streetDraft.trim() ? draft : null);
+  }, [streetDraft, houseDraft, address, onDraftChange]);
   const citySearch = useDebouncedValue(cityDraft);
   const streetSearch = useDebouncedValue(streetDraft);
   const cities = useQuery({
@@ -173,11 +180,11 @@ export function AgencyAddressFields({ city, address, disabled, onSave }: {
             onChange={event => setHouseDraft(event.target.value.replace(/\D/g, '').slice(0, 5))}
             onBlur={() => { if (formatOfficeAddress(streetDraft, houseDraft) !== address.trim()) void save(city, formatOfficeAddress(streetDraft, houseDraft)); }}
             onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void save(city, formatOfficeAddress(streetDraft, houseDraft)); } }}
-            className="h-10 pe-2 ps-10 text-left text-base font-bold"
+            className="h-10 px-2 text-left text-base font-bold"
           />
-          <Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 left-0 h-10 w-10" aria-label="שמירת מספר הבית" disabled={busy || !streetDraft.trim()} onClick={() => void save(city, formatOfficeAddress(streetDraft, houseDraft))}>
+          {false && <Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 left-0 h-10 w-10" aria-label="שמירת מספר הבית" disabled={busy || !streetDraft.trim()} onClick={() => void save(city, formatOfficeAddress(streetDraft, houseDraft))}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          </Button>
+          </Button>}
         </div>
       </div>
     </div>
