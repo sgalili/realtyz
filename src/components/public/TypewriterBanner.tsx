@@ -9,6 +9,16 @@ import { resolveRotatingMessageAudience, rotatingMessageNavigation } from '@/lib
 import { advanceTypewriter, INITIAL_TYPEWRITER_STATE, typewriterDelay } from '@/lib/typewriter';
 import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 
+/** Brokers-only demo for visitors: broker-focused tips only, no partners, commissions or public board. */
+const BROKER_DEMO_MESSAGES = [
+  { message_text: 'כל הנכסים שלכם במקום אחד, מסודרים ונגישים מכל מכשיר', action_path: '/auth' },
+  { message_text: 'ריטה עונה ללידים שלכם מסביב לשעון ומסננת עבורכם את הרציניים', action_path: '/auth' },
+  { message_text: 'מפרסמים נכס לקבוצות הפייסבוק בלחיצה אחת', action_path: '/auth' },
+  { message_text: 'חתימות דיגיטליות על הסכמי תיווך תוך דקות', action_path: '/auth' },
+  { message_text: 'הזמינו מתווכים חברים וקבלו קרדיטים חינם', action_path: '/auth' },
+  { message_text: 'נרשמים חינם ומתחילים לעבוד עוד היום', action_path: '/auth' },
+] as const;
+
 export function TypewriterBanner({ brokersOnly = false }: { brokersOnly?: boolean } = {}) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -17,8 +27,9 @@ export function TypewriterBanner({ brokersOnly = false }: { brokersOnly?: boolea
   const reducedMotion = useReducedMotion();
   const simulation = usePublicWorkspace();
   const audience = resolveRotatingMessageAudience({ signedIn: !!user && !simulation, roles, partnerMode: isPartnerMode, brokersOnly });
-  const { data } = useRotatingMessages(audience, !user || !rolesLoading);
-  const messageRows = useMemo(() => data ?? [], [data]);
+  const brokerDemo = brokersOnly && !!simulation;
+  const { data } = useRotatingMessages(audience, !brokerDemo && (!user || !rolesLoading));
+  const messageRows = useMemo(() => (brokerDemo ? BROKER_DEMO_MESSAGES : data ?? []) as ReadonlyArray<{ message_text: string; action_path?: string | null }>, [brokerDemo, data]);
   const messages = useMemo(() => messageRows.map((message) => message.message_text), [messageRows]);
   const signature = messages.join('\u0000');
   const [state, setState] = useState(INITIAL_TYPEWRITER_STATE);
@@ -35,7 +46,7 @@ export function TypewriterBanner({ brokersOnly = false }: { brokersOnly?: boolea
 
   const messageIndex = messages.length > 0 ? state.messageIndex % messages.length : 0;
   const currentMessage = messages[messageIndex] ?? '';
-  const currentAction = rotatingMessageNavigation(messageRows[messageIndex]?.action_path);
+  const currentAction = rotatingMessageNavigation(messageRows[messageIndex]?.action_path as never);
   const visibleText = reducedMotion ? currentMessage : currentMessage.slice(0, state.characterCount);
 
   // One line only: the sentence never wraps to a second line. When it is longer

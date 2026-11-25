@@ -216,7 +216,7 @@ function CampaignsHeroAddButton() {
         onClick={() => setSearchParams(newCampaignSearch(), { replace: true })}
         aria-label="חזרה לבחירת ערוץ"
         title="חזרה לבחירת ערוץ"
-        className="min-h-11 min-w-11 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+        className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
       >
         <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
       </Button>
@@ -229,7 +229,7 @@ function CampaignsHeroAddButton() {
       onClick={() => setSearchParams(newCampaignSearch(), { replace: true })}
       aria-label={label}
       title={label}
-      className="min-h-11 min-w-11 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+      className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
     >
       <Plus className="!h-5 !w-5" strokeWidth={2.5} />
     </Button>
@@ -485,7 +485,7 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
-          {/^\/(command-center|tasks)/.test(location.pathname) && <DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="ghost" aria-label="יצירה מהירה" title="יצירה מהירה" className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"><Plus className="h-5 w-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{([['tasks','מטלה חדשה'],['tours','סיור חדש'],['tasks','משימה חדשה'],['summary','סיכום שיחה'],['calls','שיחה חדשה']] as const).map(([section,label]) => <DropdownMenuItem key={label} onClick={() => window.dispatchEvent(new CustomEvent('tasks:quick-create', { detail: { section } }))}>{label}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>}
+          {/^\/(command-center|tasks)/.test(location.pathname) && <DropdownMenu><DropdownMenuTrigger asChild><Button size="icon" variant="ghost" aria-label="יצירה מהירה" title="יצירה מהירה" className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"><Plus className="!h-5 !w-5" strokeWidth={2.5} /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{([['tasks','מטלה חדשה'],['tours','סיור חדש'],['tasks','משימה חדשה'],['summary','סיכום שיחה'],['calls','שיחה חדשה']] as const).map(([section,label]) => <DropdownMenuItem key={label} onClick={() => window.dispatchEvent(new CustomEvent('tasks:quick-create', { detail: { section } }))}>{label}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>}
           {location.pathname === '/signatures' && <Button size="icon" variant="ghost" aria-label="מסמך חדש לחתימה" title="מסמך חדש לחתימה" className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => window.dispatchEvent(new Event('signatures:new'))}><Plus className="h-5 w-5" /></Button>}
           {isAdminUsers && <Button size="icon" variant="ghost" aria-label="הוסף משתמש" title="הוסף משתמש" className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => window.dispatchEvent(new Event('admin-users:add'))}><UserPlus className="h-5 w-5" /></Button>}
           {isAdminImport && <Button size="icon" variant="ghost" aria-label="איתור וייבוא" title="איתור וייבוא" className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => window.dispatchEvent(new Event('admin-broker-import:new'))}><ScanSearch className="h-5 w-5" /></Button>}
@@ -536,7 +536,7 @@ export function PageHero() {
           {access.properties && location.pathname === "/properties" && <PropertiesHeroAddButton />}
           {access.projects && location.pathname === "/developer-dashboard" && (
             <Button size="icon" variant="ghost" aria-label="הוספת פרויקט" title="הוספת פרויקט"
-              className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+              className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
               onClick={() => window.dispatchEvent(new Event('developer-projects:add'))}>
               <Plus className="!h-5 !w-5" strokeWidth={2.5} />
             </Button>
