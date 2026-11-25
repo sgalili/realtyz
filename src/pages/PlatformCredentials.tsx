@@ -177,6 +177,8 @@ export default function PlatformCredentials() {
   const [openHelp, setOpenHelp] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
+    if (loading) return;
+    if (!isSuperAdmin) { setBusy(false); return; }
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke('manage-api-configs', { method: 'GET' });
@@ -202,7 +204,7 @@ export default function PlatformCredentials() {
         setBusy(false);
       }
     })();
-  }, []);
+  }, [loading, isSuperAdmin]);
 
   if (loading || busy) {
     return (
