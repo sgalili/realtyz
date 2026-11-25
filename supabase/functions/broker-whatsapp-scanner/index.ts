@@ -9,7 +9,7 @@ import { brokerFailure, brokerUserError, transientBrokerConnectionError } from '
 
 const schema = z.discriminatedUnion('action',[
   z.object({action:z.literal('status'),broker_id:z.string().uuid().optional()}).strict(),
-  z.object({action:z.literal('configure'),daily_cap:z.number().int().min(1).max(50),jitter_min_seconds:z.number().int().min(45).max(600),jitter_max_seconds:z.number().int().min(45).max(600),error_threshold:z.number().int().min(1).max(5)}).strict(),
+  z.object({action:z.literal('configure'),daily_cap:z.number().int().min(1).max(150),max_outstanding:z.number().int().min(1).max(5).optional(),jitter_min_seconds:z.number().int().min(45).max(600),jitter_max_seconds:z.number().int().min(45).max(600),error_threshold:z.number().int().min(1).max(5)}).strict(),
   z.object({action:z.literal('test_connection')}).strict(),
   z.object({action:z.literal('resume')}).strict(),
   z.object({action:z.literal('pause')}).strict(),
@@ -162,7 +162,9 @@ Deno.serve(async req=>{
         // Recovery only, no provider call: stale sends are manual, never resent.
         const now=new Date().toISOString();
         const {error:expired}=await admin.from('broker_wa_scanner_jobs').update({status:'needs_manual',last_error:'reply_timeout_or_unknown_send',updated_at:now}).or(`and(status.eq.sending,send_reserved_at.lt.${new Date(Date.now()-90000).toISOString()}),and(status.eq.awaiting_reply,reply_deadline.lt.${now})`);
-        if(expired)throw brokerFailure('scanner_timeout_update_failed',expired);return json({ok:true,idle:true});
+        if(expired)throw brokerFailure('scanner_timeout_update_failed',expired);
+        // Parallel inquiries: keep sending until the configured number is outstanding.
+        if(waiting>=Math.max(1,Number(settings.max_outstanding??1)))return json({ok:true,idle:true});
       }
       const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem'}).format(new Date());
       if(settings.budget_day===today&&settings.day_attempts>=settings.daily_cap)return json({ok:true,idle:true});

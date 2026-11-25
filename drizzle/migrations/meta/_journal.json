@@ -2171,6 +2171,13 @@
       "when": 1795622023839,
       "tag": "0309_admin_account_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 310,
+      "version": "7",
+      "when": 1795622287198,
+      "tag": "0310_scanner_parallel_inquiries",
+      "breakpoints": true
     }
   ]
 }

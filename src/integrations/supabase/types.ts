@@ -2318,6 +2318,7 @@ export type Database = {
           instance_id: string | null
           jitter_max_seconds: number
           jitter_min_seconds: number
+          max_outstanding: number
           next_send_at: string | null
           pause_reason: string | null
           paused: boolean
@@ -2345,6 +2346,7 @@ export type Database = {
           instance_id?: string | null
           jitter_max_seconds?: number
           jitter_min_seconds?: number
+          max_outstanding?: number
           next_send_at?: string | null
           pause_reason?: string | null
           paused?: boolean
@@ -2372,6 +2374,7 @@ export type Database = {
           instance_id?: string | null
           jitter_max_seconds?: number
           jitter_min_seconds?: number
+          max_outstanding?: number
           next_send_at?: string | null
           pause_reason?: string | null
           paused?: boolean
@@ -13119,6 +13122,10 @@ export type Database = {
       }
       marketing_client_projects: { Args: { _developer: string }; Returns: Json }
       marketing_my_clients: { Args: never; Returns: Json }
+      match_broker_wa_scanner_reply_by_name: {
+        Args: { _event: string }
+        Returns: string
+      }
       match_knowledge_chunks: {
         Args: {
           match_count?: number

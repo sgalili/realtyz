@@ -103,6 +103,12 @@ async function processScannerEventOnce(eventId: string, admin: ReturnType<typeof
   // inquiry on this serial line, hand it to the server, which accepts it only if the reply names that broker.
   const awaiting = (jobs ?? []).filter(job => job.status === 'awaiting_reply');
   if (!matches.length && awaiting.length === 1 && !jobs?.some(job => job.status === 'sending')) matches.push(awaiting[0]);
+  else if (!matches.length && awaiting.length > 1) {
+    // Several inquiries outstanding: accept only a unique broker-name match.
+    const { data: byName, error: ne } = await admin.rpc('match_broker_wa_scanner_reply_by_name', { _event: event.id });
+    if (ne) throw brokerFailure('scanner_name_match_failed', ne);
+    const hit = awaiting.find(job => job.id === byName); if (hit) matches.push(hit);
+  }
   if (matches.length !== 1) {
     const { error: ue } = await admin.from('broker_wa_scanner_events').update({status:'needs_manual',reason:matches.length ? 'ambiguous_message_correlation' : 'missing_message_correlation'}).eq('id',event.id).eq('status','received');
     if (ue) throw brokerFailure('scanner_event_update_failed', ue);
