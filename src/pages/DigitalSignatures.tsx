@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Clock, FileSignature, FileText, Link2, Search, ShieldCheck, Upload } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Clock, FileSignature, FileText, Link2, Plus, Search, ShieldCheck, Upload, X } from 'lucide-react';
+import { normalizePhoneForStorage } from '@/lib/formatPhone';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -54,10 +55,30 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
   const [uploading, setUploading] = useState(false);
   const [review, setReview] = useState<Doc | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [openStep, setOpenStep] = useState<number | null>(null);
+  const [guideHidden, setGuideHidden] = useState(() => { try { return localStorage.getItem('toraff-signatures-guide-hidden') === '1'; } catch { return false; } });
+  const [addingLead, setAddingLead] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [savingLead, setSavingLead] = useState(false);
+  const hideGuide = () => { setGuideHidden(true); try { localStorage.setItem('toraff-signatures-guide-hidden', '1'); } catch { /* ignore */ } };
+  async function createLead() {
+    if (demo) { notifyDemoReadOnly(); return; }
+    if (!owner) return;
+    const phone = normalizePhoneForStorage(newPhone);
+    if (!newName.trim() || phone.replace(/\D/g, '').length < 11) { toast.error('יש להזין שם וטלפון תקין'); return; }
+    setSavingLead(true);
+    const { data, error } = await supabase.from('leads').insert({ full_name: newName.trim(), phone_number: phone, workspace_owner_id: owner, assigned_to: owner, status: 'new', lead_stage: 'new' } as never).select('id,full_name,phone_number').maybeSingle();
+    setSavingLead(false);
+    if (error || !data) { toast.error(error?.code === '23505' ? 'לקוח עם הטלפון הזה כבר קיים. חפשו אותו בשורת החיפוש.' : 'הוספת הלקוח נכשלה'); return; }
+    setLead(data as Lead); setAddingLead(false); setNewName(''); setNewPhone(''); setLeadSearch('');
+    toast.success('הלקוח נוסף. אפשר להמשיך לשליחת המסמך.');
+  }
 
   const docsKey = ['signature-docs', user?.id, owner];
   const docs = useQuery({
-    queryKey: docsKey, enabled: !!user && !!owner, refetchInterval: 30_000,
+    queryKey: docsKey, enabled: !!user && !!owner, refetchInterval: 120_000, staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.from('closing_documents')
         .select('id,title,status,template_key,lead_id,signer_name,sign_token,pdf_path,signed_pdf_path,sent_at,viewed_at,signed_at,created_at,approved_at,approval_note,fields')
@@ -137,35 +158,56 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
         ))}
       </div>
 
-      <ol className="flex items-stretch gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-3 shadow-sm">
-        {STEPS.map((s, i) => <li key={s.title} className="flex min-w-[9rem] flex-1 items-start gap-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><s.icon className="h-4 w-4" /></span>
-          <span className="min-w-0"><span className="block text-sm font-bold">{i + 1}. {s.title}</span><span className="block text-xs leading-snug text-muted-foreground">{s.body}</span></span>
-        </li>)}
-      </ol>
+      {!guideHidden && <div className="relative rounded-2xl border border-border bg-card p-3 pe-10 shadow-sm">
+        <button type="button" onClick={hideGuide} aria-label="הסתרת המדריך" className="absolute end-2 top-2 rounded-full p-1 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
+        <ol className="grid gap-2 sm:grid-cols-3">
+          {STEPS.map((s, i) => <li key={s.title}>
+            <button type="button" onClick={() => setOpenStep(openStep === i ? null : i)} aria-expanded={openStep === i} className="flex w-full items-center gap-2 text-start">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><s.icon className="h-4 w-4" /></span>
+              <span className="flex-1 text-sm font-bold">{i + 1}. {s.title}</span>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${openStep === i ? 'rotate-180' : ''}`} />
+            </button>
+            {openStep === i && <p className="mt-1 ps-10 text-xs leading-snug text-muted-foreground">{s.body}</p>}
+          </li>)}
+        </ol>
+      </div>}
 
-      <Card className="rounded-2xl border-primary/20 shadow-sm"><CardContent className="space-y-3 p-4">
-        <p className="flex items-center gap-2 text-lg font-bold"><FileSignature className="h-5 w-5 text-primary" />מסמך חדש לחתימה</p>
+      {!composerOpen ? (
+        <Button onClick={() => setComposerOpen(true)} className="gap-2 bg-success text-success-foreground hover:bg-success/90"><Plus className="h-4 w-4" />מסמך חדש לחתימה</Button>
+      ) : (
+      <Card className="rounded-2xl border-border shadow-sm"><CardContent className="space-y-3 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex items-center gap-2 text-lg font-bold"><FileSignature className="h-5 w-5 text-primary" />מסמך חדש לחתימה</p>
+          <button type="button" onClick={() => setComposerOpen(false)} aria-label="סגירה" className="rounded-full p-1 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
+        </div>
         {lead ? (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3">
             <span><span className="font-semibold">{lead.full_name || 'ללא שם'}</span> <span className="text-sm text-muted-foreground" dir="ltr">{lead.phone_number}</span></span>
             <Button variant="ghost" size="sm" onClick={() => setLead(null)}>החלפת לקוח</Button>
           </div>
+        ) : addingLead ? (
+          <div className="space-y-2 rounded-lg border border-border p-3">
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="שם מלא" aria-label="שם הלקוח" />
+            <Input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="טלפון" dir="ltr" inputMode="tel" aria-label="טלפון הלקוח" />
+            <div className="flex justify-between gap-2"><Button variant="outline" size="sm" onClick={() => setAddingLead(false)}>ביטול</Button><Button size="sm" disabled={savingLead} onClick={() => void createLead()}>{savingLead ? 'שומר…' : 'הוספה והמשך'}</Button></div>
+          </div>
         ) : (
           <div className="space-y-2">
             <div className="relative"><Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input value={leadSearch} onChange={e => setLeadSearch(e.target.value)} placeholder="חיפוש לקוח לפי שם או טלפון" className="pr-9" aria-label="חיפוש לקוח" /></div>
+              <Input value={leadSearch} onChange={e => setLeadSearch(e.target.value)} placeholder="חיפוש לקוח לפי שם או טלפון" className="pr-9 pl-10" aria-label="חיפוש לקוח" />
+              <button type="button" onClick={() => { setAddingLead(true); if (leadSearch.trim() && !/\d/.test(leadSearch)) setNewName(leadSearch.trim()); else if (/\d/.test(leadSearch)) setNewPhone(leadSearch.trim()); }} aria-label="הוספת לקוח חדש" className="absolute left-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-md bg-success/10 text-success hover:bg-success/20"><Plus className="h-4 w-4" /></button></div>
             {(leads.data ?? []).map(l => <Button key={l.id} variant="outline" className="w-full justify-between" onClick={() => { setLead(l); setLeadSearch(''); }}>
               <span>{l.full_name || 'ללא שם'}</span><span dir="ltr" className="text-muted-foreground">{l.phone_number}</span></Button>)}
-            {leadSearch.trim().length >= 2 && leads.data?.length === 0 && <p className="text-sm text-muted-foreground">לא נמצאו לקוחות. הוסיפו את הלקוח קודם בלידים.</p>}
+            {leadSearch.trim().length >= 2 && leads.data?.length === 0 && <p className="text-sm text-muted-foreground">לא נמצאו לקוחות. לחצו על + כדי להוסיף לקוח חדש.</p>}
           </div>
         )}
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Button disabled={!lead} onClick={() => setTemplateOpen(true)} className="gap-2"><FileSignature className="h-4 w-4" />הפקת הסכם מוכן</Button>
-          <Button variant="outline" disabled={!lead || uploading} onClick={() => { if (demo) notifyDemoReadOnly(); else fileRef.current?.click(); }} className="gap-2"><Upload className="h-4 w-4" />{uploading ? 'מעלה ושולח…' : 'העלאת PDF ושליחה'}</Button>
+          <Button variant="outline" disabled={!lead || uploading} onClick={() => { if (demo) notifyDemoReadOnly(); else fileRef.current?.click(); }} className="gap-2"><Upload className="h-4 w-4" />{uploading ? 'מעלה…' : 'העלאת PDF'}</Button>
           <input ref={fileRef} type="file" accept="application/pdf" hidden onChange={e => { const f = e.target.files?.[0]; if (f) void uploadAndSend(f); }} />
         </div>
       </CardContent></Card>
+      )}
 
       <div className="space-y-3">
         <Tabs value={filter} onValueChange={v => setFilter(v as Filter)}>
@@ -180,18 +222,18 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
           : visible.length === 0 ? <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border py-10 text-center text-muted-foreground"><FileText className="h-8 w-8 text-primary/60" /><p>אין מסמכים כאן עדיין</p><p className="text-xs">בחרו לקוח למעלה ושלחו את המסמך הראשון לחתימה</p></div> : (
           <ul className="space-y-2">{visible.map(d => {
             const st = d.approved_at ? { label: 'אושר', variant: 'default' as const } : STATUS[d.status] ?? { label: d.status, variant: 'secondary' as const };
-            return <li key={d.id} className="rounded-2xl border border-border bg-card p-3 shadow-sm">
+            return <li key={d.id} className="rounded-xl border border-border/70 bg-card p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="break-words font-semibold">{d.title}</p>
                   <p className="text-sm text-muted-foreground">{d.signed_at ? `נחתם ${fmt(d.signed_at)}` : d.sent_at ? `נשלח ${fmt(d.sent_at)}` : `נוצר ${fmt(d.created_at)}`}</p>
                 </div>
-                <Badge variant={st.variant} className="gap-1">{d.approved_at ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}{st.label}</Badge>
+                <Badge variant="outline" className={`gap-1 border-border font-medium ${d.approved_at ? 'text-success' : st.variant === 'destructive' ? 'text-destructive' : d.status === 'signed' ? 'text-primary' : 'text-muted-foreground'}`}>{d.approved_at ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}{st.label}</Badge>
               </div>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-1 border-t border-border/60 pt-2">
                 <Button size="sm" variant="ghost" onClick={() => void openFile(d.signed_pdf_path || d.pdf_path)}>צפייה בקובץ</Button>
                 {d.sign_token && d.status !== 'signed' && <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard.writeText(publicUrl(`/sign/${d.sign_token}`)); toast.success('קישור החתימה הועתק'); }}>העתקת קישור חתימה</Button>}
-                {d.status === 'signed' && <Button size="sm" variant={d.approved_at ? 'ghost' : 'default'} onClick={() => setReview(d)}>{d.approved_at ? 'פרטי אימות' : 'אימות ואישור'}</Button>}
+                {d.status === 'signed' && <Button size="sm" variant="ghost" className={d.approved_at ? '' : 'text-primary'} onClick={() => setReview(d)}>{d.approved_at ? 'פרטי אימות' : 'אימות ואישור'}</Button>}
               </div>
             </li>;
           })}</ul>
