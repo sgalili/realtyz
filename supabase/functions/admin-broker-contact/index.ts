@@ -68,14 +68,19 @@ Deno.serve(async req => {
     ].sort((a, b) => String(b.sent_at).localeCompare(String(a.sent_at))).slice(0, 300);
     const ids = [...new Set(items.map(i => i.user_id))];
     if (!ids.length) return json({ items: [] });
+    const inIds = async (make: (part: string[]) => PromiseLike<{ data: any[] | null; error: any }>) => {
+      const data: any[] = [];
+      for (let i = 0; i < ids.length; i += 150) { const r = await make(ids.slice(i, i + 150)); if (r.error) return { data: null, error: r.error }; data.push(...(r.data ?? [])); }
+      return { data, error: null };
+    };
     const identityReads = await Promise.all([
-      admin.from('profiles').select('id,full_name,avatar_url,phone').in('id', ids),
-      admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', ids),
-      admin.from('user_roles').select('user_id,role').in('user_id', ids).in('role', ['developer', 'marketing_company']),
+      inIds(p => admin.from('profiles').select('id,full_name,avatar_url,phone').in('id', p)),
+      inIds(p => admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', p)),
+      inIds(p => admin.from('user_roles').select('user_id,role').in('user_id', p).in('role', ['developer', 'marketing_company'])),
     ]);
     if(identityReads.some(result=>result.error))return json({error:'לא ניתן לקרוא את פרטי השליחות כרגע'},503);
     const [{data:profiles},{data:offices},{data:roles}]=identityReads;
-    const { data: histDevs,error:logoError } = await admin.from('developers').select('workspace_owner_id,logo_url').in('workspace_owner_id', ids);
+    const { data: histDevs,error:logoError } = await inIds(p => admin.from('developers').select('workspace_owner_id,logo_url').in('workspace_owner_id', p));
     if(logoError)return json({error:'לא ניתן לקרוא את פרטי השליחות כרגע'},503);
     const kindOf = (id: string) => (roles ?? []).some(r => r.user_id === id && r.role === 'marketing_company') ? 'marketing_company' : (roles ?? []).some(r => r.user_id === id && r.role === 'developer') ? 'developer' : 'broker';
     return json({ items: items.map(i => { const p = profiles?.find(x => x.id === i.user_id); const o = offices?.find(x => x.user_id === i.user_id);
