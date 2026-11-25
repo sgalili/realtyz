@@ -8,7 +8,7 @@ export function usePlatformMode() {
   return useQuery({
     queryKey: ['platform-mode'],
     queryFn: async (): Promise<PlatformMode> => {
-      const { data: rows, error } = await (supabase as any).rpc('get_public_platform_settings');
+      const { data: rows, error } = await (supabase as any).rpc('get_public_platform_settings').abortSignal(AbortSignal.timeout(15_000));
       if (error) throw error;
       const data = rows?.[0];
       const mode = (data?.platform_mode as PlatformMode) ?? 'brokers_only';

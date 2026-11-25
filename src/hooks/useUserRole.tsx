@@ -37,7 +37,7 @@ export function useUserRole() {
     enabled: !!user?.id && !simulation,
     queryFn: async () => {
       if (!user?.id) return [] as AppRole[];
-      const { data, error } = await supabase.rpc('get_verified_user_roles');
+      const { data, error } = await supabase.rpc('get_verified_user_roles').abortSignal(AbortSignal.timeout(15_000));
       if (error) throw error;
       return (data ?? []) as AppRole[];
     },
@@ -68,7 +68,7 @@ export function useUserRole() {
     queryKey: ['workspace-owner-roles', activeWorkspaceId],
     enabled: viewingOther,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as CallableFunction)('get_workspace_owner_roles', { _owner: activeWorkspaceId }) as { data: string[] | null; error: unknown };
+      const { data, error } = await (supabase.rpc as CallableFunction)('get_workspace_owner_roles', { _owner: activeWorkspaceId }).abortSignal(AbortSignal.timeout(15_000)) as { data: string[] | null; error: unknown };
       if (error) throw error;
       return (data ?? []) as AppRole[];
     },
