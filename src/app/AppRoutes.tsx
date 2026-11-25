@@ -229,7 +229,8 @@ export function ProtectedRoute({ children }: { children: React.ReactNode; allowG
   if (roleLoading || !rolesFetched || !roleApplied) return freshSignup ? signupLoader : <AppLayout><PageLoader /></AppLayout>;
 
   // Brand-new account (no role yet): pick מתווך / שותף once, then continue.
-  if (roleError) return freshSignup ? signupLoader : <AppLayout><div className="min-h-[60vh] flex items-center justify-center"><RealtyzLoader size="lg" label="מסנכרן הרשאות..." /></div></AppLayout>;
+  // A failed role read must never spin forever: offer a clear retry instead.
+  if (roleError) return <div dir="rtl" className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-background p-6 text-center"><p className="text-lg font-semibold">לא הצלחנו לטעון את החשבון כרגע.</p><button type="button" className="rounded-md bg-primary px-5 py-2 text-primary-foreground" onClick={() => { void queryClient.invalidateQueries({ queryKey: ['user-roles', user.id] }); window.location.reload(); }}>לנסות שוב</button></div>;
 
   if (rolesFetched && !roleLoading && (accountRoles.length === 0 || accountRoles.every(role => role === 'user'))) {
     if (!roleApplied) return <PageLoader />;

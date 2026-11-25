@@ -11,7 +11,7 @@ import { VisitorRitaChat } from './VisitorRitaChat';
 type Slide = { icon?: LucideIcon; title: string; accent: string; text: string; rita?: 'pointing' | 'avatar'; oneLine?: boolean };
 
 /** Slide 0 is the main pitch; each following slide matches one feature card below, in the same order and color. */
-const intro: Slide = { title: 'פחות ניירת.', accent: 'יותר עסקאות.', text: 'ריטה עובדת בשבילך מסביב לשעון. בלי מנוי ובלי התחייבות, משלמים רק על פעולה.', rita: 'pointing' };
+const intro: Slide = { title: 'פחות ניירת.', accent: 'יותר עסקאות.', text: 'ללא מנוי חודשי וללא התחייבות', rita: 'pointing' };
 const benefits: (Slide & { icon: LucideIcon; card: string; cardText: string })[] = [
   { icon: Building2, card: 'כל הנכסים שלך, מסודרים', cardText: 'ייבוא בקליק אחד וניהול נוח של כל תיק הנכסים.', title: 'כל הנכסים.', accent: 'בקליק אחד.', text: 'מייבאים את כל הנכסים בקליק אחד ומנהלים אותם בקלות וביעילות בממשק של טוראף.' },
   { icon: MessageCircle, card: 'ריטה מטפלת בפניות', cardText: 'מענה מיידי, בירור צרכים ומעקב אחר כל ליד.', title: 'אף פנייה', accent: 'לא נופלת.', text: 'ריטה עונה מיד, מבררת מה הלקוח מחפש ומעבירה אליך רק לידים רציניים.', rita: 'avatar', oneLine: true },
@@ -59,7 +59,7 @@ export function BrokerGuestHome() {
           {s.rita === 'pointing' && <div className="relative z-10 mt-auto pb-2 pt-4">
             <Button variant="link" className="h-auto p-0 text-lg font-bold text-guest-on-stage" onClick={() => setChat(true)}><MessageCircle className="me-2 h-5 w-5" />דברו עם ריטה</Button>
           </div>}
-          {s.rita === 'pointing' && <img src={ritaPointing} alt="ריטה, סוכנת ה-AI של TORAFF" width={768} height={1376} className="broker-guest-rita pointer-events-none absolute bottom-0 left-2 h-[280px] w-32 object-contain object-bottom sm:left-6 sm:h-[390px] sm:w-56" />}
+          {s.rita === 'pointing' && <img src={ritaPointing} alt="ריטה, סוכנת ה-AI של TORAFF" width={768} height={1376} className="broker-guest-rita pointer-events-none absolute bottom-0 left-2 -scale-x-100 h-[280px] w-32 object-contain object-bottom sm:left-6 sm:h-[390px] sm:w-56" />}
         </div>)}
       </div>
       <div className="absolute inset-x-0 bottom-5 z-20 flex justify-center gap-2" role="tablist" aria-label="בחירת שקופית">
