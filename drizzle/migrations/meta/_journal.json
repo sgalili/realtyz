@@ -2185,6 +2185,20 @@
       "when": 1795622746668,
       "tag": "0311_verified_roles_include_broker_grace",
       "breakpoints": true
+    },
+    {
+      "idx": 312,
+      "version": "7",
+      "when": 1795623506211,
+      "tag": "0312_broker_signup_office_workspace_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 313,
+      "version": "7",
+      "when": 1795623587682,
+      "tag": "0313_broker_office_name_replace_default_workspace",
+      "breakpoints": true
     }
   ]
 }

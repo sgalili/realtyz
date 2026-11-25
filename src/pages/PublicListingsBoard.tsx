@@ -1,3 +1,4 @@
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useLocation, useNavigate } from '@/lib/router-compat';
 import { FullPageLoading, FullPageLoadingProvider, PageLoadingRegion } from '@/components/ui/full-page-loading';
@@ -259,6 +260,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
     }
   };
 
+  const boardTitle = useBrokersOnly() ? 'TORAFF' : 'לוח שיווק שותפים';
   const [showWelcome, setShowWelcome] = useState(() => !marketingOnly && !readPostSignupWelcome() && shouldShowWelcome('home'));
   const [welcomeKey, setWelcomeKey] = useState(0);
   useEffect(() => {
@@ -340,7 +342,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
         <div className={cn('mx-auto w-full max-w-6xl pb-0', embedded ? 'px-0 pt-0' : 'px-[15px] pt-0')}>
           {embedded ? null : (
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
-              <h1 className="sr-only">לוח שיווק שותפים</h1>
+              <h1 className="sr-only">{boardTitle}</h1>
               <div className="flex items-center justify-start">
                 <VisitorMenu onSignup={() => navigate('/auth')} />
               </div>

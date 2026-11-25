@@ -378,6 +378,9 @@ export function PageHero() {
   // The shared board has no blue title banner; the header carries its actions.
   if (communityUserId || location.pathname.startsWith('/agency/')) return null;
   if (isPublicBoard || /^\/affiliate(-network)?(\/|$)/.test(location.pathname)) return null;
+  // Never render an empty blue strip: profile/FAQ hide their row, and untitled pages have no hero.
+  if (isFaqPage || isProfilePage) return null;
+  if (!displayTitle && !location.pathname.startsWith('/super-admin') && !location.pathname.startsWith('/inbox')) return null;
   if (
     isPostsPage &&
     (searchParams.get("lead") || searchParams.get("client") || searchParams.get("voter"))

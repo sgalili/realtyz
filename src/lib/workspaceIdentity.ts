@@ -21,7 +21,7 @@ const DEFAULT_NAME = 'TORAFF';
 
 function norm(v?: string | null) {
   const value = (v ?? '').trim();
-  return isSyntheticEmail(value) ? '' : value;
+  return isSyntheticEmail(value) || value === 'My Workspace' ? '' : value;
 }
 
 /**
