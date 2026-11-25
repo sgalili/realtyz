@@ -45,11 +45,12 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const [continueError, setContinueError] = useState('');
   const [licenseChecking, setLicenseChecking] = useState(false);
   useEffect(() => setContinueError(''), [license, details]);
-  const continueBroker = () => {
+  const continueBroker = (skipLicense = false) => {
+    if (skipLicense) setLicense('');
     if (!signupDetailsValid('broker', details)) { setContinueError('יש להשלים את כל הפרטים לפני ההמשך.'); return; }
     // Unmatched registry numbers continue to a manual admin review instead of blocking.
     // License photo/scan is collected later in the profile; registry check runs silently.
-    void completeBroker();
+    void completeBroker(skipLicense);
   };
   const { user, signOut } = useAuth();
   const { gender: savedGender } = usePersonalLanguage();
@@ -72,7 +73,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
       queryClient.invalidateQueries({ queryKey: ['broker-license-grace', user.id] }),
     ]);
   };
-  const completeBroker = async () => {
+  const completeBroker = async (skipLicense = false) => {
     if (busy || !user) return;
     prepareRewardSounds();
     setBusy(true);
@@ -83,7 +84,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         queryClient.setQueryData(personalGenderKey(user.id), pendingSignup.gender);
       }
       let verified = false;
-      if (!licenseSuspended && brokerLicenseSchema.safeParse(license).success) {
+      if (!skipLicense && !licenseSuspended && brokerLicenseSchema.safeParse(license).success) {
         try {
           await verifyBrokerLicense(license, 'verify');
           await signupRpc('complete_sms_signup_details', { _type: 'broker', _details: details });
@@ -91,7 +92,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         } catch { verified = false; }
       }
       if (!verified) {
-        const { error } = await supabase.rpc('start_broker_signup_grace', { _license: license, _details: details });
+        const { error } = await supabase.rpc('start_broker_signup_grace', { _license: skipLicense ? '' : license, _details: details });
         if (error) throw new Error(error.message);
       }
       markPostSignupWelcome('broker');
@@ -181,7 +182,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         return <Input key={key} aria-label={label} placeholder={label} maxLength={200} type={key === 'budget' ? 'number' : 'text'} min={key === 'budget' ? 1 : undefined} className={fieldClass} value={value} onChange={e => change(e.target.value)} />;
       })}
       {selected === 'broker' && brokerStep === 'details' && <BrokerLicenseField signup silent onChecking={setLicenseChecking} value={license} onChange={setLicense} onVerified={onLicenseVerified} />}
-      {selected === 'broker' && brokerStep === 'details' && <>{continueError && <p role="alert" className="text-sm text-destructive">{continueError}</p>}<Button type="button" className="h-12 w-full text-lg font-bold" disabled={busy} aria-busy={busy} onClick={continueBroker}>{busy ? <Loader2 className="h-5 w-5 animate-spin" aria-label="טוען" /> : wording('המשך', 'המשיכי', 'המשך')}</Button></>}
+      {selected === 'broker' && brokerStep === 'details' && <>{continueError && <p role="alert" className="text-sm text-destructive">{continueError}</p>}<Button type="button" className="h-12 w-full text-lg font-bold" disabled={busy} aria-busy={busy} onClick={() => continueBroker()}>{busy ? <Loader2 className="h-5 w-5 animate-spin" aria-label="טוען" /> : wording('המשך', 'המשיכי', 'המשך')}</Button><Button type="button" variant="outline" className="h-12 w-full text-lg" disabled={busy} onClick={() => continueBroker(true)}>להשלים יותר מאוחר</Button><p className="text-center text-sm text-muted-foreground">מספר הרישיון אינו חובה. אפשר להוסיף אותו בכל עת בעמוד הפרופיל שלי.</p></>}
       {ready && <Button type="submit" className="h-12 w-full text-lg" disabled={busy}>{busy ? 'שמירה...' : wording('המשך', 'המשיכי', 'המשך')}</Button>}
     </form>}
   </div>;

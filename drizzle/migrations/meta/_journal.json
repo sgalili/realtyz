@@ -2157,6 +2157,13 @@
       "when": 1795616230415,
       "tag": "0307_broker_grace_optional_license",
       "breakpoints": true
+    },
+    {
+      "idx": 308,
+      "version": "7",
+      "when": 1795618336403,
+      "tag": "0308_broker_role_allows_active_grace",
+      "breakpoints": true
     }
   ]
 }
