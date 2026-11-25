@@ -354,12 +354,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               }}
               className="cursor-pointer px-3 py-3 transition-colors hover:bg-slate-50"
             >
-              <div onClick={(e) => e.stopPropagation()}>
-                <WorkspaceSwitcher />
-              </div>
-
               {/* Settings + Tutorial + broker/partner toggle share one row. */}
-              <div className={cn("mt-2 grid w-full items-stretch gap-1", identity.canSwitch && !brokersOnly ? "grid-cols-[1fr_1fr_1.8fr]" : "grid-cols-2")} dir="rtl" onClick={(e) => e.stopPropagation()}>
+              <div className={cn("mb-2 grid w-full items-stretch gap-1", identity.canSwitch && !brokersOnly ? "grid-cols-[1fr_1fr_1.8fr]" : "grid-cols-2")} dir="rtl" onClick={(e) => e.stopPropagation()}>
                 {/* Settings shortcut: opens /profile and closes the sidebar.
                     Hidden in Rita's marketing workspace. */}
                 {(
@@ -393,6 +389,10 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
 
                 {identity.canSwitch && !brokersOnly && <AppModeSwitcher keepSidebarOpen className="w-full min-w-0 [&>button]:h-[31px] [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-0.5 [&>button]:!text-sm" />}
               </div>
+              <div onClick={(e) => e.stopPropagation()}>
+                <WorkspaceSwitcher />
+              </div>
+
 
             </SidebarGroupContent>
           </SidebarGroup>

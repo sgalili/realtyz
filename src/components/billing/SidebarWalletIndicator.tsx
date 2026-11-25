@@ -58,7 +58,9 @@ export function SidebarWalletIndicator() {
   const balance = Number(data?.balance ?? 0);
   const locked = !!data?.lockedAt;
   const { isTeamMember, isDeveloper, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, loading, error } = useUserRole();
-  const showContacts = !loading && !error && !isPropertySeekerOnly && (isPartnerMode || isAffiliateOnly || isTeamMember || isDeveloper || isPropertyOwnerOnly);
+  // Every account except pure seekers sees the leads shortcut, even with zero leads or while roles load.
+  void loading; void error; void isTeamMember; void isDeveloper;
+  const showContacts = !isPropertySeekerOnly;
   const leadsPath = isPartnerMode || isAffiliateOnly ? '/partner/contacts' : isPropertyOwnerOnly ? '/owner/leads' : '/lead-crm';
   return (
     <div data-sidebar="balance-controls" className={cn(

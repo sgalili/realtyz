@@ -126,8 +126,8 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
 
   const workspaceInfo = (
     <div className="min-w-0 flex-1 text-right">
-              <div className="truncate text-[8px] font-bold text-foreground">{demo ? activeWorkspace?.owner_full_name : card.title}</div>
-              <div className="truncate text-[5px] text-muted-foreground">{demo ? activeWorkspace?.workspace_name : card.subtitle || '\u00a0'}</div>
+              <div className="truncate text-[8px] font-bold text-foreground">{demo ? activeWorkspace?.owner_full_name : (card.isOffice && card.subtitle ? card.subtitle : card.title)}</div>
+              <div className="truncate text-[5px] text-muted-foreground">{demo ? activeWorkspace?.workspace_name : (card.isOffice && card.subtitle ? card.title : card.subtitle || '\u00a0')}</div>
     </div>
   );
 
