@@ -145,10 +145,15 @@ function LiveWorkspaceProvider({ children }: { children: ReactNode }) {
     setActiveWorkspaceId(null);
     setLoading(true);
     try {
-      const [{ data, error }, { data: profile }] = await Promise.all([
-        supabase.rpc('get_my_workspaces'),
-        supabase.from('profiles').select('active_workspace_owner_id').eq('id', user.id).maybeSingle(),
-      ]);
+      // Never wait forever on a stalled backend: the loading screen must always resolve.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const [{ data, error }, { data: profile }] = await Promise.race([
+        Promise.all([
+          supabase.rpc('get_my_workspaces'),
+          supabase.from('profiles').select('active_workspace_owner_id').eq('id', user.id).maybeSingle(),
+        ]),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('workspace_bootstrap_timeout')), 15_000); }),
+      ]).finally(() => clearTimeout(timer));
       if (!current()) return;
       if (error) throw error;
       const rows = dedupeWorkspaces((data ?? []) as Workspace[], user.id);
