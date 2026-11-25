@@ -243,7 +243,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       const communications = audience === 'partner' ? PARTNER_NAV_ITEMS.filter(item => ['/posts', '/partner/chats'].includes(item.url)) : NAV_ITEMS.filter(item => ['/campaigns', '/inbox'].includes(item.url));
       return [...personal, ...communications];
     }
-    const invite = NAV_ITEMS.filter((item) => item.url === '/referral');
+    // My Properties stays reachable for every signed-in account (owner login or Super Admin workspace entry).
+    const invite = NAV_ITEMS.filter((item) => item.url === '/properties' || item.url === '/referral');
     // A broker-owned active workspace shows the broker menu even when the
     // viewer's own account is private/owner-only (identity follows the owner).
     const brokerWorkspace = access.properties;
@@ -253,7 +254,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     // but broker-only tools (Yad2 broker inventory, deal room, developer directory)
     // are swapped for their own project management dashboard.
     if (access.projects) {
-      const base = NAV_ITEMS.filter((i) => !['/properties', '/deal-room', '/developers', '/dashboard', '/affiliate-network', '/signatures'].includes(i.url));
+      const base = NAV_ITEMS.filter((i) => !['/deal-room', '/developers', '/dashboard', '/affiliate-network', '/signatures'].includes(i.url));
       const projects = NAV_ITEMS.find((i) => i.url === '/developers');
       return projects ? [{ ...projects, title: 'הפרויקטים שלנו', url: '/developer-dashboard' }, ...base] : base;
     }
@@ -262,7 +263,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       .map((path) => availableItems.find((item) => item.url === path))
       .filter((item): item is NavItem => {
         if (!item) return false;
-        if (item.url === '/properties') return features.listingsEnabled && access.properties;
         return true;
       });
   }, [audience, features, access.projects, access.properties, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError, identity.label, isPartnerMode]);

@@ -355,7 +355,7 @@ export function ListingsRoute({ children }: { children: React.ReactNode }) {
   const { isSuperAdmin, loading: roleLoading } = useUserRole();
   if (isPartnerMode) return <Navigate to="/public-listings" replace />;
   if (access.loading || roleLoading) return <PageLoader />;
-  if (!canOpenPropertyManagement(access.properties, isSuperAdmin)) return <Navigate to="/my-ads" replace />;
+  // My Properties is open to every signed-in account; data stays scoped to the active workspace by RLS.
   if (!listingsEnabled) return <Navigate to="/lead-crm" replace />;
   return <>{children}</>;
 }

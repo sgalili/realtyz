@@ -1363,6 +1363,8 @@ button.publication-limit-link:focus-visible {
     align-items: center;
     gap: 0 !important;
     flex-shrink: 0;
+    /* Sit flush with the footer row's edge, cancelling the footer padding. */
+    margin-inline-start: -15px;
   }
 
   .auth-footer-links a,
@@ -1431,6 +1433,7 @@ button.publication-limit-link:focus-visible {
 
   @media (max-width: 360px) {
     .auth-page-footer { padding-inline: 8px; }
+    .auth-footer-links { margin-inline-start: -8px; }
     .auth-footer-signup { font-size: 10px; gap: 2px; }
     .auth-footer-signup svg { width: 12px; height: 12px; }
     .auth-footer-copyright { font-size: 8px; }
