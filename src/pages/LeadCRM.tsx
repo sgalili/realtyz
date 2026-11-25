@@ -729,7 +729,8 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
     queryKey: ['leads-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter, dealTypeFilter, leadKindFilter, categoryOrFilter, sentimentFilter, channelFilter],
     enabled: !isDemoMode,
     queryFn: async ({ pageParam = 0 }) => {
-      let query = supabase.from('leads').select('*', { count: 'exact' });
+      // Only the first page needs the exact total; later pages skip the full count.
+      let query = pageParam === 0 ? supabase.from('leads').select('*', { count: 'exact' }) : supabase.from('leads').select('*');
 
       // Broad multi-field search: match any partial value across name, phone,
       // email, city, address, neighborhood, identity, social handles, tags.
@@ -800,7 +801,9 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
         .order('created_at', { ascending: false })
         .range(from, to);
       if (error) throw error;
-      return { rows: data ?? [], total: count ?? 0, page: pageParam };
+      const rows = data ?? [];
+      const total = pageParam === 0 ? (count ?? 0) : from + rows.length + (rows.length === PAGE_SIZE ? 1 : 0);
+      return { rows, total, page: pageParam };
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {
@@ -809,7 +812,7 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    refetchInterval: 30_000,    // 30s polling for non-critical updates
+    refetchInterval: 60_000,    // 60s polling for non-critical updates
   });
 
   // Blank/placeholder rows from the legacy "create empty lead" flow are never
