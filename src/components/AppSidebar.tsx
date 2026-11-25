@@ -30,6 +30,7 @@ import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from '@/lib/router-compat';
 import { returnState } from '@/lib/returnNav';
 import { useAuth } from '@/hooks/useAuth';
+import { ADMIN_DEMO_RETURN_KEY } from '@/components/admin/DemoRoleSwitcher';
 import { SidebarWalletIndicator } from '@/components/billing/SidebarWalletIndicator';
 import { useUserRole } from '@/hooks/useUserRole';
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
@@ -219,6 +220,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const { isPartnerMode } = useAppMode();
   const brokersOnly = useBrokersOnly();
   const demo = usePublicWorkspace();
+  const [adminReturn, setAdminReturn] = useState<string | null>(null);
+  useEffect(() => { if (!demo) return; try { setAdminReturn(window.sessionStorage.getItem(ADMIN_DEMO_RETURN_KEY)); } catch { setAdminReturn(null); } }, [demo]);
   const identity = useAccountIdentity();
   const { gender } = usePersonalLanguage();
 
@@ -324,7 +327,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   return (
     <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
       <SidebarContent className="realtyz-sidebar-menu gap-0 pt-3">
-        {!collapsed && demo && <><a href="/auth?mode=signup" className="-mt-3 mb-3 block w-full bg-muted px-3 py-[7px] text-center text-sm font-semibold text-foreground shadow-none hover:bg-muted/80" aria-label="אתם צופים במרחב הדגמה, להרשמה חינם">אתם צופים במרחב הדגמה</a><div className="mb-3 grid grid-cols-2 gap-2 px-3"><Button asChild className="bg-success font-bold text-success-foreground hover:bg-success/90"><a href="/auth?mode=signup">הרשמה חינם</a></Button><Button asChild variant="outline" className="btn-metallic font-bold"><a href="/auth?mode=login">התחברות</a></Button></div></>}
+        {!collapsed && demo && adminReturn && <button type="button" onClick={() => { try { window.sessionStorage.removeItem(ADMIN_DEMO_RETURN_KEY); } catch { /* ignore */ } window.location.assign(adminReturn); }} className="-mt-3 mb-3 block w-full bg-primary px-3 py-2 text-center text-sm font-bold text-primary-foreground hover:bg-primary/90">חזרה לחשבון סופר אדמין</button>}
+        {!collapsed && demo && <><a href="/auth?mode=signup" className={`${adminReturn ? '' : '-mt-3'} mb-3 block w-full bg-muted px-3 py-[7px] text-center text-sm font-semibold text-foreground shadow-none hover:bg-muted/80`} aria-label="אתם צופים במרחב הדגמה, להרשמה חינם">אתם צופים במרחב הדגמה</a><div className="mb-3 grid grid-cols-2 gap-2 px-3"><Button asChild className="bg-success font-bold text-success-foreground hover:bg-success/90"><a href="/auth?mode=signup">הרשמה חינם</a></Button><Button asChild variant="outline" className="btn-metallic font-bold"><a href="/auth?mode=login">התחברות</a></Button></div></>}
         {!collapsed && !demo && !user && brokersOnly && <div data-visitor-auth-actions className="mb-3 grid grid-cols-2 gap-2 px-3">
           <Button asChild className="min-h-12 gap-2 text-base"><NavLink to="/auth?mode=signup" onClick={handleNavClick}><UserPlus className="h-5 w-5" aria-hidden="true" />הרשמה חינם</NavLink></Button>
           <Button asChild variant="outline" className="min-h-12 gap-2 border-primary text-base text-primary hover:bg-primary/10"><NavLink to="/auth?mode=login" onClick={handleNavClick}><LogIn className="h-5 w-5" aria-hidden="true" />התחברות</NavLink></Button>

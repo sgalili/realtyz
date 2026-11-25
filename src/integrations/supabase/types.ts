@@ -2155,6 +2155,24 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_wa_avatar_attempts: {
+        Row: {
+          attempted_at: string
+          broker_id: string
+          outcome: string
+        }
+        Insert: {
+          attempted_at?: string
+          broker_id: string
+          outcome: string
+        }
+        Update: {
+          attempted_at?: string
+          broker_id?: string
+          outcome?: string
+        }
+        Relationships: []
+      }
       broker_wa_scanner_events: {
         Row: {
           chat_id: string | null

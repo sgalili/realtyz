@@ -1,3 +1,4 @@
+import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSuperAdminGate } from '@/hooks/useSuperAdminGate';
@@ -103,7 +104,18 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
     if (countError) throw countError;
     return data;
   } });
-  useEffect(() => { setStatusExpanded(false); }, [current?.id]);
+  // The scanner bar's import shortcut asks for the current job card to open expanded.
+  useEffect(() => {
+    const saved = readSuperAdminViewState().importStatus;
+    const wanted = !!current?.id && !!saved?.expanded && saved.jobId === '*';
+    setStatusExpanded(wanted);
+    if (wanted) saveSuperAdminViewState({ importStatus: { jobId: current!.id, expanded: false } });
+  }, [current?.id]);
+  useEffect(() => {
+    const open = () => { if (current?.id) setStatusExpanded(true); };
+    window.addEventListener('admin-import:expand-status', open);
+    return () => window.removeEventListener('admin-import:expand-status', open);
+  }, [current?.id]);
   const toggleStatus = () => {
     if (!current) return;
     const expanded = !statusExpanded;

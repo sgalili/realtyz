@@ -41,6 +41,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { DEMO_AUTH_REQUIRED_EVENT, DEMO_EXIT_PENDING_KEY, DEMO_UPGRADE_EVENT } from '@/lib/demoGuard';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { useElectionType } from '@/hooks/useElectionType';
+import { SuperAdminLeadAlert } from '@/components/admin/SuperAdminLeadAlert';
 import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
@@ -514,6 +515,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
+              {user && <SuperAdminLeadAlert />}
               {brokersOnly ? user ? <Link to="/dashboard" aria-label="לוח בקרה" title="לוח בקרה" className="grid h-10 w-10 place-items-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"><LayoutDashboard className="h-6 w-6" /></Link> : null : <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />}
             </div>
             </div>

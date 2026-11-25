@@ -39,14 +39,9 @@ describe('sidebar wallet and incoming-lead counter', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/lead-crm');
     expect(mocks.mobile).toHaveBeenCalledWith(false);
   });
-  it('shows the global admin shortcut only to a Super Admin and closes the sidebar when used', () => {
-    const first = render(<SidebarWalletIndicator />);
-    expect(screen.queryByRole('button', { name: 'סופר אדמין' })).toBeNull();
-    first.unmount();
+  it('never shows the Super Admin shortcut in the drawer; it lives in the site header', () => {
     mocks.admin = true;
     render(<SidebarWalletIndicator />);
-    fireEvent.click(screen.getByRole('button', { name: 'סופר אדמין' }));
-    expect(mocks.mobile).toHaveBeenCalledWith(false);
-    expect(mocks.desktop).toHaveBeenCalledWith(false);
+    expect(screen.queryByRole('button', { name: 'סופר אדמין' })).toBeNull();
   });
 });

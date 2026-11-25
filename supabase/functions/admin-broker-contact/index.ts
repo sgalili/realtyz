@@ -6,10 +6,12 @@ import { z } from 'npm:zod@3';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { invitationLink, pendingFirstInvitation, publicSiteOrigin } from '../_shared/importInvitationPolicy.ts';
 import { readAllRows } from '../_shared/readAllRows.ts';
+import { scannerGreen } from '../_shared/brokerScannerRuntime.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list') }),
   z.object({ action: z.literal('history') }),
+  z.object({ action: z.literal('wa_avatars'), limit: z.number().int().min(1).max(40).optional() }),
   z.object({ action: z.literal('followups') }),
   z.object({ action: z.literal('imports') }),
   z.object({ action: z.literal('delete_import'), record_id: z.string().min(1).max(120).regex(/^(?:(?:batch|dev|onb):)?[0-9a-f-]{36}(?::[dbp]\d+)?$/i) }),
@@ -26,6 +28,49 @@ Deno.serve(async req => {
   if (caller.kind !== 'user' || !await isSuperAdmin(caller.userId, admin)) return json({ error: 'forbidden' }, 403);
   const parsed = schema.safeParse(await req.json().catch(() => null)); if (!parsed.success) return json({ error: 'invalid_input' }, 400);
   const input = parsed.data;
+
+  // Read-only WhatsApp profile photos for brokers whose personal WhatsApp number is saved.
+  // Copies the photo into public storage (provider links expire) and never overwrites an existing avatar.
+  if (input.action === 'wa_avatars') {
+    const { data: contacts, error } = await admin.from('broker_whatsapp_contacts').select('broker_id,whatsapp_phone').not('whatsapp_phone', 'is', null).limit(2000);
+    if (error) return json({ error: 'קריאת המספרים נכשלה' }, 500);
+    const ids = [...new Set((contacts ?? []).map(c => c.broker_id))];
+    const missing: string[] = [];
+    for (let i = 0; i < ids.length; i += 150) {
+      const { data } = await admin.from('profiles').select('id').in('id', ids.slice(i, i + 150)).is('avatar_url', null);
+      missing.push(...(data ?? []).map(r => r.id));
+    }
+    const { data: attempted } = await admin.from('broker_wa_avatar_attempts').select('broker_id').in('broker_id', missing.length ? missing : ['00000000-0000-0000-0000-000000000000']);
+    const tried = new Set((attempted ?? []).map(r => r.broker_id));
+    const todo = missing.filter(id => !tried.has(id)).slice(0, input.limit ?? 20);
+    let updated = 0, none = 0, failed = 0;
+    await Promise.all(todo.map(async id => {
+      const phone = (contacts ?? []).find(c => c.broker_id === id)?.whatsapp_phone?.replace(/\D/g, '');
+      if (!phone) return;
+      try {
+        const res = await scannerGreen('getAvatar', { chatId: `${phone}@c.us` });
+        const url = typeof res?.urlAvatar === 'string' && /^https:\/\//.test(res.urlAvatar) ? res.urlAvatar : null;
+        if (!url) { none++; await admin.from('broker_wa_avatar_attempts').upsert({ broker_id: id, outcome: 'none' }); return; }
+        const img = await fetch(url, { signal: AbortSignal.timeout(10000), redirect: 'follow' });
+        const type = img.headers.get('content-type') ?? '';
+        const size = Number(img.headers.get('content-length') ?? 0);
+        if (!img.ok || !type.startsWith('image/') || size > 3_000_000) throw new Error('bad_image');
+        const bytes = new Uint8Array(await img.arrayBuffer());
+        if (bytes.byteLength > 3_000_000) throw new Error('too_large');
+        const path = `wa-avatars/${id}-${Date.now()}.jpg`;
+        const up = await admin.storage.from('media-library').upload(path, bytes, { contentType: type, upsert: true });
+        if (up.error) throw up.error;
+        const publicUrl = admin.storage.from('media-library').getPublicUrl(path).data.publicUrl;
+        const { data: saved } = await admin.from('profiles').update({ avatar_url: publicUrl }).eq('id', id).is('avatar_url', null).select('id');
+        if (saved?.length) updated++;
+        await admin.from('broker_wa_avatar_attempts').upsert({ broker_id: id, outcome: 'saved' });
+      } catch (e) {
+        failed++;
+        console.error('wa_avatar_failed', id, e instanceof Error ? e.message : 'unknown');
+      }
+    }));
+    return json({ ok: true, updated, none, failed, remaining: Math.max(0, missing.length - tried.size - updated - none) });
+  }
 
   if (input.action === 'followups') {
     const { data: rows, error } = await admin.from('import_invitation_followups').select('user_id,channel,due_at,status,message').eq('status', 'pending').order('due_at');

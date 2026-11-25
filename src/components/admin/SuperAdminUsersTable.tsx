@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole, type AppRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { SuperAdminCreateUserCard } from './SuperAdminCreateUserCard';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog';
-import { Trash2, Pencil, Check, BadgeCheck, UserPlus, ChevronUp, Search, X, SlidersHorizontal } from 'lucide-react';
+import { Trash2, Pencil, Check, BadgeCheck, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { BrokerInvitationDialog } from './BrokerInvitationDialog';
 import { OfficialBrokerInvitationDialog } from './OfficialBrokerInvitationDialog';
@@ -43,6 +43,14 @@ export function SuperAdminUsersTable() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  // Search and add-user controls live in the blue page header.
+  useEffect(() => {
+    const search = () => setSearchOpen(value => !value);
+    const add = () => setCreateOpen(value => !value);
+    window.addEventListener('admin-users:search', search);
+    window.addEventListener('admin-users:add', add);
+    return () => { window.removeEventListener('admin-users:search', search); window.removeEventListener('admin-users:add', add); };
+  }, []);
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState<AdminUserFilters>(emptyAdminUserFilters);
   const [createOpen, setCreateOpen] = useState(false);
@@ -149,15 +157,9 @@ export function SuperAdminUsersTable() {
     <Collapsible open={createOpen} onOpenChange={setCreateOpen}>
       <div className="flex items-center justify-between gap-2" role="toolbar" aria-label="פעולות ניהול משתמשים">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Button variant="ghost" size="icon" aria-label={searchOpen ? 'סגירת חיפוש משתמשים' : 'פתיחת חיפוש משתמשים'} title={searchOpen ? 'סגירת חיפוש' : 'חיפוש משתמשים'} aria-expanded={searchOpen} aria-controls="admin-users-search" onClick={() => setSearchOpen(value => !value)}>{searchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}</Button>
           <SelectModeToggle active={selecting} onToggle={() => { setSelecting(!selecting); setSelected([]); }} total={rows.length} count={selected.length} onSelectAll={() => setSelected(eligible)} />
           {selecting && <Button variant="destructive" size="icon" aria-label={`מחיקת ${selected.length} משתמשים`} title="מחיקת המשתמשים שנבחרו" disabled={!selected.length || deletion.isPending} onClick={() => setPendingIds([...selected])}><Trash2 className="h-4 w-4" /></Button>}
         </div>
-        <CollapsibleTrigger asChild>
-          <Button variant="outline" size="icon" className="shrink-0" aria-label={createOpen ? 'סגירת הוספת משתמש' : 'הוסף משתמש'} title={createOpen ? 'סגירת הוספת משתמש' : 'הוסף משתמש'} aria-controls="admin-create-user-pane">
-            {createOpen ? <ChevronUp className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
-          </Button>
-        </CollapsibleTrigger>
       </div>
       <CollapsibleContent id="admin-create-user-pane">
         <div className="pt-3"><SuperAdminCreateUserCard /></div>

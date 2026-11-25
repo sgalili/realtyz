@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { DEMO_TYPES, type DemoType } from '@/pages/demo/demoData';
 
+export const ADMIN_DEMO_RETURN_KEY = 'toraff-admin-demo-return';
+
 const DEMO_ICONS: Record<DemoType, LucideIcon> = {
   broker: Store, marketing: Megaphone, developer: Building2, owner: Home, buyer: Search, affiliate: Share2,
 };
@@ -15,7 +17,12 @@ const DEMO_ICONS: Record<DemoType, LucideIcon> = {
  */
 export function DemoRoleSwitcher({ onEntered }: { onEntered?: () => void }) {
   const [open, setOpen] = useState(false);
-  const enter = (type: DemoType) => { onEntered?.(); window.location.assign(`/demo/${type}`); };
+  const enter = (type: DemoType) => {
+    onEntered?.();
+    // Lets the demo drawer offer a one-click return; the real session stays signed in.
+    try { window.sessionStorage.setItem(ADMIN_DEMO_RETURN_KEY, window.location.pathname === '/' || window.location.pathname.startsWith('/demo') ? '/super-admin' : window.location.pathname); } catch { /* ignore */ }
+    window.location.assign(`/demo/${type}`);
+  };
 
   return (
     <div dir="rtl" className="border-b border-border pb-1 mb-1">

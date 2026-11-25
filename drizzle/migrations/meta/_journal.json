@@ -2248,6 +2248,13 @@
       "when": 1795636777122,
       "tag": "0320_pending_import_account_ids",
       "breakpoints": true
+    },
+    {
+      "idx": 321,
+      "version": "7",
+      "when": 1795640320792,
+      "tag": "0321_broker_wa_avatar_attempts",
+      "breakpoints": true
     }
   ]
 }
