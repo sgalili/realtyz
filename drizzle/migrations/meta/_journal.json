@@ -2255,6 +2255,13 @@
       "when": 1795640320792,
       "tag": "0321_broker_wa_avatar_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 322,
+      "version": "7",
+      "when": 1795644461683,
+      "tag": "0322_scanner_serial_reply_correlation_and_backfill",
+      "breakpoints": true
     }
   ]
 }

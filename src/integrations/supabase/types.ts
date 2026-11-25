@@ -11690,6 +11690,7 @@ export type Database = {
         Args: { _name?: string; _phone: string; _ref: string }
         Returns: Json
       }
+      backfill_broker_wa_scanner_needs_manual: { Args: never; Returns: Json }
       ban_user: { Args: { _reason: string; _user: string }; Returns: Json }
       begin_social_draft: {
         Args: {
@@ -13592,6 +13593,14 @@ export type Database = {
       scanner_reply_names_broker: {
         Args: { _broker: string; _text: string }
         Returns: boolean
+      }
+      scanner_reply_names_broker_flexible: {
+        Args: { _broker: string; _text: string }
+        Returns: boolean
+      }
+      scanner_reply_phone: {
+        Args: { _excluded: string[]; _text: string }
+        Returns: string
       }
       schedule_workspace_call: {
         Args: {
