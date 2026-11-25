@@ -214,7 +214,7 @@ function CampaignsHeroAddButton() {
       onClick={() => setSearchParams(newCampaignSearch(), { replace: true })}
       aria-label={label}
       title={label}
-      className="min-h-11 min-w-11 rounded-full bg-success text-success-foreground shadow-sm hover:bg-success/90 hover:text-success-foreground"
+      className="min-h-11 min-w-11 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
     >
       <Plus className="!h-5 !w-5" strokeWidth={2.5} />
     </Button>
@@ -275,7 +275,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/settings\/branding/, title: "מיתוג הסוכנות" },
   { match: /^\/settings\/system-health/, title: "תקינות המערכת" },
   { match: /^\/leads/, title: "פניות נכנסות" },
-  { match: /^\/profile/, title: "הגדרות חשבון" },
+  { match: /^\/profile/, title: "הגדרות" },
   { match: /^\/billing/, title: "חבילה וחשבוניות" },
   { match: /^\/wallet/, title: "הארנק שלי" },
   { match: /^\/auth/, title: "התחברות" },
@@ -379,7 +379,7 @@ export function PageHero() {
   if (communityUserId || location.pathname.startsWith('/agency/')) return null;
   if (isPublicBoard || /^\/affiliate(-network)?(\/|$)/.test(location.pathname)) return null;
   // Never render an empty blue strip: profile/FAQ hide their row, and untitled pages have no hero.
-  if (isFaqPage || isProfilePage) return null;
+  if (isFaqPage) return null;
   if (!displayTitle && !location.pathname.startsWith('/super-admin') && !location.pathname.startsWith('/inbox')) return null;
   if (
     isPostsPage &&
@@ -397,7 +397,7 @@ export function PageHero() {
       {/* 3-zone toolbar — title is absolutely centered to the viewport so it
           stays perfectly centered regardless of side controls' widths. */}
       <div
-        className={cn("app-header-content relative z-10 flex min-h-[56px] items-center justify-between gap-2 px-4 py-[10px] sm:px-6 lg:px-0", (isFaqPage || isProfilePage) && "hidden")}
+        className={cn("app-header-content relative z-10 flex min-h-[56px] items-center justify-between gap-2 px-4 py-[10px] sm:px-6 lg:px-0", isFaqPage && "hidden")}
       >
         {/* Visual right (RTL flex start): Burger / nav toggle + AI response + optional history */}
         <div className="flex items-center gap-1">
@@ -459,7 +459,7 @@ export function PageHero() {
             })}
             </div>}
           </div>
-        ) : !isFaqPage && !isProfilePage ? (
+        ) : !isFaqPage ? (
           <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
             {location.pathname.startsWith('/wallet') ? <WalletHeroBalance fallback={displayTitle} /> : displayTitle}
           </h1>
@@ -467,6 +467,7 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
+          {/^\/(command-center|tasks)/.test(location.pathname) && <div id="tasks-hero-actions" className="flex items-center text-primary-foreground [&_button]:text-primary-foreground [&_button:hover]:bg-primary-foreground/15" />}
           {isAdminImport && <Button size="icon" variant="ghost" aria-label="איתור וייבוא" title="איתור וייבוא" className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => window.dispatchEvent(new Event('admin-broker-import:new'))}><ScanSearch className="h-5 w-5" /></Button>}
           {location.pathname.startsWith('/inbox') && <Button variant="ghost" size="icon" className="h-[46.8px] w-[46.8px] text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" aria-label="הוסף משתמש" title="הוסף משתמש" onClick={() => window.dispatchEvent(new Event('inbox:add-user'))}><UserPlus className="!h-[26px] !w-[26px]" /></Button>}
           {location.pathname.startsWith('/wallet') && <Button variant="ghost" onClick={() => window.dispatchEvent(new Event('wallet:toggle-topup'))} aria-label="טעינת ארנק" title="טעינת ארנק" className="h-9 gap-1 border-0 px-2 text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary-foreground/15 hover:text-primary-foreground"><Plus className="!h-5 !w-5" strokeWidth={2.5} />טעינת ארנק</Button>}
@@ -553,7 +554,7 @@ export function PageHero() {
           )}
         </div>
       </div>
-      {location.pathname.startsWith('/profile') && (
+      {false && location.pathname.startsWith('/profile') && (
         <div id="profile-hero-tabs" className="relative z-20 mx-auto w-full max-w-4xl px-4 py-[10px] sm:px-6" />
       )}
       {isFaqPage && (

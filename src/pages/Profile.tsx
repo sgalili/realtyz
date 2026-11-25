@@ -885,21 +885,20 @@ export default function Profile() {
         </DialogContent>
       </Dialog>
 
-      <div className="mt-[15px] mb-3 empty:hidden">
-        <CompleteProfileBanner profileOwnerId={activeWorkspaceId} force={params.get('welcome') === 'developer'} />
+      <div className="hidden">
+        {false && <CompleteProfileBanner profileOwnerId={activeWorkspaceId} force={params.get('welcome') === 'developer'} />}
       </div>
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
-        {heroTabsHost && createPortal(
-          <TabsList className={`grid h-[34px] w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} rounded-lg bg-primary-foreground/15 text-primary-foreground`}>
-            <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="personal">פרופיל</TabsTrigger>
-            <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="workspace">{officeLabel}</TabsTrigger>
-            <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="aibrain">מח AI</TabsTrigger>
-            <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="connections">חיבורים</TabsTrigger>
-            {isAgency && <TabsTrigger className="text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=active]:bg-primary-foreground data-[state=active]:text-primary" value="managers">מנהלים</TabsTrigger>}
-          </TabsList>,
-          heroTabsHost,
-        )}
+        <div className="mx-auto mt-[15px] w-full max-w-2xl">
+          <TabsList className={`grid h-[44px] w-full gap-1 rounded-xl border border-border/60 bg-muted/40 p-1 ${isAgency ? 'grid-cols-5' : 'grid-cols-4'}`}>
+            <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs" value="personal">הפרופיל שלי</TabsTrigger>
+            <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs" value="workspace">{officeLabel}</TabsTrigger>
+            <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs" value="aibrain">מח AI</TabsTrigger>
+            <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs" value="connections">חיבורים</TabsTrigger>
+            {isAgency && <TabsTrigger style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs" value="managers">מנהלים</TabsTrigger>}
+          </TabsList>
+        </div>
         <TabsContent value="personal" className="mt-[15px] space-y-4">
           {activeWorkspaceId && <PersonalTab key={`${user?.id}:${activeWorkspaceId}`} />}
         </TabsContent>

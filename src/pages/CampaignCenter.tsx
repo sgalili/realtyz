@@ -6321,13 +6321,14 @@ const PublishedFeed = ({
 
       {subTab !== 'published' ? altContent : filteredRows && filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
-          <p className="text-sm font-semibold text-foreground">אין קמפיינים בערוץ זה</p>
+          <Megaphone className="mx-auto mb-3 h-10 w-10 text-muted-foreground" aria-hidden />
+          <p className="text-sm font-semibold text-foreground">עדיין לא יצרת קמפיינים</p>
           <Button
             size="lg"
-            className="mt-5 h-auto whitespace-normal rounded-xl px-8 py-3 text-base font-semibold"
+            className="mt-5 h-auto whitespace-normal rounded-xl bg-success px-8 py-3 text-base font-semibold text-success-foreground hover:bg-success/90"
             onClick={() => navigate('/campaigns?tab=create')}
           >
-            <Plus className="me-2 h-5 w-5" /> צרו את הקמפיין הראשון שלכם
+            <Plus className="me-2 h-5 w-5" /> יצירת קמפיין
           </Button>
         </div>
       ) : (filteredRows || []).map(function renderFeedCard(r: any, _index?: number, inGroupOverlay: unknown = false): any {

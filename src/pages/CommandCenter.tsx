@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ScheduledToursCard, useScheduledToursCount } from '@/components/dashboard/ScheduledToursCard';
@@ -202,6 +203,8 @@ function ProfessionalCommandCenter() {
   const [newDemoOpen, setNewDemoOpen] = useState(false);
   // The same list / calendar display switch the tours tab uses.
   const [taskView, setTaskView] = useState<ScheduleView>('list');
+  const [tasksHeroHost, setTasksHeroHost] = useState<HTMLElement | null>(null);
+  useEffect(() => { setTasksHeroHost(document.getElementById('tasks-hero-actions')); }, []);
   const [taskMonth, setTaskMonth] = useState(startOfThisMonth);
   const [taskDay, setTaskDay] = useState<string | null>(() => todayKey());
   const toggleCard = (key: string) =>
@@ -427,8 +430,9 @@ function ProfessionalCommandCenter() {
         <div className="mb-4 flex flex-col items-center justify-center gap-[25px] md:gap-0">
           <div dir="rtl" className="-mx-[6px] flex w-[calc(100%+12px)] max-w-none items-center gap-2 self-stretch md:mx-auto md:w-full md:max-w-2xl md:self-auto">
           <ScrollableTabsRow tab={tab} setTab={setTab} visibleTabs={visibleTabs} counts={counts} />
-          {tab !== 'leads' && tab !== 'demos' && (
-            <ScheduleViewToggle view={tab === 'calls' ? callView : taskView} onViewChange={tab === 'calls' ? setCallView : setTaskView} monthCursor={taskMonth} onMonthChange={setTaskMonth} />
+          {tab !== 'leads' && tab !== 'demos' && tasksHeroHost && createPortal(
+            <ScheduleViewToggle view={tab === 'calls' ? callView : taskView} onViewChange={tab === 'calls' ? setCallView : setTaskView} monthCursor={taskMonth} onMonthChange={setTaskMonth} />,
+            tasksHeroHost,
           )}
           </div>
           <Button size="sm" className="h-10 gap-1 bg-success text-lg font-bold text-success-foreground hover:bg-success/90 md:mt-[50px]" onClick={() => addNew(tab)}>
@@ -592,7 +596,7 @@ function ScrollableTabsRow({ tab, setTab, visibleTabs, counts }: {
       <div ref={ref} onScroll={update} className="overflow-x-auto rounded-xl border border-border/60 bg-muted/40 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <TabsList className="flex h-[44px] w-max min-w-full justify-start gap-1 bg-transparent p-1">
           {visibleTabs.map((key) => (
-            <TabsTrigger key={key} value={key} style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 font-semibold transition data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs md:flex-1">
+            <TabsTrigger key={key} value={key} style={{ fontSize: 'calc(0.875rem + 3px)' }} className="h-9 flex-1 shrink-0 whitespace-nowrap rounded-lg px-[6px] py-[6px] font-semibold text-muted-foreground transition hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
               {TABS_WITHOUT_COUNT.has(key) ? TAB_LABEL[key] : `${TAB_LABEL[key]} (${counts[key] ?? 0})`}
             </TabsTrigger>
           ))}

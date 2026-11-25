@@ -935,7 +935,7 @@ export default function Properties() {
 
   const renderToolsRow = (testId: string) => (
     <div data-testid={testId} className="flex shrink-0 items-center justify-end gap-0" style={{ marginInlineEnd: "-5px" }}>
-      <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
+      {results.length > 0 && <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />}
     </div>
   );
 
