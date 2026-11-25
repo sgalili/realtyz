@@ -139,7 +139,7 @@ function OfficeNameField({ b, showLogo = true }: { b: ContactBroker; showLogo?: 
   </span>;
   return <span className="flex min-w-0 shrink items-center gap-1.5">
     {showLogo && (b.is_developer ? <DeveloperLogo name={b.office_name} logoUrl={b.office_logo_url} className="h-7 w-7" /> : b.office_logo_url && <img src={b.office_logo_url} alt="" className="h-7 w-7 shrink-0 rounded-md object-contain" />)}
-    <button type="button" disabled={!!b.first_login_at} onClick={() => setEditing(true)} aria-label="עריכת שם משרד התיווך" className={`min-w-0 break-words text-right text-sm font-bold underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.office_name ? 'text-foreground' : 'text-primary'}`}>{b.office_name || 'הוסף משרד תיווך'}</button>
+    <button type="button" disabled={!!b.first_login_at} onClick={() => setEditing(true)} aria-label="עריכת שם משרד התיווך" className={`min-w-0 truncate text-right text-sm font-bold underline decoration-dotted underline-offset-4 disabled:no-underline sm:text-base ${b.office_name ? 'text-foreground' : 'text-primary'}`}>{b.office_name || 'הוסף משרד תיווך'}</button>
   </span>;
 }
 
