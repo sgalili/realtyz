@@ -8760,6 +8760,53 @@ export type Database = {
           },
         ]
       }
+      personal_whatsapp_requests: {
+        Row: {
+          admin_notified_at: string | null
+          admin_notify_error: string | null
+          created_at: string
+          id: string
+          order_id: string | null
+          phone: string
+          status: string
+          updated_at: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          admin_notified_at?: string | null
+          admin_notify_error?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          phone: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Update: {
+          admin_notified_at?: string | null
+          admin_notify_error?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          phone?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_whatsapp_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "grow_payment_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           contact_limit: number

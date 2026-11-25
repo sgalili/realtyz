@@ -8,6 +8,8 @@ import { callGrowMake } from '../_shared/growMake.ts';
 import { canSaveGrowCard } from '../_shared/growLeadBilling.ts';
 import { validWalletPackage } from '../_shared/walletPackage.ts';
 import { developerPlanQuote } from '../_shared/developerSubscription.ts';
+import { notifyPersonalWhatsAppRequest } from './personalWhatsApp.ts';
+const PERSONAL_WA_AMOUNT_ILS = 59;
 
 const capabilitySchema = z.object({ methods: z.array(z.object({ id: z.enum(GROW_PAYMENT_METHODS), fields: z.array(z.enum(GROW_CUSTOMER_FIELDS)).max(4) })).max(5) });
 async function capabilities(environment: string) {
@@ -25,6 +27,8 @@ const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('topup_offer') }),
   z.object({ action: z.literal('topup_create'), amount_ils: z.number().refine(validWalletPackage), payment_method: z.enum(GROW_PAYMENT_METHODS), full_name: z.string().trim().max(150).default(''), phone: z.string().regex(/^05\d{8}$/), email: z.string().max(254).optional(), national_id: z.string().max(9).optional() }),
   z.object({ action: z.literal('create'), payment_method: z.enum(GROW_PAYMENT_METHODS), card_mandate: z.boolean().default(false), full_name: z.string().trim().max(150).default(''), phone: z.string().regex(/^05\d{8}$/), email: z.string().max(254).optional(), national_id: z.string().max(9).optional() }),
+  z.object({ action: z.literal('personal_wa_offer') }),
+  z.object({ action: z.literal('personal_wa_create'), whatsapp_phone: z.string().regex(/^05\d{8}$/), terms_accepted: z.literal(true), full_name: z.string().trim().max(150).default(''), phone: z.string().regex(/^05\d{8}$/), email: z.string().max(254).optional(), national_id: z.string().max(9).optional() }),
   z.object({ action: z.literal('notify'), order_id: z.string().uuid(), transaction_id: z.string().min(1).max(128) }),
 ]);
 
@@ -63,6 +67,11 @@ Deno.serve(async req => {
         const { error: cardError } = await admin.rpc('save_grow_card_reference', { _order_id: order.id, _reference: card.data.vault_reference, _last4: card.data.last4, _brand: card.data.brand });
         if (cardError) return json({ error: 'card_reference_save_failed', recorded: true }, 502);
       }
+      if (order.purpose === 'personal_whatsapp') {
+        stage = 'personal_whatsapp_request';
+        // Runs silently: the customer only sees that the request was received.
+        await notifyPersonalWhatsAppRequest(admin, order.id).catch(e => console.error('[grow-payments] personal_wa_notify', e instanceof Error ? e.message : 'unknown'));
+      }
       await deliverPaymentSms(admin, order.id);
       stage = 'acknowledge';
       const acknowledged = await callMake(order.environment, { action: 'approve', order_id: order.id, transaction_id: body.transaction_id });
@@ -90,6 +99,38 @@ Deno.serve(async req => {
       const ready = settings?.enabled === true && Deno.env.get(`${prefix}_URL`) && Deno.env.get(`${prefix}_API_KEY`) && Deno.env.get('GROW_MAKE_NOTIFY_SECRET');
       const plan = developerPlanQuote();
       return json({ offer: { plan_code: plan.planCode, title: plan.title, benefits: plan.benefits, duration_days: plan.durationDays, base_amount_ils: plan.baseAmountIls, regular_amount_ils: plan.regularAmountIls, vat_rate: plan.vatRate, vat_amount_ils: plan.vatAmountIls, amount_ils: plan.totalAmountIls, environment, methods: ready ? await capabilities(environment) : [] } });
+    }
+    if (body.action === 'personal_wa_offer') {
+      const ready = settings?.enabled === true && environment === 'live' && Deno.env.get(`${prefix}_URL`) && Deno.env.get(`${prefix}_API_KEY`) && Deno.env.get('GROW_MAKE_NOTIFY_SECRET');
+      return json({ available: Boolean(ready), amount_ils: PERSONAL_WA_AMOUNT_ILS, methods: ready ? (await capabilities(environment)).filter(m => m.id === 'card') : [] });
+    }
+    if (body.action === 'personal_wa_create') {
+      const ready = settings?.enabled === true && environment === 'live' && Deno.env.get(`${prefix}_URL`) && Deno.env.get(`${prefix}_API_KEY`) && Deno.env.get('GROW_MAKE_NOTIFY_SECRET');
+      if (!ready) return json({ error: 'personal_whatsapp_payment_not_configured' }, 409);
+      const method = (await capabilities(environment)).find(m => m.id === 'card');
+      if (!method) return json({ error: 'payment_method_unavailable' }, 409);
+      for (const field of method.fields) {
+        const value = (body as Record<string, string | undefined>)[field];
+        if (!value?.trim() || (field === 'email' && !z.string().email().safeParse(value).success) || (field === 'national_id' && !/^\d{9}$/.test(value)) || (field === 'full_name' && value.trim().split(/\s+/).length < 2)) return json({ error: 'invalid_customer_field', field }, 400);
+      }
+      const scoped = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: `Bearer ${caller.token}` } } });
+      const ws = await scoped.rpc('current_workspace_owner');
+      if (ws.error || !ws.data) return json({ error: 'workspace_required' }, 403);
+      const owner = ws.data as string;
+      const { data: active } = await admin.from('grow_subscription_entitlements').select('order_id').eq('user_id', caller.userId).eq('workspace_owner_id', owner).eq('plan_code', 'personal_whatsapp_monthly').gt('expires_at', new Date().toISOString()).limit(1);
+      if (active?.length) return json({ error: 'subscription_already_active' }, 409);
+      stage = 'create_order';
+      const title = 'וואטסאפ אישי ב־TORAFF, מנוי חודשי';
+      const { data: order, error } = await admin.from('grow_payment_orders').insert({ user_id: caller.userId, workspace_owner_id: owner, purpose: 'personal_whatsapp', environment, amount_ils: PERSONAL_WA_AMOUNT_ILS, duration_days: 30, title, benefits: 'שליחת הודעות מהמספר האישי', customer_phone: body.phone, payment_method: 'card', card_mandate: true, mandate_at: new Date().toISOString(), plan_code: 'personal_whatsapp_monthly', terms_accepted_at: new Date().toISOString() }).select('id').single();
+      if (error || !order) return json({ error: 'order_creation_failed' }, 503);
+      const { error: reqError } = await admin.from('personal_whatsapp_requests').insert({ user_id: caller.userId, workspace_owner_id: owner, phone: `972${body.whatsapp_phone.slice(1)}`, order_id: order.id });
+      if (reqError) return json({ error: 'request_creation_failed' }, 503);
+      stage = 'create_link';
+      const customer = Object.fromEntries(method.fields.map(field => [field, (body as Record<string, string | undefined>)[field]]));
+      const result = await callMake(environment, { action: 'create', order_id: order.id, purpose: 'personal_whatsapp', environment, amount_ils: PERSONAL_WA_AMOUNT_ILS, vat_included: true, currency: 'ILS', title, ...customer, phone: body.phone, payment_method: 'card', save_card_token: true, recurring: { interval: 'month', interval_count: 1, amount_ils: PERSONAL_WA_AMOUNT_ILS }, sending_mode: settings?.sending_mode ?? 'none', payment_type: 'payments', charge_type: 'recurring', plan_code: 'personal_whatsapp_monthly', success_url: `${Deno.env.get('PUBLIC_SITE_URL') ?? 'https://toraff.co.il'}/profile?tab=connections&personal_wa=1` });
+      if (typeof result?.payment_url !== 'string' || !validGrowPaymentUrl(result.payment_url)) throw new Error('invalid_payment_url');
+      await admin.from('grow_payment_orders').update({ status: 'link_ready', payment_url: result.payment_url }).eq('id', order.id).eq('status', 'pending');
+      return json({ order_id: order.id, payment_url: result.payment_url });
     }
     if (body.action === 'status') return json({ configured: Boolean(Deno.env.get(`${prefix}_URL`) && Deno.env.get(`${prefix}_API_KEY`) && Deno.env.get('GROW_MAKE_NOTIFY_SECRET')), environment, terms_ready: growConfigurationReady(settings ?? {}) });
     if (body.action === 'test') {

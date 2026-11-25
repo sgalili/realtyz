@@ -1,3 +1,4 @@
+import { PersonalWhatsAppSubscriptionCard } from './PersonalWhatsAppSubscriptionCard';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { InventoryToolSoftLock } from '@/components/InventoryCollection';
 import { useLocation } from '@/lib/router-compat';
@@ -521,7 +522,7 @@ export function ConnectionsTab() {
                   </span>
                 )}
               </h4>
-              <WhatsAppGatewayCard />
+              {isSuperAdmin ? <WhatsAppGatewayCard /> : <PersonalWhatsAppSubscriptionCard />}
             </section>
           )}
         </div>
