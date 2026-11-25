@@ -68,7 +68,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
 
   return (
     <BoardColumnDragArea controls={columns}>
-      <HorizontalTableScroll ref={wrapRef} aria-label="טבלת נכסים" className="board-head-sticky flex-1 rounded-lg border bg-card">
+      <HorizontalTableScroll ref={wrapRef} aria-label="טבלת נכסים" className="board-head-sticky properties-doc-scroll flex-1 rounded-lg border bg-card">
         <table data-column-managed="true" className="w-max min-w-full text-sm">
           <thead className="bg-muted/40 text-[14px] text-muted-foreground">
             <tr>

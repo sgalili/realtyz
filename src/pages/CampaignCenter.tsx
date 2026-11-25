@@ -1,3 +1,4 @@
+import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrokersOnly as useBrokersOnlyMode } from '@/hooks/usePlatformMode';
 import { tagShareText, withShareUtm } from '@/lib/shareTracking';
@@ -4591,6 +4592,7 @@ const PublishedFeed = ({
   /** Live item counts for the drafts/future tabs (published is counted locally). */
   tabCounts?: { drafts: number; future: number };
 } = {}) => {
+  const publicDemo = usePublicWorkspace();
   const navigate = useNavigate();
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
@@ -6568,7 +6570,7 @@ const PublishedFeed = ({
                     return `${p(dt.getDate())}.${p(dt.getMonth() + 1)}.${dt.getFullYear()} ${p(dt.getHours())}:${p(dt.getMinutes())}`;
                   })()}
                 </span>
-                {hasGroupTargets && (
+                {hasGroupTargets && !publicDemo && (
                   <div className="min-w-0 shrink">
                     <GroupStatusChips
                       inline

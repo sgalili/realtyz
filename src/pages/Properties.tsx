@@ -942,7 +942,7 @@ export default function Properties() {
   );
 
   return (
-    <div className={viewMode === 'table' && !demo ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-[11px] overflow-hidden px-0 pb-0 !pt-[10px]' : 'px-0 !pt-[10px] space-y-[11px] w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
+    <div className="px-0 !pt-[10px] space-y-[11px] w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
       <header className="hidden">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
       </header>
@@ -1185,7 +1185,7 @@ export default function Properties() {
       </div>
 
       {/* Results */}
-      <div className={viewMode === 'table' && !demo ? 'listing-results-scroll flex min-h-0 flex-1 flex-col' : viewMode === 'table' ? 'block max-h-[calc(100dvh-210px)] overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]' : 'contents'}>
+      <div className="contents">
       <ErrorBoundary source="Properties.Results">
         {searching && sortedResults.length === 0 ? (
           <FullPageLoading />

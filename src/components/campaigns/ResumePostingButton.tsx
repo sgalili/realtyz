@@ -16,6 +16,7 @@ type Progress = { total: number; completed: number; pending: number; processing:
 /** Shows "X/Y" group progress and a resume button for interrupted group posts.
  *  Resuming re-queues only unfinished groups; already-posted groups are never repeated. */
 export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campaignLogId: string; fallbackProgress?: Progress }) {
+  const demoWorkspace = usePublicWorkspace();
   const simulation = usePublicWorkspace();
   const owner = useActiveWorkspaceOwnerId();
   const qc = useQueryClient();
@@ -161,7 +162,7 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
       <PopoverContent align="start" dir="rtl" className="w-72 p-2" onClick={(e) => e.stopPropagation()}>
         <div className="mb-2 flex items-center justify-between gap-2 px-1">
           <span className="text-sm font-semibold">פורסמו {data.completed} מתוך {data.total}</span>
-          <div className="flex items-center gap-1">
+          {!demoWorkspace && <div className="flex items-center gap-1">
             <Button type="button" size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" disabled={busy || !persisted}
               title="סימון כל הקבוצות שנותרו כפורסמו"
               onClick={(e) => { e.stopPropagation(); void markPublished(); }}>
@@ -173,7 +174,7 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
               {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
               המשך פרסום
             </Button>
-          </div>
+          </div>}
         </div>
         <ul className="max-h-72 space-y-1 overflow-y-auto">
           {jobsLoading && <li className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></li>}
