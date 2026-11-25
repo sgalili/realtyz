@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDownWideNarrow, Download, Loader2, Play, Square, Unplug } from 'lucide-react';
+import { ArrowDownWideNarrow, Download, Loader2, Play, Unplug } from 'lucide-react';
 import { useNavigate } from '@/lib/router-compat';
 import { saveSuperAdminViewState } from '@/lib/superAdminViewState';
 import { BulkBrokerWhatsAppScan } from './BulkBrokerWhatsAppScan';
@@ -75,16 +75,16 @@ export function BrokerScannerPanel({ prioritySort = 'off', onPrioritySort }: { p
   const ready = !!(s.connected && s.webhook_ready && status.data?.credentials_ready);
   const w = scannerWorkerState(s);
   const stateText = active ? 'פעיל' : ready ? 'מחובר · מושהה' : reasons[s.pause_reason ?? ''] ?? 'מנותק';
-  // One control: active → pause; otherwise resume (which re-checks the connection before activating).
+  // Green Play starts or reconnects the line; stopping discovery stays on the green square control.
   return <section dir="rtl" className="space-y-2 rounded-md bg-muted/40 p-2" aria-label="קו סריקת WhatsApp ייעודי">
     <div className="flex flex-nowrap items-center gap-1 overflow-x-auto text-sm">
-      <div className="flex shrink-0 items-center gap-0 [&>button]:h-8 [&>button]:w-8">
+      {!(active && ready) && <div className="flex shrink-0 items-center gap-0 [&>button]:h-8 [&>button]:w-8">
         {!ready && <span role="img" aria-label="קו הסריקה מנותק" title={`קו הסריקה מנותק · ${stateText}`} className="grid h-8 w-7 place-items-center text-destructive"><Unplug className="h-4 w-4" /></span>}
-        <Button size="icon" variant="ghost" aria-label={active ? 'עצירת הסריקה' : 'הפעלת הסריקה'} title={`${active ? 'עצירת הסריקה' : 'הפעלת הסריקה'} · ${stateText}`} disabled={act.isPending} className={active ? 'text-destructive' : 'text-lead-whatsapp'} onClick={() => setConfirm(active ? 'pause' : 'resume')}>{act.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : active ? <Square className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}</Button>
-      </div>
+        <Button size="icon" variant="ghost" aria-label="הפעלת הסריקה" title={`הפעלת הסריקה · ${stateText}`} disabled={act.isPending} className="text-lead-whatsapp" onClick={() => setConfirm('resume')}>{act.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 fill-current" />}</Button>
+      </div>}
       <BrokerGenderSort />
       <div className="ms-auto flex shrink-0 items-center gap-1">
-        <span className="inline-flex items-center gap-0 [&>button]:h-8 [&>button]:w-7"><BulkBrokerWhatsAppScan /><button type="button" className="tabular-nums text-xs text-muted-foreground hover:text-foreground" dir="ltr" aria-expanded={open} aria-label={`וואטסאפ שהושלמו מתוך התור, ${open ? 'כיווץ' : 'הרחבה'}`} title="וואטסאפ שהושלמו מתוך התור. לחיצה לפרטים" onClick={() => setOpen(o => !o)}>{status.data?.overview?.done ?? 0}/{status.data?.overview?.total ?? 0}</button></span>
+        <span className="inline-flex items-center gap-2 [&>button:first-child]:h-8 [&>button:first-child]:w-7"><BulkBrokerWhatsAppScan /><button type="button" className="shrink-0 tabular-nums text-xs text-muted-foreground hover:text-foreground" dir="ltr" aria-expanded={open} aria-label={`וואטסאפ שהושלמו מתוך התור, ${open ? 'כיווץ' : 'הרחבה'}`} title="וואטסאפ שהושלמו מתוך התור. לחיצה לפרטים" onClick={() => setOpen(o => !o)}>{status.data?.overview?.done ?? 0}/{status.data?.overview?.total ?? 0}</button></span>
         <span className="inline-flex items-center gap-0 [&>button]:h-8 [&>button]:w-7"><BulkBrokerRegistryRecheck onProgress={() => undefined} /><span role="status" className="tabular-nums text-xs text-muted-foreground" dir="ltr" title="ממתינים לאימות רישיון, מגן אדום">{redCount ?? '…'}</span></span>
         <span className="inline-flex items-center gap-0"><Button size="icon" variant="ghost" className="h-8 w-7" aria-label="פתיחת כרטיס הייבוא" title="ייבוא מתווכים ויזמים" onClick={openImport}><Download className="h-4 w-4" /></Button>{importProgress && <span role="status" dir="ltr" className="text-xs tabular-nums text-muted-foreground" title="מתווכים ויזמים שעובדו מתוך תהליך הייבוא">{importProgress.done}/{importProgress.total}</span>}</span>
         {onPrioritySort && <Button size="icon" variant="ghost" className={`h-8 w-7 ${prioritySort !== 'off' ? 'text-primary' : 'text-muted-foreground'}`} aria-label={prioritySort === 'progress' ? 'מיון: עם וואטסאפ קודם' : 'מיון: בתהליך קודם'} title={prioritySort === 'progress' ? 'בתהליך לפי זמן, נמצאו, ממתינים. לחיצה: נמצאו קודם' : prioritySort === 'found' ? 'נמצאו, בתהליך, ממתינים. לחיצה: בתהליך קודם' : 'בתהליך לפי זמן, נמצאו, ממתינים'} aria-pressed={prioritySort !== 'off'} onClick={onPrioritySort}><ArrowDownWideNarrow className="h-4 w-4" /></Button>}
