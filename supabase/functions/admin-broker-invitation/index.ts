@@ -123,7 +123,7 @@ Deno.serve(async req => {
     const version = String(cfg.api_version || 'v25.0');
     if (!/^v\d+\.0$/.test(version) || !/^\d+$/.test(String(cfg.waba_id)) || !/^\d+$/.test(String(cfg.phone_number_id))) return json({ error: 'הגדרת WhatsApp הרשמי אינה תקינה' }, 503);
     const call = async (path: string, payload?: unknown) => {
-      const res = await fetch(`https://graph.facebook.com/${version}/${path}`, { method: payload ? 'POST' : 'GET', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, ...(payload ? { body: JSON.stringify(payload) } : {}) });
+      const res = await fetch(`https://graph.facebook.com/${version}/${path}`, { method: payload ? 'POST' : 'GET', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, ...(payload ? { body: JSON.stringify(payload) } : {}), signal: AbortSignal.timeout(20000) });
       const raw = await res.text();
       if (!res.ok) { console.error(`Meta broker invitation [${res.status}]: ${raw}`); throw new Error(`[${res.status}]: ${raw}`); }
       const data = JSON.parse(raw);
