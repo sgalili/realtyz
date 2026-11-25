@@ -13,11 +13,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { WalletTopUp } from '@/components/billing/WalletTopUp';
 import { GrowSubscriptionPurchase } from '@/components/billing/GrowSubscriptionPurchase';
+import { campaignCreditBreakdown } from '@/lib/campaignCreditBreakdown';
 
 type LedgerRow = {
   id: string; amount_ils: number; type: string; note: string | null; created_at: string; reference_id: string | null;
   tier: number | null; gross: number | null; extra_fee: number | null; dispute_status: string | null;
   listing_id: string | null; listing_title: string | null; listing_city: string | null; lead_name: string | null;
+  campaign_breakdown?: { posts_created: number; groups_published: number };
 };
 type Card = { id: string; brand: string | null; last4: string | null; exp_month: number | null; exp_year: number | null; status: string; auto_recharge_enabled: boolean; recharge_amount: number; last_charge_error: string | null };
 
@@ -91,6 +93,10 @@ export default function Wallet() {
   };
 
   const statusOf = (r: LedgerRow) => ({ open: 'במחלוקת', pending: 'במחלוקת', accepted: 'הוחזר', refunded: 'הוחזר', rejected: 'הושלם' } as Record<string, string>)[r.dispute_status ?? ''] ?? 'הושלם';
+  const breakdown = (r: LedgerRow) => {
+    const value = campaignCreditBreakdown(r.campaign_breakdown);
+    return value ? <div className="mt-2 space-y-1 whitespace-normal text-sm text-muted-foreground"><p>יצירת {value.created} פוסטים · {value.creationCredits} קרדיטים</p><p>פרסום ב־{value.published} קבוצות · {value.publishCredits} קרדיטים</p><p className="font-semibold text-foreground">סך הכול: {value.totalCredits} קרדיטים</p></div> : null;
+  };
   const rows = (list: LedgerRow[], withTarget: boolean) => (
     <div className="overflow-x-auto">
       <Table>
@@ -103,7 +109,7 @@ export default function Wallet() {
             <TableRow key={r.id} className="cursor-pointer" onClick={() => setDetail(r)}>
               <TableCell className="whitespace-nowrap">{when(r.created_at)}</TableCell>
               {withTarget && <TableCell className="max-w-[220px] truncate">{target(r)}</TableCell>}
-              <TableCell className="max-w-[240px]"><span className="flex items-center gap-2">{iconFor(r)}<span className="truncate">{purpose(r)}</span></span></TableCell>
+              <TableCell className="max-w-[240px]"><span className="flex items-center gap-2">{iconFor(r)}<span className="truncate">{purpose(r)}</span></span>{breakdown(r)}</TableCell>
               <TableCell className="whitespace-nowrap">{statusOf(r)}</TableCell>
               <TableCell dir="ltr" className={`whitespace-nowrap text-right font-bold ${r.amount_ils < 0 ? 'text-destructive' : 'text-primary'}`}>
                 {r.amount_ils > 0 ? '+' : ''}{money(r.amount_ils)}
@@ -167,6 +173,7 @@ export default function Wallet() {
               {!!detail.extra_fee && <><dt className="text-muted-foreground">שדות/שאלות נוספים</dt><dd>{ils(detail.extra_fee)}</dd></>}
               {detail.dispute_status && <><dt className="text-muted-foreground">מחלוקת</dt><dd>{detail.dispute_status}</dd></>}
               {detail.note && <><dt className="text-muted-foreground">הערה</dt><dd>{detail.note}</dd></>}
+              {detail.campaign_breakdown && <><dt className="text-muted-foreground">פירוט הקמפיין</dt><dd>{breakdown(detail)}</dd></>}
               <dt className="text-muted-foreground">מזהה</dt><dd dir="ltr" className="text-right text-xs text-muted-foreground">{detail.id}</dd>
             </dl>
           )}

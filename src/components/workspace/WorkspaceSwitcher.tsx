@@ -15,6 +15,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { DemoRoleSwitcher } from '@/components/admin/DemoRoleSwitcher';
 import { useWorkspaceInventoryCounts } from '@/hooks/useWorkspaceInventoryCounts';
+import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 
 /**
  * Sidebar workspace switcher. The left circle shows the signed-in user's
@@ -22,6 +23,7 @@ import { useWorkspaceInventoryCounts } from '@/hooks/useWorkspaceInventoryCounts
  * active workspace branding and lets users with several workspaces switch.
  */
 export function WorkspaceSwitcher({ className }: { className?: string }) {
+  const demo = usePublicWorkspace();
   const { workspaces, activeWorkspace, activeWorkspaceId, setActiveWorkspace } = useWorkspace();
   const { settings, masterBrand } = useWhiteLabel();
   const { user } = useAuth();
@@ -124,8 +126,8 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
 
   const workspaceInfo = (
     <div className="min-w-0 flex-1 text-right">
-              <div className="truncate text-[8px] font-bold text-foreground">{card.title}</div>
-              <div className="truncate text-[5px] text-muted-foreground">{card.subtitle || '\u00a0'}</div>
+              <div className="truncate text-[8px] font-bold text-foreground">{demo ? activeWorkspace?.owner_full_name : card.title}</div>
+              <div className="truncate text-[5px] text-muted-foreground">{demo ? activeWorkspace?.workspace_name : card.subtitle || '\u00a0'}</div>
     </div>
   );
 

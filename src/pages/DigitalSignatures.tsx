@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, ChevronDown, Clock, FileSignature, FileText, Link2, Plus, Search, ShieldCheck, Upload, X } from 'lucide-react';
 import { normalizePhoneForStorage } from '@/lib/formatPhone';
@@ -56,6 +56,7 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
   const [review, setReview] = useState<Doc | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [composerOpen, setComposerOpen] = useState(false);
+  useEffect(() => { const open = () => setComposerOpen(true); window.addEventListener('signatures:new', open); return () => window.removeEventListener('signatures:new', open); }, []);
   const [openStep, setOpenStep] = useState<number | null>(null);
   const [guideHidden, setGuideHidden] = useState(() => { try { return localStorage.getItem('toraff-signatures-guide-hidden') === '1'; } catch { return false; } });
   const [addingLead, setAddingLead] = useState(false);

@@ -1,4 +1,5 @@
 import { Yad2MoreButton } from '@/components/properties/Yad2MoreButton';
+import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 import { missingListingDetails, listingPublicationState, PUBLICATION_STATE_LABELS } from '@/lib/listingCompleteness';
 import { SelectedListingsActions } from '@/components/properties/SelectedListingsActions';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
@@ -933,6 +934,7 @@ export default function Properties() {
   }, [city, propertyType, rooms, maxPrice, areaMin]);
 
 
+  const demo = usePublicWorkspace();
   const renderToolsRow = (testId: string) => (
     <div data-testid={testId} className="flex shrink-0 items-center justify-end gap-0" style={{ marginInlineEnd: "-5px" }}>
       {results.length > 0 && <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />}
@@ -940,7 +942,7 @@ export default function Properties() {
   );
 
   return (
-    <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-[11px] overflow-hidden px-0 pb-0 !pt-[10px]' : 'px-0 !pt-[10px] space-y-[11px] w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
+    <div className={viewMode === 'table' && !demo ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-[11px] overflow-hidden px-0 pb-0 !pt-[10px]' : 'px-0 !pt-[10px] space-y-[11px] w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
       <header className="hidden">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
       </header>
@@ -1183,7 +1185,7 @@ export default function Properties() {
       </div>
 
       {/* Results */}
-      <div className={viewMode === 'table' ? 'listing-results-scroll flex min-h-0 flex-1 flex-col' : 'contents'}>
+      <div className={viewMode === 'table' && !demo ? 'listing-results-scroll flex min-h-0 flex-1 flex-col' : 'contents'}>
       <ErrorBoundary source="Properties.Results">
         {searching && sortedResults.length === 0 ? (
           <FullPageLoading />

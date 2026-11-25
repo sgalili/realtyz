@@ -245,6 +245,11 @@ function ProfessionalCommandCenter() {
     () => tasks.filter((t) => sectionOf(t) === tab),
     [tasks, tab],
   );
+  useEffect(() => {
+    const open = (event: Event) => { const section = (event as CustomEvent<{section: SectionTab | 'summary'}>).detail?.section; if (section === 'summary') { setTab('calls'); window.dispatchEvent(new CustomEvent('open-quick-actions', { detail: { tab: 'interaction' } })); return; } if (section && ['tasks','tours','notes','calls'].includes(section)) { setTab(section); addNew(section); } };
+    window.addEventListener('tasks:quick-create', open);
+    return () => window.removeEventListener('tasks:quick-create', open);
+  }, []);
 
   const completeTask = async (task: CommandTask) => {
     if (task.source === 'meeting' && task.actionType === 'call') {

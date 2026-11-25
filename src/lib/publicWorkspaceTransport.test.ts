@@ -26,11 +26,28 @@ describe('isolated registered-screen simulation', () => {
     expect(store.projects).toHaveLength(4);
     expect(store.projects.every(project=>store.developers.some(d=>d.id===project.developer_id)&&project.apartments.length===4)).toBe(true);
   });
-  it('supplies eight already-public photos per synthetic apartment and campaign', () => {
+  it('supplies five public-property snapshots and six to ten photos per property and campaign', () => {
     const store = createPublicWorkspaceData('broker');
-    expect(store.listings.every(row => row.photos.length === 8)).toBe(true);
-    expect(store.tables.campaign_logs?.every(row => row.media_urls.length === 8)).toBe(true);
+    expect(store.listings).toHaveLength(5);
+    expect(store.listings.every(row => row.photos.length >= 6 && row.photos.length <= 10)).toBe(true);
+    expect(store.tables.campaign_logs?.every(row => row.media_urls.length >= 6 && row.media_urls.length <= 10)).toBe(true);
     expect(store.tables.platform_settings?.[0]?.enable_ai_autopilot).toBe(true);
+  });
+  it('uses distinct gender-matched contacts and preserves the persona profile gender', () => {
+    const store = createPublicWorkspaceData('broker');
+    expect(new Set(store.leads.map(l => l.avatar_url)).size).toBe(8);
+    expect(store.leads.map(l => l.gender)).toEqual(['female','male','female','male','male','female','male','female']);
+    expect(store.profile.gender).toBe('male');
+    expect(createPublicWorkspaceData('marketing').profile.gender).toBe('female');
+    expect(store.leads.some(l => l.avatar_url === store.profile.avatar_url)).toBe(false);
+  });
+  it('keeps sample deposits and completed campaign charges consistent with the displayed balance', () => {
+    const store = createPublicWorkspaceData('broker', 'brokers_only');
+    expect(store.ledger.filter(r => r.type === 'topup').map(r => r.amount_ils)).toEqual([100,200,50]);
+    const campaign = store.ledger.find(r => r.campaign_breakdown);
+    expect(campaign?.amount).toBe(-17);
+    expect(campaign?.amount_ils).toBe(-4.25);
+    expect(store.tables.credit_wallets?.[0]?.balance_ils).toBe(store.ledger.reduce((sum,r) => sum+r.amount_ils,0));
   });
   it('keeps sample tasks read-only and does not grant administrative or payment access', async () => {
     const store=createPublicWorkspaceData('broker');

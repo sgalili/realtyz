@@ -1221,6 +1221,10 @@
 - [x] Silent name-based gender fill (only when empty): signup prefill, Super Admin waiting/registry/shield lists
 
 ## November 25 remaining work and follow-up
+- [ ] Add tasks quick-create and signatures header actions; update demo drawer identity/auth strip.
+- [ ] Fix campaign media and provide five sanitized public-property snapshots with complete expanding details.
+- [ ] Align demo names/genders and distinct avatars; add campaign credit breakdowns and deposit history.
+- [ ] Verify requested demo flows on mobile/desktop and preserve full-marketplace transport safety.
 - [x] Remove signature guide icon circles; center new-document button and increase text by 2px without resizing it.
 - [x] Put waiting-card city beside office; show current red-shield count and persisted import progress in scanner toolbar.
 - [x] Add verified-only gender classification with remaining count, live progress, persistent ambiguous-name skips and no saved-gender overwrite; authenticated run completed with remaining count zero.

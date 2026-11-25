@@ -1,4 +1,5 @@
 - Rent shows "₪X / לחודש" via src/lib/propertyPrice.ts.
+- Demo identities share one typed persona/contact registry and wallet breakdowns render explicit count snapshots without inferring publication counts from money. Why: consistent gender/avatar display and no invented charge history.
 - Media dedup uses host/path hashes; Yad2 reuses validated own public cache, not other hosts. Why: safe reuse.
 - Outreach uses the consumed OTP's saved phone and exact saved personal WhatsApp attribution, never scraped contact numbers; uncertain provider sends require review rather than automatic replay. Why: no account takeover or duplicate outreach.
 - Outreach voice and calls use the pure canonical Rita identity plus global_ai_documents, bounded broker-local draft facts and shared IVR settings; never borrow the sender's active workspace or another broker's private brain. Why: consistent Rita without tenant leaks.

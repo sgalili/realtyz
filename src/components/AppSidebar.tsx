@@ -324,7 +324,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   return (
     <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
       <SidebarContent className="realtyz-sidebar-menu gap-0 pt-3">
-        {!collapsed && !user && brokersOnly && <div data-visitor-auth-actions className="mb-3 grid grid-cols-2 gap-2 px-3">
+        {!collapsed && demo && <><div className="mb-3 w-full bg-primary px-3 py-3 text-center text-base font-semibold text-primary-foreground">אתם צופים במרחב הדגמה</div><div className="mb-3 grid grid-cols-2 gap-2 px-3"><Button asChild><a href="/auth?mode=signup">הרשמה חינם</a></Button><Button asChild variant="outline"><a href="/auth?mode=login">התחברות</a></Button></div></>}
+        {!collapsed && !demo && !user && brokersOnly && <div data-visitor-auth-actions className="mb-3 grid grid-cols-2 gap-2 px-3">
           <Button asChild className="min-h-12 gap-2 text-base"><NavLink to="/auth?mode=signup" onClick={handleNavClick}><UserPlus className="h-5 w-5" aria-hidden="true" />הרשמה חינם</NavLink></Button>
           <Button asChild variant="outline" className="min-h-12 gap-2 border-primary text-base text-primary hover:bg-primary/10"><NavLink to="/auth?mode=login" onClick={handleNavClick}><LogIn className="h-5 w-5" aria-hidden="true" />התחברות</NavLink></Button>
         </div>}
