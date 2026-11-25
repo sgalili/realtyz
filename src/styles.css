@@ -1273,10 +1273,14 @@ button.publication-limit-link:focus-visible {
     transform: translateX(-50%);
     width: 100%;
     max-width: 72rem;
-    bottom: 10px;
+    bottom: 0;
     z-index: 30;
     padding-inline: 15px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
     background: hsl(var(--background));
+    /* Opaque across the full viewport width so scrolled content never shows beside or under it. */
+    box-shadow: 0 0 0 100vmax hsl(var(--background));
+    clip-path: inset(0 -100vmax -100vmax -100vmax);
     border: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -2503,12 +2507,19 @@ svg.lucide-megaphone {
   --guest-coral: oklch(0.61 0.19 28);
   --guest-sky: oklch(0.57 0.17 252);
   --guest-violet: oklch(0.54 0.18 310);
+  --guest-amber: oklch(0.62 0.15 60);
+  --guest-green: oklch(0.55 0.14 150);
 }
-.dark { --guest-coral: oklch(0.76 0.14 28); --guest-sky: oklch(0.76 0.12 252); --guest-violet: oklch(0.76 0.12 310); }
+.dark { --guest-coral: oklch(0.76 0.14 28); --guest-sky: oklch(0.76 0.12 252); --guest-violet: oklch(0.76 0.12 310); --guest-amber: oklch(0.78 0.13 70); --guest-green: oklch(0.76 0.13 150); }
 .broker-guest-welcome { font-family: var(--font-hebrew); letter-spacing: 0; }
-.broker-guest-intro { --foreground: var(--primary-foreground); --muted-foreground: var(--primary-foreground); background: var(--guest-stage); color: var(--guest-on-stage); }
+.broker-guest-intro { --foreground: var(--primary-foreground); --muted-foreground: var(--primary-foreground); --banner-color: var(--guest-stage); background: color-mix(in oklab, var(--banner-color) 82%, var(--guest-ink)); color: var(--guest-on-stage); transition: background-color .5s ease; }
+.broker-guest-intro[data-tone="1"] { --banner-color: var(--guest-coral); }
+.broker-guest-intro[data-tone="2"] { --banner-color: var(--guest-sky); }
+.broker-guest-intro[data-tone="3"] { --banner-color: var(--guest-violet); }
+.broker-guest-intro[data-tone="4"] { --banner-color: var(--guest-amber); }
+.broker-guest-intro[data-tone="5"] { --banner-color: var(--guest-green); }
+.dark .broker-guest-intro { background: color-mix(in oklab, var(--banner-color) 45%, var(--guest-ink)); }
 .broker-guest-intro h1, .broker-guest-intro h1 + p { color: var(--guest-on-stage) !important; }
-@media (max-width: 639px) { .broker-guest-rita { height: 200px; } }
 .broker-guest-art svg * { stroke-width: 3px; vector-effect: non-scaling-stroke; }
 .broker-guest-slides { scrollbar-width: none; overscroll-behavior-x: contain; }
 .broker-guest-slides::-webkit-scrollbar { display: none; }
@@ -2519,13 +2530,15 @@ svg.lucide-megaphone {
 .broker-guest-art svg:nth-child(2) { right: 8%; top: 65%; animation-delay: -3s; }
 .broker-guest-art svg:nth-child(3) { left: 2%; top: 30%; animation-delay: -5s; }
 .broker-guest-art svg:nth-child(4) { left: 30%; top: 15%; animation-delay: -7s; }
-.broker-guest-track { animation: broker-guest-ticker 40s linear infinite; will-change: transform; }
+.broker-guest-track { animation: broker-guest-ticker 60s linear infinite; will-change: transform; backface-visibility: hidden; }
 .broker-guest-strip:hover .broker-guest-track { animation-play-state: paused; }
 .broker-guest-benefit { --benefit-color: var(--guest-stage); background: color-mix(in oklab, var(--benefit-color) 7%, hsl(var(--background))); }
 .broker-guest-benefit > svg { color: var(--benefit-color); }
 .broker-guest-benefit[data-tone="1"] { --benefit-color: var(--guest-coral); }
 .broker-guest-benefit[data-tone="2"] { --benefit-color: var(--guest-sky); }
 .broker-guest-benefit[data-tone="3"] { --benefit-color: var(--guest-violet); }
+.broker-guest-benefit[data-tone="4"] { --benefit-color: var(--guest-amber); }
+.broker-guest-benefit[data-tone="5"] { --benefit-color: var(--guest-green); }
 .dark .broker-guest-benefit[data-tone="0"] { --benefit-color: var(--guest-on-stage); }
 .broker-auth-shell { background: color-mix(in oklab, var(--guest-stage) 6%, hsl(var(--background))); }
 .broker-auth-heading { color: var(--guest-stage); }
@@ -2539,5 +2552,5 @@ svg.lucide-megaphone {
 .broker-visitor-menu nav > button:nth-of-type(3) > svg { color: var(--guest-coral); }
 .broker-visitor-menu nav > button:nth-of-type(4) > svg { color: var(--guest-violet); }
 @keyframes broker-guest-drift { to { transform: translate3d(12px, -16px, 0) rotate(8deg); } }
-@keyframes broker-guest-ticker { to { transform: translateX(-50%); } }
+@keyframes broker-guest-ticker { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
 @media (prefers-reduced-motion: reduce) { .broker-guest-art svg, .broker-guest-track { animation: none; } }
