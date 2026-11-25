@@ -125,22 +125,27 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
   }
 
   return (
-    <section dir="rtl" className="mx-auto max-w-4xl space-y-6 p-4">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold">חתימות דיגיטליות</h1>
-        <p className="text-muted-foreground">שולחים מסמכים לחתימה, עוקבים אחרי הסטטוס ומאשרים מסמכים חתומים, הכל ממקום אחד.</p>
-      </header>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        {STEPS.map((s, i) => <Card key={s.title}><CardContent className="space-y-1 p-4">
-          <s.icon className="h-5 w-5 text-primary" />
-          <p className="font-bold">{i + 1}. {s.title}</p>
-          <p className="text-sm text-muted-foreground">{s.body}</p>
-        </CardContent></Card>)}
+    <section dir="rtl" className="mx-auto max-w-4xl space-y-4 p-4">
+      <div className="grid grid-cols-3 gap-2">
+        {([['pending', 'בתהליך', Clock, 'text-warning'], ['signed', 'לאישור', FileSignature, 'text-primary'], ['approved', 'אושרו', CheckCircle2, 'text-success']] as const).map(([key, label, Icon, tone]) => (
+          <button key={key} type="button" onClick={() => setFilter(key)} aria-pressed={filter === key}
+            className={`flex flex-col items-center gap-1 rounded-2xl border bg-card p-3 shadow-sm transition-colors ${filter === key ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/40'}`}>
+            <Icon className={`h-5 w-5 ${tone}`} />
+            <span className="text-2xl font-extrabold leading-none text-foreground">{counts[key]}</span>
+            <span className="text-xs font-medium text-muted-foreground">{label}</span>
+          </button>
+        ))}
       </div>
 
-      <Card><CardContent className="space-y-3 p-4">
-        <p className="font-bold">מסמך חדש לחתימה</p>
+      <ol className="flex items-stretch gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-3 shadow-sm">
+        {STEPS.map((s, i) => <li key={s.title} className="flex min-w-[9rem] flex-1 items-start gap-2">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><s.icon className="h-4 w-4" /></span>
+          <span className="min-w-0"><span className="block text-sm font-bold">{i + 1}. {s.title}</span><span className="block text-xs leading-snug text-muted-foreground">{s.body}</span></span>
+        </li>)}
+      </ol>
+
+      <Card className="rounded-2xl border-primary/20 shadow-sm"><CardContent className="space-y-3 p-4">
+        <p className="flex items-center gap-2 text-lg font-bold"><FileSignature className="h-5 w-5 text-primary" />מסמך חדש לחתימה</p>
         {lead ? (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3">
             <span><span className="font-semibold">{lead.full_name || 'ללא שם'}</span> <span className="text-sm text-muted-foreground" dir="ltr">{lead.phone_number}</span></span>
@@ -172,10 +177,10 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
           </TabsList>
         </Tabs>
         {docs.isLoading ? <p role="status">טוען מסמכים…</p> : docs.isError ? <Button variant="outline" onClick={() => void docs.refetch()}>ניסיון נוסף</Button>
-          : visible.length === 0 ? <p className="py-8 text-center text-muted-foreground">אין מסמכים כאן עדיין</p> : (
+          : visible.length === 0 ? <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border py-10 text-center text-muted-foreground"><FileText className="h-8 w-8 text-primary/60" /><p>אין מסמכים כאן עדיין</p><p className="text-xs">בחרו לקוח למעלה ושלחו את המסמך הראשון לחתימה</p></div> : (
           <ul className="space-y-2">{visible.map(d => {
             const st = d.approved_at ? { label: 'אושר', variant: 'default' as const } : STATUS[d.status] ?? { label: d.status, variant: 'secondary' as const };
-            return <li key={d.id} className="rounded-lg border border-border bg-card p-3">
+            return <li key={d.id} className="rounded-2xl border border-border bg-card p-3 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="break-words font-semibold">{d.title}</p>

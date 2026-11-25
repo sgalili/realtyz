@@ -57,9 +57,6 @@ export function AffiliateInviteCard() {
 
   return (
     <section dir="rtl" data-no-hero-wave className="space-y-8 px-2 pt-6 sm:px-6 sm:pt-10">
-      <header className="space-y-3 text-center">
-        <p className="mx-auto max-w-md text-base leading-relaxed text-muted-foreground">{brokersOnly ? 'מזמינים מתווכים אחרים. עסקה מאושרת אחת, בונוס לשניכם.' : 'קונים, מוכרים, מתווכים ושותפים. עסקה מאושרת אחת, בונוס לשניכם.'}</p>
-      </header>
       <div className="grid grid-cols-3 gap-2 sm:gap-6">
         {STEPS.map((step, i) => (
           <div key={step.label} className="flex min-w-0 flex-col items-center gap-2 text-center">

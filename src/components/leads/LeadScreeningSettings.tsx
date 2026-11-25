@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ClipboardList, MessageCircle, Phone, ListChecks, Loader2 } from 'lucide-react';
+import { ClipboardList, MessageCircle, Phone, ListChecks, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LeadFormFieldsEditor } from '@/components/affiliate/LeadFormFieldsDialog';
 import { LeadQuestionsEditor } from '@/components/affiliate/LeadQuestionsDialog';
 import { cleanFormFields, resolveLeadQuestions, type LeadFormField } from '@/lib/leadTiers';
@@ -36,6 +37,7 @@ export function LeadScreeningSettings() {
     },
   });
   useEffect(() => { setDraft(null); }, [ws]);
+  useEffect(() => { const on = () => setOpen(true); window.addEventListener('leads:screening-open', on); return () => window.removeEventListener('leads:screening-open', on); }, []);
   const value = draft ?? data ?? null;
   const patch = (p: Partial<Screening>) => value && setDraft({ ...value, ...p });
 
@@ -60,14 +62,13 @@ export function LeadScreeningSettings() {
   ] : [];
 
   return (
-    <section dir="rtl" className="mb-3 rounded-xl border border-border bg-card">
-      <Button type="button" variant="ghost" className="h-auto w-full justify-between gap-2 px-4 py-3 text-start" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        <span className="flex items-center gap-2 text-base font-semibold"><ListChecks className="h-5 w-5 text-primary" />שאלות סינון לפי סוג פנייה</span>
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </Button>
-      {open && (
-        <div className="space-y-4 border-t border-border px-4 py-3">
-          <p className="text-sm text-muted-foreground">ריטה מסננת כל פנייה אוטומטית לפי השאלות כאן, כשהיא במצב אוטומטי. אין חיוב נוסף לפנייה.</p>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setDraft(null); }}>
+      <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><ListChecks className="h-5 w-5 text-primary" />שאלות סינון לפי סוג פנייה</DialogTitle>
+          <DialogDescription>ריטה מסננת כל פנייה אוטומטית לפי השאלות כאן, כשהיא במצב אוטומטי. אין חיוב נוסף לפנייה.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
           {isLoading || !value ? <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /> : sections.map(({ key, icon: Icon, title, hint, body }) => (
             <div key={key} className="space-y-2 rounded-lg border border-border p-3">
               <h3 className="flex items-center gap-2 font-semibold"><Icon className="h-4 w-4 text-primary" />{title}</h3>
@@ -77,7 +78,7 @@ export function LeadScreeningSettings() {
           ))}
           <div className="flex justify-end"><Button onClick={save} disabled={!draft || saving}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}שמירה לכל הנכסים</Button></div>
         </div>
-      )}
-    </section>
+      </DialogContent>
+    </Dialog>
   );
 }

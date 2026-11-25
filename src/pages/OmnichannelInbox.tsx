@@ -1,4 +1,3 @@
-import { BrokerLiveActivity } from '@/components/activity/BrokerLiveActivity';
 import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { SwipeChatCard } from '@/components/inbox/SwipeChatCard';
 import { activeChatAutopilot } from '@/lib/chatAutopilot';
@@ -1086,7 +1085,6 @@ const OmnichannelInbox = () => {
 
   return (
     <ChatTypography><Tabs dir="rtl" value={inboxSection} onValueChange={value => { setInboxSection(value); setSearchParams(current => { const next = new URLSearchParams(current); next.set('section', value); if (value === 'leads') next.delete('community'); return next; }, { replace: true }); }} className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-      {brokersOnly && !selectedVoterId && <BrokerLiveActivity focus="chats" defaultOpen={false} />}
       <NewLeadDialog open={addClientOpen} onOpenChange={setAddClientOpen} onCreated={lead => {
         setSelectedVoterId(lead.id);
         setSendChannel('whatsapp');

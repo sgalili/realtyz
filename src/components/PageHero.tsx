@@ -15,7 +15,7 @@ import { useBrokersOnly } from '@/hooks/usePlatformMode';
  */
 import * as React from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "@/lib/router-compat";
-import {
+import { ListChecks,
   Plus,
   FileSpreadsheet,
   User,
@@ -214,7 +214,7 @@ function CampaignsHeroAddButton() {
       onClick={() => setSearchParams(newCampaignSearch(), { replace: true })}
       aria-label={label}
       title={label}
-      className="min-h-11 min-w-11 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+      className="min-h-11 min-w-11 rounded-full bg-success text-success-foreground shadow-sm hover:bg-success/90 hover:text-success-foreground"
     >
       <Plus className="!h-5 !w-5" strokeWidth={2.5} />
     </Button>
@@ -230,6 +230,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/(command-center|tasks)/, title: "מטלות" },
   { match: /^\/signatures(?:\/|$)/, title: "חתימות דיגיטליות" },
   { match: /^\/dashboard$/, title: "לוח בקרה" },
+  { match: /^\/referral/, title: "מזמינים ומרוויחים" },
   { match: /^\/lead-crm/, title: "לידים" },
   { match: /^\/inbox/, title: "צ׳אטים" },
   { match: /^\/communication/, title: "צ׳אטים" },
@@ -415,6 +416,11 @@ export function PageHero() {
               className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
             >
               <ArrowLeft className="!h-5 !w-5 -scale-x-100" strokeWidth={2.5} />
+            </Button>
+          )}
+          {location.pathname.startsWith("/lead-crm") && (
+            <Button size="icon" variant="ghost" aria-label="שאלות סינון לפי סוג פנייה" title="שאלות סינון לפי סוג פנייה" className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" onClick={() => window.dispatchEvent(new Event('leads:screening-open'))}>
+              <ListChecks className="!h-5 !w-5" strokeWidth={2.5} />
             </Button>
           )}
           {(isPostsPage || location.pathname.startsWith("/inbox")) && (

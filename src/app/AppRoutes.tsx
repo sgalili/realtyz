@@ -177,10 +177,10 @@ const AFFILIATE_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS, '/sharing-pool', '/affi
  * the leads interested in them, the reward settings and Rita. Broker CRM,
  * recruitment and affiliate management are unreachable, not just hidden.
  */
-export const OWNER_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS, '/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita'];
+export const OWNER_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS, '/properties', '/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita'];
 const WALLET_LOCK_ALLOWED = ['/', '/wallet', '/profile', '/public-listings', '/billing', '/referral'];
 const SEEKER_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS];
-const DEVELOPER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/profile', '/developer-dashboard', '/command-center', '/campaigns', '/lead-crm', '/inbox', '/affiliate-network', '/affiliate', '/referral', '/partner/contacts', '/partner/chats', '/posts', '/our-clients'];
+const DEVELOPER_ALLOWED_PATHS = ['/', '/wallet', '/properties', '/public-listings', '/my-ads', '/profile', '/developer-dashboard', '/command-center', '/campaigns', '/lead-crm', '/inbox', '/affiliate-network', '/affiliate', '/referral', '/partner/contacts', '/partner/chats', '/posts', '/our-clients'];
 
 export function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const simulation = usePublicWorkspace();

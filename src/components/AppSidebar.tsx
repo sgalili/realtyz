@@ -239,7 +239,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       return [OUR_CLIENTS_ITEM, MY_ADS_ITEM, ...pick.map(u => NAV_ITEMS.find(i => i.url === u)).filter((i): i is NavItem => !!i)];
     }
     if (audience !== 'professional') {
-      const personal = NAV_ITEMS.filter(item => ['/command-center', '/deal-room', '/referral'].includes(item.url));
+      const personal = NAV_ITEMS.filter(item => [...(audience === 'partner' ? [] : ['/properties']), '/command-center', '/deal-room', '/referral'].includes(item.url));
       const communications = audience === 'partner' ? PARTNER_NAV_ITEMS.filter(item => ['/posts', '/partner/chats'].includes(item.url)) : NAV_ITEMS.filter(item => ['/campaigns', '/inbox'].includes(item.url));
       return [...personal, ...communications];
     }
