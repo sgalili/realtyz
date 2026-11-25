@@ -12,7 +12,8 @@ const respondToPings = () => {
   const handler = (e: MessageEvent) => {
     const d: any = e.data;
     if (!d || d.source !== 'realtyz-app' || d.type !== 'RZ_EXT_STATUS_REQUEST') return;
-    window.postMessage({ source: 'realtyz-extension', type: 'RZ_EXT_STATUS', paired: false, state: {} }, window.location.origin);
+    // jsdom's postMessage leaves event.source empty; dispatch the event a real browser delivers.
+    window.dispatchEvent(new MessageEvent('message', { data: { source: 'realtyz-extension', type: 'RZ_EXT_STATUS', paired: false, state: {} }, origin: window.location.origin, source: window }));
   };
   window.addEventListener('message', handler);
   return () => window.removeEventListener('message', handler);

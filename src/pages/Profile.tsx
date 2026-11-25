@@ -587,6 +587,9 @@ function WorkspaceTab() {
   const [uploading, setUploading] = useState(false);
   const [savingField, setSavingField] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Load failures keep fields locked (so nothing overwrites unknown saved data) and offer a retry.
+  const [loadError, setLoadError] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
   const [pendingLogo, setPendingLogo] = useState<{ file: File; ownerId: string } | null>(null);
   const alive = useRef(true);
   const saveLock = useRef(false);
@@ -597,15 +600,20 @@ function WorkspaceTab() {
     if (!ownerId) return;
     let cancelled = false;
     setLoading(true);
+    setLoadError(false);
     setPendingLogo(null);
+    const withTimeout = <T,>(promise: PromiseLike<T>) => Promise.race([
+      Promise.resolve(promise),
+      new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('office_details_timeout')), 15000)),
+    ]);
     (async () => {
       try {
-        const { data, error } = await supabase.from('white_label_settings')
+        const { data, error } = await withTimeout(supabase.from('white_label_settings')
           .select('agency_name, logo_url, office_address, office_city, agency_description, public_email, brokerage_name, brokerage_license')
-          .eq('user_id', ownerId).maybeSingle();
+          .eq('user_id', ownerId).maybeSingle());
         if (error) throw error;
-        const { data: profile, error: profileError } = await supabase.from('profiles')
-          .select('city, service_areas').eq('id', ownerId).maybeSingle();
+        const { data: profile, error: profileError } = await withTimeout(supabase.from('profiles')
+          .select('city, service_areas').eq('id', ownerId).maybeSingle());
         if (profileError) throw profileError;
         if (cancelled) return;
         const name = data?.agency_name || '';
@@ -616,11 +624,12 @@ function WorkspaceTab() {
         setSavedAgencyDescription(data?.agency_description || '');
         setServiceAreas(normalizeCitySelection(profile?.service_areas?.length ? profile.service_areas : [profile?.city || '']));
       } catch (error: any) {
-        if (!cancelled) toast.error(error?.message || 'טעינת פרטי המשרד נכשלה');
+        if (!cancelled) setLoadError(true);
+        if (!cancelled && error?.message !== 'office_details_timeout') console.warn('office details load failed', error);
       } finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [ownerId]);
+  }, [ownerId, reloadTick]);
 
   const notifySaved = async () => {
     await refreshBrand();
@@ -729,9 +738,13 @@ function WorkspaceTab() {
     finally { if (alive.current) setUploading(false); }
   };
 
-  const busy = loading || uploading || savingField !== null;
+  const busy = !ownerId || loading || loadError || uploading || savingField !== null;
   return (
     <div className="w-full min-w-0 space-y-4 pb-4">
+      {loadError && <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-foreground">
+        <span>לא הצלחנו לטעון את פרטי המשרד. אפשר לנסות שוב.</span>
+        <Button type="button" size="sm" variant="outline" onClick={() => setReloadTick(tick => tick + 1)}>לנסות שוב</Button>
+      </div>}
       {pendingLogo && pendingLogo.ownerId === ownerId && <ImageCropDialog file={pendingLogo.file} aspect={1} title="חיתוך לוגו" onCancel={() => setPendingLogo(null)} onConfirm={uploadCroppedLogo} />}
       <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-3 text-right sm:grid-cols-[128px_minmax(0,1fr)] sm:gap-5">
         <LogoBox title="לוגו" url={logoUrl} disabled={busy} aspect="square" onUpload={onLogoUpload} onRemove={() => void saveOfficeField('logo_url', '')} />

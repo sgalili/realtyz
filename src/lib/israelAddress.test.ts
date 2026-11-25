@@ -17,10 +17,10 @@ describe('national agency address helpers', () => {
     ];
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, result: { records } }) });
     vi.stubGlobal('fetch', fetchMock);
-    await expect(searchNationalCities('')).resolves.toEqual([{ code: '5000', name: 'תל אביב - יפו' }, { code: '3000', name: 'ירושלים' }]);
+    await expect(searchNationalCities('')).resolves.toEqual([{ code: '3000', name: 'ירושלים' }, { code: '5000', name: 'תל אביב - יפו' }]);
     const url = new URL(fetchMock.mock.calls[0][0]);
     expect(url.searchParams.get('resource_id')).toBe(ISRAEL_SETTLEMENTS_RESOURCE);
-    expect(url.searchParams.get('limit')).toBe('10000');
+    expect(url.searchParams.get('limit')).toBe('5000');
     expect(url.searchParams.has('q')).toBe(false);
   });
 

@@ -33,7 +33,8 @@ describe('primary signup choices', () => {
     setPendingSignupRole('partner');
     expect(await applyPendingSignupRole()).toBe('/');
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith('select_signup_user_type', { _type: 'partner' });
-    expect(mocks.invoke).not.toHaveBeenCalled();
+    // Only the Super Admin new-signup alert runs; no broker license verification.
+    expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith('notify-signup-admin', { body: {} });
     expect(readPendingSignupRole()).toBeNull();
   });
   it('persists the entered full name after verified authentication before applying type', async () => {
