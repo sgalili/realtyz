@@ -12397,6 +12397,7 @@ export type Database = {
         Args: { _error: string; _job: string; _ok: boolean }
         Returns: undefined
       }
+      fill_empty_gender_for: { Args: { _uid: string }; Returns: undefined }
       finalize_admin_broker_setup: {
         Args: { _license: string; _user_id: string }
         Returns: undefined
@@ -13010,6 +13011,7 @@ export type Database = {
           own: boolean
         }[]
       }
+      guess_gender_from_name: { Args: { _full: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

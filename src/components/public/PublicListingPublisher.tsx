@@ -287,7 +287,9 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     setImportOption(null); setImportCard(null); setConfirming(false); setLegalSection(null); setManualDeal(false); setSeeker(false);
   };
   // Signed-in accounts with a known publisher role skip "מי מפרסם?"; guests and partner-only accounts answer it.
+  // Brokers-only mode: every signed-in publisher is a broker, so "מי מפרסם?" is skipped.
   const knownPublisherRole: '' | 'broker' | 'developer' | 'private' = !user ? ''
+    : brokersOnlyImport ? 'broker'
     : ownerRoles.some(r => ['managing_broker', 'lead_agent', 'agent'].includes(r)) ? 'broker'
     : ownerRoles.includes('developer') || isDeveloper ? 'developer'
     : ownerRoles.includes('property_owner') || isPropertyOwner ? 'private' : '';

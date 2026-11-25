@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { classifyHebrewName } from '@/lib/hebrewNameGender';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +32,7 @@ const Auth = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState('');
+  const genderTouched = useRef(false);
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [codeSent, setCodeSent] = useState(false);
@@ -143,13 +145,13 @@ const Auth = () => {
           <Button type="button" variant="link" disabled={loading || resendSeconds > 0} onClick={() => void sendCode()}>{resendSeconds > 0 ? `שליחה חוזרת בעוד ${resendSeconds}` : 'שלחו לי קוד שוב'}</Button>
         </div> : <form onSubmit={sendCode} className="space-y-3">
           {signup && <div className="grid grid-cols-2 gap-3">
-            <Input aria-label="שם פרטי" placeholder="שם פרטי" autoComplete="given-name" maxLength={80} className={fieldClass} value={firstName} onChange={e => setFirstName(e.target.value)} />
+            <Input aria-label="שם פרטי" placeholder="שם פרטי" autoComplete="given-name" maxLength={80} className={fieldClass} value={firstName} onChange={e => { setFirstName(e.target.value); if (!genderTouched.current) { const g = classifyHebrewName(e.target.value); setGender(g.confidence === 'high' && g.gender !== 'unknown' ? g.gender : ''); } }} />
             <Input aria-label="שם משפחה" placeholder="שם משפחה" autoComplete="family-name" maxLength={80} className={fieldClass} value={lastName} onChange={e => setLastName(e.target.value)} />
           </div>}
           {brokersOnly && <label htmlFor="auth-mobile" className="block text-base font-semibold">{invitedBroker ? 'מספר וואטסאפ אישי' : 'מספר הטלפון הנייד שלכם'}</label>}
           <div className={signup ? 'grid grid-cols-2 gap-3' : ''}>
             <Input id="auth-mobile" type="tel" inputMode="tel" autoComplete="tel" aria-label={invitedBroker ? 'מספר וואטסאפ אישי' : 'מספר טלפון נייד'} placeholder={brokersOnly ? '05X-XXXXXXX' : invitedBroker ? 'מספר וואטסאפ אישי' : 'מספר טלפון נייד'} maxLength={11} className={fieldClass} dir={phone || brokersOnly ? 'ltr' : 'rtl'} value={phone} onChange={e => setPhone(formatAuthMobile(e.target.value))} />
-            {signup && <div role="group" aria-label="מגדר" className="flex min-w-0 gap-1">{[['male', 'גבר', User], ['female', 'אישה', UserRound]].map(([value, label, Icon]) => <Button key={value as string} type="button" variant={gender === value ? 'default' : 'outline'} aria-pressed={gender === value} className="h-12 min-w-0 flex-1 gap-1 px-2 text-lg font-normal" onClick={() => setGender(value as string)}><Icon className="h-5 w-5 shrink-0" />{label as string}</Button>)}</div>}
+            {signup && <div role="group" aria-label="מגדר" className="flex min-w-0 gap-1">{[['male', 'גבר', User], ['female', 'אישה', UserRound]].map(([value, label, Icon]) => <Button key={value as string} type="button" variant={gender === value ? 'default' : 'outline'} aria-pressed={gender === value} className="h-12 min-w-0 flex-1 gap-1 px-2 text-lg font-normal" onClick={() => { genderTouched.current = true; setGender(value as string); }}><Icon className="h-5 w-5 shrink-0" />{label as string}</Button>)}</div>}
           </div>
           {(ready || brokersOnly) && <Button type="submit" disabled={loading || !ready} className={`h-12 w-full text-xl font-bold ${brokersOnly ? 'broker-auth-submit' : ''}`}>{loading ? 'שולח...' : invitedBroker ? 'שלחו לי קוד בוואטסאפ' : 'שלחו לי קוד ב-SMS'}</Button>}
         </form>}

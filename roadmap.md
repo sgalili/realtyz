@@ -1218,3 +1218,4 @@
 - [x] Added local properties/projects/units/leads/messages/community/tasks/deals/wallet/profile/connection fixtures and five posts through the normal campaign feed, not a custom history page. Unknown operations are unavailable rather than forwarded to production.
 - [x] 33 tests passed; mobile/desktop workspace views, real sidebar navigation, in-page role switch to developer projects, marketing/owner/buyer/affiliate entry and community verified without runtime errors or production API requests. Existing-session browser restoration could not be completed because the injected session was empty; localStorage/Auth preservation is unit-tested. Not every nested modal/action was exercised; external sends/payments/publishing remain blocked.
 - [x] Personal WhatsApp: 59₪/month card charge gate, pending provisioning request, Super Admin WhatsApp alert
+- [x] Silent name-based gender fill (only when empty): signup prefill, Super Admin waiting/registry/shield lists

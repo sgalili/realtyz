@@ -1276,7 +1276,7 @@ button.publication-limit-link:focus-visible {
     bottom: 0;
     z-index: 30;
     padding-inline: 15px;
-    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    padding-bottom: max(2px, env(safe-area-inset-bottom));
     background: hsl(var(--background));
     /* Opaque across the full viewport width so scrolled content never shows beside or under it. */
     box-shadow: 0 0 0 100vmax hsl(var(--background));

@@ -38,7 +38,7 @@ import {
   ArrowRight, Loader2, Search as SearchIcon, Filter,
    Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon, ChevronDown,
    RefreshCw, Handshake, Pencil, Trash2,
-  Send, Check } from 'lucide-react';
+  Send, Check, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
@@ -1679,6 +1679,7 @@ export function ResultTable({
                 />
               </th>
             ) : null}
+            {!hideDefaultActions || endActions || showAffiliateColumn ? <th className="w-10 px-2 py-2 text-center" aria-label="פעולות"><Settings2 className="mx-auto h-4 w-4 text-muted-foreground" aria-hidden="true" /></th> : null}
             {headerCell("תמונה", "w-14")}
             {showStatusColumn ? headerCell("סטטוס", "min-w-[6.5rem]") : null}
             {showCommissionColumn ? headerCell("תגמולים") : null}
@@ -1695,7 +1696,7 @@ export function ResultTable({
             {headerCell('מ"ר')}
             {headerCell(publishedLabel)}
             {showPublisherColumn ? headerCell("משרד מפרסם") : null}
-            {!hideDefaultActions || endActions || showAffiliateColumn ? <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולות</th> : null}
+            
 
 
           </tr>
@@ -1713,6 +1714,14 @@ export function ResultTable({
                     {r.localId ? <Checkbox checked={selectedIds?.has(r.localId)} onCheckedChange={() => onToggleSelected?.(r.localId as string)} aria-label="בחירת נכס" /> : null}
                   </td>
                 ) : null}
+                {!hideDefaultActions || endActions || showAffiliateColumn ? <td className="px-2 py-1.5 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                  <div className="inline-flex items-center gap-1">
+                  {showAffiliateColumn ? renderAffiliate(r) : null}
+                  {endActions?.(r)}
+                  {quickPromotion?.(r)}
+                  {!hideDefaultActions && <PropertyRowActions r={r} importing={importing} onCampaign={(x) => (onCampaign ? onCampaign(x) : onSelect(x))} onEdit={onEdit} onDelete={onDelete} onAffiliate={onAffiliate} hideAffiliate={showAffiliateColumn} />}
+                  </div>
+                </td> : null}
                 <td className="px-2 py-1.5">
                   <div className="relative h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
                     {r.photos?.[0] ? (
@@ -1814,14 +1823,7 @@ export function ResultTable({
                 </td>
                 ) : null}
 
-                {!hideDefaultActions || endActions || showAffiliateColumn ? <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
-                  <div className="inline-flex items-center gap-1">
-                  {showAffiliateColumn ? renderAffiliate(r) : null}
-                  {endActions?.(r)}
-                  {quickPromotion?.(r)}
-                  {!hideDefaultActions && <PropertyRowActions r={r} importing={importing} onCampaign={(x) => (onCampaign ? onCampaign(x) : onSelect(x))} onEdit={onEdit} onDelete={onDelete} onAffiliate={onAffiliate} hideAffiliate={showAffiliateColumn} />}
-                  </div>
-                </td> : null}
+
 
 
               </tr>
