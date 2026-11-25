@@ -55,7 +55,7 @@ export default function ActivityLog() {
       if (error) throw error;
       return (data ?? []) as ActivityRow[];
     },
-    refetchInterval: 10_000,
+    refetchInterval: 60_000,
   });
 
   const { data: messages = [] } = useQuery({
@@ -68,7 +68,7 @@ export default function ActivityLog() {
         .limit(150);
       return data ?? [];
     },
-    refetchInterval: 20_000,
+    refetchInterval: 60_000,
   });
 
   const rows = useMemo(() => {

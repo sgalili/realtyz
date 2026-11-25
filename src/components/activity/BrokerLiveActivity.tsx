@@ -19,7 +19,7 @@ export function BrokerLiveActivity({ focus, defaultOpen = true }: { focus: 'chat
   const { data = [], isFetching } = useQuery({
     queryKey: ['broker-live-activity', ws, focus],
     enabled: !!ws,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     queryFn: async (): Promise<Item[]> => {
       const out: Item[] = [];
       const { data: q } = await (supabase as any).from('campaign_activity_queue')

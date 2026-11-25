@@ -47,7 +47,7 @@ export function AutomationActivityFeed({ leadId, limit = 25 }: { leadId?: string
       if (error) throw error;
       return (data || []) as Run[];
     },
-    refetchInterval: 15_000,
+    refetchInterval: 60_000,
   });
 
   return (
