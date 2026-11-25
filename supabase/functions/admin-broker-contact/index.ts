@@ -186,28 +186,35 @@ Deno.serve(async req => {
     }
     const ids = eligible.map(r => r.user_id);
     if (!ids.length) return json({ brokers: [] });
+    // Large id lists overflow the request URL, so `in` filters are read in chunks.
+    const inChunks = async (make: (part: string[]) => PromiseLike<{ data: any[] | null; error: any }>) => {
+      const data: any[] = [];
+      for (let i = 0; i < ids.length; i += 150) { const r = await make(ids.slice(i, i + 150)); if (r.error) return { data: null, error: r.error }; data.push(...(r.data ?? [])); }
+      return { data, error: null };
+    };
     const brokerReads = await Promise.all([
-      admin.from('profiles').select('id,full_name,phone,email,avatar_url,city,broker_license_number,locked_broker_name,gender').in('id', ids),
-      admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', ids),
-      admin.from('admin_approved_broker_licenses').select('user_id,license_number').in('user_id', ids),
+      inChunks(p => admin.from('profiles').select('id,full_name,phone,email,avatar_url,city,broker_license_number,locked_broker_name,gender').in('id', p)),
+      inChunks(p => admin.from('white_label_settings').select('user_id,agency_name,logo_url').in('user_id', p)),
+      inChunks(p => admin.from('admin_approved_broker_licenses').select('user_id,license_number').in('user_id', p)),
       admin.rpc('imported_account_inventory_counts', { owner_ids: ids }),
-      admin.from('broker_license_verifications').select('user_id,license_number,verified_at').in('user_id', ids),
-      admin.from('user_roles').select('user_id').in('user_id', ids).eq('role', 'developer'),
+      inChunks(p => admin.from('broker_license_verifications').select('user_id,license_number,verified_at').in('user_id', p)),
+      inChunks(p => admin.from('user_roles').select('user_id').in('user_id', p).eq('role', 'developer')),
       admin.from('broker_import_jobs').select('checkpoint').in('status', ['running', 'pending']).limit(50),
     ]);
+    brokerReads.forEach((r: any, i) => { if (r.error) console.error('[admin-broker-contact] broker read', i, r.error?.message ?? r.error); });
     if(brokerReads.some(result=>result.error))return json({error:'לא ניתן לקרוא את פרטי המתווכים כרגע'},503);
     const [{data:profiles},{data:offices},{data:licenses},{data:inventory,error:inventoryError},{data:verified},{data:devRoles}]=brokerReads;
     if (inventoryError || !inventory || inventory.length !== ids.length) return json({ error: 'קריאת ספירת הפרויקטים והדירות נכשלה; יש לרענן ולנסות שוב' }, 500);
-    const { data: devCompanies,error:companyError } = await admin.from('developers').select('workspace_owner_id,company_name,logo_url,yad2_total_projects').in('workspace_owner_id', ids);
+    const { data: devCompanies,error:companyError } = await inChunks(p => admin.from('developers').select('workspace_owner_id,company_name,logo_url,yad2_total_projects').in('workspace_owner_id', p));
     if(companyError)return json({error:'לא ניתן לקרוא את פרטי המתווכים כרגע'},503);
-    const { data: whatsappContacts, error: whatsappError } = await admin.from('broker_whatsapp_contacts').select('broker_id,whatsapp_phone,whatsapp_link').in('broker_id', ids);
+    const { data: whatsappContacts, error: whatsappError } = await inChunks(p => admin.from('broker_whatsapp_contacts').select('broker_id,whatsapp_phone,whatsapp_link').in('broker_id', p));
     if (whatsappError) return json({ error: 'קריאת פרטי WhatsApp נכשלה' }, 500);
     const by = <T,>(rows: T[] | null | undefined, k: (x: T) => string) => { const m = new Map<string, T>(); for (const x of rows ?? []) if (!m.has(k(x))) m.set(k(x), x); return m; };
     const pM = by(profiles, (x: any) => x.id), invM = by(inventory as any[], (x: any) => x.user_id), waM = by(whatsappContacts, (x: any) => x.broker_id), verM = by(verified, (x: any) => x.user_id), licM = by(licenses, (x: any) => x.user_id), offM = by(offices, (x: any) => x.user_id), devM = by(devCompanies, (x: any) => x.workspace_owner_id);
     const devRoleSet = new Set((devRoles ?? []).map(d => d.user_id));
     // Broker whose ads an active import run is saving right now.
     const importingIds = new Set(((brokerReads[6] as any).data ?? []).flatMap((j: any) => j.checkpoint?.phase === 'importing' && j.checkpoint?.brokerId ? [String(j.checkpoint.brokerId)] : []));
-    const {data: noMatches,error: noMatchError}=await admin.from('broker_registry_no_matches').select('broker_id,license_number').in('broker_id',ids);
+    const {data: noMatches,error: noMatchError}=await inChunks(p => admin.from('broker_registry_no_matches').select('broker_id,license_number').in('broker_id',p));
     if(noMatchError)return json({error:'לא ניתן לקרוא את תוצאות האימות כרגע'},503);
     const noMatchKeys=new Set((noMatches??[]).map(r=>`${r.broker_id}:${r.license_number}`));
     const brokers = eligible.map(r => {
