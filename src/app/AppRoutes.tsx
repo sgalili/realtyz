@@ -233,7 +233,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode; allowG
 
   if (rolesFetched && !roleLoading && (accountRoles.length === 0 || accountRoles.every(role => role === 'user'))) {
     if (!roleApplied) return <PageLoader />;
-    if (location.pathname === '/profile') return <>{children}</>;
+    if (location.pathname === '/profile') return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
     return <Suspense fallback={<PageLoader />}><RoleChoiceStep /></Suspense>;
   }
 

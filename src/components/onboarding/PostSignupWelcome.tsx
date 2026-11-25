@@ -12,7 +12,6 @@ import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { userRolesQueryKey } from '@/hooks/useUserRole';
 import { completePartnerIntro } from '@/lib/partnerIntroPreference';
 import { POST_SIGNUP_WELCOME_EVENT, readPostSignupWelcome, readPostSignupWelcomeDeal, clearPostSignupWelcome, type SignupRole } from '@/lib/signupRole';
-import { LandingContent } from '@/pages/Landing';
 import { celebrateSignup } from '@/lib/rewardFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { fmtCredits } from '@/lib/credits';
@@ -87,19 +86,30 @@ export function PostSignupWelcome() {
   // Brokers get the dedicated brokers & agencies landing page inside their very
   // first welcome window, so they immediately see how the tool fits daily work.
   if (role === 'broker') {
+    const steps: [string, string][] = [
+      ['🏠', language.text({ male: 'הוסף או ייבא את הנכסים שלך', female: 'הוסיפי או ייבאי את הנכסים שלך', neutral: 'הוסיפו או ייבאו את הנכסים שלכם' })],
+      ['🤖', 'ריטה עונה לפניות ומסננת לידים בשבילך'],
+      ['✍️', 'חתימות דיגיטליות וקמפיינים בפייסבוק במקום אחד'],
+    ];
     return (
       <Dialog open onOpenChange={(o) => { if (!o) close(); }}>
-        <DialogContent onInteractOutside={event => event.preventDefault()} dir="rtl" className="grid h-[92dvh] w-[calc(100%-2rem)] max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
-          <DialogHeader className="border-b px-5 py-4 text-right">
-            <DialogTitle className="text-xl font-extrabold leading-tight">ברוכים הבאים! הנה הכלים שילוו אתכם בכל יום עבודה</DialogTitle>
-            <DialogDescription className="text-sm">סיירו בדף המקצועי למתווכים וסוכנויות — ואז השלימו את הפרופיל כדי להתחיל.</DialogDescription>
+        <DialogContent onInteractOutside={event => event.preventDefault()} dir="rtl" className="w-[calc(100%-2rem)] max-w-md max-h-[90dvh] overflow-y-auto p-6 pt-12 text-right [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
+          <DialogHeader className="space-y-2 text-center sm:text-center">
+            <div className="text-4xl" aria-hidden>🎉</div>
+            <DialogTitle className="break-words text-2xl font-extrabold leading-snug">ברוכים הבאים ל־TORAFF</DialogTitle>
+            <DialogDescription className="text-base leading-relaxed">החשבון שלך מוכן. שלושה צעדים קצרים ואפשר להתחיל לעבוד.</DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 overflow-y-auto overscroll-contain">
-            <LandingContent />
-          </div>
-          <div className="flex flex-wrap items-center gap-2 border-t bg-background p-4">
-            <div className="w-full">{bonusNotice}</div>
-            <Button size="lg" className="flex-1 text-lg" onClick={() => void complete()}>השלמת פרופיל ✨</Button>
+          <ol className="grid gap-2">
+            {steps.map(([emoji, text], i) => (
+              <li key={text} className={`flex items-center gap-3 rounded-lg px-4 py-3 text-base font-semibold leading-snug ${TONES[i % TONES.length]}`}>
+                <span className="text-xl" aria-hidden>{emoji}</span><span className="min-w-0">{text}</span>
+              </li>
+            ))}
+          </ol>
+          {bonusNotice}
+          <p className="text-center text-base leading-relaxed">{language.text({ male: 'כדאי להתחיל בהשלמת הפרופיל, כך לקוחות ומתווכים יכירו אותך.', female: 'כדאי להתחיל בהשלמת הפרופיל, כך לקוחות ומתווכים יכירו אותך.', neutral: 'כדאי להתחיל בהשלמת הפרופיל, כך לקוחות ומתווכים יכירו אתכם.' })}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="lg" className="flex-1 text-lg" onClick={() => void complete()}>השלמת הפרופיל</Button>
             <Button size="lg" variant="ghost" onClick={close}>אחר כך</Button>
           </div>
         </DialogContent>
