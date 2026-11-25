@@ -15,7 +15,7 @@ export function readSmsSignup(): SmsSignup | null {
   try { const result = smsSignupSchema.safeParse(JSON.parse(sessionStorage.getItem(KEY) ?? 'null')); return result.success ? result.data : null; } catch { return null; }
 }
 export function clearSmsSignup() { sessionStorage.removeItem(KEY); }
-export const signupTypes = ['property_owner', 'property_seeker', 'broker', 'developer', 'partner'] as const;
+export const signupTypes = ['property_owner', 'property_seeker', 'broker', 'developer', 'partner', 'marketing_company'] as const;
 export type SmsSignupType = typeof signupTypes[number];
 export const signupTypeFields: Record<SmsSignupType, readonly [string, string][]> = {
   property_owner: [['deal_type', 'סוג העסקה'], ['property_area', 'אזור הנכס'], ['property_type', 'סוג הנכס']],
@@ -23,6 +23,7 @@ export const signupTypeFields: Record<SmsSignupType, readonly [string, string][]
   broker: [['office_name', 'שם המשרד'], ['service_area', 'אזורי שירות']],
   developer: [['company_name', 'שם החברה'], ['main_project', 'ייבוא פרוייקטים']],
   partner: [['marketing_channel', 'ערוץ שיווק עיקרי']],
+  marketing_company: [['company_name', 'שם חברת השיווק'], ['service_area', 'אזורי פעילות']],
 };
 export function signupDetailsValid(type: SmsSignupType, details: Record<string, string>) {
   return signupTypeFields[type].filter(([key]) => !(type === 'developer' && key === 'main_project')).every(([key]) => z.string().trim().min(1).max(200).safeParse(details[key]).success)

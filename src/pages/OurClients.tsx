@@ -14,6 +14,7 @@ import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER } from '@/lib/leadTypeFilter';
 import { developerProjectImages, projectDeal, projectMatches, savedProjectHierarchy } from '@/lib/developerProjectBoard';
 import { PROJECT_STATUS, type DeveloperProject } from '@/lib/developerProjectForm';
 import { cn } from '@/lib/utils';
+import { AddClientButton, AddProjectButton, AddUnitButton, useOwnsMarketingCompany } from '@/components/marketing/MarketingAddDialogs';
 
 type Client = { id: string; name: string | null; logo_url: string | null; projects: number; units: number };
 const priceLabel = (price?: number | null) => price && price > 0 ? `החל מ־₪${Number(price).toLocaleString('he-IL')}` : '';
@@ -32,6 +33,7 @@ export default function OurClients() {
   const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [grid, toggleGrid] = useViewToggle('our-clients-view');
+  const owner = useOwnsMarketingCompany();
   const clients = useQuery({ queryKey: ['marketing-clients'], queryFn: async () => {
     const { data, error } = await supabase.rpc('marketing_my_clients');
     if (error) throw error; return data as unknown as { company: string; clients: Client[] };
@@ -59,8 +61,9 @@ export default function OurClients() {
     <BoardSearchControls id="our-clients-search" hideViewToggle query={query} onQueryChange={setQuery} grid={grid} onViewToggle={toggleGrid}
       filter={dev ? <LeadTypeFilterButton hideLeadFilters state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} propertyTypes={[]} /> : undefined} />
 
+    {owner && <div className="flex justify-end">{dev ? <AddProjectButton developerId={dev.id} /> : <AddClientButton />}</div>}
     {!dev && (clients.isLoading ? <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /> : clients.isError ? <p role="alert" className="text-destructive">החשבון אינו משויך לחברת שיווק.</p>
-      : !filteredClients.length ? <p className="py-16 text-center text-muted-foreground">לא נמצאו יזמים</p>
+      : !filteredClients.length ? <p className="py-16 text-center text-muted-foreground">{owner ? 'עדיין אין יזמים בחשבון. אפשר להוסיף את היזם הראשון.' : 'לא נמצאו יזמים'}</p>
       : <div className={grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-2'}>{filteredClients.map(c =>
         <button key={c.id} type="button" onClick={() => open(c)} className={cn('flex w-full min-w-0 items-center gap-3 rounded-lg border bg-card p-3 text-right shadow-xs transition-shadow hover:shadow-md', grid && 'flex-col items-start')}>
           <DeveloperLogo name={c.name} logoUrl={c.logo_url} className={grid ? 'h-20 w-20' : 'h-12 w-12'} />
@@ -76,7 +79,7 @@ export default function OurClients() {
           <ProjectTimelineBar compact timeline={(p as { timeline?: unknown }).timeline} />
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">{meta(p).map(item => <span key={item} className="inline-flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-primary" />{item}</span>)}</div>
           <Button variant="outline" className="mt-auto justify-between" aria-expanded={isOpen} onClick={() => setExpandedId(isOpen ? null : p.id)}>בניינים ויחידות<ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} /></Button>
-          <AnimatedExpansion open={isOpen} autoReveal={false}><div className="space-y-4">{!grid && <PropertyGallerySlider photos={photos} alt={p.name} />}<ProjectHierarchyDetails enlarged project={p} /></div></AnimatedExpansion>
+          <AnimatedExpansion open={isOpen} autoReveal={false}><div className="space-y-4">{!grid && <PropertyGallerySlider photos={photos} alt={p.name} />}<ProjectHierarchyDetails enlarged project={p} />{owner && dev && <AddUnitButton projectId={p.id} developerId={dev.id} />}</div></AnimatedExpansion>
         </div>
       </article>; })}</div>)}
   </div>;

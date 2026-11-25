@@ -21,7 +21,8 @@ describe('SMS signup rules', () => {
     expect(israeliMobile.safeParse('+15551234567').success).toBe(false);
     expect(israeliMobile.safeParse('054abc1234567').success).toBe(false);
   });
-  it('offers exactly the five required types', () => { expect([...signupTypes]).toEqual(['property_owner', 'property_seeker', 'broker', 'developer', 'partner']); });
+  it('offers the five original types plus the marketing agency', () => { expect([...signupTypes]).toEqual(['property_owner', 'property_seeker', 'broker', 'developer', 'partner', 'marketing_company']); });
+  it('requires a company name and service area for a marketing agency', () => { expect(signupDetailsValid('marketing_company', { company_name: 'שיווק', service_area: '' })).toBe(false); expect(signupDetailsValid('marketing_company', { company_name: 'שיווק', service_area: 'כל הארץ' })).toBe(true); });
   it.each([
     ['property_owner', { deal_type: 'sale', property_area: 'תל אביב', property_type: 'דירה' }],
     ['property_seeker', { search_area: 'חיפה', budget: '5000' }],

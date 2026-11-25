@@ -12061,6 +12061,10 @@ export type Database = {
         }
         Returns: Json
       }
+      complete_marketing_company_signup: {
+        Args: { _details: Json }
+        Returns: Json
+      }
       complete_official_license_verification: {
         Args: { _number: string; _uid: string }
         Returns: undefined
@@ -13068,6 +13072,30 @@ export type Database = {
           newest_published_at: string
         }[]
       }
+      marketing_add_client: {
+        Args: { _contact_name?: string; _contact_phone?: string; _name: string }
+        Returns: string
+      }
+      marketing_add_project: {
+        Args: {
+          _city?: string
+          _developer: string
+          _name: string
+          _status?: string
+        }
+        Returns: string
+      }
+      marketing_add_unit: {
+        Args: {
+          _count: number
+          _price: number
+          _project: string
+          _rooms: number
+          _size_sqm: number
+          _type: string
+        }
+        Returns: undefined
+      }
       marketing_client_projects: { Args: { _developer: string }; Returns: Json }
       marketing_my_clients: { Args: never; Returns: Json }
       match_knowledge_chunks: {
@@ -13153,6 +13181,7 @@ export type Database = {
         Args: { _reason: string; _score: number; _user_id: string }
         Returns: Json
       }
+      owned_marketing_company_id: { Args: never; Returns: string }
       partner_can_view_closing: { Args: { _user_id: string }; Returns: boolean }
       pending_broker_scanner_continuations: {
         Args: never

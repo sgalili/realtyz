@@ -23,8 +23,8 @@ import { BrokerLicensePhotoUpload, uploadBrokerLicensePhoto, requestBrokerLicens
 import { clearSmsSignup, readSmsSignup, signupDetailsValid, signupRpc, notifySignupAdmin, signupTypeFields, signupTypes, type SmsSignupType } from '@/lib/smsSignup';
 
 export const PRIMARY_SIGNUP_TYPES = signupTypes;
-const labels: Record<SmsSignupType, string> = { property_owner: 'בעל נכס', property_seeker: 'קונה/שוכר', broker: 'מתווך/סוכנות', developer: 'יזם/קבלן', partner: 'תוכנית שותפים' };
-const femaleLabels: Record<SmsSignupType, string> = { property_owner: 'בעלת נכס', property_seeker: 'קונה/שוכרת', broker: 'מתווכת/סוכנות', developer: 'יזמית/קבלנית', partner: 'תוכנית שותפים' };
+const labels: Record<SmsSignupType, string> = { property_owner: 'בעל נכס', property_seeker: 'קונה/שוכר', broker: 'מתווך/סוכנות', developer: 'יזם/קבלן', partner: 'תוכנית שותפים', marketing_company: 'חברת שיווק נדל"ן' };
+const femaleLabels: Record<SmsSignupType, string> = { property_owner: 'בעלת נכס', property_seeker: 'קונה/שוכרת', broker: 'מתווכת/סוכנות', developer: 'יזמית/קבלנית', partner: 'תוכנית שותפים', marketing_company: 'חברת שיווק נדל"ן' };
 const propertyTypes = ['דירה', 'דירת גן', 'דירת גג', 'בית פרטי', 'קוטג׳', 'פנטהאוז', 'דופלקס', 'סטודיו', 'וילה', 'מגרש', 'נכס מסחרי', 'אחר'];
 const fieldClass = 'h-12 text-xl font-bold text-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0';
 export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
@@ -135,8 +135,11 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
       if (licenseSuspended) {
         const { data, error } = await supabase.rpc('select_signup_user_type', { _type: 'broker' });
         if (error || !(data as { ok?: boolean } | null)?.ok) throw new Error(error?.message ?? INVALID_BROKER_LICENSE);
+      } else if (selected === 'marketing_company') {
+        const { error } = await supabase.rpc('complete_marketing_company_signup', { _details: details });
+        if (error) throw new Error(error.message);
       } else await signupRpc('complete_sms_signup_details', { _type: selected, _details: details });
-      markPostSignupWelcome(selected, selected === 'property_owner' ? details.deal_type : undefined);
+      if (selected !== 'marketing_company') markPostSignupWelcome(selected, selected === 'property_owner' ? details.deal_type : undefined);
       clearSmsSignup(); clearPendingSignupRole();
       notifySignupAdmin();
       await Promise.all([
@@ -146,10 +149,10 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
         queryClient.invalidateQueries({ queryKey: ['app-header-user-profile', user.id] }),
       ]);
-      onDone?.(); navigate(selected === 'developer' ? '/profile' : '/', { replace: true });
+      onDone?.(); navigate(selected === 'developer' ? '/profile' : selected === 'marketing_company' ? '/our-clients' : '/', { replace: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
-      const friendly: Record<string, string> = { invalid_details: 'יש להשלים את כל הפרטים לפני ההמשך.', invalid_budget: 'יש להזין תקציב חיובי במספרים בלבד.', primary_type_already_selected: 'סוג המשתמש כבר נשמר. יש לרענן את העמוד.', invalid_deal_type: 'יש לבחור למכירה או להשכרה.' };
+      const friendly: Record<string, string> = { invalid_details: 'יש להשלים את כל הפרטים לפני ההמשך.', invalid_budget: 'יש להזין תקציב חיובי במספרים בלבד.', primary_type_already_selected: 'סוג המשתמש כבר נשמר. יש לרענן את העמוד.', signup_type_unavailable: 'סוג החשבון הזה אינו זמין כרגע.', invalid_deal_type: 'יש לבחור למכירה או להשכרה.' };
       toast.error(friendly[message] ?? (/^[\s\S]*[א-ת]/.test(message) ? message : 'לא ניתן לשמור את הפרטים כרגע. אפשר לנסות שוב.'));
     }
     finally { setBusy(false); }
@@ -161,7 +164,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
     {!selected && <h1 className="mb-8 mt-[100px] shrink-0 text-center text-[17px] !font-bold">{wording('מה סוג המשתמש שלך?', 'מה סוג המשתמשת שלך?', 'מה סוג החשבון שלך?')}</h1>}
     {selected && <div className="mt-[100px] shrink-0" aria-hidden />}
     {licenseSuspended && <div role="alert" className="mb-4 w-full max-w-lg border border-destructive p-3 text-destructive">{INVALID_BROKER_LICENSE}</div>}
-    {!selected && <div role="group" aria-label="סוג משתמש" className="grid w-full max-w-lg grid-cols-2 gap-3">{signupTypes.map(type => <Button key={type} type="button" variant="outline" className="h-16 whitespace-normal text-lg font-bold" disabled={busy || (licenseSuspended && type !== 'broker')} onClick={() => { setSelected(type); setDetails({}); }}>{currentLabels[type]}</Button>)}</div>}
+    {!selected && <div role="group" aria-label="סוג משתמש" className="grid w-full max-w-lg grid-cols-2 gap-3">{signupTypes.filter(type => !(brokersOnly && type === 'marketing_company')).map(type => <Button key={type} type="button" variant="outline" className="h-16 whitespace-normal text-lg font-bold" disabled={busy || (licenseSuspended && type !== 'broker')} onClick={() => { setSelected(type); setDetails({}); }}>{currentLabels[type]}</Button>)}</div>}
     {selected && <form onSubmit={submit} className="w-full max-w-lg space-y-3">
       {selected === 'broker' && brokerStep === 'certificate' && <div className="space-y-3"><p className="text-center text-2xl font-bold">{holderName || license}</p>{needsReview ? <BrokerLicensePhotoUpload file={reviewPhoto} onFile={setReviewPhoto} /> : <BrokerCertificateCheck onResult={onCertificate} />}</div>}
       {!(selected === 'broker' && brokerStep === 'certificate') && signupTypeFields[selected].map(([key, label]) => {
