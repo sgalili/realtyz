@@ -1584,6 +1584,41 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_license_grace: {
+        Row: {
+          expired_at: string | null
+          expires_at: string
+          license_number: string
+          resolved_at: string | null
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          expired_at?: string | null
+          expires_at: string
+          license_number: string
+          resolved_at?: string | null
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          expired_at?: string | null
+          expires_at?: string
+          license_number?: string
+          resolved_at?: string | null
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_license_grace_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_license_grace_settings: {
         Row: {
           grace_days: number
@@ -12227,6 +12262,7 @@ export type Database = {
         Returns: string
       }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
+      expire_broker_license_grace: { Args: never; Returns: number }
       ext_claim_jobs: {
         Args: { _limit?: number; _token: string; _user_agent?: string }
         Returns: Json
@@ -13481,6 +13517,10 @@ export type Database = {
       start_broker_registry_batch: {
         Args: { _actor: string; _targets: string[] }
         Returns: string
+      }
+      start_broker_signup_grace: {
+        Args: { _details: Json; _license: string }
+        Returns: Json
       }
       start_fresh_broker_import_job: {
         Args: {

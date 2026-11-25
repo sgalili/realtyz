@@ -43,6 +43,7 @@ import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { useAccountIdentity } from '@/hooks/useAccountIdentity';
 import { useUserRole } from '@/hooks/useUserRole';
 import { UpgradeToBrokerButton } from '@/components/profile/UpgradeToBrokerButton';
+import { BrokerLicenseGraceCard } from '@/components/profile/BrokerLicenseGraceCard';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { BrokerRegistryNameButton } from '@/components/admin/BrokerRegistryNameButton';
 import { verifyBrokerLicense } from '@/lib/brokerLicense';
@@ -536,6 +537,7 @@ function PersonalTab() {
         ))}
         {showBrokerFields && isOwnProfile && !verifiedLicenseLocked && brokerLicense !== storedLicense && <Button type="button" variant="outline" size="icon" aria-label="שמירת רישיון תיווך" disabled={savingField !== null || verifiedBrokerLicense !== brokerLicense} onClick={() => void saveField('brokerLicense', brokerLicense)}><Check className="h-4 w-4" /></Button>}
 
+        {isOwnProfile && <BrokerLicenseGraceCard />}
         {profileOwnerId && <UpgradeToBrokerButton profileOwnerId={profileOwnerId} />}
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <Button type="button" onClick={handleSignOut} variant="outline" size="lg" className="w-full gap-2 text-base border-destructive/30 text-destructive hover:bg-destructive/10">

@@ -11,6 +11,7 @@ import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { ArrowRight, X } from 'lucide-react';
 import { genderText, personalGenderKey, usePersonalLanguage } from '@/i18n/personalLanguage';
 import { useAuth } from '@/hooks/useAuth';
+import { useBrokersOnly } from '@/hooks/usePlatformMode';
 import { userRolesQueryKey } from '@/hooks/useUserRole';
 import { clearPendingSignupRole, markPostSignupWelcome } from '@/lib/signupRole';
 import { prepareRewardSounds } from '@/lib/rewardFeedback';
@@ -44,11 +45,11 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const [licenseChecking, setLicenseChecking] = useState(false);
   useEffect(() => setContinueError(''), [license, details]);
   const continueBroker = () => {
-    if (licenseChecking) return;
     if (!signupDetailsValid('broker', details)) { setContinueError('יש להשלים את כל הפרטים לפני ההמשך.'); return; }
     // Unmatched registry numbers continue to a manual admin review instead of blocking.
     if (!brokerLicenseSchema.safeParse(license).success) { setContinueError('יש להזין מספר רישיון בספרות בלבד.'); return; }
-    setBrokerStep('certificate');
+    // License photo/scan is collected later in the profile; registry check runs silently.
+    void completeBroker();
   };
   const { user, signOut } = useAuth();
   const { gender: savedGender } = usePersonalLanguage();
@@ -58,6 +59,51 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const wording = (male: string, female: string, neutral = male) => genderText(gender, { male, female, neutral });
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const brokersOnly = useBrokersOnly();
+  useEffect(() => { if (brokersOnly && !selected) setSelected('broker'); }, [brokersOnly, selected]);
+  const refreshAccount = async () => {
+    if (!user) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user.id) }),
+      queryClient.invalidateQueries({ queryKey: ['workspace-owner-roles'] }),
+      queryClient.invalidateQueries({ queryKey: ['primary-user-type'] }),
+      queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
+      queryClient.invalidateQueries({ queryKey: ['app-header-user-profile', user.id] }),
+      queryClient.invalidateQueries({ queryKey: ['broker-license-grace', user.id] }),
+    ]);
+  };
+  const completeBroker = async () => {
+    if (busy || !user) return;
+    prepareRewardSounds();
+    setBusy(true);
+    try {
+      const pendingSignup = readSmsSignup();
+      if (pendingSignup) {
+        await signupRpc('complete_sms_signup', { _first_name: pendingSignup.firstName, _last_name: pendingSignup.lastName, _gender: pendingSignup.gender, _phone: pendingSignup.phone });
+        queryClient.setQueryData(personalGenderKey(user.id), pendingSignup.gender);
+      }
+      let verified = false;
+      if (!licenseSuspended) {
+        try {
+          await verifyBrokerLicense(license, 'verify');
+          await signupRpc('complete_sms_signup_details', { _type: 'broker', _details: details });
+          verified = true;
+        } catch { verified = false; }
+      }
+      if (!verified) {
+        const { error } = await supabase.rpc('start_broker_signup_grace', { _license: license, _details: details });
+        if (error) throw new Error(error.message);
+      }
+      markPostSignupWelcome('broker');
+      clearSmsSignup(); clearPendingSignupRole(); notifySignupAdmin();
+      await refreshAccount();
+      onDone?.(); navigate('/properties', { replace: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      const friendly: Record<string, string> = { invalid_details: 'יש להשלים את כל הפרטים לפני ההמשך.', broker_grace_expired: 'תקופת הגישה הזמנית הסתיימה. יש לאמת את הרישיון בפרופיל.', broker_license_registry_verification_required: INVALID_BROKER_LICENSE };
+      toast.error(friendly[message] ?? 'לא ניתן לשמור את הפרטים כרגע. אפשר לנסות שוב.');
+    } finally { setBusy(false); }
+  };
   useEffect(() => {
     if (!user?.id) return;
     let alive = true;
@@ -110,7 +156,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   };
   return <div dir="rtl" className="auth-gradient-shell relative flex h-[100dvh] flex-col items-center overflow-y-auto bg-background px-4 pb-16 pt-[50px]">
     <Button type="button" variant="ghost" size="icon" aria-label="סגירה ויציאה מהחשבון" title="סגירה ויציאה מהחשבון" className="absolute left-4 top-4 h-10 w-10" disabled={busy} onClick={async () => { await signOut(); navigate('/', { replace: true }); }}><X className="h-8 w-8" /></Button>
-    {selected && !licenseSuspended && <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" disabled={busy} onClick={() => { if (selected === 'broker' && brokerStep === 'certificate') { setBrokerStep('details'); setVerifiedLicense(null); setLicense(''); } else setSelected(null); }}><ArrowRight className="h-8 w-8" /></Button>}
+    {selected && !licenseSuspended && !(brokersOnly && selected === 'broker' && brokerStep === 'details') && <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" disabled={busy} onClick={() => { if (selected === 'broker' && brokerStep === 'certificate') { setBrokerStep('details'); setVerifiedLicense(null); setLicense(''); } else setSelected(null); }}><ArrowRight className="h-8 w-8" /></Button>}
     <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
     {!selected && <h1 className="mb-8 mt-[100px] shrink-0 text-center text-[17px] !font-bold">{wording('מה סוג המשתמש שלך?', 'מה סוג המשתמשת שלך?', 'מה סוג החשבון שלך?')}</h1>}
     {selected && <div className="mt-[100px] shrink-0" aria-hidden />}
@@ -131,8 +177,8 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         if (key === 'main_project') return <div key={key} className="space-y-2"><label htmlFor="signup-developer-url" className="block font-normal">ייבוא פרוייקטים (לא חובה)</label><p className="text-sm font-normal">{wording('הדבק כאן קישור לעמוד החברה שלך ב יד2:', 'הדביקי כאן קישור לעמוד החברה שלך ב יד2:')}</p><Input id="signup-developer-url" type="url" aria-label="קישור לעמוד החברה ביד2" placeholder="https://www.yad2.co.il/yad1/developers/1000000" className={`${fieldClass} text-base`} dir="ltr" maxLength={200} value={value} onChange={e => change(e.target.value)} /></div>;
         return <Input key={key} aria-label={label} placeholder={label} maxLength={200} type={key === 'budget' ? 'number' : 'text'} min={key === 'budget' ? 1 : undefined} className={fieldClass} value={value} onChange={e => change(e.target.value)} />;
       })}
-      {selected === 'broker' && brokerStep === 'details' && <BrokerLicenseField signup onChecking={setLicenseChecking} value={license} onChange={setLicense} onVerified={onLicenseVerified} />}
-      {selected === 'broker' && brokerStep === 'details' && <>{continueError && <p role="alert" className="text-sm text-destructive">{continueError}</p>}<Button type="button" className="h-12 w-full text-lg font-bold" disabled={licenseChecking} aria-busy={licenseChecking} onClick={continueBroker}>{licenseChecking ? <Loader2 className="h-5 w-5 animate-spin" aria-label="טוען" /> : wording('המשך', 'המשיכי', 'המשך')}</Button></>}
+      {selected === 'broker' && brokerStep === 'details' && <BrokerLicenseField signup silent onChecking={setLicenseChecking} value={license} onChange={setLicense} onVerified={onLicenseVerified} />}
+      {selected === 'broker' && brokerStep === 'details' && <>{continueError && <p role="alert" className="text-sm text-destructive">{continueError}</p>}<Button type="button" className="h-12 w-full text-lg font-bold" disabled={busy} aria-busy={busy} onClick={continueBroker}>{busy ? <Loader2 className="h-5 w-5 animate-spin" aria-label="טוען" /> : wording('המשך', 'המשיכי', 'המשך')}</Button></>}
       {ready && <Button type="submit" className="h-12 w-full text-lg" disabled={busy}>{busy ? 'שמירה...' : wording('המשך', 'המשיכי', 'המשך')}</Button>}
     </form>}
   </div>;
