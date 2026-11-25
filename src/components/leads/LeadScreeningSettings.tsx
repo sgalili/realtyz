@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ClipboardList, MessageCircle, Phone, ListChecks, Loader2 } from 'lucide-react';
+import { ClipboardList, MessageCircle, Phone, ListChecks, Loader2, MessagesSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
@@ -65,7 +65,7 @@ export function LeadScreeningSettings() {
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setDraft(null); }}>
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><ListChecks className="h-5 w-5 text-primary" />שאלות סינון לפי סוג פנייה</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><MessagesSquare className="h-5 w-5 text-primary" />שאלות סינון לפי סוג פנייה</DialogTitle>
           <DialogDescription>ריטה מסננת כל פנייה אוטומטית לפי השאלות כאן, כשהיא במצב אוטומטי. אין חיוב נוסף לפנייה.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

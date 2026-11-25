@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from '@/lib/router-compat';
 import { driver, type Driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import './global-app-tour.css';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileSignature, Home, Megaphone, Search, Share2, Users, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -147,29 +147,45 @@ export function GlobalAppTour() {
 
   if (!session || session.index !== 0) return null;
   if (showWelcome) return <div className="fixed inset-x-0 bottom-0 top-16 z-[60] overflow-hidden overscroll-none bg-background"><WelcomeSlides onDone={() => setShowWelcome(false)} /></div>;
+  const points = tourBrokersOnly ? [
+    { icon: Home, title: 'הנכסים שלי', body: 'מעלים נכס או מייבאים מיד2 ומנהלים את כל המלאי במקום אחד.' },
+    { icon: Users, title: 'לידים ופניות', body: 'כל פנייה נכנסת לטבלה אחת, עם מקור, סטטוס וסיכום שיחה.' },
+    { icon: Megaphone, title: 'קמפיינים', body: 'יוצרים פוסטים לנכסים ומפרסמים בקבוצות ובעמוד הפייסבוק.' },
+    { icon: FileSignature, title: 'מטלות וחתימות', body: 'סיורים, תזכורות והסכמי תיווך לחתימה דיגיטלית.' },
+  ] : [
+    { icon: Home, title: 'מפרסמים נכסים', body: 'מתווכים ויזמים מעלים נכסים ופרויקטים ללוח המשותף.' },
+    { icon: Search, title: 'מוצאים הזדמנויות', body: 'קונים, שוכרים ומוכרים מחפשים ופונים ישירות.' },
+    { icon: Share2, title: 'משתפים ומרוויחים', body: 'שותפים מפיצים נכסים ועוקבים אחרי התגמולים.' },
+    { icon: Users, title: 'מנהלים לידים', body: 'כל פנייה מגיעה לטבלה אחת עם סטטוס וסיכום שיחה.' },
+  ];
   return <Dialog open onOpenChange={(open) => { if (!open) close(); }}>
-    <DialogContent dir="rtl" className="flex max-h-[90dvh] max-w-xl flex-col gap-4 p-6 sm:p-8">
+    <DialogContent dir="rtl" className="flex max-h-[90dvh] max-w-lg flex-col gap-4 p-5 sm:p-6">
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-        {tourBrokersOnly ? <PlatformBrand tagline className="mx-auto h-10" /> : <img src={realtyzLogo} alt="TORAFF" className="mx-auto h-14 w-auto object-contain" />}
-        <DialogTitle className="text-center text-3xl font-extrabold">ברוכים הבאים ל-TORAFF</DialogTitle>
-        <DialogDescription className="text-center text-[19px] leading-relaxed text-foreground">
-          נכסים, אנשים והזדמנויות נפגשים במקום אחד.
+        {tourBrokersOnly ? <PlatformBrand className="mx-auto h-8" /> : <img src={realtyzLogo} alt="TORAFF" className="mx-auto h-9 w-auto object-contain" />}
+        <DialogTitle className="sr-only">מדריך TORAFF</DialogTitle>
+        <DialogDescription className="text-center text-base leading-relaxed text-muted-foreground">
+          {tourBrokersOnly ? 'כל מה שמתווך צריך כדי לנהל נכסים, לידים ופרסום במקום אחד.' : 'נכסים, אנשים והזדמנויות נפגשים במקום אחד.'}
         </DialogDescription>
-        <p className="text-lg leading-relaxed">מתווכים מורשים מקדמים עסקאות; יזמים מציגים פרויקטים; קונים ומוכרים פרטיים מוצאים הזדמנויות; ושותפים משתפים נכסים ועוקבים אחרי תגמולים. לכל תפקיד הדרך שלו להתקדם ולהרוויח.</p>
-        <div className="flex items-start gap-4 border-y border-border py-4">
-          <RitaAvatar className="h-16 w-16" />
-          <div className="min-w-0 space-y-1">
-            <h2 className="text-2xl font-extrabold">הכירו את ריטה</h2>
-            <p className="text-lg leading-relaxed"><strong>סוכנת ה-AI שלכם</strong> מושכת פניות, מנהלת תוכן ועוזרת להפוך הזדמנויות להכנסה. האוטומציות שהפעלתם עובדות על טייס אוטומטי <strong>24/7, גם בזמן שאתם ישנים.</strong></p>
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {points.map(({ icon: Icon, title, body }) => <li key={title} className="flex items-start gap-3 rounded-xl border border-border p-3">
+            <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" strokeWidth={1.75} aria-hidden="true" />
+            <div className="min-w-0"><p className="text-sm font-bold">{title}</p><p className="text-sm leading-snug text-muted-foreground">{body}</p></div>
+          </li>)}
+        </ul>
+        <div className="flex items-start gap-3 rounded-xl bg-muted/40 p-3">
+          <RitaAvatar className="h-11 w-11" />
+          <div className="min-w-0">
+            <p className="text-sm font-bold">ריטה, סוכנת ה-AI שלכם</p>
+            <p className="text-sm leading-snug text-muted-foreground">{tourBrokersOnly ? 'עונה ללידים, מסננת פניות ומעדכנת אתכם מי מוכן לסיור, 24/7.' : 'מושכת פניות, מנהלת תוכן ועובדת בשבילכם 24/7.'}</p>
           </div>
         </div>
       </div>
       <div className="flex shrink-0 flex-col gap-2">
+        <Button size="lg" className="w-full text-base font-bold" onClick={() => walkthroughStore.move(1)}>מתחילים את הסיור<ChevronLeft /></Button>
         <div className="flex flex-row gap-2">
-          <Button variant="outline" size="lg" className="min-w-0 flex-1 text-base sm:text-lg" onClick={() => setShowWelcome(shouldShowWelcome('instructions'))}>היכרות עם TORAFF<ChevronLeft /></Button>
-          <Button variant="outline" size="lg" className="min-w-0 flex-1 text-base sm:text-lg" onClick={() => { close(); openFaq(); }}>שאלות ותשובות<ChevronLeft /></Button>
+          {!tourBrokersOnly && <Button variant="outline" className="min-w-0 flex-1" onClick={() => setShowWelcome(shouldShowWelcome('instructions'))}>היכרות עם TORAFF</Button>}
+          <Button variant="outline" className="min-w-0 flex-1" onClick={() => { close(); openFaq(); }}>שאלות ותשובות</Button>
         </div>
-        <Button size="lg" className="w-full text-base font-bold sm:text-lg" onClick={() => walkthroughStore.move(1)}>מתחילים את הסיור<ChevronLeft /></Button>
       </div>
     </DialogContent>
   </Dialog>;

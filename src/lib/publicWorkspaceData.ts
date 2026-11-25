@@ -26,8 +26,8 @@ export function createPublicWorkspaceData(requestedRole: DemoType, platformMode:
   const avatar = persona.avatar;
   const mediaOrigin = typeof window === 'undefined' ? '' : window.location.origin;
   const user = { id: owner, aud: 'authenticated', role: 'authenticated', email: 'demo@example.invalid', created_at: now, app_metadata: {}, user_metadata: { full_name: name } };
-  const workspaces = DEMO_TYPES.map(t => ({ workspace_owner_id: demoOwner(t.id), user_id: owner, role: 'owner', account_type: t.id === 'broker' ? 'broker' : t.id === 'marketing' ? 'marketing_company' : t.id, workspace_name: demoPersonas[t.id].office || demoPersonas[t.id].name, workspace_logo_url: logo, owner_full_name: demoPersonas[t.id].name, owner_email: null, owner_phone: null, owner_avatar_url: demoPersonas[t.id].avatar, is_self: t.id === role, is_office: !!demoPersonas[t.id].office, last_accessed_at: now }));
-  const profile = { id: owner, full_name: name, email: user.email, phone: null, gender: persona.gender, avatar_url: avatar, city: 'הרצליה', professional_role: role === 'broker' ? 'broker' : role, user_type: role === 'broker' ? 'broker' : role, broker_license_number: role === 'broker' ? '123456' : null, license_verified: role === 'broker', license_verified_at: role === 'broker' ? now : null, active_workspace_owner_id: owner, signup_completed_at: now, terms_accepted_at: now, partner_terms_accepted_at: now, ai_disclosure_accepted_at: now, marketing_consent: false, bio: 'פרופיל מומצא להדגמת סביבת העבודה', office_name: persona.office, created_at: now };
+  const workspaces = DEMO_TYPES.map(t => ({ workspace_owner_id: demoOwner(t.id), user_id: owner, role: 'owner', account_type: t.id === 'broker' ? 'broker' : t.id === 'marketing' ? 'marketing_company' : t.id, workspace_name: demoPersonas[t.id].office || demoPersonas[t.id].name, workspace_logo_url: logo, owner_full_name: demoPersonas[t.id].name, owner_email: null, owner_phone: demoPersonas[t.id].phone, owner_avatar_url: demoPersonas[t.id].avatar, is_self: t.id === role, is_office: !!demoPersonas[t.id].office, last_accessed_at: now }));
+  const profile = { id: owner, full_name: name, email: user.email, phone: persona.phone, gender: persona.gender, avatar_url: avatar, city: 'הרצליה', professional_role: role === 'broker' ? 'broker' : role, user_type: role === 'broker' ? 'broker' : role, broker_license_number: role === 'broker' ? '123456' : null, license_verified: role === 'broker', license_verified_at: role === 'broker' ? now : null, active_workspace_owner_id: owner, signup_completed_at: now, terms_accepted_at: now, partner_terms_accepted_at: now, ai_disclosure_accepted_at: now, marketing_consent: false, bio: 'פרופיל מומצא להדגמת סביבת העבודה', office_name: persona.office, created_at: now };
   const listings = demoPropertySnapshots.map((snapshot, i) => ({
     id: demoId(100 + i), workspace_owner_id: owner, user_id: owner, owner_id: owner, slug: `demo-property-${i}`,
     city: snapshot.city, neighborhood: '', street: snapshot.address, street_number: null, address: snapshot.address,
@@ -43,7 +43,7 @@ export function createPublicWorkspaceData(requestedRole: DemoType, platformMode:
   }));
   const leads = demoContactIdentities.map((contact, i) => ({
     id: demoId(200 + i), user_id: owner, workspace_owner_id: owner, full_name: contact.name, lead_name: contact.name, gender: contact.gender,
-    phone: null, email: null, city: listings[i % listings.length]?.city ?? '', avatar_url: contact.avatar,
+    phone: contact.phone, phone_number: contact.phone, email: null, city: listings[i % listings.length]?.city ?? '', avatar_url: contact.avatar,
     status: ['new', 'qualified', 'contacted'][i % 3], lead_stage: ['new', 'tour', 'negotiation', 'closed'][i % 4],
     lead_category: i % 2 ? 'rent' : 'sale', deal_type: i % 2 ? 'rent' : 'sale', lead_kind: i % 2 ? 'renter' : 'buyer', interest_tag: i % 2 ? 'rent' : 'sale',
     source: 'demo', engagement_score: 70 + i * 3, sentiment: 'positive', preferences: { rooms: 4, budget: 2800000 },
@@ -96,7 +96,7 @@ export function createPublicWorkspaceData(requestedRole: DemoType, platformMode:
     approved_at: i === 2 ? now : null, approval_note: null, fields: { lead_name: leads[i].full_name },
   }));
   tables.credit_wallets = [{ user_id: owner, balance_ils: 310, locked_at: null, frozen: false }];
-  tables.property_tours = tasks.slice(0, 2).map((task, i) => ({ ...task, owner_id: owner, id: demoId(1300 + i), client_name: leads[i].full_name, client_phone: '', client_email: null, property_title: listings[i].property_title, property_address: listings[i].address, status: 'pending', notes: 'סיור לדוגמה', whatsapp_sent_at: null }));
+  tables.property_tours = tasks.slice(0, 2).map((task, i) => ({ ...task, owner_id: owner, id: demoId(1300 + i), client_name: leads[i].full_name, client_phone: leads[i].phone, client_email: null, property_title: listings[i].property_title, property_address: listings[i].address, status: 'pending', notes: 'סיור לדוגמה', whatsapp_sent_at: null }));
   tasks.forEach((task, i) => Object.assign(task.metadata, { lead_id: leads[i].id, listing_id: listings[i].id }));
   tables.interaction_activity_log.push(...['note', 'interaction'].map((action_type, i) => ({ id: demoId(1400 + i), user_id: owner, workspace_owner_id: owner, action_type, platform: 'phone', content: i ? 'סיכום שיחה לדוגמה: הלקוחה מחפשת דירת ארבעה חדרים עם מרפסת.' : 'הערה לדוגמה: להכין פרטים לקראת הביקור בנכס.', metadata: { lead_id: leads[i].id, listing_id: listings[i].id }, created_at: now })));
   if (platformMode === 'brokers_only') {

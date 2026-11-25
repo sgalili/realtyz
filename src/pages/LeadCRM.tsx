@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
+import { LeadSnapshot } from '@/components/leads/LeadSnapshot';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { OutcomePicker, OutcomeBadge, type InteractionOutcome } from '@/components/dealroom/OutcomePicker';
@@ -31,7 +32,7 @@ import {
   Users, Trash2, X, Eye, Filter,
   Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown,
   Wallet, Compass, Radio, Target, Home as HomeIcon, Phone as PhoneIcon, Mail,
-  Loader2, Pencil, Check, Send
+  Loader2, Pencil, Check, Send, SlidersHorizontal, Snowflake, Sun, Flame, Handshake, PenLine, Mountain
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
@@ -1908,7 +1909,7 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
                   className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
                   aria-label="סינון וייצוא"
                 >
-                  <Filter className="h-4 w-4" />
+                  <SlidersHorizontal className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -1975,7 +1976,7 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
         <CardContent className="p-0">
           <div
             ref={tableContainerRef}
-            className="max-h-[65vh] overflow-auto"
+            className="max-h-[calc(100dvh-15rem)] min-h-[240px] overflow-auto overscroll-contain touch-pan-x touch-pan-y [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-10 [&_thead_th]:bg-background"
             onScroll={(e) => {
               const el = e.currentTarget;
               if (el.scrollHeight - el.scrollTop - el.clientHeight < 200 && hasNextPage && !isFetchingNextPage) {
@@ -2109,8 +2110,8 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
                           {(() => {
                             const kind = resolveLeadKind(lead as any) ?? undefined;
                             const map: Record<string, { label: string; cls: string }> = {
-                              buyer:    { label: 'קונה',   cls: 'bg-blue-500/10 text-blue-700 border-blue-300' },
-                              seller:   { label: 'מוכר',   cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-300' },
+                              buyer:    { label: 'קונה',   cls: 'border-transparent bg-transparent text-success font-semibold' },
+                              seller:   { label: 'מוכר',   cls: 'border-transparent bg-transparent text-orange-600 font-semibold' },
                               renter:   { label: 'שוכר',   cls: 'bg-[#0b3982]/10 text-[#0b3982] border-[#0b3982]/40' },
                               landlord: { label: 'משכיר', cls: 'bg-purple-500/10 text-purple-700 border-purple-300' },
                               broker:   { label: 'מתווך/ת', cls: 'bg-amber-500/10 text-amber-700 border-amber-300' },
@@ -2127,7 +2128,11 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <div className="inline-flex items-center justify-center w-full">
-                                  <span className="text-2xl leading-none" aria-hidden>{profile.emoji}</span>
+                                  {(() => {
+                                    const b = profile.badge;
+                                    const [Icon, tone] = b === 'נסגר' ? [Handshake, 'text-success'] : b === 'במשא ומתן' ? [PenLine, 'text-amber-600'] : b === 'ליד רותח' ? [Mountain, 'text-destructive'] : b === 'ליד חם' ? [Flame, 'text-orange-500'] : b === 'ליד פושר' ? [Sun, 'text-amber-500'] : [Snowflake, 'text-sky-600'];
+                                    return <Icon className={`h-5 w-5 ${tone}`} strokeWidth={1.75} aria-label={b} />;
+                                  })()}
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side="top" className="text-right">
@@ -2264,7 +2269,7 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
         }
       }}>
 
-        <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
+        <SheetContent className="inset-x-0 mx-auto max-h-[88dvh] w-full max-w-3xl overflow-y-auto overscroll-contain rounded-t-2xl" side="bottom">
           {selectedVoter && (() => {
             // Health Score: based on user replies in chat_history
             const userReplies = activeVoterChatHistory?.filter(m => m.role === 'user').length ?? 0;
@@ -2370,6 +2375,7 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
 
             return (
               <>
+                <LeadSnapshot lead={selectedVoter} chat={activeVoterChatHistory as any} messages={activeVoterMessages as any} />
                 <SheetHeader className="relative pb-14">
                   <SheetTitle className="relative flex min-h-12 items-start justify-center">
                     {(() => {
