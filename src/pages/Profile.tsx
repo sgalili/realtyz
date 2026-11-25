@@ -837,7 +837,7 @@ export default function Profile() {
   }, []);
   const identity = useAccountIdentity();
   const { canInviteTeam } = useUserRole();
-  const officeLabel = ['יזם', 'קבלן'].includes(identity.label) ? 'חברה' : ['מפרסם', 'פרטי', 'שותף'].includes(identity.label) ? 'פרטי מפרסם' : 'משרד';
+  const officeLabel = ['יזם', 'קבלן'].includes(identity.label) ? 'חברה' : ['מפרסם', 'פרטי', 'שותף'].includes(identity.label) ? 'המשרד' : 'משרד';
   // Managers are only relevant for agencies with multiple brokers.
   const isAgency = canInviteTeam && identity.label === 'מתווך' && (activeWorkspace?.account_type ?? '').toLowerCase() === 'agency';
   const tab = params.get('tab') === 'billing' ? 'personal' : params.get('tab') ?? 'personal';
