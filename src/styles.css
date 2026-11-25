@@ -2561,3 +2561,11 @@ svg.lucide-megaphone {
   box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.9), 0 1px 2px hsl(220 10% 40% / 0.25);
 }
 .btn-metallic:hover { background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 9% 89%) 55%, hsl(220 8% 81%) 100%); color: hsl(var(--foreground)); }
+
+.btn-green-3d {
+  background: linear-gradient(180deg, hsl(142 62% 52%) 0%, hsl(142 64% 42%) 55%, hsl(143 66% 34%) 100%);
+  color: hsl(0 0% 100%);
+  border: 1px solid hsl(143 60% 30%);
+  box-shadow: inset 0 1px 0 hsl(142 70% 75% / 0.7), 0 1px 2px hsl(143 50% 20% / 0.3);
+}
+.btn-green-3d:hover { background: linear-gradient(180deg, hsl(142 62% 56%) 0%, hsl(142 64% 45%) 55%, hsl(143 66% 37%) 100%); color: hsl(0 0% 100%); }

@@ -955,7 +955,7 @@ export default function Properties() {
 
 
         {/* Row 1 — [magnify][search field, collapsed by default] ⇢ [sort][select][count][view] */}
-        <div data-testid="property-filter-row" className="flex flex-nowrap items-center gap-1">
+        <div data-testid="property-filter-row" className={`flex flex-nowrap items-center gap-1 ${demo ? 'pb-[5px]' : ''}`}>
             <div className={`order-first shrink-0 ${searchOpen ? 'hidden' : ''}`}>
               <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
             </div>
@@ -1185,7 +1185,7 @@ export default function Properties() {
       </div>
 
       {/* Results */}
-      <div className={viewMode === 'table' && !demo ? 'listing-results-scroll flex min-h-0 flex-1 flex-col' : 'contents'}>
+      <div className={viewMode === 'table' && !demo ? 'listing-results-scroll flex min-h-0 flex-1 flex-col' : viewMode === 'table' ? 'block max-h-[calc(100dvh-210px)] overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]' : 'contents'}>
       <ErrorBoundary source="Properties.Results">
         {searching && sortedResults.length === 0 ? (
           <FullPageLoading />

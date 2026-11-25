@@ -73,8 +73,8 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
           <thead className="bg-muted/40 text-[14px] text-muted-foreground">
             <tr>
               {selectionMode && (() => { const ids = results.map(r => r.localId).filter(Boolean) as string[]; const all = ids.length > 0 && ids.every(id => selectedIds.has(id)); return <th className="w-8 p-2"><Checkbox checked={all} aria-label={all ? 'ביטול בחירת הכל' : 'בחירת הכל'} onCheckedChange={() => onSetSelected ? onSetSelected(all ? new Set() : new Set(ids)) : ids.forEach(id => { if (all || !selectedIds.has(id)) onToggleSelected(id); })} /></th>; })()}
+              <th className="w-10 p-0 pt-2 text-center"><div className="flex justify-center"><BoardColumnMenu controls={columns} /></div></th>
               {visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
-              <th className="w-10 p-0 pt-2 text-end"><div className="flex justify-end"><BoardColumnMenu controls={columns} /></div></th>
             </tr>
           </thead>
           <tbody>
@@ -88,6 +88,9 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
               return [
                 <tr key={result.key} data-row-id={result.key} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
                   {selectionMode && <td className="p-2" onClick={e => e.stopPropagation()}>{localId ? <Checkbox checked={selectedIds.has(localId)} onCheckedChange={() => onToggleSelected(localId)} aria-label="בחירת נכס" /> : null}</td>}
+                  <td className="p-2 align-middle" onClick={e => e.stopPropagation()}><div className="flex items-center justify-center gap-1">
+                    {localId && <OwnerListingActions listingId={localId} />}
+                  </div></td>
                   {visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
                     {id === 'publish' && commissionPick && localId && commissionPick.candidates.has(localId) ? <div className="flex justify-center" onClick={e => e.stopPropagation()}><Checkbox checked={commissionPick.picked.has(localId)} onCheckedChange={() => onToggleCommissionPick?.(localId)} aria-label="הכללה בהגדרת העמלות" /></div>
                     : id === 'publish' ? <div onClick={e => e.stopPropagation()}><QuickPublicPromotion ids={localId ? [localId] : []} compact statusLive={live} onPublished={onPublished} fallback={<PublishStatusGlobe live={live} />} /></div>
@@ -104,9 +107,6 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
                     : id === 'sqm' ? card.sqm || ''
                     : card.floor != null ? `${card.floor}` : ''}
                   </td>)}
-                  <td className="p-2 align-bottom" onClick={e => e.stopPropagation()}><div className="flex items-center justify-end gap-1">
-                    {localId && <OwnerListingActions listingId={localId} />}
-                  </div></td>
                 </tr>,
                 <tr key={`${result.key}-x`} className="bg-muted/10">
                   <td colSpan={visible.length + 1 + (selectionMode ? 1 : 0)} className="p-0">
