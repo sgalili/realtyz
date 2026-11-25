@@ -2833,7 +2833,7 @@ const InlineComposer = ({
           : '';
         if (hideBottomBar) return null;
         return (
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-[6px] pt-2 backdrop-blur">
+          <div className="mt-4 border-t border-border/60 bg-card px-4 sm:px-5 pb-[6px] pt-2">
 
             <div className="flex flex-row-reverse items-stretch justify-between gap-2 [&_svg]:scale-[1.3]">
               <Button variant="ghost"
@@ -6234,7 +6234,7 @@ const PublishedFeed = ({
               key={t.v}
               type="button"
               onClick={() => onSubTabChange?.(t.v)}
-              style={{ fontSize: 'calc(0.875rem + 3px)' }}
+              style={{ fontSize: '15px' }}
               className={cn(
                 'relative flex h-9 items-center justify-center rounded-lg px-[6px] py-[6px] font-semibold transition',
                 subTab === t.v

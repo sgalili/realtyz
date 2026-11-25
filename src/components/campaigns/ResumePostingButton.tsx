@@ -9,12 +9,14 @@ import { toast } from 'sonner';
 import { pokeExtension } from '@/lib/extensionPairing';
 import { Button } from '@/components/ui/button';
 import { useGroupQueueLive } from '@/hooks/useGroupQueueLive';
+import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
 
 type Progress = { total: number; completed: number; pending: number; processing: number; stalled: number; failed: number };
 
 /** Shows "X/Y" group progress and a resume button for interrupted group posts.
  *  Resuming re-queues only unfinished groups; already-posted groups are never repeated. */
 export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campaignLogId: string; fallbackProgress?: Progress }) {
+  const simulation = usePublicWorkspace();
   const owner = useActiveWorkspaceOwnerId();
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -54,7 +56,7 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
 
   const autoRan = useRef(false);
   useEffect(() => {
-    if (autoRan.current || !owner || !data || data.total < 1 || data.completed >= data.total) return;
+    if (simulation || autoRan.current || !owner || !data || data.total < 1 || data.completed >= data.total) return;
     autoRan.current = true;
     try { pokeExtension(); } catch { /* extension may be absent */ }
     const k = `auto-resume:${owner}:${campaignLogId}`;
@@ -65,7 +67,7 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
         .then(() => { try { pokeExtension(); } catch { /* noop */ } qc.invalidateQueries({ queryKey: key }); });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [owner, campaignLogId, data?.total, data?.completed]);
+  }, [owner, campaignLogId, data?.total, data?.completed, simulation]);
 
   if (!data || data.total < 1) return isError ? <span role="status" title="לא ניתן לעדכן את התקדמות הפרסום" className="shrink-0 text-xs text-destructive">!</span> : null;
   if (data.completed >= data.total) return null;

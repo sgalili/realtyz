@@ -50,17 +50,13 @@ export function SuperAdminUsersTable() {
   const [selected, setSelected] = useState<string[]>([]);
   const [pendingIds, setPendingIds] = useState<string[]>([]);
   const [draft, setDraft] = useState<EditDraft | null>(null);
-  const onboarding = useQuery({ queryKey: ['broker-onboarding', 'admin-list'], enabled: isSuperAdmin, refetchInterval: 30000, queryFn: async () => {
-    const { data, error } = await supabase.from('admin_broker_onboarding').select('user_id');
+  const onboarding = useQuery({ queryKey: ['broker-onboarding', 'admin-list', user?.id], enabled: isSuperAdmin, staleTime: 60000, refetchInterval: 120000, queryFn: async () => {
+    const { data, error } = await supabase.rpc('admin_broker_onboarding_statuses').abortSignal(AbortSignal.timeout(15000));
     if (error) throw error;
-    return Object.fromEntries(await Promise.all((data ?? []).map(async row => {
-      const result = await supabase.rpc('broker_onboarding_status', { _broker: row.user_id });
-      if (result.error) throw result.error;
-      return [row.user_id, result.data as BrokerOnboardingStatus | null];
-    })));
+    return data as Record<string, BrokerOnboardingStatus | null>;
   } });
   const emailStates = useBrokerEmailStates(isSuperAdmin);
-  const balances = useQuery({ queryKey: ['admin-credit-balances'], enabled: isSuperAdmin, refetchInterval: 15000, queryFn: async () => {
+  const balances = useQuery({ queryKey: ['admin-credit-balances'], enabled: isSuperAdmin, staleTime: 30000, refetchInterval: 60000, queryFn: async () => {
     const { data, error } = await supabase.rpc('super_admin_credit_balances');
     if (error) throw error;
     return Object.fromEntries((data ?? []).map(row => [row.user_id, { balance_ils: Number(row.balance_ils), balance_credits: Number(row.balance_credits) }]));

@@ -1,0 +1,3 @@
+CREATE OR REPLACE FUNCTION public.pending_import_account_ids() RETURNS SETOF uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT o.user_id FROM public.admin_broker_onboarding o JOIN auth.users u ON u.id=o.user_id WHERE o.import_source IS NOT NULL AND o.import_source<>'' AND o.first_invitation_at IS NULL AND o.first_login_at IS NULL AND u.last_sign_in_at IS NULL ORDER BY o.user_id $$;
+REVOKE ALL ON FUNCTION public.pending_import_account_ids() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.pending_import_account_ids() TO service_role;

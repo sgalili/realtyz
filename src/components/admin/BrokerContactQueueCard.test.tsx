@@ -111,7 +111,7 @@ it('saves an initial broker gender only through its exact account and hides choi
  setup();
  fireEvent.mouseDown(await screen.findByRole('tab',{name:/^מתווכים/}));
  await screen.findByText('Doli Idelson');
- fireEvent.click(screen.getByRole('radio',{name:'נקבה'}));
+ fireEvent.click(screen.getByRole('radio',{name:'אישה'}));
  await waitFor(()=>expect(state.invoke).toHaveBeenCalledWith('admin-broker-contact',{body:{action:'save',user_id:account.user_id,gender:'female'}}));
  await waitFor(()=>expect(screen.queryByRole('radiogroup',{name:'מגדר המתווך'})).toBeNull());
 });

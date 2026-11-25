@@ -1350,6 +1350,35 @@ export type Database = {
           },
         ]
       }
+      broker_gender_classifications: {
+        Row: {
+          checked_at: string
+          classified_name: string
+          result: string
+          user_id: string
+        }
+        Insert: {
+          checked_at?: string
+          classified_name: string
+          result: string
+          user_id: string
+        }
+        Update: {
+          checked_at?: string
+          classified_name?: string
+          result?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_gender_classifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_import_agency_registry: {
         Row: {
           agency_key: string
@@ -11556,6 +11585,11 @@ export type Database = {
         Args: { _company: string; _id: string; _kind: string }
         Returns: undefined
       }
+      admin_broker_onboarding_statuses: { Args: never; Returns: Json }
+      admin_classify_verified_broker_genders: {
+        Args: { _process?: boolean }
+        Returns: Json
+      }
       admin_link_referral: {
         Args: { _referred: string; _referrer: string }
         Returns: Json
@@ -13291,6 +13325,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      pending_import_account_ids: { Args: never; Returns: string[] }
       post_media_source_key: { Args: { _url: string }; Returns: string }
       prepare_account_self_deletion: {
         Args: {

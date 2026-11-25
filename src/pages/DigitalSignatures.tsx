@@ -82,7 +82,7 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
     queryFn: async () => {
       const { data, error } = await supabase.from('closing_documents')
         .select('id,title,status,template_key,lead_id,signer_name,sign_token,pdf_path,signed_pdf_path,sent_at,viewed_at,signed_at,created_at,approved_at,approval_note,fields')
-        .eq('workspace_owner_id', owner!).order('created_at', { ascending: false }).limit(200);
+        .eq('workspace_owner_id', owner ?? '').order('created_at', { ascending: false }).limit(200);
       if (error) throw error;
       return (data ?? []) as Doc[];
     },
@@ -92,7 +92,7 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
     queryFn: async () => {
       const q = leadSearch.trim().replace(/[%,()]/g, '');
       const { data, error } = await supabase.from('leads').select('id,full_name,phone_number')
-        .eq('workspace_owner_id', owner!).or(`full_name.ilike.%${q}%,phone_number.ilike.%${q}%`).limit(8);
+        .eq('workspace_owner_id', owner ?? '').or(`full_name.ilike.%${q}%,phone_number.ilike.%${q}%`).limit(8);
       if (error) throw error;
       return (data ?? []) as Lead[];
     },
@@ -163,7 +163,7 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
         <ol className="grid gap-2 sm:grid-cols-3">
           {STEPS.map((s, i) => <li key={s.title}>
             <button type="button" onClick={() => setOpenStep(openStep === i ? null : i)} aria-expanded={openStep === i} className="flex w-full items-center gap-2 text-start">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><s.icon className="h-4 w-4" /></span>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center text-primary"><s.icon className="h-4 w-4" /></span>
               <span className="flex-1 text-sm font-bold">{i + 1}. {s.title}</span>
               <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${openStep === i ? 'rotate-180' : ''}`} />
             </button>
@@ -173,7 +173,7 @@ function DigitalSignaturesContent({ owner }: { owner: string | null }) {
       </div>}
 
       {!composerOpen ? (
-        <Button onClick={() => setComposerOpen(true)} className="gap-2 bg-success text-success-foreground hover:bg-success/90"><Plus className="h-4 w-4" />מסמך חדש לחתימה</Button>
+        <div className="flex justify-center"><Button onClick={() => setComposerOpen(true)} className="h-9 w-40 gap-2 px-2 bg-success text-base text-success-foreground hover:bg-success/90"><Plus className="h-4 w-4" />מסמך חדש לחתימה</Button></div>
       ) : (
       <Card className="rounded-2xl border-border shadow-sm"><CardContent className="space-y-3 p-4">
         <div className="flex items-center justify-between gap-2">

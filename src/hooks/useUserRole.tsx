@@ -43,10 +43,10 @@ export function useUserRole() {
     },
     // Many cards mount this hook at once; a short stale window stops each mount from refetching
     // and re-notifying every other observer (seconds of lag on view switches). Server checks stay authoritative.
-    staleTime: 10_000,
+    staleTime: 60_000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: 30_000,
+    refetchInterval: 120_000,
   });
   // Presentation-only persona in its own cache/transport; never a verified role grant.
   const ownRoles = simulation ? simulation.roles as AppRole[] : verifiedRoles;

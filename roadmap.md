@@ -1219,3 +1219,13 @@
 - [x] 33 tests passed; mobile/desktop workspace views, real sidebar navigation, in-page role switch to developer projects, marketing/owner/buyer/affiliate entry and community verified without runtime errors or production API requests. Existing-session browser restoration could not be completed because the injected session was empty; localStorage/Auth preservation is unit-tested. Not every nested modal/action was exercised; external sends/payments/publishing remain blocked.
 - [x] Personal WhatsApp: 59₪/month card charge gate, pending provisioning request, Super Admin WhatsApp alert
 - [x] Silent name-based gender fill (only when empty): signup prefill, Super Admin waiting/registry/shield lists
+
+## November 25 remaining work and follow-up
+- [x] Remove signature guide icon circles; center new-document button and increase text by 2px without resizing it.
+- [x] Put waiting-card city beside office; show current red-shield count and persisted import progress in scanner toolbar.
+- [x] Add verified-only gender classification with remaining count, live progress, persistent ambiguous-name skips and no saved-gender overwrite; authenticated run completed with remaining count zero.
+- [x] Diagnose scanner disconnects and background load; consolidate onboarding/invitation lookups and reduce polling without changing sending safeguards.
+- [x] Add eight public images to synthetic apartments/posts, simulated Rita chats and campaign progress, composer/footer clearance and broker-only Settings navigation.
+- [x] Run 39 focused tests and isolated authorization/database checks; authenticated waiting cards and mobile demo chat/campaign controls verified with no runtime errors.
+- [ ] Permanent Railway worker deployment remains blocked by unavailable deployment access; true WhatsApp logout requires manual QR reauthorization, and automatic resume has not been enabled.
+- [ ] Nested demo property-detail final confirmation remains incomplete after correcting preserved query parameters; no real external sends, payments or end-to-end full-marketplace changes were exercised.

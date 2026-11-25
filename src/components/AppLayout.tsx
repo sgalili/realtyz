@@ -487,7 +487,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <FacebookConnectionDialog />
       {/* A negative wallet locks the app until the balance is topped up. */}
       <WalletLockGate />
-      <div className={`realtyz-app-shell h-[100dvh] max-h-[100dvh] overflow-hidden flex w-full bg-background ${brokerGuestHome ? '!h-full !max-h-full' : ''}`}>
+      <div className={`realtyz-app-shell h-[calc(100dvh-var(--app-footer-space))] max-h-[calc(100dvh-var(--app-footer-space))] overflow-hidden flex w-full bg-background ${brokerGuestHome ? '!h-full !max-h-full' : ''}`}>
         {!(brokersOnly && !user) && <AppSidebar />}
         <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
           {/* RTL header, right to left: burger menu at the far right, then the
@@ -522,7 +522,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <PageLoadingRegion as="main" className={`realtyz-main-surface min-h-0 flex-1 overscroll-contain overflow-x-hidden px-[15px] ${location.pathname.startsWith('/properties') ? 'pt-0' : /^\/(broker|agency)\//.test(location.pathname) ? 'pt-[15px]' : location.pathname === '/profile' ? 'pt-0' : 'pt-[20px]'} ${brokerGuestHome ? 'overflow-y-auto pb-6' : location.pathname === '/' || location.pathname === '/public-listings' || location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
             <div key={`${user?.id}:${activeWorkspaceId}`} className={`app-content-width w-full ${location.pathname === '/' || location.pathname === '/public-listings' ? '!flex h-full min-h-0 flex-col' : location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'h-full' : ''}`}>
               <FacebookConnectionBanner />
-              {user && (workspaceLoading || !activeWorkspaceId) ? <div role="status" className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : children}
+              {user && workspaceLoading ? <div role="status" className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : children}
               <DemoSidebarPeek />
             </div>
           </PageLoadingRegion>

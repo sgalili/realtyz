@@ -58,7 +58,7 @@ export function BrokerImportWorkspace() {
           sticky tab band is pulled up into that padding and widened past the gutters: while
           scrolling, the white band hides the cards passing behind it instead of letting them
           peek above and beside the tabs. */}
-      <div data-import-tabs className="sticky -top-[20px] z-20 -mx-[15px] -mt-5 bg-background px-[15px] py-2">
+      <div data-import-tabs className="bg-background py-2">
         <TabsList secondary className="grid w-full min-w-0 grid-cols-3">
           <TabsTrigger value="pending" className="px-1 text-base">ממתינים ({pendingCount ?? 0})</TabsTrigger>
           <TabsTrigger value="sends" className="px-1 text-base">נשלחו ({sendCount})</TabsTrigger>

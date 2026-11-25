@@ -4,6 +4,7 @@ import avatar from '@/assets/demo-headshots/voter-01.jpg';
 import logo from '@/assets/realtyz-logo.png';
 import type { PlatformMode } from '@/hooks/usePlatformMode';
 import { demoPersona } from './brokerDemoPolicy';
+import { demoPropertyPhotos } from './demoPropertyPhotos';
 
 export type DemoRow = Record<string, any>;
 export const demoRoles: Record<DemoType, string[]> = {
@@ -45,8 +46,14 @@ export function createPublicWorkspaceData(requestedRole: DemoType, platformMode:
   };
   profile.created_at = user.created_at = new Date(Date.now() - 30 * 86400000).toISOString();
   Object.assign(profile, { public_bio: profile.bio, partner_terms_version: 'affiliate-marketing-2026-09' });
-  leads.forEach(lead => Object.assign(lead, { lead_category: lead.lead_kind, is_demo: false }));
-  tables.campaign_logs.forEach((post, i) => Object.assign(post, { campaign_name: post.name, message_body: `דירת ${listings[i].rooms} חדרים ב${listings[i].city}. נכס מומצא להדגמה בלבד. ריטה מסננת פניות ומתאמת ביקורים.`, status: 'published', is_archived: false, sent_at: now, media_urls: [], group_ids: [demoId(900)], like_count: 34 + i * 5, comment_count: 2, share_count: 5 + i, view_count: 620 + i * 160, provider_response: { listing_id: listings[i].id, simulated: true, comments: [{ id: `demo-comment-${i}`, from: { name: 'נועה · הדגמה' }, message: 'אפשר לקבל פרטים נוספים?' }] } }));
+  leads.forEach(lead => Object.assign(lead, { lead_category: lead.lead_kind, is_demo: false, ai_autopilot: true, profile_picture_url: avatar, last_interaction_at: now }));
+  messages.forEach((message, i) => Object.assign(message, { direction: i % 2 ? 'outbound' : 'inbound', created_at: new Date(Date.now() - (messages.length - i) * 60000).toISOString() }));
+  tables.platform_settings = [{ user_id: owner, workspace_owner_id: owner, enable_ai_autopilot: true, ai_paused: false }];
+  tables.rotating_messages = ['ריטה מסננת פניות בזמן שאתם מתמקדים בלקוחות', 'הנכסים, השיחות והמשימות במקום אחד', 'נרשמים ומתחילים לנהל את המשרד עם ריטה'].map((message_text,i) => ({ id: demoId(1500+i), role_key: 'guest', message_text, action_path: '/auth', sort_order: i, is_active: true }));
+  listings.forEach((listing,i) => Object.assign(listing, { media_photos: demoPropertyPhotos(i), photos: demoPropertyPhotos(i), images: demoPropertyPhotos(i), image_url: demoPropertyPhotos(i)[0] }));
+  tables.campaign_logs.forEach((post,i) => Object.assign(post, { media_urls: demoPropertyPhotos(i), target_count: 12, published_count: 12, total_targets: 12, total_sent: 12 }));
+  tables.campaign_logs.forEach((post, i) => Object.assign(post, { campaign_name: post.name, message_body: `דירת ${listings[i].rooms} חדרים ב${listings[i].city}. נכס מומצא להדגמה בלבד. ריטה מסננת פניות ומתאמת ביקורים.`, status: 'published', is_archived: false, sent_at: now, media_urls: demoPropertyPhotos(i), group_ids: [demoId(900)], like_count: 34 + i * 5, comment_count: 2, share_count: 5 + i, view_count: 620 + i * 160, provider_response: { listing_id: listings[i].id, simulated: true, group_results: [{ group_id: demoId(900), ok: true, state: 'published' }], comments: [{ id: `demo-comment-${i}`, from: { name: 'נועה · הדגמה' }, message: 'אפשר לקבל פרטים נוספים?' }] } }));
+  tables.campaign_activity_queue = tables.campaign_logs.flatMap(post => groups.map((group,i) => ({ id: `${post.id}:job:${i}`, user_id: owner, workspace_owner_id: owner, status: i === 2 ? 'processing' : 'completed', publication_status: i === 2 ? 'publishing' : 'published', last_error: null, scheduled_for: now, 'payload->>campaign_log_id': post.id, payload: { campaign_log_id: post.id }, group_url: `https://facebook.com/groups/demo-${i}`, group_name: group.name })));
   tables.fb_user_groups = groups.map(g => ({ workspace_owner_id: owner, group_id: g.id, group_name: g.name, group_icon: null, member_count: g.member_count }));
   tables.community_group_messages = messages.slice(0, 4).map((m, i) => ({ ...m, group_id: groups[0].id, sender_id: i % 2 ? owner : leads[0].id, sender_name: i % 2 ? 'ריטה' : 'נועה · הדגמה' }));
   tables.community_chat_messages = messages.slice(0, 4).map((m, i) => ({ ...m, sender_id: i % 2 ? owner : leads[0].id, recipient_id: i % 2 ? leads[0].id : owner }));
@@ -75,7 +82,7 @@ export function createPublicWorkspaceData(requestedRole: DemoType, platformMode:
   if (platformMode === 'brokers_only') {
     ledger.forEach((row, i) => Object.assign(row, { type: 'charge', amount_ils: -[2, 3, 5, 1, 4][i], amount: -[2, 3, 5, 1, 4][i], note: ['קמפיין לדוגמה', 'הודעת וואטסאפ לדוגמה', 'שיחת ריטה לדוגמה', 'הודעת SMS לדוגמה', 'הכנת תוכן לדוגמה'][i] }));
   }
-  projects.forEach(p => { Object.assign(p, { price_from: 2200000, available_units: 4, project_stage: 'construction', deal_type: 'sale' }); p.apartments.forEach(unit => Object.assign(unit, { sqm: unit.area_sqm, size_sqm: unit.area_sqm })); });
+  projects.forEach((p,i) => { Object.assign(p, { photos: demoPropertyPhotos(i), images: demoPropertyPhotos(i), price_from: 2200000, available_units: 4, project_stage: 'construction', deal_type: 'sale' }); p.apartments.forEach((unit,j) => Object.assign(unit, { photos: demoPropertyPhotos(i+j), sqm: unit.area_sqm, size_sqm: unit.area_sqm })); });
   return { role, platformMode, owner, name, user, profile, workspaces: platformMode === 'brokers_only' ? workspaces.filter(w => w.is_self) : workspaces, roles: platformMode === 'brokers_only' ? ['agent'] : demoRoles[role], tables, listings, leads, developers, projects, groups, ledger };
 }
 

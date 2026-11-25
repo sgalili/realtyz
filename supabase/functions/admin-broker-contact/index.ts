@@ -179,16 +179,10 @@ Deno.serve(async req => {
       rows.push(...(data ?? []));
       if ((data?.length ?? 0) < 500) break;
     }
-    const eligible = [];
-    for (let i = 0; i < rows.length; i += 10) {
-      const part = rows.slice(i, i + 10);
-      const results = await Promise.all(part.map(row => admin.auth.admin.getUserById(row.user_id)));
-      for (let j = 0; j < part.length; j++) {
-        const { data, error } = results[j];
-        if (error) return json({ error: 'בדיקת החשבונות נכשלה' }, 500);
-        if (data.user && pendingFirstInvitation(part[j], data.user.last_sign_in_at ?? null)) eligible.push(part[j]);
-      }
-    }
+    const { data: pendingIds, error: pendingError } = await admin.rpc('pending_import_account_ids');
+    if (pendingError) return json({ error: 'בדיקת החשבונות נכשלה' }, 503);
+    const pendingSet = new Set(pendingIds ?? []);
+    const eligible = rows.filter(row => pendingSet.has(row.user_id));
     const ids = eligible.map(r => r.user_id);
     if (!ids.length) return json({ brokers: [] });
     // Large id lists overflow the request URL, so `in` filters are read in chunks.

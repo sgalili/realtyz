@@ -26,6 +26,12 @@ describe('isolated registered-screen simulation', () => {
     expect(store.projects).toHaveLength(4);
     expect(store.projects.every(project=>store.developers.some(d=>d.id===project.developer_id)&&project.apartments.length===4)).toBe(true);
   });
+  it('supplies eight already-public photos per synthetic apartment and campaign', () => {
+    const store = createPublicWorkspaceData('broker');
+    expect(store.listings.every(row => row.photos.length === 8)).toBe(true);
+    expect(store.tables.campaign_logs?.every(row => row.media_urls.length === 8)).toBe(true);
+    expect(store.tables.platform_settings?.[0]?.enable_ai_autopilot).toBe(true);
+  });
   it('keeps sample tasks read-only and does not grant administrative or payment access', async () => {
     const store=createPublicWorkspaceData('broker');
     const id=store.tables.scheduled_items[0].id;

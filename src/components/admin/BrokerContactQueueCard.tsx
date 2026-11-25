@@ -202,8 +202,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
         </div>
         {/* Notes and account deletion sit at the far edge of the card, not beside the name. */}
         <div className="flex shrink-0 items-center"><AdminAccountNotes userId={b.user_id} name={b.full_name} /><Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-destructive" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button></div>
-        {/* Office first, city below it; the city lines up with the full name above (shield 16 + gap 4 + avatar 36 + gap 8). */}
-        {!b.is_developer && <div data-broker-row="office" className="flex w-full min-w-0 flex-col items-start gap-y-0.5"><OfficeNameField b={b} />{b.city && <span className="min-w-0 break-words text-sm text-muted-foreground sm:text-base" style={{ marginInlineStart: b.avatar_url ? 64 : 20 }}>{b.city}</span>}</div>}
+        {!b.is_developer && <div data-broker-row="office" className="flex w-full min-w-0 items-center gap-2"><div className="min-w-0 flex-1"><OfficeNameField b={b} /></div>{b.city && <span className="shrink-0 text-sm text-muted-foreground sm:text-base">{b.city}</span>}</div>}
       </div>
       <div data-broker-row="contacts" className={b.is_developer ? "flex max-w-full flex-wrap items-center gap-0" : "flex min-w-0 max-w-full flex-nowrap items-center gap-x-1 gap-y-0"}>
         {phoneControls}
@@ -270,7 +269,7 @@ function SendHistory({ search }: { search: ImportSearch }) {
   const q = useSendHistoryRows();
   const gate = useAdminGate();
   const [prioritySort, setPrioritySort] = useState<DiscoverySortMode>('off');
-  const scanner = useQuery({ queryKey: ['broker-wa-scanner', gate.uid], enabled: gate.enabled, retry: false, queryFn: () => scannerCall({ action: 'status' }), refetchInterval: 15000 });
+  const scanner = useQuery({ queryKey: ['broker-wa-scanner', gate.uid], enabled: gate.enabled, retry: false, staleTime: 15000, queryFn: () => scannerCall({ action: 'status' }), refetchInterval: 30000 });
   const items = threadInvitationHistory(q.data?.items ?? []);
   const ownerIds = Array.from(new Set(items.map(i => i.user_id))).sort();
   const contacts = useQuery({ queryKey: ['marketing-contacts', ownerIds.join(',')], enabled: ownerIds.length > 0, queryFn: async () => {
@@ -363,7 +362,7 @@ export function ImportHistory({ search = emptyImportSearch }: { search?: ImportS
     finally { setOpening(null); }
   };
   const q = useImportHistoryRows();
-  useEffect(() => { if (progress?.[0]?.status !== 'running') return; const timer = setInterval(() => void q.refetch(), 4000); return () => clearInterval(timer); }, [progress?.[0]?.status, q.refetch]);
+  useEffect(() => { if (progress?.[0]?.status !== 'running') return; const timer = setInterval(() => void q.refetch(), 30000); return () => clearInterval(timer); }, [progress?.[0]?.status, q.refetch]);
   const [kind, setKind] = useState<'broker' | 'developer'>(() => readSuperAdminViewState().importKind ?? 'broker');
   useEffect(() => saveSuperAdminViewState({ importKind: kind }), [kind]);
   const allImports = q.data?.items ?? [];
@@ -393,7 +392,7 @@ export function ImportHistory({ search = emptyImportSearch }: { search?: ImportS
 /** Silently imported accounts awaiting their first successful invitation. */
 export function usePendingInvitations() {
   const gate = useAdminGate();
-  return useQuery({ queryKey: ['broker-contact-queue', gate.uid], enabled: gate.enabled, queryFn: () => invoke<{ brokers: ContactBroker[] }>('admin-broker-contact', { action: 'list' }), refetchOnWindowFocus: true, refetchInterval: 30000 });
+  return useQuery({ queryKey: ['broker-contact-queue', gate.uid], enabled: gate.enabled, staleTime: 30000, queryFn: () => invoke<{ brokers: ContactBroker[] }>('admin-broker-contact', { action: 'list' }), refetchOnWindowFocus: true, refetchInterval: 60000 });
 }
 
 function PendingInvitations({ search }: { search: ImportSearch }) {
@@ -401,7 +400,7 @@ function PendingInvitations({ search }: { search: ImportSearch }) {
   const all = newestImportsFirst(q.data?.brokers ?? []);
   const gate = useAdminGate();
   const [prioritySort, setPrioritySort] = useState<DiscoverySortMode>('off');
-  const scanner = useQuery({ queryKey: ['broker-wa-scanner', gate.uid], enabled: gate.enabled, retry: false, queryFn: () => scannerCall({ action: 'status' }), refetchInterval: 15000 });
+  const scanner = useQuery({ queryKey: ['broker-wa-scanner', gate.uid], enabled: gate.enabled, retry: false, staleTime: 15000, queryFn: () => scannerCall({ action: 'status' }), refetchInterval: 30000 });
   const [group, setGroup] = useState<RecipientGroup>(() => readSuperAdminViewState().pendingGroup ?? 'broker');
   useEffect(() => saveSuperAdminViewState({ pendingGroup: group }), [group]);
   const devIds = all.filter(b => b.is_developer).map(b => b.user_id);
@@ -417,7 +416,7 @@ function PendingInvitations({ search }: { search: ImportSearch }) {
   return <div className="space-y-4">
     {/* The scrollport has 20px top padding and the primary band is 76px high. A 56px
         offset therefore joins this row to it, with an opaque background over passing cards. */}
-    <div data-import-secondary-tabs className="sticky top-[36px] z-20 -mx-[15px] bg-background px-[15px]">
+    <div data-import-secondary-tabs className="bg-background">
       <Tabs value={group} onValueChange={v => setGroup(v as RecipientGroup)} dir="rtl"><TabsList secondary className="grid w-full grid-cols-3">
         <TabsTrigger value="broker" className="px-1">מתווכים ({count('broker')})</TabsTrigger><TabsTrigger value="developer" className="px-1">יזמים ({count('developer')})</TabsTrigger><TabsTrigger value="marketing" className="px-1">חברות שיווק ({count('marketing')})</TabsTrigger>
       </TabsList></Tabs>

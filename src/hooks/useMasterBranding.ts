@@ -14,19 +14,15 @@ export function useMasterBranding() {
       if (error) throw error;
       return data;
     },
-    staleTime: 0,
-    refetchInterval: 30_000,
+    staleTime: 300_000,
+    refetchInterval: 300_000,
     refetchOnWindowFocus: true,
   });
   useEffect(() => {
     const refresh = () => { void client.invalidateQueries({ queryKey: MASTER_BRANDING_KEY }); };
-    const channel = supabase.channel('master-office-branding')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_branding' }, refresh)
-      .subscribe();
     window.addEventListener(BRANDING_UPDATED_EVENT, refresh);
     return () => {
       window.removeEventListener(BRANDING_UPDATED_EVENT, refresh);
-      void supabase.removeChannel(channel);
     };
   }, [client]);
   return { ...query, name: query.data?.agency_name || 'TORAFF', logo: query.data?.landscape_logo_url || query.data?.logo_url || null };

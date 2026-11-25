@@ -335,16 +335,16 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
             <SidebarGroupContent
               role="button"
               tabIndex={0}
-              title="פרופיל ציבורי"
+              title={brokersOnly ? 'הגדרות המשתמש' : 'פרופיל ציבורי'}
               onClick={() => {
                 closeSidebar();
-                navigate(`/broker/${user.id}`);
+                navigate(brokersOnly ? '/profile' : `/broker/${user.id}`);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   closeSidebar();
-                  navigate(`/broker/${user.id}`);
+                  navigate(brokersOnly ? '/profile' : `/broker/${user.id}`);
                 }
               }}
               className="cursor-pointer px-3 py-3 transition-colors hover:bg-slate-50"

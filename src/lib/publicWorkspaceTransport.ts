@@ -8,6 +8,11 @@ import { isDemoWindowUrl } from './brokerDemoPolicy';
 const denied = (notify = false) => { if (notify) notifyDemoReadOnly(); return { data: null, error: { message: DEMO_READ_ONLY, code: 'simulation_only' }, status: 403 }; };
 const result = (data: unknown, count?: number) => ({ data, error: null, count: count ?? null, status: 200 });
 export function simulationQuery(store: PublicWorkspaceData, table: string) {
+  if (table === 'messages' || table === 'campaign_logs') {
+    const step = Math.floor((Date.now() - Date.parse(store.user.created_at) - 30 * 86400000) / 15000);
+    if (table === 'campaign_logs') store.tables[table] = (store.tables[table] ?? []).map((post,i) => ({ ...post, view_count: 620 + i*160 + Math.max(0,step)*7, like_count: 34+i*5+Math.max(0,step), total_clicks: 120+i*30+Math.max(0,step)*2 }));
+    if (table === 'messages' && step > 0) store.tables.messages = (store.tables.messages ?? []).map((m,i) => ({ ...m, content: i % 2 ? ['בדקתי התאמה. הדירה כוללת מרפסת וחניה. מתי נוח לתאם ביקור?', 'נשמע מתאים. אעביר למתווך את התקציב והזמן שביקשתם.', 'רשמתי את הבקשה. המתווך יחזור עם פרטי הביקור.'][step % 3] : ['נשמח להגיע אחר הצהריים. יש חניה בבניין?', 'התקציב שלנו 2.8 מיליון. אפשר לתאם ביקור השבוע?', 'תודה ריטה, עדיף לנו ביום חמישי.'][step % 3], created_at: new Date(Date.now() - (i % 2 ? 0 : 60000)).toISOString() }));
+  }
   let rows = [...(store.tables[table] ?? [])]; let single = false; let head = false;
   let mutation: { kind: string; value?: DemoRow | DemoRow[] } | null = null;
   const target: Record<string, any> = {};
@@ -62,6 +67,7 @@ export function simulationRpc(store: PublicWorkspaceData, name: string, args: De
     partner_terms_status: true, has_partner_consent: true, get_partner_consent: true,
     partner_can_view_closing: store.role === 'broker', can_view_closing_prices: store.role === 'broker',
     get_broker_entitlement: { eligible: store.role === 'broker', verified: store.role === 'broker', license_verified: store.role === 'broker', is_eligible: store.role === 'broker', can_view_closing: store.role === 'broker', status: 'verified' },
+    get_group_posting_progress: (args._campaign_log_ids ?? []).map((id: string) => ({ campaign_log_id: id, total: 3, completed: 2, pending: 0, processing: 1, stalled: 0, failed: 0 })),
   };
   if (Object.prototype.hasOwnProperty.call(rpc, name)) return result(rpc[name]);
   if (/(^|_)(send|save|update|insert|delete|create|publish|approve|charge|cancel|set|add|accept|join|remove)(_|$)/.test(name)) return denied(true);
@@ -72,6 +78,7 @@ export function simulationRpc(store: PublicWorkspaceData, name: string, args: De
 export function simulationFunction(store: PublicWorkspaceData, name: string, options?: DemoRow) {
   const endpoint = name.split('?')[0];
   if (endpoint === 'public-listings-board') return result({ properties: store.listings, listings: store.listings, total: store.listings.length, has_more: false, price_range: { min: 6500, max: 3075000 } });
+  if (endpoint === 'public-listing-view') { const id = new URLSearchParams(name.split('?')[1] ?? '').get('id'); const property = store.listings.find(l => l.id === id || l.slug === id); return result(property ? { property, attribution: (property as DemoRow)['attribution'] } : { property: null }); }
   if (endpoint === 'ai-agent') { const text = String(options?.body?.message ?? options?.body?.prompt ?? ''); return result({ reply: /תקציב|מחיר/.test(text) ? 'בדוגמה יש דירות בטווח 2.4 עד 3 מיליון שקלים. באיזו עיר מחפשים וכמה חדרים נדרשים?' : 'אני ריטה. אפשר להדגים התאמת נכסים, הכנת פוסט וסינון פנייה. באיזו עיר מחפשים ומה התקציב?', message: 'אני ריטה. אשמח לעזור עם הנכסים והפניות בהדגמה.', actions: [] }); }
   if (endpoint === 'executive-summary') return result({ summary: 'ריטה סיננה פניות חדשות, תואמו ביקורים ונוספו שיתופי פעולה בהדגמה.', new_leads: 8, active_listings: 6 });
   if (endpoint === 'neighborhood-perks') return result({ ok: true, area_perks: null });
@@ -106,7 +113,7 @@ export function installPublicWorkspaceTransport(role: DemoType, platformMode: Pl
     const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
     if (url.origin === location.origin && /^(GET|HEAD)$/i.test(method) && !url.pathname.includes('/functions/') && !url.pathname.includes('/rest/')) return saved.fetch(input, init);
     const fn = url.pathname.match(/\/functions\/v1\/(.+)/)?.[1];
-    const answer = fn ? simulationFunction(store, fn) : denied(!/^(GET|HEAD)$/i.test(method));
+    const answer = fn ? simulationFunction(store, `${fn}${url.search}`) : denied(!/^(GET|HEAD)$/i.test(method));
     return new Response(JSON.stringify(answer.data ?? answer), { status: answer.error ? 403 : 200, headers: { 'content-type': 'application/json' } });
   };
   window.open = (url, target, features) => { if (url && isDemoWindowUrl(String(url), location.origin)) return saved.open(url, target, features); notifyDemoReadOnly(); return null; };

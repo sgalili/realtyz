@@ -13,6 +13,9 @@ import { ScannerActionConfirm } from './ScannerActionConfirm';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import type { DiscoveryRowState, DiscoverySortMode } from '@/lib/brokerDiscoveryPriority';
 import { scannerDelayReason, scannerFailureReason, scannerWorkerState, workerStateLabels } from '@/lib/brokerScannerState';
+import { BrokerGenderSort } from './BrokerGenderSort';
+import { useAdminImportJobs } from '@/hooks/useAdminImportJobs';
+import { importEntityProgress, pendingRedLicenses, type WaitingLicense } from '@/lib/brokerAdminMetrics';
 
 export type ScannerSettings = { scanner_phone?: string | null; enabled: boolean; paused: boolean; pause_reason: string | null; daily_cap: number; jitter_min_seconds: number; jitter_max_seconds: number; start_hour: number; end_hour: number; error_threshold: number; max_outstanding?: number; next_send_at?: string | null; connected?: boolean; webhook_ready?: boolean; worker_seen_at?: string | null; worker_rejected_at?: string | null; config_checked_at?: string | null };
 export type ScannerStatus = { overview?: { done: number; total: number; rows: DiscoveryRowState[] }; batch_progress?: { done: number; total: number } | null; settings: ScannerSettings; credentials_ready: boolean; used_today: number; manual_replies: number; queue_ahead?: number; outstanding?: boolean; outstanding_until?: string | null; job?: { id: string; status: string; last_error: string | null; reply_deadline?: string | null; next_source_at?: string | null; lease_until?: string | null; send_reserved_at?: string | null } | null; contact?: { whatsapp_phone: string } | null };
@@ -24,7 +27,11 @@ const reasons: Record<string, string> = { not_configured: 'טרם הוגדר', c
 export function BrokerScannerPanel({ prioritySort = 'off', onPrioritySort }: { prioritySort?: DiscoverySortMode; onPrioritySort?: () => void }) {
   const qc = useQueryClient();
   const gate = useSuperAdminGate();
-  const status = useQuery({ queryKey: ['broker-wa-scanner', gate.uid], enabled: gate.enabled, retry: false, queryFn: () => scannerCall({ action: 'status' }), refetchInterval: 15000 });
+  const status = useQuery({ queryKey: ['broker-wa-scanner', gate.uid], enabled: gate.enabled, retry: false, staleTime: 15000, queryFn: () => scannerCall({ action: 'status' }), refetchInterval: 30000 });
+  const waiting = useQuery({ queryKey: ['broker-contact-queue', gate.uid], enabled: gate.enabled, staleTime: 30000, queryFn: () => brokerWhatsAppRequest<{ brokers: WaitingLicense[] }>('admin-broker-contact', { action: 'list' }), refetchInterval: 60000 });
+  const imports = useAdminImportJobs();
+  const importProgress = importEntityProgress(imports.data);
+  const redCount = waiting.data ? pendingRedLicenses(waiting.data.brokers) : null;
   const s = status.data?.settings;
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState<'pause' | 'resume' | 'configure' | null>(null);
@@ -53,14 +60,16 @@ export function BrokerScannerPanel({ prioritySort = 'off', onPrioritySort }: { p
   // One control: active → pause; otherwise resume (which re-checks the connection before activating).
   const plugLabel = active ? 'מחובר וסורק · לחיצה להשהיה' : 'חיבור והפעלת הסריקה';
   return <section dir="rtl" className="space-y-2 rounded-md bg-muted/40 p-2" aria-label="קו סריקת WhatsApp ייעודי">
-    <div className="flex items-center gap-1 text-sm">
+    <div className="flex flex-wrap items-center gap-1 text-sm">
       <div className="flex shrink-0 items-center gap-0.5 [&>button]:h-8 [&>button]:w-8">
         <Button size="icon" variant="ghost" aria-label={open ? 'כיווץ' : 'הרחבה'} aria-expanded={open} onClick={() => setOpen(o => !o)}><ChevronDown className={`h-4 w-4 ${open ? 'rotate-180' : ''}`} /></Button>
         <Button size="icon" variant="ghost" aria-label={plugLabel} title={`${plugLabel} · ${stateText}`} disabled={act.isPending} className={active ? 'text-lead-whatsapp' : 'text-muted-foreground'} onClick={() => setConfirm(active ? 'pause' : 'resume')}>{act.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : active ? <Plug className="h-4 w-4" /> : <Unplug className="h-4 w-4" />}</Button>
       </div>
+      <BrokerGenderSort />
       <div className="ms-auto flex shrink-0 items-center gap-2">
         <span className="inline-flex items-center [&>button]:h-8 [&>button]:w-8"><BulkBrokerWhatsAppScan /><span className="tabular-nums text-xs text-muted-foreground" dir="ltr" title="וואטסאפ שהושלמו מתוך התור">{status.data?.overview?.done ?? 0}/{status.data?.overview?.total ?? 0}</span></span>
-        <span className="inline-flex items-center [&>button]:h-8 [&>button]:w-8"><BulkBrokerRegistryRecheck onProgress={setRegistryResult} /><span className="tabular-nums text-xs text-muted-foreground" dir="ltr" title="אימות רישיונות">{registryResult.match(/\d+\/\d+/)?.[0] ?? '0/0'}</span></span>
+        <span className="inline-flex items-center [&>button]:h-8 [&>button]:w-8"><BulkBrokerRegistryRecheck onProgress={setRegistryResult} /><span role="status" className="tabular-nums text-xs text-muted-foreground" dir="ltr" title="ממתינים לאימות רישיון, מגן אדום">{redCount ?? '…'}</span></span>
+        {importProgress && <span role="status" dir="ltr" className="text-xs tabular-nums text-muted-foreground" title="מתווכים ויזמים שעובדו מתוך תהליך הייבוא">{importProgress.done}/{importProgress.total}</span>}
         {onPrioritySort && <Button size="icon" variant="ghost" className={`h-8 w-8 ${prioritySort !== 'off' ? 'text-primary' : 'text-muted-foreground'}`} aria-label={prioritySort === 'progress' ? 'מיון: עם וואטסאפ קודם' : 'מיון: בתהליך קודם'} title={prioritySort === 'progress' ? 'בתהליך לפי זמן, נמצאו, ממתינים. לחיצה: נמצאו קודם' : prioritySort === 'found' ? 'נמצאו, בתהליך, ממתינים. לחיצה: בתהליך קודם' : 'בתהליך לפי זמן, נמצאו, ממתינים'} aria-pressed={prioritySort !== 'off'} onClick={onPrioritySort}><ArrowDownWideNarrow className="h-4 w-4" /></Button>}
       </div>
     </div>

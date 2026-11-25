@@ -304,7 +304,8 @@ const OmnichannelInbox = () => {
   const { data: dbVoters } = useQuery({
     queryKey: ['inbox-leads', workspaceScope],
     enabled: !isDemoMode && !!workspaceScope,
-    refetchInterval: 1000,
+    staleTime: 30000,
+    refetchInterval: 60000,
     queryFn: async () => {
       const { data } = await supabase.from('leads').select('*').eq('workspace_owner_id', workspaceScope!).order('last_interaction_at', { ascending: false });
       return data ?? [];
@@ -314,7 +315,8 @@ const OmnichannelInbox = () => {
   const { data: dbLastMessages } = useQuery({
     queryKey: ['last-messages', workspaceScope],
     enabled: !isDemoMode && !!workspaceScope,
-    refetchInterval: 3000,
+    staleTime: 15000,
+    refetchInterval: 30000,
     queryFn: async () => {
       const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: false });
       const map = new Map<string, NonNullable<typeof data>[number]>();
@@ -331,7 +333,8 @@ const OmnichannelInbox = () => {
   const { data: leadChannels } = useQuery({
     queryKey: ['lead-channels', workspaceScope],
     enabled: !isDemoMode && !!workspaceScope,
-    refetchInterval: 15000,
+    staleTime: 30000,
+    refetchInterval: 60000,
     queryFn: async () => {
       const { data } = await supabase.from('messages').select('lead_id, channel, platform');
       const map = new Map<string, Set<string>>();
@@ -357,7 +360,8 @@ const OmnichannelInbox = () => {
   const { data: orphanThreads } = useQuery({
     queryKey: ['orphan-phone-threads', workspaceScope],
     enabled: !isDemoMode && !!workspaceScope,
-    refetchInterval: 3000,
+    staleTime: 15000,
+    refetchInterval: 30000,
     queryFn: async () => {
       const { data } = await supabase
         .from('messages')
@@ -574,6 +578,7 @@ const OmnichannelInbox = () => {
   };
 
   const openLeadPublicProfile = (id: string) => {
+    if (brokersOnly) { navigate('/profile'); return; }
     const realId = id.startsWith('phone:') ? threadGroups.get(id)?.ids[0] : id;
     if (!realId) { toast.error('אין פרופיל זמין לשיחה זו'); return; }
     navigate(`/lead-profile/${realId}`, { state: { returnTo: window.location.pathname + window.location.search, profileReturnLeadId: realId } });
@@ -582,7 +587,8 @@ const OmnichannelInbox = () => {
   const { data: dbChatMessages } = useQuery({
     queryKey: ['chat-messages', workspaceScope, selectedVoterId, selectedThread.ids.join(','), selectedThread.phones.join(',')],
     enabled: !!selectedVoterId && !isDemoMode && !!workspaceScope,
-    refetchInterval: 1500,
+    staleTime: 5000,
+    refetchInterval: 15000,
     queryFn: async () => {
       const out: any[] = [];
       if (selectedThread.ids.length > 0) {
@@ -1227,7 +1233,7 @@ const OmnichannelInbox = () => {
         </div>
 
         {/* Center panel - Chat Window */}
-        <div className={`${selectedVoterId ? 'flex' : 'hidden lg:flex'} min-w-0 flex-col overflow-hidden bg-whatsapp-chat lg:flex`}>
+        <div className={`${selectedVoterId ? 'flex' : 'hidden lg:flex'} min-h-0 min-w-0 flex-col overflow-hidden bg-background lg:flex`}>
           {!selectedVoterId ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
@@ -1238,9 +1244,9 @@ const OmnichannelInbox = () => {
           ) : (
             <>
               {/* Chat Header */}
-              <div data-chat-header className="min-h-16 border-b border-whatsapp-header/20 bg-whatsapp-header text-whatsapp-header-foreground flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 sm:px-4 shrink-0">
+              <div data-chat-header className="min-h-16 border-b border-border bg-card text-foreground flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 sm:px-4 shrink-0">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10 lg:hidden" onClick={() => setSelectedVoterId(null)}>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 lg:hidden" onClick={() => setSelectedVoterId(null)}>
                     <span className="text-xl leading-none scale-x-[-1]">›</span>
                   </Button>
                   <button
@@ -1260,8 +1266,8 @@ const OmnichannelInbox = () => {
                   const counts = new Map<string, number>();
                   for (const id of selectedThread.ids) for (const [channel, count] of leadChannelCounts.get(id) ?? []) counts.set(channel, (counts.get(channel) ?? 0) + count);
                   const channels = Array.from(counts).filter(([, count]) => count > 0);
-                  if (!channels.length) return null;
-                  return <div className="flex min-w-0 max-w-[48%] flex-wrap items-center justify-end gap-1" aria-label="ערוצי שיחה">{channels.map(([channel, count]) => <Button key={channel} variant="ghost" className={`h-8 gap-1 border-0 px-1 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10 hover:text-whatsapp-header-foreground ${channelVisible(channel, disabledChannels[selectedVoterId] ?? new Set()) ? '' : 'grayscale opacity-50'}`} aria-label={`${channel} (${count})`} aria-pressed={channelVisible(channel, disabledChannels[selectedVoterId] ?? new Set())} onClick={() => toggleCardChannel(selectedVoterId, channel)}><ChannelIcon channel={channel} /><span data-chat-preview-text>({count})</span></Button>)}</div>;
+                  if (channels.length <= 1) return null;
+                  return <div className="flex min-w-0 max-w-[48%] flex-wrap items-center justify-end gap-1" aria-label="ערוצי שיחה">{channels.map(([channel, count]) => <Button key={channel} variant="ghost" className={`h-8 gap-1 border-0 px-1 text-muted-foreground ${channelVisible(channel, disabledChannels[selectedVoterId] ?? new Set()) ? '' : 'grayscale opacity-50'}`} aria-label={`${channel} (${count})`} aria-pressed={channelVisible(channel, disabledChannels[selectedVoterId] ?? new Set())} onClick={() => toggleCardChannel(selectedVoterId, channel)}><ChannelIcon channel={channel} /><span data-chat-preview-text>({count})</span></Button>)}</div>;
                 })()}
                 <ChatHeaderActions>{leadActions(selectedVoterId)}</ChatHeaderActions>
 
@@ -1276,7 +1282,7 @@ const OmnichannelInbox = () => {
               )}
 
               {/* Messages */}
-              <ScrollArea className="min-w-0 flex-1 overflow-x-hidden p-2 sm:p-4 whatsapp-chat-bg">
+              <ScrollArea className="min-h-0 min-w-0 flex-1 overflow-x-hidden p-2 sm:p-4">
                 <div className="mx-auto w-full min-w-0 max-w-3xl space-y-2 overflow-x-hidden px-1 pb-3 sm:px-2">
                   {chatMessages?.length === 0 && (
                     <p className="rounded-lg bg-whatsapp-bubble-in/80 px-3 py-2 text-center text-sm text-muted-foreground shadow-xs">אין הודעות עדיין</p>
@@ -1291,7 +1297,7 @@ const OmnichannelInbox = () => {
                     const avatarNode = isAiMessage ? (
                       <RitaAvatar className="h-7 w-7 shrink-0" />
                     ) : isOutbound ? (
-                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 rounded-full p-0" aria-label="פתיחת הפרופיל שלי" onClick={() => { if (user) navigate(`/broker/${user.id}`); }}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 rounded-full p-0" aria-label="פתיחת הפרופיל שלי" onClick={() => { if (user) navigate(brokersOnly ? '/profile' : `/broker/${user.id}`); }}>
                       <VoterAvatar
                         fullName={agentProfile?.full_name ?? 'סוכן'}
                         profilePictureUrl={agentProfile?.avatar_url ?? null}
@@ -1310,7 +1316,7 @@ const OmnichannelInbox = () => {
                       </button>
                     );
                     const bubbleNode = (
-                      <div className={`relative flex flex-col min-w-0 max-w-[calc(100%-2.75rem)] gap-0 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word] rounded-lg px-3 py-2 shadow-xs sm:max-w-[72%] ${isOutbound ? 'bg-muted text-foreground rounded-ee-sm' : 'bg-primary text-primary-foreground rounded-es-sm'}`}>
+                      <div className={`relative flex flex-col min-w-0 max-w-[calc(100%-2.75rem)] gap-0 break-words [overflow-wrap:anywhere] [word-break:break-word] rounded-lg px-3 py-2 text-foreground sm:max-w-[72%] before:absolute before:bottom-2 before:h-2 before:w-2 before:rotate-45 ${isOutbound ? 'bg-primary/10 before:bg-primary/10 before:-left-1' : 'bg-muted before:bg-muted before:-right-1'}`}>
                         {msg.id === lastAiMessageId && selectedVoterId && (
                           <UndoLastAiMessage
                             messageId={msg.id as string}
@@ -1373,16 +1379,16 @@ const OmnichannelInbox = () => {
               </ScrollArea>
 
               {/* Input Area */}
-              <div className="border-t border-border/50 bg-whatsapp-footer p-2 sm:p-3">
+              <div data-chat-composer className="shrink-0 border-t border-border/50 bg-card p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-3">
                 {/* Autopilot pill — the switch sits on the right (RTL start) and
                     carries the robot icon inside its knob. */}
-                <div className="mb-2 flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-1.5 text-whatsapp-header shadow-xs">
+                <div className="mb-2 flex items-center gap-2 text-muted-foreground">
                   <Switch
                     checked={chatAutopilotOn}
                     disabled={!selectedVoterId}
                     title="טייס AI לשיחה זו"
                     aria-label="טייס AI לשיחה זו"
-                    className="group shrink-0 border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground"
+                    className="group shrink-0"
                     onCheckedChange={(v) => {
                       setChatAutopilot(v);
                       if (v) setManualTakeoverWarning(false);
@@ -1480,7 +1486,7 @@ const OmnichannelInbox = () => {
                         </button>
                       )}
                     </div>
-                    <Button onClick={handleSend} disabled={(!newMessage.trim() && !attachment) || sendMessage.isPending} size="icon" title="שלח" className="h-11 w-11 shrink-0 rounded-full bg-whatsapp-header text-whatsapp-header-foreground hover:bg-whatsapp-header/90">
+                    <Button onClick={handleSend} disabled={(!newMessage.trim() && !attachment) || sendMessage.isPending} size="icon" title="שלח" className="h-11 w-11 shrink-0 rounded-full">
                       <Send className="h-5 w-5" />
                     </Button>
                 </div>

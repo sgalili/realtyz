@@ -13,6 +13,7 @@ import { DirectionProvider } from '@radix-ui/react-direction';
 import { PlatformMetadata } from '@/components/PlatformMetadata';
 import { PublicWorkspaceProvider, InitialDemoWorkspaceChoice, publicWorkspaceRoute } from '@/components/demo/PublicWorkspaceProvider';
 import { installPublicWorkspaceTransport } from '@/lib/publicWorkspaceTransport';
+import type { RotatingMessage } from '@/lib/rotatingMessages';
 import { BrokerDemoRouteGate } from '@/components/demo/BrokerDemoRouteGate';
 import { InventoryComingSoonHost } from '@/components/InventoryCollection';
 import { CreditRateSync } from '@/hooks/useCreditRate';
@@ -78,16 +79,20 @@ function AppTree({ queryClient }: { queryClient: QueryClient }) {
   useSlowQueryToast(queryClient);
   const [route, setRoute] = React.useState(() => publicWorkspaceRoute(window.location.pathname));
   const [demoPlatformMode, setDemoPlatformMode] = React.useState<PlatformMode | null>(null);
+  const [demoGuestMessages, setDemoGuestMessages] = React.useState<RotatingMessage[]>([]);
   React.useEffect(() => {
     if (!route || demoPlatformMode) return;
     let alive = true;
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 10000);
-    void (demoSettingsFetch ?? window.fetch)(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/get_public_platform_settings`, {
+    const publicFetch = demoSettingsFetch ?? window.fetch;
+    const guestMessages = publicFetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rotating_messages?select=id,role_key,message_text,action_path,sort_order,is_active&role_key=eq.guest&is_active=eq.true&order=sort_order.asc&limit=30`, { headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY }, signal: controller.signal }).then(async r => r.ok ? await r.json() as RotatingMessage[] : []).catch(() => [] as RotatingMessage[]);
+    const modeRequest = publicFetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/get_public_platform_settings`, {
       method: 'POST', headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, 'Content-Type': 'application/json' },
       body: '{}', signal: controller.signal,
     }).then(async response => { if (!response.ok) throw new Error('mode_unavailable'); const rows = await response.json(); return rows?.[0]?.platform_mode === 'full_marketplace' ? 'full_marketplace' as const : 'brokers_only' as const; })
-      .catch(() => 'brokers_only' as const).then(mode => { if (alive) setDemoPlatformMode(mode); })
+      .catch(() => 'brokers_only' as const);
+    void Promise.all([modeRequest, guestMessages]).then(([mode,messages]) => { if (alive) { setDemoGuestMessages(messages); setDemoPlatformMode(mode); } })
       .finally(() => window.clearTimeout(timeout));
     return () => { alive = false; controller.abort(); window.clearTimeout(timeout); };
   }, [route?.base, demoPlatformMode]);
@@ -99,7 +104,7 @@ function AppTree({ queryClient }: { queryClient: QueryClient }) {
     return () => { window.removeEventListener('toraff:public-demo-role', roleSwitch); window.removeEventListener('popstate', sync); };
   }, [router]);
   const previousRuntime = React.useRef<ReturnType<typeof installPublicWorkspaceTransport> | null>(null);
-  const runtime = React.useMemo(() => { previousRuntime.current?.restore(); const next = route ? installPublicWorkspaceTransport(route.role, demoPlatformMode ?? 'brokers_only') : null; previousRuntime.current = next; return next; }, [route?.base, demoPlatformMode]);
+  const runtime = React.useMemo(() => { previousRuntime.current?.restore(); const next = route ? installPublicWorkspaceTransport(route.role, demoPlatformMode ?? 'brokers_only') : null; if (next && demoGuestMessages.length) next.store.tables.rotating_messages = demoGuestMessages; previousRuntime.current = next; return next; }, [route?.base, demoPlatformMode, demoGuestMessages]);
   const cache = React.useMemo(() => runtime ? new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 1000 } } }) : queryClient, [runtime, queryClient]);
   React.useEffect(() => () => { runtime?.restore(); if (runtime) cache.clear(); }, [runtime, cache]);
   if (route && !demoPlatformMode) return <div className="flex min-h-screen items-center justify-center"><RealtyzLoader size="lg" /></div>;

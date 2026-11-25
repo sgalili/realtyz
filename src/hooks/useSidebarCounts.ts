@@ -17,7 +17,7 @@ export function useSidebarCounts() {
     enabled: !!user && !!workspaceOwnerId,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
-    refetchInterval: 30000,
+    refetchInterval: 120000,
     queryFn: async () => {
       // One workspace-authorized server aggregation instead of nine client reads.
       const empty = { leads: 0, listings: 0, chats: 0, deals: 0, campaigns: 0, tasks: 0, sharedListings: 0, invitations: 0, projects: 0 };

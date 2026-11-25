@@ -23,7 +23,7 @@ export function Yad2MoreButton({ ownerId }: { ownerId: string | null | undefined
   return <div className="flex justify-center pt-4 pb-[calc(var(--app-footer-space,3rem)+1rem)]">
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="h-12 gap-2 rounded-md bg-[hsl(142_70%_36%)] px-6 text-base font-semibold text-[hsl(0_0%_100%)] shadow-none hover:bg-[hsl(142_70%_31%)]"><Plus className="h-5 w-5" strokeWidth={2.5} />הוסף נכסים{more && data ? <span dir="ltr" className="tabular-nums opacity-80">{importRatioLabel(data.imported, data.total)}</span> : null}</Button>
+        <Button className="h-12 gap-2 rounded-md bg-success px-6 text-base font-semibold text-success-foreground shadow-none hover:bg-success/90"><Plus className="h-5 w-5" strokeWidth={2.5} />הוסף נכסים{more && data ? <span dir="ltr" className="tabular-nums opacity-80">{importRatioLabel(data.imported, data.total)}</span> : null}</Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="center">
         <DropdownMenuItem className="gap-2" onClick={() => dispatch('yad2')}><Link2 className="h-4 w-4" />ייבוא מיד2</DropdownMenuItem>
