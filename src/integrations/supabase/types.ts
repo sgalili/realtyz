@@ -97,6 +97,27 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_account_notes: {
+        Row: {
+          note: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          note?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          note?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_approved_broker_licenses: {
         Row: {
           approved_at: string

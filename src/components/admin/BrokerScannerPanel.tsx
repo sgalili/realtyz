@@ -53,16 +53,15 @@ export function BrokerScannerPanel({ prioritySort = 'off', onPrioritySort }: { p
   // One control: active → pause; otherwise resume (which re-checks the connection before activating).
   const plugLabel = active ? 'מחובר וסורק · לחיצה להשהיה' : 'חיבור והפעלת הסריקה';
   return <section dir="rtl" className="space-y-2 rounded-md bg-muted/40 p-2" aria-label="קו סריקת WhatsApp ייעודי">
-    <div className="flex items-center gap-2 text-sm">
-      <Button variant="ghost" className="h-auto min-w-0 flex-1 gap-1 p-0 font-semibold" aria-expanded={open} onClick={() => setOpen(o => !o)}><span className="truncate">סריקת מספרי וואטסאפ</span><ChevronDown className={`h-4 w-4 shrink-0 ${open ? 'rotate-180' : ''}`} /></Button>
-      <span className={`truncate text-xs ${active ? 'text-lead-whatsapp' : 'text-muted-foreground'}`}>{stateText}</span>
-      <div className="ms-auto flex shrink-0 items-center gap-0.5 [&>button]:h-8 [&>button]:w-8">
-        <span className="px-1 tabular-nums text-xs text-muted-foreground" dir="ltr" title="וואטסאפ שהושלמו מתוך התור">{status.data?.overview?.done ?? 0}/{status.data?.overview?.total ?? 0}</span>
-        <Button size="icon" variant="ghost" aria-label={plugLabel} title={plugLabel} disabled={act.isPending} className={active ? 'text-lead-whatsapp' : 'text-muted-foreground'} onClick={() => setConfirm(active ? 'pause' : 'resume')}>{act.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : active ? <Plug className="h-4 w-4" /> : <Unplug className="h-4 w-4" />}</Button>
-        <BulkBrokerWhatsAppScan />
-        <span className="px-1 tabular-nums text-xs text-muted-foreground" dir="ltr" title="אימות רישיונות">{registryResult.match(/\d+\/\d+/)?.[0] ?? '0/0'}</span>
-        <BulkBrokerRegistryRecheck onProgress={setRegistryResult} />
-        {onPrioritySort && <Button size="icon" variant="ghost" aria-label={prioritySort === 'progress' ? 'מיון: עם וואטסאפ קודם' : 'מיון: בתהליך קודם'} title={prioritySort === 'progress' ? 'בתהליך לפי זמן, נמצאו, ממתינים. לחיצה: נמצאו קודם' : prioritySort === 'found' ? 'נמצאו, בתהליך, ממתינים. לחיצה: בתהליך קודם' : 'בתהליך לפי זמן, נמצאו, ממתינים'} aria-pressed={prioritySort !== 'off'} className={prioritySort !== 'off' ? 'text-primary' : 'text-muted-foreground'} onClick={onPrioritySort}><ArrowDownWideNarrow className="h-4 w-4" /></Button>}
+    <div className="flex items-center gap-1 text-sm">
+      <div className="flex shrink-0 items-center gap-0.5 [&>button]:h-8 [&>button]:w-8">
+        <Button size="icon" variant="ghost" aria-label={open ? 'כיווץ' : 'הרחבה'} aria-expanded={open} onClick={() => setOpen(o => !o)}><ChevronDown className={`h-4 w-4 ${open ? 'rotate-180' : ''}`} /></Button>
+        <Button size="icon" variant="ghost" aria-label={plugLabel} title={`${plugLabel} · ${stateText}`} disabled={act.isPending} className={active ? 'text-lead-whatsapp' : 'text-muted-foreground'} onClick={() => setConfirm(active ? 'pause' : 'resume')}>{act.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : active ? <Plug className="h-4 w-4" /> : <Unplug className="h-4 w-4" />}</Button>
+      </div>
+      <div className="ms-auto flex shrink-0 items-center gap-2">
+        <span className="inline-flex items-center [&>button]:h-8 [&>button]:w-8"><BulkBrokerWhatsAppScan /><span className="tabular-nums text-xs text-muted-foreground" dir="ltr" title="וואטסאפ שהושלמו מתוך התור">{status.data?.overview?.done ?? 0}/{status.data?.overview?.total ?? 0}</span></span>
+        <span className="inline-flex items-center [&>button]:h-8 [&>button]:w-8"><BulkBrokerRegistryRecheck onProgress={setRegistryResult} /><span className="tabular-nums text-xs text-muted-foreground" dir="ltr" title="אימות רישיונות">{registryResult.match(/\d+\/\d+/)?.[0] ?? '0/0'}</span></span>
+        {onPrioritySort && <Button size="icon" variant="ghost" className={`h-8 w-8 ${prioritySort !== 'off' ? 'text-primary' : 'text-muted-foreground'}`} aria-label={prioritySort === 'progress' ? 'מיון: עם וואטסאפ קודם' : 'מיון: בתהליך קודם'} title={prioritySort === 'progress' ? 'בתהליך לפי זמן, נמצאו, ממתינים. לחיצה: נמצאו קודם' : prioritySort === 'found' ? 'נמצאו, בתהליך, ממתינים. לחיצה: בתהליך קודם' : 'בתהליך לפי זמן, נמצאו, ממתינים'} aria-pressed={prioritySort !== 'off'} onClick={onPrioritySort}><ArrowDownWideNarrow className="h-4 w-4" /></Button>}
       </div>
     </div>
     {open && (!status.data?.credentials_ready || w !== 'connected') && <p className="text-xs text-destructive">{[!status.data?.credentials_ready && 'חסרים פרטי קו', w !== 'connected' && workerStateLabels[w]].filter(Boolean).join(' · ')}</p>}

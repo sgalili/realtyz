@@ -25,6 +25,7 @@ import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdm
 import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 import { BrokerWhatsAppContact } from './BrokerWhatsAppContact';
 import { BrokerNumberEditor } from './BrokerNumberEditor';
+import { AdminAccountNotes } from './AdminAccountNotes';
 import { sortDiscoveryPriority, nextDiscoverySort, type DiscoverySortMode } from '@/lib/brokerDiscoveryPriority';
 import { BrokerScannerPanel, scannerCall } from './BrokerScannerPanel';
 import { emptyImportSearch, matchesImportSearch, newestImportsFirst, type ImportSearch } from '@/lib/adminImportPresentation';
@@ -198,6 +199,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
           <span className="flex min-w-0 items-center gap-1 text-base sm:text-lg"><span className="min-w-0 break-words font-bold">{b.full_name || 'ללא שם'}</span>{!b.is_developer && regLicense && <span dir="ltr" className="shrink-0 whitespace-nowrap text-sm font-normal text-muted-foreground sm:text-base">{regLicense}</span>}{!b.is_developer && <span dir="ltr" title="יובאו / סה״כ ביד2" className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-normal tabular-nums text-muted-foreground sm:text-base">{importRatioLabel(b.drafts, b.yad2_total)}{b.importing && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary motion-reduce:animate-none" aria-label="הייבוא פעיל" />}</span>}</span>
         </button>
         {!b.is_developer && !hasSelectedGender && <div role="radiogroup" aria-label="מגדר המתווך" className="flex shrink-0">{([['male', 'גבר', '\u2642\uFE0E'], ['female', 'אישה', '\u2640\uFE0E']] as const).map(([g, label, icon]) => <Button key={g} type="button" size="icon" variant="ghost" role="radio" aria-checked={false} aria-label={label} title={label} className={`h-7 w-7 text-base ${g === 'male' ? 'text-gender-male' : 'text-gender-female'}`} disabled={setGender.isPending} onClick={() => setGender.mutate(g)}>{icon}</Button>)}</div>}
+        <div className="flex shrink-0 items-center"><AdminAccountNotes userId={b.user_id} name={b.full_name} /><Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-destructive" aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button></div>
         </div>
         {!b.is_developer && <div data-broker-row="office" className="flex w-full min-w-0 flex-wrap items-center justify-start gap-x-2 gap-y-0.5">{b.city && <span className="min-w-0 break-words text-sm text-muted-foreground sm:text-base">{b.city}</span>}<OfficeNameField b={b} /></div>}
       </div>
@@ -205,7 +207,6 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
         {phoneControls}
         {!b.is_developer && <BrokerWhatsAppContact brokerId={b.user_id} name={b.full_name} phone={b.whatsapp_phone} statusSlot={statusSlot} />}
         <EmailSendDialog b={b} contactPhone={marketing?.contact_phone} contactName={marketing?.contact_name} />
-        <Button size="icon" variant="ghost" className={`h-8 w-8 shrink-0 text-destructive ${b.is_developer ? '' : 'ms-auto'}`} aria-label={`מחיקת החשבון של ${b.full_name || 'ללא שם'}`} title="מחיקת החשבון" disabled={remove.isPending} onClick={() => setDeleting(true)}><Trash2 className="h-4 w-4" /></Button>
       </div>
       {!b.is_developer && <div ref={setStatusSlot} data-broker-row="status" className="-mt-1 empty:hidden" />}
     </div>
