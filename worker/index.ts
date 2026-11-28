@@ -210,8 +210,10 @@ export async function startImportWorker() {
     } finally {clearInterval(heartbeat);}
   };
   console.log('TORAFF import worker started');
+  // Idle backoff: each empty claim doubles the wait (5s → 10s → 20s → 30s cap); any job resets it.
+  let idle=0;
   try { while(!stopping&&!providerSuspended) {
-    try{const {job}=await api({action:'claim'});if(job)await runJob(job);else await delay(config.poll);}
+    try{const {job}=await api({action:'claim'});if(job){idle=0;await runJob(job);}else{await delay(Math.min(config.poll*2**idle,Math.max(config.poll,30000)));idle=Math.min(idle+1,6);}}
     catch(error){console.error(JSON.stringify({event:'worker_connection_error',error:(error as Error).message}));await delay(15000);}
   } } finally {process.removeListener('SIGTERM',stop);process.removeListener('SIGINT',stop);}
 }

@@ -84,10 +84,11 @@ export async function startBrokerWhatsAppWorker() {
     return html;
   };
   const lane = async () => {
+    let idle = 0; // Idle backoff: empty claims double the wait up to 60s; any job resets it.
     while (!stopping && !suspended) {
       try {
         const { job } = await api({ action: 'claim' });
-        if (job) await processJob(job, { api, source }); else await delay(config.poll);
+        if (job) { idle = 0; await processJob(job, { api, source }); } else { await delay(Math.min(config.poll * 2 ** idle, Math.max(config.poll, 60000))); idle = Math.min(idle + 1, 6); }
       } catch (error) {
         console.error(JSON.stringify({ event: 'broker_wa_error', status: error.status ?? null, error: String(error.message).replaceAll(config.secret,'[redacted]').replaceAll(config.token,'[redacted]').slice(0,500) }));
         if ([401,403].includes(error.status)) { stopping = true; break; }

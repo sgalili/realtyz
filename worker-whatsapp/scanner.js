@@ -21,11 +21,14 @@ export function createScannerApi(config, fetcher = fetch) {
 
 export async function runScanner(config, { source, isStopping }, api = createScannerApi(config)) {
   try { const u = new URL(config.api); console.log(JSON.stringify({ event: 'broker_wa_scanner_lane_started', api_host: u.host, path: u.pathname })); } catch { /* test doubles */ }
+  let idle = 0; // Idle backoff: consecutive empty source claims stretch the tick up to 30s.
   while (!isStopping()) {
+    let found = false;
     try {
       // Wake serial sending before a potentially slow source read; Cloud still enforces every safety gate.
       await api({ action: 'tick' });
       const { job } = await api({ action: 'claim_source' });
+      found = !!job;
       if (job) {
         let html;
         try { html = await source(job.source_url); }
@@ -43,6 +46,7 @@ export async function runScanner(config, { source, isStopping }, api = createSca
       if (denied) { await delay(300000); continue; }
     }
     if (isStopping()) break;
-    await delay(config.tick);
+    idle = found ? 0 : Math.min(idle + 1, 5);
+    await delay(Math.min(config.tick * 2 ** idle, Math.max(config.tick, 30000)));
   }
 }
