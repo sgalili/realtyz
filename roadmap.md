@@ -1,10 +1,18 @@
 # Roadmap
 
+## Rita end-to-end phone integration November 28
+- [ ] Require full name in every callback form and preserve existing lead qualification and consent rules.
+- [ ] Share server-resolved broker, office, lead and property context across inbound, outbound, test and demo calls.
+- [ ] Add authenticated Rita property search with broker-first and public-safe cross-broker fallback.
+- [ ] Verify ElevenLabs post-call signatures and synchronize transcripts, qualification, property matches and CRM leads idempotently.
+- [ ] Connect the confirmed Twilio voice number and ElevenLabs agent tools/webhook; verify without placing unapproved real calls.
+- [ ] Run focused tests and browser checks, then report exact URLs, mappings and any remaining provider setup.
+
 ## Voice agent settings November 28
 - [x] Account-owned authenticated settings save with readback, controlled drafts, bounded requests/finally and safe retry; no RLS or workspace ownership changes.
 - [x] Verified live ElevenLabs access and created/synchronized the requester's account agent; language/voice/greeting read back from provider after reload. Phone binding is explicit/confirmed and rejects another agent's number; availability remains a preference, not ring-first routing. Legacy Vapi and ElevenLabs endpoints retained.
 - [x] Real greeting save/reload and original greeting restoration verified; existing Sarah voice retained. Eight focused tests passed, mobile/desktop panel checked with no page errors.
-- [ ] Configure/import an ElevenLabs phone and ring-first routing, then approve a real call test; no phone supplied. Existing elevenlabs-call-webhook requires ELEVENLABS_WEBHOOK_SECRET, which is absent; post-call delivery remains unconfigured.
+- [x] Twilio voice number +97233826735 is connected and already assigned to the requester's ElevenLabs agent; live inbound routing exists. Post-call webhook secret and end-to-end CRM synchronization remain open in the Rita integration task above.
 
 ## Visitor content audit November 24
 - [x] Added broker-only About slides and shared FAQ page/dialog data; clarified broker pricing/terms/privacy and contact copy, hid guest public-publisher CTA, normalized guest signup intent. Broker /pricing now opens public credit information; marketplace wallet redirect, copy and actions retained. Visitor leaf metadata updated; root-only placeholder social images removed.
