@@ -127,3 +127,26 @@ export function concisePublicText(value: unknown, max = 320): string {
     .trim()
     .slice(0, max);
 }
+
+export function normalizeRitaConfigurationOrigin(value: string): string {
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    throw new Error('כתובת היישום אינה מאושרת לתצורת ריטה');
+  }
+  const hostname = url.hostname.toLowerCase();
+  const allowedHost = hostname === 'toraff.co.il'
+    || hostname === 'www.toraff.co.il'
+    || hostname.endsWith('.lovable.app')
+    || hostname.endsWith('.lovableproject.com');
+  const cleanUrl = url.protocol === 'https:'
+    && !url.username
+    && !url.password
+    && !url.port
+    && url.pathname === '/'
+    && !url.search
+    && !url.hash;
+  if (!allowedHost || !cleanUrl) throw new Error('כתובת היישום אינה מאושרת לתצורת ריטה');
+  return url.origin;
+}

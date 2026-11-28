@@ -1,6 +1,6 @@
 import type { RitaAdmin } from './ritaVoiceSecurity.server';
 import { getRitaRuntime } from './ritaVoiceSecurity.server';
-import { RITA_DEFAULT_VOICE } from './ritaVoice';
+import { normalizeRitaConfigurationOrigin, RITA_DEFAULT_VOICE } from './ritaVoice';
 import { RITA_IDENTITY_RULES } from '../../supabase/functions/_shared/masterAgentPromptText';
 
 async function elevenRequest<T>(key: string, path: string, method = 'GET', body?: unknown): Promise<T> {
@@ -74,8 +74,7 @@ function searchToolConfig(origin: string, secretId: string) {
 export async function configureRitaProvider(admin: RitaAdmin, key: string, origin: string, userId: string, options: { voiceId?: string; greeting?: string } = {}) {
   const runtime = await getRitaRuntime(admin);
   if (!runtime.tool_secret_id || !runtime.webhook_id) throw new Error('חסרה תצורת webhook מאובטחת לריטה');
-  const cleanOrigin = origin.replace(/\/$/, '');
-  if (!/^https:\/\/(toraff\.co\.il|www\.toraff\.co\.il|id-preview--[a-z0-9-]+\.lovable\.app)$/.test(cleanOrigin)) throw new Error('כתובת היישום אינה מאושרת לתצורת ריטה');
+  const cleanOrigin = normalizeRitaConfigurationOrigin(origin);
 
   const toolBody = { tool_config: searchToolConfig(cleanOrigin, runtime.tool_secret_id) };
   const tool = runtime.tool_id

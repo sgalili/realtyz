@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRitaDynamicVariables, firstNameFromFullName, isPlaceholderLeadName, normalizeRitaPhone, propertyContextFromListing, ritaOutboundInputSchema, ritaPropertySearchSchema } from './ritaVoice';
+import { buildRitaDynamicVariables, firstNameFromFullName, isPlaceholderLeadName, normalizeRitaConfigurationOrigin, normalizeRitaPhone, propertyContextFromListing, ritaOutboundInputSchema, ritaPropertySearchSchema } from './ritaVoice';
 
  describe('Rita voice contracts', () => {
   it('uses only the first token for lead_name and retains the full name separately', () => {
@@ -33,5 +33,26 @@ import { buildRitaDynamicVariables, firstNameFromFullName, isPlaceholderLeadName
     expect(isPlaceholderLeadName('פנייה טלפונית')).toBe(true);
     expect(isPlaceholderLeadName('Caller 1234')).toBe(true);
     expect(isPlaceholderLeadName('ישראל ישראלי')).toBe(false);
+  });
+  it('accepts production and normalizes a trailing slash', () => {
+    expect(normalizeRitaConfigurationOrigin('https://toraff.co.il/')).toBe('https://toraff.co.il');
+    expect(normalizeRitaConfigurationOrigin('https://www.toraff.co.il')).toBe('https://www.toraff.co.il');
+  });
+  it('accepts both Lovable preview domain families', () => {
+    expect(normalizeRitaConfigurationOrigin('https://project--e78b5aff-2ec6-4db9-b7ff-db4fe711619b-dev.lovable.app')).toBe('https://project--e78b5aff-2ec6-4db9-b7ff-db4fe711619b-dev.lovable.app');
+    expect(normalizeRitaConfigurationOrigin('https://id-preview--e78b5aff-2ec6-4db9-b7ff-db4fe711619b.lovable.app/')).toBe('https://id-preview--e78b5aff-2ec6-4db9-b7ff-db4fe711619b.lovable.app');
+    expect(normalizeRitaConfigurationOrigin('https://rita-preview.lovableproject.com')).toBe('https://rita-preview.lovableproject.com');
+  });
+  it('rejects lookalike domains, insecure URLs, credentials and paths', () => {
+    for (const origin of [
+      'https://toraff.co.il.evil.example',
+      'https://evil-lovable.app',
+      'https://lovable.app.evil.example',
+      'http://project--preview-dev.lovable.app',
+      'https://user@project--preview-dev.lovable.app',
+      'https://project--preview-dev.lovable.app/unexpected',
+    ]) {
+      expect(() => normalizeRitaConfigurationOrigin(origin)).toThrow('כתובת היישום אינה מאושרת לתצורת ריטה');
+    }
   });
 });

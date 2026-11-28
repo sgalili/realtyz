@@ -1,5 +1,10 @@
 # Roadmap
 
+## Rita preview origin synchronization November 28
+- [x] Accept HTTPS preview subdomains on lovable.app and lovableproject.com alongside toraff.co.il without allowing lookalike domains, credentials, paths or insecure URLs.
+- [x] Twenty-three focused tests and typecheck passed; a fresh security scan found no unresolved critical findings. No live provider sync was triggered during verification.
+- [ ] Publish the requested change and check the production callback once after deployment.
+
 ## Rita end-to-end phone integration November 28
 - [x] Required full name in the shared property callback form and server gate; existing lead qualification, consent and charging rules retained.
 - [x] Server-resolved broker, office, lead and property context for property callbacks, campaigns, lead picker, AI dialer, retries, inbound calls and the explicit confirmed test-call action. Legacy scheduled broker-onboarding Vapi flow retained for compatibility.
