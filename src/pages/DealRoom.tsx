@@ -48,6 +48,10 @@ import {
 } from '@/components/dealroom/PropertyMatchmakerDialog';
 import { AutomationActivityFeed } from '@/components/dealroom/AutomationActivityFeed';
 import { CallHistoryList } from '@/components/dealroom/CallHistoryList';
+import { RitaCallSummary, RitaLatestCallBadge } from '@/components/dealroom/RitaCallSummary';
+import { parseRitaCallSummary } from '@/lib/ritaCallSummary';
+import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { PriorityScoreBadge } from '@/components/dealroom/PriorityScoreBadge';
 import { DealRoomComments } from '@/components/dealroom/DealRoomComments';
 import { OutcomePicker, OutcomeBadge } from '@/components/dealroom/OutcomePicker';
@@ -208,6 +212,8 @@ export default function DealRoom() {
   const [pinnedProperty, setPinnedProperty] = useState<PropertyResult | null>(null);
   const [commissionLead, setCommissionLead] = useState<Lead | null>(null);
   const { settings } = usePlatformSettings();
+  const { user } = useAuth();
+  const workspaceId = useActiveWorkspaceOwnerId();
   const [sortMode, setSortMode] = useState<SortMode>('recent');
   // Hard pipeline separation — only one of {sale, rent} is visible at a time.
   // Persists in the URL so deep links + refresh keep the agent on the right view.
@@ -273,12 +279,12 @@ export default function DealRoom() {
   }
 
   const { data: leads, isLoading } = useQuery({
-    queryKey: ['deal-room-leads'],
+    queryKey: ['deal-room-leads', user?.id, workspaceId],
     // Keep the pipeline in sync with AI chat / CRM stage changes without
-    // Realtime (disabled on `leads` for privacy): short polling + focus refetch.
-    refetchInterval: 15_000,
+    // Private Rita notifications refresh immediately without streaming lead rows.
+    refetchInterval: 60_000,
     refetchOnWindowFocus: true,
-    staleTime: 5_000,
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
@@ -844,6 +850,7 @@ export default function DealRoom() {
                               {stageLabel}
                             </Badge>
                           </div>
+                          <RitaLatestCallBadge summary={parseRitaCallSummary(p.preferences?.['rita_last_call'])} />
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Clock className="h-3 w-3" />
                             <span className="truncate">{timeAgo(p.last_interaction_at)}</span>
@@ -862,6 +869,7 @@ export default function DealRoom() {
                           )}
                         </div>
                       </div>
+                      {(() => { const call = parseRitaCallSummary(p.preferences?.['rita_last_call']); return call ? <div className="mt-3"><RitaCallSummary key={call.conversation_id} summary={call} /></div> : null; })()}
                     </Card>
                     );
                   })}

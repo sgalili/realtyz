@@ -2276,6 +2276,20 @@
       "when": 1795860008558,
       "tag": "0324_rita_broker_demo_dispatch",
       "breakpoints": true
+    },
+    {
+      "idx": 325,
+      "version": "7",
+      "when": 1795861479616,
+      "tag": "0325_rita_atomic_post_call_cards",
+      "breakpoints": true
+    },
+    {
+      "idx": 326,
+      "version": "7",
+      "when": 1795861953548,
+      "tag": "0326_rita_post_call_property_array",
+      "breakpoints": true
     }
   ]
 }

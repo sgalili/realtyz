@@ -22,6 +22,9 @@ import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { LeadSnapshot } from '@/components/leads/LeadSnapshot';
+import { CallHistoryList } from '@/components/dealroom/CallHistoryList';
+import { RitaLatestCallBadge, RitaQualificationTags } from '@/components/dealroom/RitaCallSummary';
+import { parseRitaCallSummary } from '@/lib/ritaCallSummary';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { OutcomePicker, OutcomeBadge, type InteractionOutcome } from '@/components/dealroom/OutcomePicker';
@@ -2072,6 +2075,8 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
                             <VoterAvatar fullName={lead.full_name} profilePictureUrl={(lead as any).profile_picture_url} className="h-9 w-9" textClassName="text-xs" />
                             <div className="flex flex-col min-w-0">
                               <span className="min-w-0 truncate whitespace-nowrap text-sm font-semibold">{lead.full_name || '-'}</span>
+                              <RitaLatestCallBadge summary={parseRitaCallSummary(prefs.rita_last_call)} />
+                              {(() => { const call = parseRitaCallSummary(prefs.rita_last_call); return call ? <div className="max-w-72 whitespace-normal"><RitaQualificationTags summary={call} /></div> : null; })()}
                               <div className="flex items-center gap-1.5">
                                 {(prefs.homely_id || prefs.source === 'homely') && (
                                   <Badge variant="outline" className={`text-[10px] font-normal h-4 px-1.5 ${sourceCls}`}>{sourceLabel}</Badge>
@@ -2536,6 +2541,7 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
 
                   {/* Contact details (phone, email, city, address, age, gender, socials) — top of the card */}
                   <LeadEnrichmentPanel lead={selectedVoter} hideEnrichmentButton />
+                  <CallHistoryList key={selectedVoter.id} leadId={selectedVoter.id} latest={parseRitaCallSummary(selectedVoter.preferences?.rita_last_call)} />
 
 
                   {/* Real Estate Sales Closer Grid — editable dropdowns, high-contrast labels */}

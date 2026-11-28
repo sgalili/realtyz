@@ -26,6 +26,8 @@ import { emptyAdminUserFilters, matchesAdminUser, type AdminUserFilters } from '
 import { AgencyIdentity } from '@/components/community/AgencyIdentity';
 import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
 import { BrokerOutreachPanel } from './BrokerOutreachPanel';
+import { RitaLatestCallBadge, RitaProfileCall } from '@/components/dealroom/RitaCallSummary';
+import { useRitaProfileCalls } from '@/hooks/useRitaCalls';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'סופר אדמין', admin: 'מנהל', moderator: 'מנחה', managing_broker: 'מתווך מנהל', agent: 'סוכן',
@@ -41,6 +43,7 @@ export function SuperAdminUsersTable() {
   const { isSuperAdmin } = useUserRole();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const profileCalls = useRitaProfileCalls();
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   // Search and add-user controls live in the blue page header.
@@ -183,7 +186,7 @@ export function SuperAdminUsersTable() {
         const agency = agencies.data?.[p.id];
         return <TableRow key={p.id}>
           {selecting && <TableCell>{!protectedId(p.id) && <SelectBox label={`בחירת ${p.full_name || p.email}`} checked={selected.includes(p.id)} onChange={() => toggle(p.id)} />}</TableCell>}
-          <TableCell className="whitespace-nowrap">{p.full_name || '—'}{onboarding.data?.[p.id] && <p className="whitespace-normal text-xs text-primary">{BROKER_STAGE_LABELS[onboarding.data[p.id]?.stage ?? '']}{onboarding.data[p.id]?.pending_properties ? ` · ${onboarding.data[p.id]?.pending_properties} נכסים` : ''}</p>}</TableCell>
+          <TableCell className="whitespace-nowrap">{p.full_name || '—'}<div><RitaLatestCallBadge summary={profileCalls.data?.[p.id] ?? null} /></div>{onboarding.data?.[p.id] && <p className="whitespace-normal text-xs text-primary">{BROKER_STAGE_LABELS[onboarding.data[p.id]?.stage ?? '']}{onboarding.data[p.id]?.pending_properties ? ` · ${onboarding.data[p.id]?.pending_properties} נכסים` : ''}</p>}</TableCell>
           <TableCell className="min-w-40">{agencies.isLoading ? 'טוען…' : agency?.agency_name || agency?.agency_logo_url ? <AgencyIdentity name={agency.agency_name} logoUrl={agency.agency_logo_url} className="text-xs" /> : '—'}</TableCell>
           <TableCell dir="ltr" className="text-xs">{p.email || '—'}</TableCell>
           <TableCell dir="ltr" className="text-xs whitespace-nowrap">{p.phone || '—'}</TableCell>
@@ -242,6 +245,7 @@ export function SuperAdminUsersTable() {
               return <Button key={r} type="button" size="sm" variant={on ? 'default' : 'outline'} className="h-7 px-2 text-xs" onClick={() => setDraft({ ...draft, roles: on ? draft.roles.filter(x => x !== r) : [...draft.roles, r] })}>{ROLE_LABELS[r]}</Button>;
             })}</div></div>
           <BrokerOutreachPanel key={draft.id} brokerId={draft.id}/>
+          <RitaProfileCall key={`call:${draft.id}`} userId={draft.id} />
         </div>}
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
           <Button variant="outline" disabled={saveDraft.isPending} onClick={() => setDraft(null)}>ביטול</Button>

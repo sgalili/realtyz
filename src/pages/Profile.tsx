@@ -1,4 +1,5 @@
 import { DeleteAccountButton } from '@/components/profile/DeleteAccountButton';
+import { RitaProfileCall } from '@/components/dealroom/RitaCallSummary';
 import { PublicBioField } from '@/components/profile/PublicBioField';
 import { AgencyAddressFields } from '@/components/profile/AgencyAddressFields';
 import { AgencyDescriptionField } from '@/components/profile/AgencyDescriptionField';
@@ -940,6 +941,7 @@ export default function Profile() {
         </div>
         <TabsContent value="personal" className="mt-[15px] space-y-4">
           {activeWorkspaceId && <PersonalTab key={`${user?.id}:${activeWorkspaceId}`} />}
+          {activeWorkspaceId && <RitaProfileCall key={`rita:${user?.id}:${activeWorkspaceId}`} userId={activeWorkspaceId} />}
         </TabsContent>
         <TabsContent value="aibrain" className="mt-[15px] space-y-4" dir="rtl">
           <KnowledgeBase key={activeWorkspaceId ?? user?.id ?? 'brain'} />

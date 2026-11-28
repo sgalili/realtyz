@@ -13672,6 +13672,8 @@ export type Database = {
       review_lead_dispute: { Args: { _id: string }; Returns: Json }
       revoke_broker_license: { Args: { _uid: string }; Returns: Json }
       revoke_grow_card_mandate: { Args: never; Returns: undefined }
+      rita_latest_profile_calls: { Args: never; Returns: Json }
+      rita_normalize_phone: { Args: { _raw: string }; Returns: string }
       run_availability_checks: { Args: { _limit?: number }; Returns: Json }
       rz_is_synthetic_email: { Args: { _e: string }; Returns: boolean }
       rz_phone_label: { Args: { _p: string }; Returns: string }
@@ -13911,6 +13913,10 @@ export type Database = {
         Returns: number
       }
       suspend_unverified_broker_roles: { Args: never; Returns: number }
+      sync_rita_post_call: {
+        Args: { _context_id: string; _conversation_id: string; _result: Json }
+        Returns: Json
+      }
       track_affiliate_click: { Args: { _code: string }; Returns: undefined }
       track_listing_referral_view: {
         Args: { _code?: string; _id_or_slug: string }

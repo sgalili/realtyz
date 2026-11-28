@@ -120,10 +120,12 @@ export async function configureRitaProvider(admin: RitaAdmin, key: string, origi
     area_flexibility: { type: 'string', description: 'Caller flexibility about city, neighborhood or alternative areas. Empty when unknown.' },
     viewing_availability: { type: 'string', description: 'Caller availability for a property viewing, including preferred days or times. Empty when unknown.' },
     requested_callback: { type: 'boolean', description: 'True only when the caller explicitly requested a human callback or human follow-up.' },
+    summary_bullets: { type: 'string', description: 'Exactly 2 or 3 short factual Hebrew bullet points about what was discussed, separated by newlines. No heading, no long dashes, no invented facts. Empty when the call contained no meaningful discussion.' },
+    next_step: { type: 'string', description: 'The agreed next step in one short Hebrew phrase, only if explicitly discussed. Empty when no next step was agreed.' },
   };
   const platformSettings = {
     ...existingPlatform,
-    data_collection: dataCollection,
+    data_collection: { ...((existingPlatform['data_collection'] ?? {}) as Record<string, unknown>), ...dataCollection },
     summary_language: 'he',
     overrides: {
       ...existingOverrides,

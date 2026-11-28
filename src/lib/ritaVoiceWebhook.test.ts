@@ -5,7 +5,7 @@ function client(role: string) {
   const reads: string[] = [];
   const writes: Array<{ table: string; value: unknown }> = [];
   const context = { id: 'context-a', conversation_id: 'conversation-a', lead_id: null, workspace_owner_id: '00000000-0000-0000-0000-000000000034', property_id: null, direction: 'outbound', source: role, full_name: 'דנה כהן', lead_phone: '+972500000034', dynamic_variables: { call_role: role, hat: role }, property_context: {} };
-  const admin = { from: (table: string) => {
+  const admin = { rpc: async (name: string, value: unknown) => { writes.push({ table: name, value }); return { data: { received: true }, error: null }; }, from: (table: string) => {
     reads.push(table);
     const query: Record<string, unknown> = {};
     for (const method of ['select', 'eq', 'filter', 'limit']) query[method] = () => query;
@@ -26,7 +26,12 @@ describe('role-specific signed post-call processing', () => {
     await handleRitaPostCall(admin, payload, `t=${timestamp},v0=${signature}`);
     expect(reads).not.toContain('leads');
     expect(writes.filter(write => write.table === 'leads')).toEqual([]);
-    const saved = writes.find(write => write.table === 'rita_call_contexts');
-    expect(saved?.value).toMatchObject({ dynamic_variables: expect.objectContaining({ call_role: role }) });
+    const saved = writes.find(write => write.table === 'sync_rita_post_call');
+    expect(saved?.value).toMatchObject({ _context_id: 'context-a', _result: expect.objectContaining({ compact: expect.objectContaining({ call_role: role }) }) });
+  });
+  it('rejects an invalid provider signature before any card matching or writes', async () => {
+    const { admin, writes } = client('property_lead');
+    await expect(handleRitaPostCall(admin, JSON.stringify({ type:'post_call_transcription',data:{ agent_id:'agent-a',conversation_id:'conversation-a' } }), 't=0,v0=invalid')).rejects.toThrow('Unauthorized');
+    expect(writes).toEqual([]);
   });
 });

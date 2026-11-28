@@ -1,5 +1,11 @@
 # Roadmap
 
+## Rita summaries on existing cards November 28
+- [x] Service-only sync_rita_post_call transaction locks stored conversation/contact identity, matches workspace-scoped lead_id then normalized phone, updates profile hats without buyer leads, and writes one call/timeline item. Existing RLS unchanged; unknown callers without a verified workspace remain unassigned.
+- [x] Shared compact Hebrew summary/insights block, latest-call badges and click-only RLS transcripts on Leads, Deal Room, authorized profile/admin user cards and waiting-broker cards. Provider configuration supports factual 2–3 bullets and next step; no live provider settings changed.
+- [x] One private data-free account notification refreshes scoped cards with no new polling. Thirty-six focused tests passed; real signed concurrent webhook returned 200 three times with two duplicates and one call/message, invalid signature returned 401. Signed-in Leads, Deal Room and user profile verified, mobile 411px checked, and open card updated in 2.29 seconds without reload. Verification data removed and original lead restored; no new leads or calls placed.
+- [ ] Publish this request's handler/UI changes to toraff.co.il, then verify the updated production webhook; awaiting the user's publishing choice. Database functions are applied; production still runs the previous handler until publication.
+
 ## ElevenLabs-only role-aware calls November 28
 - [x] Removed Vapi UI, source functions/status route and fallback routing; Homely's unrelated webtivapi URLs are untouched. Deployed retirement waits for replacement verification below.
 - [x] Server-owned hats across shared public property callback, both campaign dispatch paths, AI dialer, retry, broker-assistant/test buttons, invitation first-login and inbound calls. Scalar provider context preserves structured property facts; only property_lead post-calls create/update buyer leads.

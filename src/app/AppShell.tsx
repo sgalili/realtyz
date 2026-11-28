@@ -43,6 +43,7 @@ import { ImportedLicenseGate } from '@/components/onboarding/ImportedLicenseGate
 import { AccessibilityEffects } from '@/components/accessibility/AccessibilityEffects';
 import { PageLoader, AdminBrokerFirstEntry, WorkspaceScope, AccountPageLoading, EarningsFeedback } from '@/app/AppRoutes';
 import { BootGate } from '@/app/BootGate';
+import { RitaCallUpdates } from '@/components/dealroom/RitaCallUpdates';
 
 /** Shows the syncing toast while any query has been fetching for over 3 seconds. */
 function useSlowQueryToast(queryClient: QueryClient) {
@@ -124,6 +125,7 @@ function AppTree({ queryClient }: { queryClient: QueryClient }) {
             <WorkspaceProvider>
             <WhiteLabelProvider>
             <DemoModeProvider>
+            <RitaCallUpdates />
             <CreditsUpgradeDialog />
             <ElectionTypeProvider>
             <MandateProvider>

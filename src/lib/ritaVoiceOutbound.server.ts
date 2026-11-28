@@ -206,7 +206,7 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
       lead_id: resolved.leadId,
       caller_phone: resolved.phone,
       direction: 'outbound',
-      status,
+      status: failure ? 'failed' : 'in_progress',
       handled_by: 'ai',
       needs_callback: !!failure,
       callback_reason: failure ? (failure instanceof Error ? failure.message.slice(0, 200) : 'השיחה נכשלה') : null,

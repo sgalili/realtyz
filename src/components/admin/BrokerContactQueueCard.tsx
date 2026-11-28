@@ -26,6 +26,7 @@ import { DeveloperLogo } from '@/components/developers/DeveloperLogo';
 import { BrokerWhatsAppContact } from './BrokerWhatsAppContact';
 import { BrokerNumberEditor } from './BrokerNumberEditor';
 import { AdminAccountNotes } from './AdminAccountNotes';
+import { RitaProfileCall } from '@/components/dealroom/RitaCallSummary';
 import { sortDiscoveryPriority, nextDiscoverySort, type DiscoverySortMode } from '@/lib/brokerDiscoveryPriority';
 import { BrokerScannerPanel, scannerCall } from './BrokerScannerPanel';
 import { emptyImportSearch, matchesImportSearch, newestImportsFirst, type ImportSearch } from '@/lib/adminImportPresentation';
@@ -215,6 +216,7 @@ function BrokerRow({ b, marketing }: { b: ContactBroker; marketing?: MarketingCo
       <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground sm:text-base" title={details}>{details}</p>
     </div>}
     {b.is_developer && <MarketingContactLine ownerId={b.user_id} devName={b.full_name} contact={marketing} />}
+    <RitaProfileCall key={`rita:${b.user_id}`} userId={b.user_id} />
     <Dialog open={deleting} onOpenChange={open => { if (!remove.isPending) setDeleting(open); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-md text-right">
         <DialogHeader><DialogTitle>מחיקת החשבון של {b.full_name || 'ללא שם'}</DialogTitle></DialogHeader>
