@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useServerFn } from '@tanstack/react-start';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -6,187 +7,145 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Phone, RefreshCw, Loader2, CheckCircle2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-
-interface VoiceAgentRow {
-  id: string;
-  user_id: string;
-  availability: 'available' | 'away';
-  elevenlabs_agent_id: string | null;
-  elevenlabs_voice_id: string | null;
-  elevenlabs_phone_number: string | null;
-  greeting: string | null;
-  language: string;
-  last_synced_at: string | null;
-}
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Phone, RefreshCw, Loader2, CheckCircle2, Save } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { usePublicWorkspace } from '@/components/demo/PublicWorkspaceProvider';
+import { getVoiceAgentSettings, inspectVoiceAgentConnection, saveVoiceAgentSettings, syncVoiceAgentSettings } from '@/lib/voiceAgent.functions';
+import { boundedVoiceRequest, DEFAULT_AGENT_VOICE, voiceAgentSettingsSchema, type VoiceAgentSettings } from '@/lib/voiceAgentSettings';
 
 const VOICES = [
-  { id: 't1FxSQNdBrLMfytJMHmg', label: 'ריטה' },
-  { id: 'EXAVITQu4vr4xnSDxMaL', label: 'Sarah (חמה, אישה)' },
-  { id: 'XrExE9yKIg1WjnnlVkGX', label: 'Matilda (רגועה, אישה)' },
-  { id: 'JBFqnCBsd6RMkjVDRZzb', label: 'George (בוגר, גבר)' },
-  { id: 'TX3LPaxmHKxFdv7VOQHJ', label: 'Liam (בטוח, גבר)' },
+  { id: DEFAULT_AGENT_VOICE, label: 'ריטה' },
+  { id: 'EXAVITQu4vr4xnSDxMaL', label: 'Sarah' },
+  { id: 'XrExE9yKIg1WjnnlVkGX', label: 'Matilda' },
+  { id: 'JBFqnCBsd6RMkjVDRZzb', label: 'George' },
+  { id: 'TX3LPaxmHKxFdv7VOQHJ', label: 'Liam' },
 ];
+const defaults: VoiceAgentSettings = { availability: 'away', elevenlabs_voice_id: DEFAULT_AGENT_VOICE, language: 'he', elevenlabs_phone_number: '', greeting: '' };
+type Row = Awaited<ReturnType<typeof getVoiceAgentSettings>>;
+type Connection = Awaited<ReturnType<typeof inspectVoiceAgentConnection>>;
+function settingsFrom(row: Row): VoiceAgentSettings {
+  return row ? { availability: row.availability === 'available' ? 'available' : 'away', elevenlabs_voice_id: row.elevenlabs_voice_id || DEFAULT_AGENT_VOICE, language: row.language === 'en' ? 'en' : 'he', elevenlabs_phone_number: row.elevenlabs_phone_number || '', greeting: row.greeting || '' } : { ...defaults };
+}
 
 export function VoiceAgentPanel() {
-  const [row, setRow] = useState<VoiceAgentRow | null>(null);
+  const { user, loading } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
+  const demo = usePublicWorkspace();
+  if (demo) return <Card><CardContent className="p-6 text-muted-foreground">הגדרות סוכן הקול זמינות בחשבון רשום בלבד.</CardContent></Card>;
+  if (loading) return <Loader2 className="h-4 w-4 animate-spin" aria-label="טוען חשבון" />;
+  if (!user) return null;
+  return <AccountVoiceAgentPanel key={`${user.id}:${activeWorkspaceId ?? ''}`} />;
+}
+
+function AccountVoiceAgentPanel() {
+  const loadFn = useServerFn(getVoiceAgentSettings);
+  const saveFn = useServerFn(saveVoiceAgentSettings);
+  const inspectFn = useServerFn(inspectVoiceAgentConnection);
+  const syncFn = useServerFn(syncVoiceAgentSettings);
+  const alive = useRef(true);
+  const locked = useRef(false);
+  const [row, setRow] = useState<Row>(null);
+  const [draft, setDraft] = useState<VoiceAgentSettings>({ ...defaults });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const { toast } = useToast();
+  const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState<'save' | 'sync' | 'check' | null>(null);
+  const [error, setError] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [connection, setConnection] = useState<Connection | null>(null);
+  const [confirmPhone, setConfirmPhone] = useState(false);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(settingsFrom(row));
 
+  const inspect = async () => {
+    const result = await boundedVoiceRequest(inspectFn(), 40000);
+    if (alive.current) setConnection(result);
+  };
   const load = async () => {
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
-    const { data } = await supabase.from('voice_agents').select('*').eq('user_id', user.id).maybeSingle();
-    if (!data) {
-      const { data: created } = await supabase.from('voice_agents').insert({ user_id: user.id }).select().single();
-      setRow(created as VoiceAgentRow);
-    } else {
-      setRow(data as VoiceAgentRow);
-    }
-    setLoading(false);
+    setLoading(true); setError('');
+    try {
+      const saved = await boundedVoiceRequest(loadFn(), 25000);
+      if (!alive.current) return;
+      setLoaded(true);
+      setRow(saved); setDraft(settingsFrom(saved));
+      void inspect().catch(() => { if (alive.current) setConnection(null); });
+    } catch { if (alive.current) setError('לא ניתן לטעון את הגדרות הקול כרגע. אפשר לנסות שוב.'); }
+    finally { if (alive.current) setLoading(false); }
   };
+  useEffect(() => { alive.current = true; void load(); return () => { alive.current = false; }; }, []);
 
-  useEffect(() => { load(); }, []);
-
-  const update = async (patch: Partial<VoiceAgentRow>) => {
-    if (!row) return;
-    setSaving(true);
-    const { data, error } = await supabase
-      .from('voice_agents')
-      .update(patch)
-      .eq('id', row.id)
-      .select()
-      .single();
-    setSaving(false);
-    if (error) { toast({ title: 'שמירה נכשלה', description: error.message, variant: 'destructive' }); return; }
-    setRow(data as VoiceAgentRow);
+  const run = async (kind: 'save' | 'sync' | 'check', bindPhone = false) => {
+    if (locked.current) return;
+    locked.current = true; setBusy(kind); setError(''); setConfirmation('');
+    try {
+      if (kind === 'check') await inspect();
+      else {
+        const parsed = voiceAgentSettingsSchema.safeParse(draft);
+        if (!parsed.success) throw new Error(parsed.error.issues[0]?.message || 'יש לבדוק את ההגדרות');
+        let saved = row;
+        if (dirty || !saved) saved = await boundedVoiceRequest(saveFn({ data: parsed.data }), 25000);
+        if (!alive.current) return;
+        setRow(saved); setDraft(settingsFrom(saved));
+        // A database save is not a claim that live telephony is configured.
+        setConnection(null);
+        if (kind === 'sync') {
+          saved = await boundedVoiceRequest(syncFn({ data: { bindPhone } }), 80000);
+          if (!alive.current) return;
+          setRow(saved); setDraft(settingsFrom(saved));
+          await inspect();
+        }
+        if (alive.current) {
+          const message = kind === 'save' ? 'הגדרות הקול נשמרו' : bindPhone ? 'הסוכן סונכרן והמספר שויך' : 'הקול, השפה וברכת הפתיחה סונכרנו';
+          setConfirmation(message); toast.success(message);
+        }
+      }
+    } catch (e) {
+      if (alive.current) {
+        const message = e instanceof Error ? e.message : 'הפעולה לא הושלמה. יש לרענן ולבדוק את המצב.';
+        setError(message); toast.error(message);
+      }
+    } finally { locked.current = false; if (alive.current) setBusy(null); }
   };
+  const patch = (value: Partial<VoiceAgentSettings>) => setDraft(current => ({ ...current, ...value }));
+  if (loading) return <Card><CardContent className="p-6 flex justify-center text-muted-foreground"><Loader2 className="h-4 w-4 ml-2 animate-spin" />טוען…</CardContent></Card>;
+  if (!loaded) return <Card><CardContent className="p-6"><p role="alert" className="text-sm text-destructive">{error}</p><Button variant="outline" onClick={() => void load()}>ניסיון נוסף</Button></CardContent></Card>;
 
-  const sync = async () => {
-    setSyncing(true);
-    const { data, error } = await supabase.functions.invoke('elevenlabs-agent-sync', { body: {} });
-    setSyncing(false);
-    if (error || (data as { error?: string })?.error) {
-      toast({
-        title: 'הסנכרון נכשל',
-        description: error?.message || (data as { error?: string })?.error,
-        variant: 'destructive',
-      });
-      return;
-    }
-    toast({ title: 'סוכן הקול AI סונכרן', description: 'אישיות התאום הווירטואלי שלך פעילה כעת בשיחות.' });
-    load();
-  };
-
-  if (loading) return (
-    <Card><CardContent className="p-6 flex items-center justify-center text-muted-foreground"><Loader2 className="h-4 w-4 ml-2 animate-spin" />טוען…</CardContent></Card>
-  );
-  if (!row) return null;
-
-  const synced = !!row.elevenlabs_agent_id;
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Phone className="h-5 w-5 text-primary" />
-              סוכן קול AI
-            </CardTitle>
-            <CardDescription>
-              עונה לטלפון כשאינך זמין/ה, מתעד את פרטי הלקוח, מתמלל את השיחה ומעדכן את חדר העסקאות.
-            </CardDescription>
-          </div>
-          {synced && <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" />מסונכרן</Badge>}
+  const phoneLabels: Record<string, string> = { unset: 'לא הוגדר מספר', not_imported: 'המספר טרם יובא ל-ElevenLabs', other_agent: 'המספר משויך לסוכן אחר', unassigned: 'המספר נמצא, אך טרם שויך לסוכן', assigned: 'המספר משויך לסוכן', unknown: 'שיוך המספר לא נבדק' };
+  return <Card dir="rtl">
+    <CardHeader>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <CardTitle className="flex items-center gap-2"><Phone className="h-5 w-5 text-primary" />סוכן קול AI</CardTitle>
+        <Badge variant="secondary">ElevenLabs Conversational AI</Badge>
+      </div>
+      <CardDescription>הגדרות אישיות של החשבון המחובר. Vapi משמש בנפרד לשיחות יוצאות.</CardDescription>
+      {connection && <p className="text-sm text-muted-foreground break-words" role="status">{connection.message} · {phoneLabels[connection.phoneState]}</p>}
+      {connection?.settingsMatch && !dirty && <Badge variant="secondary" className="gap-1 w-fit"><CheckCircle2 className="h-3 w-3" />ההגדרות אומתו אצל הספק</Badge>}
+    </CardHeader>
+    <CardContent className="space-y-5">
+      {confirmation && <p role="status" className="text-sm text-muted-foreground">{confirmation}</p>}
+      {error && <div role="alert" className="text-sm text-destructive break-words">{error}<Button variant="ghost" size="sm" onClick={() => void load()} disabled={!!busy}>רענון הגדרות</Button></div>}
+      <div className="flex items-center justify-between gap-3 border-b pb-3">
+        <Label htmlFor="voice-availability">זמינות</Label>
+        <div className="flex items-center gap-2"><span className="text-sm">{draft.availability === 'available' ? 'זמין' : 'לא זמין'}</span><Switch id="voice-availability" checked={draft.availability === 'available'} onCheckedChange={v => patch({ availability: v ? 'available' : 'away' })} disabled={!!busy} /></div>
+      </div>
+      <p className="text-xs text-muted-foreground">הזמינות נשמרת כהעדפה. מענה אנושי תחילה והעברה לסוכן דורשים הגדרת ניתוב טלפוני אצל הספק.</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2"><Label htmlFor="voice-agent-voice">קול</Label><Input id="voice-agent-voice" dir="ltr" list="voice-agent-voices" value={draft.elevenlabs_voice_id} onChange={e => patch({ elevenlabs_voice_id: e.target.value })} disabled={!!busy} /><datalist id="voice-agent-voices">{VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}</datalist></div>
+        <div className="space-y-2"><Label htmlFor="voice-agent-language">שפה</Label><Select value={draft.language} onValueChange={v => patch({ language: v === 'en' ? 'en' : 'he' })} disabled={!!busy}><SelectTrigger id="voice-agent-language"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="he">עברית</SelectItem><SelectItem value="en">English</SelectItem></SelectContent></Select></div>
+      </div>
+      <div className="space-y-2"><Label htmlFor="voice-agent-phone">מספר טלפון</Label><Input id="voice-agent-phone" dir="ltr" inputMode="tel" value={draft.elevenlabs_phone_number} onChange={e => patch({ elevenlabs_phone_number: e.target.value })} disabled={!!busy} /><p className="text-xs text-muted-foreground">מספר בינלאומי שכבר יובא ל-ElevenLabs. שמירה בלבד אינה משנה את ניתוב השיחות.</p></div>
+      <div className="space-y-2"><Label htmlFor="voice-agent-greeting">ברכת פתיחה</Label><Textarea id="voice-agent-greeting" rows={3} placeholder="השאירו ריק לברכת ברירת המחדל של ריטה." value={draft.greeting} onChange={e => patch({ greeting: e.target.value })} disabled={!!busy} /></div>
+      <div className="flex items-center justify-between gap-3 flex-wrap border-t pt-3">
+        <p className="text-xs text-muted-foreground">{dirty ? 'יש שינויים שטרם נשמרו' : row?.last_synced_at ? `סונכרן לאחרונה ${new Date(row.last_synced_at).toLocaleString('he-IL')}` : 'ההגדרות טרם סונכרנו לספק'}</p>
+        <div className="flex items-center gap-2">
+          <Button size="icon" variant="ghost" aria-label="בדיקת חיבור ElevenLabs" title="בדיקת חיבור ElevenLabs" disabled={!!busy} onClick={() => void run('check')}>{busy === 'check' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}</Button>
+          <Button size="icon" variant="outline" aria-label="שמירת הגדרות" title="שמירת הגדרות" disabled={!!busy || (!dirty && !!row)} onClick={() => void run('save')}>{busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}</Button>
+          <Button disabled={!!busy} onClick={() => draft.elevenlabs_phone_number.trim() ? setConfirmPhone(true) : void run('sync')}>{busy === 'sync' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}סנכרון לספק</Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-start justify-between gap-4 p-3 rounded-md border bg-muted/30">
-          <div className="space-y-1">
-            <Label htmlFor="availability" className="text-base">זמינות</Label>
-            <p className="text-xs text-muted-foreground">
-              {row.availability === 'available'
-                ? 'אתה עונה לשיחות ראשון. ה-AI עונה רק אם פספסת.'
-                : 'ה-AI עונה לכל השיחות הנכנסות מיד.'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">לא זמין</span>
-            <Switch
-              id="availability"
-              checked={row.availability === 'available'}
-              onCheckedChange={(v) => update({ availability: v ? 'available' : 'away' })}
-              disabled={saving}
-            />
-            <span className="text-xs text-muted-foreground">זמין</span>
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>קול</Label>
-            <Input
-              dir="ltr"
-              list="voice-agent-voices"
-              defaultValue={row.elevenlabs_voice_id || VOICES[0].id}
-              onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== row.elevenlabs_voice_id) update({ elevenlabs_voice_id: v }); }}
-            />
-            <datalist id="voice-agent-voices">{VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}</datalist>
-          </div>
-          <div className="space-y-2">
-            <Label>שפה</Label>
-            <select
-              className="w-full h-10 rounded-md border bg-background px-3 text-sm"
-              value={row.language}
-              onChange={(e) => update({ language: e.target.value })}
-            >
-              <option value="he">עברית</option>
-              <option value="en">English</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label>מספר טלפון</Label>
-          <Input
-            value={row.elevenlabs_phone_number || ''}
-            onChange={(e) => setRow({ ...row, elevenlabs_phone_number: e.target.value })}
-            onBlur={(e) => update({ elevenlabs_phone_number: e.target.value })}
-          />
-          <p className="text-xs text-muted-foreground">
-            רכשו מספר ב-ElevenLabs Conversational AI והדביקו אותו כאן לניתוב שיחות נכנסות.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label>ברכת פתיחה</Label>
-          <Textarea
-            rows={3}
-            placeholder="השאירו ריק כדי להשתמש בברכת ברירת המחדל."
-            value={row.greeting || ''}
-            onChange={(e) => setRow({ ...row, greeting: e.target.value })}
-            onBlur={(e) => update({ greeting: e.target.value })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between gap-4 pt-2 border-t">
-          <p className="text-xs text-muted-foreground">
-            {row.last_synced_at
-              ? `סונכרן לאחרונה ${new Date(row.last_synced_at).toLocaleString('he-IL')}`
-              : 'סנכרנו כדי להעביר את אישיות התאום הווירטואלי, הקול והברכה ל-ElevenLabs.'}
-          </p>
-          <Button onClick={sync} disabled={syncing}>
-            {syncing ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />מסנכרן…</>
-                     : <><RefreshCw className="h-4 w-4 ml-2" />{synced ? 'סנכרון מחדש' : 'הפעלת סוכן הקול'}</>}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+      </div>
+      <AlertDialog open={confirmPhone} onOpenChange={setConfirmPhone}><AlertDialogContent dir="rtl"><AlertDialogHeader><AlertDialogTitle>שיוך המספר לסוכן הקול</AlertDialogTitle><AlertDialogDescription>הסנכרון ישמור את ההגדרות וישייך את המספר לסוכן ב-ElevenLabs. שיחות נכנסות למספר עשויות להיענות בידי הסוכן. מענה אנושי תחילה דורש ניתוב נפרד. מספר שמשויך לסוכן אחר לא יועבר.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="flex-row justify-between"><AlertDialogCancel>ביטול</AlertDialogCancel><AlertDialogAction onClick={() => void run('sync', true)}>אישור וסנכרון</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+    </CardContent>
+  </Card>;
 }

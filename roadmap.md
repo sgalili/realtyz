@@ -1,5 +1,11 @@
 # Roadmap
 
+## Voice agent settings November 28
+- [x] Account-owned authenticated settings save with readback, controlled drafts, bounded requests/finally and safe retry; no RLS or workspace ownership changes.
+- [x] Verified live ElevenLabs access and created/synchronized the requester's account agent; language/voice/greeting read back from provider after reload. Phone binding is explicit/confirmed and rejects another agent's number; availability remains a preference, not ring-first routing. Legacy Vapi and ElevenLabs endpoints retained.
+- [x] Real greeting save/reload and original greeting restoration verified; existing Sarah voice retained. Eight focused tests passed, mobile/desktop panel checked with no page errors.
+- [ ] Configure/import an ElevenLabs phone and ring-first routing, then approve a real call test; no phone supplied. Existing elevenlabs-call-webhook requires ELEVENLABS_WEBHOOK_SECRET, which is absent; post-call delivery remains unconfigured.
+
 ## Visitor content audit November 24
 - [x] Added broker-only About slides and shared FAQ page/dialog data; clarified broker pricing/terms/privacy and contact copy, hid guest public-publisher CTA, normalized guest signup intent. Broker /pricing now opens public credit information; marketplace wallet redirect, copy and actions retained. Visitor leaf metadata updated; root-only placeholder social images removed.
 - [x] Rita greeting/public broker context aligned with direct office leads, no per-lead charge, approved campaigns, draft imports and read-only demo; separate mode transcript/live tokens retain marketplace history without crossing contexts. Deployed existing visitor-rita; no private data/tools/permissions added.
