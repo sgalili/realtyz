@@ -895,6 +895,28 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
+    // Signed-in callers may only message a contact they are authorized for:
+    // a lead (lead_id is scope-checked above) or a phone that belongs to a lead
+    // in a workspace they can access, or their own number. Super Admins and
+    // internal service/cron callers keep full routing.
+    if (__caller.kind === "user" && !parsed.data.lead_id) {
+      const uid = __caller.userId;
+      const { data: sa } = await admin.from("user_roles").select("role").eq("user_id", uid).eq("role", "super_admin").limit(1).maybeSingle();
+      if (!sa) {
+        const local = phone.startsWith("972") ? `0${phone.slice(3)}` : phone;
+        const variants = Array.from(new Set([phone, local, `+${phone}`]));
+        const { data: own } = await admin.from("profiles").select("id").eq("id", uid).in("phone", variants).limit(1).maybeSingle();
+        let allowed = !!own;
+        if (!allowed) {
+          const { data: mems } = await admin.from("workspace_memberships").select("workspace_owner_id").eq("user_id", uid).limit(200);
+          const owners = Array.from(new Set([uid, ...((mems ?? []) as any[]).map((m) => String(m.workspace_owner_id))]));
+          const { data: hit } = await admin.from("leads").select("id").in("workspace_owner_id", owners).in("phone_number", variants).limit(1).maybeSingle();
+          allowed = !!hit;
+        }
+        if (!allowed) return json({ success: false, provider: "WBA", message_id: null, error: "ניתן לשלוח רק לליד במרחב העבודה" }, 403);
+      }
+    }
+
     // Owning workspace (credentials + logging). Transport is always Meta Cloud.
     const { data: silent, error: silenceError } = await admin.rpc('admin_onboarding_recipient_silent', { _phone: phone });
     if (silenceError) return json({ success: false, error: 'onboarding_delivery_guard_unavailable' }, 503);

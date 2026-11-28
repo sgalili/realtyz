@@ -127,6 +127,16 @@ ${sourcesBlock || "(לא נמצאו מקורות חיים. תן את התקצי�
   return String(j?.choices?.[0]?.message?.content ?? "").trim();
 }
 
+
+async function verifiedWorkspace(admin: any, userId: string, requested: string | null | undefined): Promise<string> {
+  const ws = requested || userId;
+  if (ws === userId) return userId;
+  const { data: m } = await admin.from("workspace_memberships").select("id").eq("user_id", userId).eq("workspace_owner_id", ws).limit(1).maybeSingle();
+  if (m) return ws;
+  const { data: sa } = await admin.from("user_roles").select("role").eq("user_id", userId).eq("role", "super_admin").limit(1).maybeSingle();
+  return sa ? ws : userId;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const __caller = await requireCaller(req, ["service", "cron", "user"]);
@@ -161,7 +171,7 @@ Deno.serve(async (req) => {
           .select("active_workspace_owner_id")
           .eq("id", actorUserId)
           .maybeSingle();
-        workspaceOwnerId = (prof?.active_workspace_owner_id as string | undefined) || actorUserId;
+        workspaceOwnerId = await verifiedWorkspace(createClient(SUPABASE_URL, SERVICE_KEY), actorUserId, prof?.active_workspace_owner_id as string | undefined);
       }
     } else {
       workspaceOwnerId = body?.workspace_owner_id ?? null;
@@ -197,7 +207,7 @@ Deno.serve(async (req) => {
               `reply, or voice script that mentions "${query}". Ground all factual claims in it; ` +
               `never invent prices, schools, or zoning details that contradict it.\n\n${compact}`,
             source: "research_insight",
-            role: "owner",
+            role: actorUserId && actorUserId !== workspaceOwnerId ? "tenant" : "owner",
             signal: "directive",
             workspace_owner_id: workspaceOwnerId,
             actor_user_id: actorUserId,

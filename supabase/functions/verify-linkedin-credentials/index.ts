@@ -80,6 +80,17 @@ async function probeToken(accessToken: string): Promise<VerifyResult> {
   };
 }
 
+
+async function callerWorkspace(admin: any, userId: string): Promise<string> {
+  const { data: prof } = await admin.from('profiles').select('active_workspace_owner_id').eq('id', userId).maybeSingle();
+  const ws = (prof?.active_workspace_owner_id as string | null) || userId;
+  if (ws === userId) return userId;
+  const { data: m } = await admin.from('workspace_memberships').select('id').eq('user_id', userId).eq('workspace_owner_id', ws).limit(1).maybeSingle();
+  if (m) return ws;
+  const { data: sa } = await admin.from('user_roles').select('role').eq('user_id', userId).eq('role', 'super_admin').limit(1).maybeSingle();
+  return sa ? ws : userId;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -104,12 +115,15 @@ Deno.serve(async (req: Request) => {
     let accessToken = body.access_token as string | undefined;
 
     const admin = createClient(supabaseUrl, serviceKey);
+    // Every read/write below is scoped to the caller's verified workspace.
+    const wsOwner = await callerWorkspace(admin, user.id);
     let rowId: string | undefined;
     if (!accessToken) {
       const { data: row } = await admin
         .from('social_connections')
         .select('id, credentials')
         .eq('platform', 'linkedin')
+        .eq('workspace_owner_id', wsOwner)
         .maybeSingle();
       rowId = row?.id;
       const creds = (row?.credentials as Record<string, unknown> | null) ?? {};
@@ -132,7 +146,7 @@ Deno.serve(async (req: Request) => {
             last_test_status: 'auth_failed',
             last_test_message: result.message,
           })
-          .eq('id', rowId);
+          .eq('id', rowId).eq('workspace_owner_id', wsOwner);
       }
       return new Response(JSON.stringify(result), {
         status: 200,
@@ -147,6 +161,7 @@ Deno.serve(async (req: Request) => {
       .from('social_connections')
       .select('id, credentials')
       .eq('platform', 'linkedin')
+        .eq('workspace_owner_id', wsOwner)
       .maybeSingle();
     if (row?.id) {
       const creds = (row.credentials as Record<string, unknown> | null) ?? {};
@@ -168,7 +183,7 @@ Deno.serve(async (req: Request) => {
           last_test_status: result.ok ? 'ok' : 'auth_failed',
           last_test_message: result.message,
         })
-        .eq('id', row.id);
+        .eq('id', row.id).eq('workspace_owner_id', wsOwner);
     }
 
     return new Response(JSON.stringify(result), {

@@ -99,9 +99,10 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
   if (req.method === "GET") return json({ ok: true, endpoint: endpointName });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
 
-  if (WEBHOOK_SECRET) {
+  // Fail closed: inbound SMS is accepted only with the configured shared secret.
+  {
     const provided = req.headers.get("x-webhook-secret") ?? url.searchParams.get("secret") ?? "";
-    if (provided !== WEBHOOK_SECRET) return json({ error: "unauthorized" }, 401);
+    if (!WEBHOOK_SECRET || provided !== WEBHOOK_SECRET) return json({ error: "unauthorized" }, 401);
   }
 
   // ── Payload: 019 posts JSON, form-encoded or XML depending on the account ──

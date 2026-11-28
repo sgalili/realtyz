@@ -2,6 +2,7 @@
 // public social comment in the SAME language as the inbound text. Grounded in
 // workspace KB + live CRM/listings snapshot, locked to the workspace owner persona,
 // with anti-spam high-entropy phrasing. Pure compose-and-return.
+import { requireCaller, canAccessWorkspace, denied } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { externalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -343,15 +344,19 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
-    let userId: string | null = typeof body?.user_id === "string" ? body.user_id : null;
-    if (!userId) {
-      const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-      if (token) {
-        try {
-          const { data } = await admin.auth.getUser(token);
-          userId = data?.user?.id ?? null;
-        } catch { /* ignore */ }
-      }
+    // Verify the caller: internal service calls may name a workspace; signed-in
+    // users may only name a workspace they can access (otherwise their own).
+    const caller = await requireCaller(req, ["service", "user"]);
+    if (caller instanceof Response) return caller;
+    const requestedUserId: string | null = typeof body?.user_id === "string" ? body.user_id : null;
+    let userId: string | null;
+    if (caller.kind === "user") {
+      userId = requestedUserId && requestedUserId !== caller.userId
+        ? ((await canAccessWorkspace(caller.userId, requestedUserId, admin as any)) ? requestedUserId : null)
+        : caller.userId;
+      if (!userId) return denied(403);
+    } else {
+      userId = requestedUserId;
     }
 
     // Persona of THIS workspace only (no hardcoded broker/agency fallback).
@@ -384,10 +389,13 @@ Deno.serve(async (req) => {
       try {
         const { data: row } = await admin
           .from("listings")
-          .select("property_title,city,address,neighborhood,asking_price,features,rooms,sqm,floor,parking,elevator,description,area_perks")
+          .select("property_title,city,address,neighborhood,asking_price,features,rooms,sqm,floor,parking,elevator,description,area_perks,user_id,workspace_owner_id,is_published,status")
           .eq("id", primaryListingId)
           .maybeSingle();
-        if (row) {
+        const r0 = row as any;
+        const ownedByWorkspace = !!r0 && !!userId && (r0.workspace_owner_id === userId || r0.user_id === userId);
+        const publiclyLive = !!r0 && r0.is_published === true && r0.status === "live";
+        if (row && (ownedByWorkspace || publiclyLive)) {
           const lt = resolveListingType(row as any);
           const effectiveType = primaryType ?? lt;
           if (!effectiveType || isListingAllowedForType({ ...(row as any), listing_type: lt }, effectiveType)) {

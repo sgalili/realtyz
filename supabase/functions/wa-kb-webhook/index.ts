@@ -3,6 +3,7 @@
 // Normalized phone format: 9725XXXXXXXX.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
+import { requireCaller } from "../_shared/authz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,10 @@ function normalizePhone(raw: string): string {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  // Only the internal WhatsApp routing (service/cron) may forward messages here;
+  // a claimed sender phone in a public request is not proof of identity.
+  const caller = await requireCaller(req, ["service", "cron"]);
+  if (caller instanceof Response) return caller;
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;

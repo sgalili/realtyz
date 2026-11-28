@@ -1926,7 +1926,7 @@ async function resolveWorkspaceOwnerId(admin: any, userId: string): Promise<stri
     .eq("user_id", userId)
     .eq("workspace_owner_id", owner)
     .maybeSingle();
-  return membership ? owner : fallback;
+  return membership ? owner : userId;
 }
 
 async function configuredHomelyFeedUrl(admin: any, ownerId: string): Promise<string> {
@@ -2952,7 +2952,17 @@ Deno.serve(async (req) => {
             synced_at: new Date().toISOString(),
           },
         };
-        const { error } = await admin.from("leads").upsert(row as any, { onConflict: "phone_number" });
+        // Match only within this workspace; never touch another tenant's lead.
+        const { data: existingLead } = await admin
+          .from("leads")
+          .select("id")
+          .eq("workspace_owner_id", workspaceOwnerId)
+          .eq("phone_number", phone)
+          .limit(1)
+          .maybeSingle();
+        const { error } = existingLead?.id
+          ? await admin.from("leads").update(row as any).eq("id", existingLead.id).eq("workspace_owner_id", workspaceOwnerId)
+          : await admin.from("leads").insert({ ...row, workspace_owner_id: workspaceOwnerId } as any);
         if (error) throw new Error(`leads#${homelyId || phone}: ${error.message}`);
         contactsCount++;
       }

@@ -127,6 +127,13 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({} as any));
   const listingId: string | null = body?.listing_id ? String(body.listing_id) : null;
   const limit = Math.min(500, Math.max(1, Number(body?.limit) || 100));
+  // Signed-in users may only sync one listing they can access (checked by
+  // enforceRequestScope); global batch sweeps are reserved for service/cron.
+  if (__caller.kind === 'user' && !listingId) {
+    return new Response(JSON.stringify({ error: 'listing_id required' }), {
+      status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   let q = admin
     .from('listings')

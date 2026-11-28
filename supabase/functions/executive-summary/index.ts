@@ -6,6 +6,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+
+async function verifiedWorkspace(admin: any, userId: string, requested: string | null | undefined): Promise<string> {
+  const ws = requested || userId;
+  if (ws === userId) return userId;
+  const { data: m } = await admin.from("workspace_memberships").select("id").eq("user_id", userId).eq("workspace_owner_id", ws).limit(1).maybeSingle();
+  if (m) return ws;
+  const { data: sa } = await admin.from("user_roles").select("role").eq("user_id", userId).eq("role", "super_admin").limit(1).maybeSingle();
+  return sa ? ws : userId;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -40,7 +50,7 @@ serve(async (req) => {
       .select("active_workspace_owner_id")
       .eq("id", callerId)
       .maybeSingle();
-    const workspaceOwnerId = (callerProfile?.active_workspace_owner_id as string | null) ?? callerId;
+    const workspaceOwnerId = await verifiedWorkspace(sb, callerId, callerProfile?.active_workspace_owner_id as string | null);
 
     // Try to read Mapbox token from api_configs table
     const { data: mapboxConfig } = await sb

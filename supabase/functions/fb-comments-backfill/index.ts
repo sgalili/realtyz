@@ -64,7 +64,13 @@ Deno.serve(async (req) => {
         .select("active_workspace_owner_id")
         .eq("id", callerId)
         .maybeSingle();
-      ownerId = String((profile as any)?.active_workspace_owner_id || callerId);
+      const requested = String((profile as any)?.active_workspace_owner_id || callerId);
+      ownerId = callerId;
+      if (requested !== callerId) {
+        const { data: m } = await admin.from("workspace_memberships").select("id").eq("user_id", callerId).eq("workspace_owner_id", requested).limit(1).maybeSingle();
+        const { data: sa } = m ? { data: null } : await admin.from("user_roles").select("role").eq("user_id", callerId).eq("role", "super_admin").limit(1).maybeSingle();
+        if (m || sa) ownerId = requested;
+      }
     }
     if (!callerId && typeof body?.user_id === "string") ownerId = body.user_id;
     if (!ownerId) {
@@ -154,6 +160,10 @@ Deno.serve(async (req) => {
       const postId = String(entry?.post_id ?? entry?.postId ?? "").trim();
       const list = Array.isArray(entry?.comments) ? entry.comments : [];
       if (!postId || list.length === 0) continue;
+      // Only accept scraped comments for posts this workspace actually published.
+      const suffix = postId.includes("_") ? postId.split("_")[1] : postId;
+      const owned = ids.some((id) => id === postId || id.endsWith(`_${suffix}`) || id === suffix);
+      if (!owned) continue;
       scrapedIds.add(postId);
       const tree = list
         .map((c: any) => toFlatComment(c, postId, c?.parent?.id ?? null))

@@ -147,7 +147,25 @@ export async function resolveCaller(
     .select("active_workspace_owner_id")
     .eq("id", userId)
     .maybeSingle();
-  const ws = (profile as any)?.active_workspace_owner_id || userId;
+  const requested = String((profile as any)?.active_workspace_owner_id || userId);
+  // Never trust the profile field alone: the caller must own, belong to, or
+  // administer the selected workspace; otherwise fall back to their own.
+  let ws = userId;
+  if (requested !== userId) {
+    const { data: member } = await admin
+      .from("workspace_memberships")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("workspace_owner_id", requested)
+      .limit(1)
+      .maybeSingle();
+    let ok = !!member;
+    if (!ok) {
+      const { data: sa } = await admin.from("user_roles").select("role").eq("user_id", userId).eq("role", "super_admin").limit(1).maybeSingle();
+      ok = !!sa;
+    }
+    if (ok) ws = requested;
+  }
   return { userId, workspaceOwnerId: String(ws) };
 }
 

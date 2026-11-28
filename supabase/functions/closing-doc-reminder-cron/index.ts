@@ -11,10 +11,11 @@
  * to status='expired' as a side effect.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireCaller } from "../_shared/authz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -23,6 +24,8 @@ const SITE_URL = Deno.env.get("SITE_URL") || "https://app.realtyz.ai";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const caller = await requireCaller(req, ["service", "cron"]);
+  if (caller instanceof Response) return caller;
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
   const now = new Date();

@@ -98,13 +98,14 @@ Deno.serve(async (req) => {
     const {
       recipient_email,
       recipient_name = "",
-      subject = "הצעת ערך חדשה עבורך",
+      subject: rawSubject = "הצעת ערך חדשה עבורך",
       intro = "מצורפים הפרטים העדכניים שביקשת.",
       cta_question = "מתי נוח לך לקפוץ לראות?",
       listing_id,
       body_text,
     } = body as Record<string, any>;
 
+    const subject = String(rawSubject ?? "").replace(/[\r\n]+/g, " ").slice(0, 200);
     if (!recipient_email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(recipient_email)) {
       return new Response(JSON.stringify({ error: "כתובת מייל לא תקינה" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -116,7 +117,11 @@ Deno.serve(async (req) => {
       const addr = String(recipient_email).trim().toLowerCase();
       const own = String((claims.claims as any).email ?? "").toLowerCase();
       if (addr !== own) {
-        const { data: match } = await sb.from("leads").select("id").ilike("email", addr.replace(/[%_\\]/g, "")).limit(1);
+        // Only leads in the caller's verified active workspace, never leads
+        // that are merely readable through partner or shared access.
+        const { data: wsOwnerForCheck } = await sb.rpc("current_workspace_owner");
+        const scopeOwner = (wsOwnerForCheck as string) || userId;
+        const { data: match } = await sb.from("leads").select("id").eq("workspace_owner_id", scopeOwner).ilike("email", addr.replace(/[%_\\]/g, "")).limit(1);
         if (!match?.length) {
           return new Response(JSON.stringify({ error: "ניתן לשלוח רק לליד במרחב העבודה" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }

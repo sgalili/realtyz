@@ -125,15 +125,9 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       let leadId = existing?.id as string | undefined;
-      if (leadId) {
-        await admin
-          .from("leads")
-          .update({
-            full_name: existing?.full_name || name,
-            last_interaction_at: new Date().toISOString(),
-          })
-          .eq("id", leadId);
-      } else {
+      // Unverified public visitors never modify an existing CRM contact; the
+      // inquiry is recorded as a new message/interest linked to it instead.
+      if (!leadId) {
         const { data: inserted, error: insertError } = await admin
           .from("leads")
           .insert({
@@ -215,9 +209,7 @@ Deno.serve(async (req) => {
 
       const { data: existing } = await admin.from("leads").select("id, full_name").eq("workspace_owner_id", ownerId).eq("phone_number", phone).maybeSingle();
       let leadId = existing?.id as string | undefined;
-      if (leadId) {
-        await admin.from("leads").update({ full_name: existing?.full_name || name, last_interaction_at: new Date().toISOString() }).eq("id", leadId);
-      } else {
+      if (!leadId) {
         const { data: inserted, error: insertError } = await admin.from("leads").insert({ workspace_owner_id: ownerId, phone_number: phone, full_name: name, city: listing.city ?? null, deal_type: listing.deal_type === "rent" ? "rent" : "sale", lead_stage: "new", status: "new", last_interaction_at: new Date().toISOString() }).select("id").single();
         if (insertError) throw insertError;
         leadId = inserted.id as string;

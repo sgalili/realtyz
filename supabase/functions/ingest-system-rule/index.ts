@@ -114,12 +114,22 @@ async function embed(text: string): Promise<number[] | null> {
   } catch { return null; }
 }
 
+
+async function verifiedWorkspace(admin: any, userId: string, requested: string | null | undefined): Promise<string> {
+  const ws = requested || userId;
+  if (ws === userId) return userId;
+  const { data: m } = await admin.from("workspace_memberships").select("id").eq("user_id", userId).eq("workspace_owner_id", ws).limit(1).maybeSingle();
+  if (m) return ws;
+  const { data: sa } = await admin.from("user_roles").select("role").eq("user_id", userId).eq("role", "super_admin").limit(1).maybeSingle();
+  return sa ? ws : userId;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const body = await req.json().catch(() => ({} as any));
     const source = SUPPORTED_SOURCES.has(body?.source) ? body.source : "kb_ui";
-    const requestedRole = SUPPORTED_ROLES.has(body?.role) ? body.role : "owner";
+    let requestedRole = SUPPORTED_ROLES.has(body?.role) ? body.role : "owner";
 
     // Identify caller: prefer JWT (user-initiated), fall back to service-mode for
     // server-to-server calls (webhooks, approval signals).
@@ -142,7 +152,7 @@ Deno.serve(async (req) => {
           .select("active_workspace_owner_id")
           .eq("id", actorUserId)
           .maybeSingle();
-        workspaceOwnerId = (prof?.active_workspace_owner_id as string | undefined) || actorUserId;
+        workspaceOwnerId = await verifiedWorkspace(createClient(SUPABASE_URL, SERVICE_KEY), actorUserId, prof?.active_workspace_owner_id as string | undefined);
       }
     } else if (jwt === SERVICE_KEY || authHeader.includes(SERVICE_KEY)) {
       isService = true;
@@ -155,6 +165,9 @@ Deno.serve(async (req) => {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Signed-in non-owners can never write owner-weighted guidance.
+    if (!isService && requestedRole === "owner" && actorUserId !== workspaceOwnerId) requestedRole = "tenant";
 
     // Resolve raw text (transcribe audio if needed).
     let rawText: string | null = (body?.text ?? "").toString().trim() || null;

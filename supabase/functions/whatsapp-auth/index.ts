@@ -43,7 +43,10 @@ const normalizeIsraeliPhone = (value: string) => {
 // code verifies them. The series deliberately stops below 050-1000000, which
 // falls inside a real 050-1 allocation block where actual subscribers exist.
 const TEST_OTP_CODE = "9321";
-const isTestSeriesPhone = (phone: string) => /^972500\d{6}$/.test(phone) || phone === MARKETING_DEMO_PHONE;
+// Fixed test codes are a sign-in backdoor in production, so they are disabled
+// unless an operator explicitly enables them for an isolated QA environment.
+const TEST_SERIES_ENABLED = Deno.env.get("ENABLE_TEST_OTP_SERIES") === "true";
+const isTestSeriesPhone = (phone: string) => TEST_SERIES_ENABLED && (/^972500\d{6}$/.test(phone) || phone === MARKETING_DEMO_PHONE);
 // Owner-approved marketing-company demo account: fixed number and code, isolated demo workspace only.
 const MARKETING_DEMO_PHONE = "972501234567";
 const MARKETING_DEMO_CODE = "1234";

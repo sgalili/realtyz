@@ -113,6 +113,17 @@ async function dryRun(clientId: string, clientSecret: string): Promise<DryRunRes
   };
 }
 
+
+async function callerWorkspace(admin: any, userId: string): Promise<string> {
+  const { data: prof } = await admin.from('profiles').select('active_workspace_owner_id').eq('id', userId).maybeSingle();
+  const ws = (prof?.active_workspace_owner_id as string | null) || userId;
+  if (ws === userId) return userId;
+  const { data: m } = await admin.from('workspace_memberships').select('id').eq('user_id', userId).eq('workspace_owner_id', ws).limit(1).maybeSingle();
+  if (m) return ws;
+  const { data: sa } = await admin.from('user_roles').select('role').eq('user_id', userId).eq('role', 'super_admin').limit(1).maybeSingle();
+  return sa ? ws : userId;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -140,6 +151,8 @@ Deno.serve(async (req: Request) => {
 
     // Resolve creds from the row if not supplied inline.
     const admin = createClient(supabaseUrl, serviceKey);
+    // Every read/write below is scoped to the caller's verified workspace.
+    const wsOwner = await callerWorkspace(admin, user.id);
     if ((!clientId || !clientSecret) && platform) {
       if (!GOOGLE_PLATFORMS.has(platform)) {
         return new Response(JSON.stringify({ ok: false, error: 'Platform not supported' }), {
@@ -151,6 +164,7 @@ Deno.serve(async (req: Request) => {
         .from('social_connections')
         .select('credentials')
         .eq('platform', platform)
+        .eq('workspace_owner_id', wsOwner)
         .maybeSingle();
       const manual = ((row?.credentials as Record<string, unknown> | null)?.manual ?? {}) as Record<string, string>;
       clientId = clientId || manual.oauth_client_id;
@@ -180,6 +194,7 @@ Deno.serve(async (req: Request) => {
             .from('social_connections')
             .select('id, credentials')
             .eq('platform', p)
+        .eq('workspace_owner_id', wsOwner)
             .maybeSingle();
           const creds = (r?.credentials as Record<string, unknown> | null) ?? {};
           const next = {
@@ -200,7 +215,7 @@ Deno.serve(async (req: Request) => {
                 last_test_status: result.ok ? 'ok' : 'auth_failed',
                 last_test_message: result.message,
               })
-              .eq('id', r.id);
+              .eq('id', r.id).eq('workspace_owner_id', wsOwner);
           }
         }),
       );

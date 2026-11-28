@@ -8,6 +8,7 @@
  *
  * No DB writes. Pure dry-run.
  */
+import { userFromRequest } from "../_shared/authz.ts";
 import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
 
 const corsHeaders = {
@@ -34,6 +35,7 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
     if (!authHeader.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    if (!(await userFromRequest(req))) return json({ error: "Unauthorized" }, 401);
     if (!LOVABLE_API_KEY) return json({ error: "AI gateway not configured" }, 500);
 
     const body = await req.json().catch(() => ({} as any)) as {
