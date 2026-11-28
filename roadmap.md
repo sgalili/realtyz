@@ -6,7 +6,8 @@
 - [x] Signed Rita property search with broker-first and public-safe cross-broker fallback; no private contacts, drafts or rewards returned.
 - [x] HMAC-verified post-call sync with transcripts, qualification, matched properties and idempotent CRM/call/message updates. Real local route test passed twice with one row each and complete test cleanup.
 - [x] Connected confirmed Twilio number +97233826735 and configured ElevenLabs tools, dynamic variables, initiation and post-call webhooks; no real call placed. Production publishing requested.
-- [x] Twenty-five focused tests passed, typecheck/build clean, mobile voice settings and guest callback form verified. Production reachability remains to be read back after deployment.
+- [x] Twenty-five focused tests passed, typecheck/build clean, mobile voice settings and guest callback form verified.
+- [ ] Confirm production callback reachability after the scheduled deployment; the first production search request still returned 404. No live call should be placed until this is resolved.
 
 ## Voice agent settings November 28
 - [x] Account-owned authenticated settings save with readback, controlled drafts, bounded requests/finally and safe retry; no RLS or workspace ownership changes.
