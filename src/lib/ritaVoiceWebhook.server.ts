@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Database, Json } from '@/integrations/supabase/types';
-import { buildRitaDynamicVariables, firstNameFromFullName, isPlaceholderLeadName, normalizeRitaPhone, propertyContextFromListing, ritaPhoneE164 } from './ritaVoice';
+import { buildRitaDynamicVariables, isPlaceholderLeadName, normalizeRitaPhone, propertyContextFromListing, ritaPhoneE164, ritaCallRoleSchema, ritaOpeningGreeting } from './ritaVoice';
 import { resolveLeadCallContext } from './ritaVoiceOutbound.server';
 import { getRitaRuntime, verifyElevenLabsPostCallSignature, type RitaAdmin } from './ritaVoiceSecurity.server';
 
@@ -81,6 +81,8 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
     phone,
     property: contextValues.property,
     source: 'inbound_twilio',
+    callRole: ritaCallRoleSchema.safeParse(record(prior?.dynamic_variables)['call_role']).data ?? (contextValues.leadId ? 'property_lead' : 'general_inbound'),
+    inviteContext: text(record(prior?.dynamic_variables)['invite_context'], 1500),
   });
   const { data: saved, error } = await admin.from('rita_call_contexts').insert({
     workspace_owner_id: contextValues.workspaceId,
@@ -102,16 +104,13 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
   if (error) throw error;
   const dynamicVariables = { ...variables, rita_call_context_id: saved.id };
   await admin.from('rita_call_contexts').update({ dynamic_variables: json(dynamicVariables) }).eq('id', saved.id);
-  const firstName = firstNameFromFullName(contextValues.fullName);
   return {
     type: 'conversation_initiation_client_data',
     dynamic_variables: dynamicVariables,
     ...(contextValues.leadId ? { user_id: contextValues.leadId } : {}),
     conversation_config_override: {
       agent: {
-        first_message: firstName
-          ? `שלום ${firstName}, אני ריטה, הסוכנת הדיגיטלית של ${contextValues.agencyName}. איך אפשר לעזור?`
-          : `שלום, אני ריטה, הסוכנת הדיגיטלית של ${contextValues.agencyName}. איך אפשר לעזור?`,
+        first_message: ritaOpeningGreeting(dynamicVariables),
       },
     },
   };
@@ -130,39 +129,23 @@ export async function handleRitaPostCall(admin: RitaAdmin, rawBody: string, sign
   if (eventType !== 'post_call_transcription' && eventType !== 'call_initiation_failure') return { received: true, ignored: eventType || 'unknown' };
 
   const initiation = record(data['conversation_initiation_client_data']);
-  const dynamic = record(initiation['dynamic_variables'] ?? record(data['metadata'])['dynamic_variables']);
+  let dynamic = record(initiation['dynamic_variables'] ?? record(data['metadata'])['dynamic_variables']);
   const contextId = text(dynamic['rita_call_context_id'], 80);
   let { data: context } = await admin.from('rita_call_contexts').select('*').eq('conversation_id', conversationId).maybeSingle();
   if (!context && contextId) {
     const result = await admin.from('rita_call_contexts').select('*').eq('id', contextId).maybeSingle();
     context = result.data;
   }
-  if (!context) {
-    const brokerId = text(dynamic['broker_id'], 80);
-    const validBroker = /^[0-9a-f-]{36}$/i.test(brokerId) ? brokerId : null;
-    const phone = ritaPhoneE164(text(dynamic['lead_phone'], 40));
-    const inserted = await admin.from('rita_call_contexts').insert({
-      workspace_owner_id: validBroker,
-      direction: 'outbound',
-      source: text(dynamic['source'], 80) || 'elevenlabs',
-      full_name: text(dynamic['lead_full_name'], 80) || null,
-      lead_phone: phone || null,
-      agency_name: text(dynamic['agency_name'], 120) || 'TORAFF',
-      agent_name: text(dynamic['agent_name'], 120) || 'TORAFF',
-      property_id: text(dynamic['property_id'], 80) || null,
-      property_context: json(record(dynamic['property_context'])),
-      dynamic_variables: json(dynamic),
-      conversation_id: conversationId,
-      status: 'active',
-    }).select('*').single();
-    if (inserted.error) throw inserted.error;
-    context = inserted.data;
-  }
+  if (!context) throw new Error('Missing call context');
+  const storedDynamic = record(context.dynamic_variables);
+  const callRole = ritaCallRoleSchema.safeParse(storedDynamic['call_role']).data ?? (context.lead_id ? 'property_lead' : 'general_inbound');
+  dynamic = { ...storedDynamic, ...dynamic, call_role: callRole, hat: callRole };
 
   if (eventType === 'call_initiation_failure') {
     const reason = text(data['failure_reason'], 500) || 'השיחה לא התחברה';
     await admin.from('rita_call_contexts').update({ status: 'failed', transcript_summary: reason, updated_at: new Date().toISOString() }).eq('id', context.id);
     await admin.from('call_records').update({ status: 'failed', needs_callback: true, callback_reason: reason, ended_at: new Date().toISOString() }).eq('elevenlabs_conversation_id', conversationId);
+    if (callRole === 'broker_invite' && context.workspace_owner_id) await admin.from('broker_outreach_journeys').update({ call_status: 'blocked', last_error: reason }).eq('broker_id', context.workspace_owner_id).eq('call_provider_id', conversationId);
     return { received: true, status: 'failed', conversation_id: conversationId };
   }
   if (eventType !== 'post_call_transcription') return { received: true, ignored: eventType || 'unknown' };
@@ -195,7 +178,7 @@ export async function handleRitaPostCall(admin: RitaAdmin, rawBody: string, sign
   const workspaceId = context.workspace_owner_id;
   const normalized = normalizeRitaPhone(callerPhone);
   let leadPreferences: Record<string, unknown> = {};
-  if (workspaceId && normalized) {
+  if (callRole === 'property_lead' && workspaceId && normalized) {
     if (!leadId) {
       const { data: existingLead } = await admin.from('leads').select('id,full_name,preferences,notes').eq('workspace_owner_id', workspaceId).eq('phone_number', normalized).maybeSingle();
       leadId = existingLead?.id ?? null;
@@ -260,7 +243,7 @@ export async function handleRitaPostCall(admin: RitaAdmin, rawBody: string, sign
       needs_callback: needsCallback,
       callback_reason: needsCallback ? 'הלקוח ביקש חזרה אנושית' : null,
       ended_at: new Date().toISOString(),
-      metadata: json({ provider: 'elevenlabs', rita_call_context_id: context.id, listing_id: context.property_id, qualification, matched_property_ids: matchedPropertyIds, source: context.source }),
+      metadata: json({ provider: 'elevenlabs', call_role: callRole, rita_call_context_id: context.id, listing_id: context.property_id, qualification, matched_property_ids: matchedPropertyIds, source: context.source }),
     };
     const { data: existingCall } = await admin.from('call_records').select('id').eq('elevenlabs_conversation_id', conversationId).maybeSingle();
     if (existingCall) {
@@ -302,5 +285,10 @@ export async function handleRitaPostCall(admin: RitaAdmin, rawBody: string, sign
     updated_at: new Date().toISOString(),
   }).eq('id', context.id);
   if (contextError) throw contextError;
+  if (callRole === 'broker_invite' && workspaceId) {
+    const { error } = await admin.from('broker_outreach_journeys').update({ call_status: 'completed', last_error: null }).eq('broker_id', workspaceId).eq('call_provider_id', conversationId);
+    if (error) throw error;
+    await admin.from('broker_outreach_events').upsert({ broker_id: workspaceId, workspace_owner_id: workspaceId, event_key: `rita-call:${conversationId}`, kind: 'call_status', detail: json({ provider: 'elevenlabs', status: 'completed', summary, transcript: asText.slice(0, 12000), call_role: callRole }) }, { onConflict: 'event_key' });
+  }
   return { received: true, conversation_id: conversationId, lead_id: leadId, call_record_id: callRecordId, qualification, matched_property_ids: matchedPropertyIds };
 }

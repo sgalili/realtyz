@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useServerFn } from '@tanstack/react-start';
+import { inspectRitaVoiceInfrastructure } from '@/lib/ritaVoice.functions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,9 +11,8 @@ import { Copy, Loader2, PlugZap, Save } from 'lucide-react';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { RITA_DEFAULT_VOICE_ID } from '../../../supabase/functions/_shared/ivrVoices';
 
-type Provider = 'Vapi' | 'Twilio';
+type Provider = 'Twilio';
 const FIELDS: Record<Provider, { label: string; secret?: boolean }[]> = {
-  Vapi: [{ label: 'API Key', secret: true }, { label: 'Phone Number ID' }, { label: 'Assistant ID' }],
   Twilio: [{ label: 'Account SID' }, { label: 'Auth Token', secret: true }, { label: 'מספר טלפון' }],
 };
 
@@ -23,12 +24,13 @@ function IconBtn({ label, onClick, busy, children }: { label: string; onClick: (
   );
 }
 
-/** Super Admin home for Vapi, Twilio and ElevenLabs. Storage stays in api_configs via manage-api-configs. */
+/** Super Admin home for Twilio and ElevenLabs. Storage stays in api_configs via manage-api-configs. */
 export function VoiceProvidersTab() {
-  const [values, setValues] = useState<Record<Provider, string[]>>({ Vapi: ['', '', ''], Twilio: ['', '', ''] });
+  const [values, setValues] = useState<Record<Provider, string[]>>({ Twilio: ['', '', ''] });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Provider | null>(null);
   const [testing, setTesting] = useState(false);
+  const inspectVoice = useServerFn(inspectRitaVoiceInfrastructure);
 
   useEffect(() => {
     let alive = true;
@@ -37,8 +39,8 @@ export function VoiceProvidersTab() {
         const { data, error } = await supabase.functions.invoke('manage-api-configs', { method: 'GET' });
         if (error) throw error;
         const rows = (data as { service_name: string; api_key?: string }[]) || [];
-        const next = { Vapi: ['', '', ''], Twilio: ['', '', ''] } as Record<Provider, string[]>;
-        for (const p of ['Vapi', 'Twilio'] as Provider[]) {
+        const next = { Twilio: ['', '', ''] } as Record<Provider, string[]>;
+        for (const p of ['Twilio'] as Provider[]) {
           const r = rows.find((x) => x.service_name === p);
           if (r?.api_key) { const parts = String(r.api_key).split(':'); next[p] = [parts[0] ?? '', parts[1] ?? '', parts[2] ?? '']; }
         }
@@ -62,11 +64,8 @@ export function VoiceProvidersTab() {
   const test = async () => {
     setTesting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('vapi-verify-credentials', { method: 'POST' });
-      if (error) throw error;
-      const d = (data ?? {}) as { vapi?: { ok?: boolean; message?: string }; twilio?: { ok?: boolean; message?: string } };
-      (d.vapi?.ok ? toast.success : toast.error)(`Vapi: ${d.vapi?.message ?? 'לא מחובר'}`);
-      (d.twilio?.ok ? toast.success : toast.error)(`Twilio: ${d.twilio?.message ?? 'לא מחובר'}`);
+      const result = await inspectVoice();
+      (result.connected ? toast.success : toast.error)(result.message);
     } catch { toast.error('בדיקת החיבור נכשלה'); } finally { setTesting(false); }
   };
 
@@ -75,7 +74,7 @@ export function VoiceProvidersTab() {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
         <CardTitle className="text-sm font-semibold">{p}</CardTitle>
         <div className="flex items-center gap-1">
-          {p === 'Vapi' && <IconBtn label="בדיקת חיבור" onClick={test} busy={testing || loading}><PlugZap className="h-4 w-4" /></IconBtn>}
+          {<IconBtn label="בדיקת חיבור" onClick={test} busy={testing || loading}><PlugZap className="h-4 w-4" /></IconBtn>}
           <IconBtn label="שמירה" onClick={() => save(p)} busy={saving === p || loading}><Save className="h-4 w-4" /></IconBtn>
         </div>
       </CardHeader>
@@ -93,7 +92,6 @@ export function VoiceProvidersTab() {
 
   return (
     <div className="space-y-4" dir="rtl">
-      {block('Vapi')}
       {block('Twilio')}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">

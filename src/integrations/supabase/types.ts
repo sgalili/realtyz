@@ -1763,6 +1763,7 @@ export type Database = {
           broker_id: string
           call_consent_at: string | null
           call_due_at: string | null
+          call_provider: string | null
           call_provider_id: string | null
           call_status: string
           cancel_requested_at: string | null
@@ -1788,6 +1789,7 @@ export type Database = {
           broker_id: string
           call_consent_at?: string | null
           call_due_at?: string | null
+          call_provider?: string | null
           call_provider_id?: string | null
           call_status?: string
           cancel_requested_at?: string | null
@@ -1813,6 +1815,7 @@ export type Database = {
           broker_id?: string
           call_consent_at?: string | null
           call_due_at?: string | null
+          call_provider?: string | null
           call_provider_id?: string | null
           call_status?: string
           cancel_requested_at?: string | null
@@ -11812,6 +11815,7 @@ export type Database = {
         Args: { _id: string; _note?: string }
         Returns: Json
       }
+      arm_rita_broker_demo: { Args: { _broker: string }; Returns: boolean }
       attribute_whatsapp_referral: {
         Args: { _name?: string; _phone: string; _ref: string }
         Returns: Json
@@ -11882,6 +11886,7 @@ export type Database = {
         Returns: number
       }
       cancel_my_subscription: { Args: never; Returns: Json }
+      cancel_rita_broker_demo: { Args: { _broker: string }; Returns: boolean }
       charge_action: {
         Args: {
           _action: string
@@ -12141,6 +12146,7 @@ export type Database = {
         Args: { _publication_key: string; _workspace: string }
         Returns: number
       }
+      claim_rita_broker_demo: { Args: { _broker: string }; Returns: Json }
       claim_scraping_response: {
         Args: { _key: string; _ttl_seconds: number }
         Returns: Json

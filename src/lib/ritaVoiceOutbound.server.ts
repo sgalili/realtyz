@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@/integrations/supabase/types';
-import { buildRitaDynamicVariables, firstNameFromFullName, propertyContextFromListing, ritaOutboundInputSchema, ritaPhoneE164, type RitaDynamicVariables } from './ritaVoice';
+import { buildRitaDynamicVariables, firstNameFromFullName, propertyContextFromListing, ritaOutboundInputSchema, ritaPhoneE164, ritaOpeningGreeting, type RitaDynamicVariables, type RitaCallRole } from './ritaVoice';
 import { getRitaRuntime, type RitaAdmin } from './ritaVoiceSecurity.server';
 
 const LEAD_COLUMNS = 'id,full_name,phone_number,workspace_owner_id,linked_listing_id,deal_type,city,preferences';
@@ -55,6 +55,15 @@ export async function resolveLeadCallContext(admin: RitaAdmin, leadId: string, r
 }
 
 async function resolveGeneralContext(admin: RitaAdmin, input: ReturnType<typeof ritaOutboundInputSchema.parse>, userId: string | null, service: boolean): Promise<ResolvedContext> {
+  if (service && (input.call_role === 'broker_invite' || input.hat === 'broker_invite')) {
+    const brokerId = input.workspace_owner_id;
+    if (!brokerId) throw new Error('חסר המתווך המוזמן');
+    const { data: journey, error } = await admin.from('broker_outreach_journeys').select('enabled,call_consent_at,interested_at,opted_out_at,cancel_requested_at,otp_verified_phone').eq('broker_id', brokerId).single();
+    if (error || !journey?.enabled || !journey.call_consent_at || !journey.interested_at || journey.opted_out_at || journey.cancel_requested_at || ritaPhoneE164(journey.otp_verified_phone) !== ritaPhoneE164(input.phone_number)) throw new Error('שיחת הזמנה דורשת הסכמה ומספר מאומת של המתווך');
+    const { data: profile, error: profileError } = await admin.from('profiles').select('full_name').eq('id', brokerId).single();
+    if (profileError || !profile?.full_name) throw new Error('שם המתווך אינו זמין');
+    return { workspaceId: brokerId, leadId: null, propertyId: null, fullName: profile.full_name, phone: ritaPhoneE164(journey.otp_verified_phone), ...(await identity(admin, brokerId)), property: {} };
+  }
   if (!service && input.demo) {
     const { data: profile, error } = await admin.from('profiles').select('full_name,phone').eq('id', userId ?? '').maybeSingle();
     if (error || !profile) throw new Error('לא ניתן לטעון את פרטי המשתמש לשיחת ההדגמה');
@@ -100,6 +109,9 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
 }) {
   const input = ritaOutboundInputSchema.parse(rawInput);
   if (!service && !userId) throw new Error('נדרשת התחברות');
+  if (input.hat && input.call_role && input.hat !== input.call_role) throw new Error('תפקיד השיחה אינו תואם');
+  const requestedRole = input.call_role ?? input.hat;
+  if (!service && requestedRole === 'broker_invite') throw new Error('שיחת הזמנה נשלחת רק במסלול הסכמה מאומת');
   let resolved: ResolvedContext;
   if (input.lead_id) {
     const { data: authorizedLead, error } = await userClient.from('leads').select('id,workspace_owner_id').eq('id', input.lead_id).maybeSingle();
@@ -111,6 +123,15 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
   }
   if (input.property_id && !resolved.propertyId) throw new Error('לא ניתן לקשר את הנכס לשיחה');
 
+  let callRole: RitaCallRole = resolved.leadId ? 'property_lead' : 'general_inbound';
+  if (service && requestedRole === 'broker_invite') callRole = 'broker_invite';
+  else if (!resolved.leadId && !input.demo && userId) {
+    const { data: broker, error } = await userClient.from('user_roles').select('user_id').eq('user_id', userId).eq('role', 'broker').limit(1).maybeSingle();
+    if (error) throw new Error('לא ניתן לאמת את תפקיד החשבון');
+    if (broker) callRole = 'broker_support';
+  }
+  if (requestedRole && requestedRole !== callRole) throw new Error('תפקיד השיחה אינו תואם לנמען המאומת');
+
   const runtime = await getRitaRuntime(admin);
   const variables = buildRitaDynamicVariables({
     agencyName: resolved.agencyName,
@@ -121,6 +142,8 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
     property: resolved.property,
     source: input.source,
     instructions: input.instructions,
+    callRole,
+    inviteContext: callRole === 'broker_invite' ? input.invite_context : '',
   });
   const { data: context, error: contextError } = await admin.from('rita_call_contexts').insert({
     workspace_owner_id: resolved.workspaceId,
@@ -154,8 +177,9 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
         ...(resolved.leadId ? { user_id: resolved.leadId } : {}),
         source_info: { source: 'twilio', version: 'toraff-rita-v1' },
         conversation_config_override: {
+          ...(callRole === 'broker_invite' ? { conversation: { max_duration_seconds: 90 } } : {}),
           agent: {
-            first_message: `שלום ${firstNameFromFullName(resolved.fullName)}, אני ריטה, הסוכנת הדיגיטלית של ${resolved.agencyName}. איך אפשר לעזור?`,
+            first_message: ritaOpeningGreeting(dynamicVariables),
           },
           ...(input.voice_id ? { tts: { voice_id: input.voice_id } } : {}),
         },

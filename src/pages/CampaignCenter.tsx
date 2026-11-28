@@ -36,7 +36,8 @@ import { shortenName } from "@/lib/shortenName";
 import { useNavigate, useSearchParams } from '@/lib/router-compat';
 import { useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { startRitaCall } from '@/lib/ritaVoice.functions';
+import { startRitaCall, inspectRitaVoiceInfrastructure } from '@/lib/ritaVoice.functions';
+import { RITA_PHONE_NUMBER } from '@/lib/ritaVoice';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -336,7 +337,7 @@ const CHANNEL_CARDS: ChannelCard[] = [
 ];
 
 // Live Twilio number provisioned for this broker's outbound voice/IVR.
-const VOICE_DIAL_NUMBER = '+97233829914';
+const VOICE_DIAL_NUMBER = RITA_PHONE_NUMBER;
 
 // Connection state is resolved live per-workspace from `social_connections`
 // gated by a verified `workspace_social_profile` row. No hardcoded defaults —
@@ -3888,7 +3889,7 @@ const ConfirmDispatchDialog = ({
           for (const l of leads || []) {
             if (!l.phone_number) continue;
             try {
-              await ritaCall({ data: { lead_id: l.id, property_id: listingId || undefined, source: 'campaign_inquiry' } });
+              await ritaCall({ data: { lead_id: l.id, property_id: listingId || undefined, call_role: 'property_lead', source: 'campaign_inquiry' } });
               dispatched++;
             } catch { failed++; }
           }
@@ -7032,7 +7033,7 @@ const VoiceLeadPickerDialog = ({
             lead_id: l.id,
             voice_id: agent.voice_id,
             property_id: selectedListingId ?? undefined,
-            source: 'lead_card_call',
+            call_role: 'property_lead', source: 'lead_card_call',
             instructions: instructions.trim() || undefined,
           } });
           ok++;
@@ -7554,6 +7555,7 @@ const DraftCollapsibleCard = ({
 /* ───────────── Page ───────────── */
 
 const CampaignCenter = () => {
+  const inspectVoice = useServerFn(inspectRitaVoiceInfrastructure);
   const brokersOnlyMode = useBrokersOnlyMode();
   // Own-account Super Admin role, so the test panel also shows while viewing another workspace.
   const { isSuperAdmin: isOwnSuperAdmin } = useUserRole();
@@ -8248,9 +8250,10 @@ const CampaignCenter = () => {
 
 
         // Direct (non-social) channels — always safe to derive.
-        const [profRes, cfgsRes] = await Promise.all([
+        const [profRes, cfgsRes, voiceStatus] = await Promise.all([
           supabase.from('profiles').select('direct_channels, email_alias, full_name').eq('id', user.id).maybeSingle(),
           supabase.from('api_configs').select('service_name, is_active'),
+          inspectVoice().catch(() => ({ connected: false })),
         ]);
         if (cancelled) return;
 
@@ -8261,13 +8264,11 @@ const CampaignCenter = () => {
         const activeServices = new Set(
           (cfgs || []).filter((r: any) => r?.is_active).map((r: any) => String(r?.service_name || '').toLowerCase()),
         );
-        const hasVapi = activeServices.has('vapi');
-        const hasTwilio = activeServices.has('twilio');
         const hasResend = activeServices.has('resend');
-        const voiceReady = hasVapi && hasTwilio;
+        const voiceReady = voiceStatus.connected;
 
         if (direct?.ivr || voiceReady) set.add('ivr');
-        if (direct?.['ai-call'] || hasVapi) set.add('ai-call');
+        if (voiceReady) set.add('ai-call');
         if ((direct?.email && alias) || alias || hasResend) set.add('email');
 
         if (!cancelled) {
@@ -8275,7 +8276,7 @@ const CampaignCenter = () => {
             ...prev,
             ...(alias ? { email: `${alias}@realtyz.co.il` } : hasResend ? { email: 'Resend · אימייל מותג' } : {}),
             ...(voiceReady || direct?.ivr ? { ivr: VOICE_DIAL_NUMBER } : {}),
-            ...(hasVapi || direct?.['ai-call'] ? { 'ai-call': VOICE_DIAL_NUMBER } : {}),
+            ...(voiceReady ? { 'ai-call': VOICE_DIAL_NUMBER } : {}),
           }));
           // Facebook stays connected once bound: probes that come back empty
           // (transient RLS/Graph/network failure) must never disconnect it.
@@ -8305,12 +8306,10 @@ const CampaignCenter = () => {
     // the per-broker flag stored on profiles.direct_channels.
     if (c.id === 'ivr' || c.id === 'ai-call') {
       try {
-        toast.loading('בודק חיבור Vapi / Twilio…', { id: 'voice-verify' });
-        const { data, error } = await supabase.functions.invoke('vapi-verify-credentials', { method: 'POST' });
+        toast.loading('בודק חיבור ElevenLabs ו-Twilio…', { id: 'voice-verify' });
+        const voiceStatus = await inspectVoice();
         toast.dismiss('voice-verify');
-        if (error) throw error;
-        const v: any = (data as any)?.vapi ?? {};
-        if (!v.ok) { toast.error(v.message || 'שגיאת התחברות - בדוק את מפתחות ה-API שלך'); return; }
+        if (!voiceStatus.connected) { toast.error(voiceStatus.message); return; }
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { toast.error('יש להתחבר'); return; }
         const { data: prof } = await supabase.from('profiles').select('direct_channels').eq('id', user.id).maybeSingle();

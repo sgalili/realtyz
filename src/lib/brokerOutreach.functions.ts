@@ -9,7 +9,7 @@ export const configureBrokerOutreach=createServerFn({method:'POST'}).middleware(
   if(error)throw new Error('שמירת המסלול נכשלה; נדרש מתווך מיובא ותיעוד הסכמה');
   if(!data.enabled||!data.callConsent){
     const {data:j,error:je}=await context.supabase.from('broker_outreach_journeys').select('call_provider_id,call_due_at,call_status').eq('broker_id',data.brokerId).single();if(je)throw je;
-    if(j.call_provider_id&&j.call_due_at&&Date.parse(j.call_due_at)>Date.now()){
+    if(j.call_due_at&&Date.parse(j.call_due_at)>Date.now()&&['pending','ready_to_schedule','scheduling'].includes(j.call_status)){
       const {supabaseAdmin}=await import('@/integrations/supabase/client.server');
       const {cancelBrokerDemo}=await import('./brokerOutreach.server');
       return cancelBrokerDemo(supabaseAdmin,data.brokerId);
@@ -89,27 +89,11 @@ export const handleBrokerOutreachReply=createServerOnlyFn(async(input:{phone:str
       const {error:se}=await admin.from('broker_outreach_journeys').update({last_error:reason}).eq('broker_id',j.broker_id);if(se)throw se;
       throw error;
     }
-  }else if(j.call_due_at&&Date.parse(j.call_due_at)>Date.now()&&j.call_provider_id){
+  }else if(j.call_due_at&&Date.parse(j.call_due_at)>Date.now()){
     const {cancelBrokerDemo}=await import('./brokerOutreach.server');
     await cancelBrokerDemo(admin,j.broker_id);
   }
   return {handled:true};
-});
-
-export const handleBrokerOutreachCallStatus=createServerOnlyFn(async(callId:string)=>{
-  const {supabaseAdmin:admin}=await import('@/integrations/supabase/client.server');
-  const {data:j,error}=await admin.from('broker_outreach_journeys').select('broker_id,call_status').eq('call_provider_id',callId).maybeSingle();
-  if(error)throw error;if(!j)return;
-  const {vapiConfig,outreachEvent}=await import('./brokerOutreach.server');
-  const {key}=await vapiConfig(admin);
-  const response=await fetch(`https://api.vapi.ai/call/${encodeURIComponent(callId)}`,{headers:{Authorization:`Bearer ${key}`},signal:AbortSignal.timeout(10_000)});
-  const raw=await response.text();if(!response.ok)throw new Error(`Vapi status ${response.status}: ${raw.slice(0,500)}`);
-  const call=JSON.parse(raw) as {status?:string;endedReason?:string;transcript?:string};
-  const status=call.status==='ended'?(call.endedReason==='scheduled-call-deleted'?'cancelled':'completed'):call.status==='in-progress'?'in_progress':null;
-  if(status&&j.call_status!=='cancelled'){
-    const {error:ue}=await admin.from('broker_outreach_journeys').update({call_status:status}).eq('broker_id',j.broker_id);if(ue)throw ue;
-    await outreachEvent(admin,j.broker_id,'call_status',{status,ended_reason:call.endedReason??null,transcript:call.transcript?.slice(0,12000)??null});
-  }
 });
 
 export const handleBrokerOutreachEmailReply=createServerOnlyFn(async(input:{email:string;messageId:string;text:string})=>{
@@ -122,6 +106,6 @@ export const handleBrokerOutreachEmailReply=createServerOnlyFn(async(input:{emai
   const {data:saved,error:re}=await admin.rpc('record_broker_outreach_reply',{_broker:j.broker_id,_message:`email:${input.messageId}`,_kind:kind,_text:input.text,_reply_to:j.outreach_message_id});if(re)throw re;if(!saved)return {handled:false};
   const {sendBrokerVoice,cancelBrokerDemo}=await import('./brokerOutreach.server');
   if(kind==='positive')await sendBrokerVoice(admin,j.broker_id);
-  else if(j.call_due_at&&j.call_provider_id&&Date.parse(j.call_due_at)>Date.now())await cancelBrokerDemo(admin,j.broker_id);
+  else if(j.call_due_at&&Date.parse(j.call_due_at)>Date.now())await cancelBrokerDemo(admin,j.broker_id);
   return {handled:true};
 });

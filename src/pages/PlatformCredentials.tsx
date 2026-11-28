@@ -21,7 +21,7 @@ import { KeyRound, ChevronDown, ExternalLink, ShieldAlert, Check, Save } from 'l
  * a link to where to fetch the keys, and the input fields. Values save to
  * the existing `api_configs` table via the `manage-api-configs` edge fn.
  *
- * NOTE: Vapi / 11Labs / OpenAI keys also need to live as Supabase secrets
+ * NOTE: ElevenLabs / OpenAI keys also need to live as Supabase secrets
  * (server-side env) to be readable from edge functions. This page mirrors
  * them into api_configs as a single source of truth for the admin UI; the
  * actual edge functions still read process env at runtime.
@@ -38,21 +38,6 @@ type Platform = {
 };
 
 const PLATFORMS: Platform[] = [
-  {
-    id: 'Vapi',
-    label: 'Vapi (חיוג AI)',
-    hint: 'מנוע חיוג קולי אוטונומי – נדרש למודול חייגן ה-AI.',
-    link: { url: 'https://dashboard.vapi.ai/', label: 'פתח לוח Vapi' },
-    instructions: [
-      'התחבר/הירשם ב-Vapi Dashboard.',
-      'תחת API Keys – צור Private Key (משמש לקריאות שרת-לשרת).',
-      'תחת Phone Numbers – העתק את ה-UUID של המספר שאושר.',
-    ],
-    fields: [
-      { name: 'api_key', label: 'Vapi Private API Key', type: 'password' },
-      { name: 'phone_id', label: 'Phone Number ID (UUID)', placeholder: 'dc4d9fd8-...' },
-    ],
-  },
   {
     id: 'ElevenLabs',
     label: 'ElevenLabs (קול AI)',
@@ -109,8 +94,8 @@ const PLATFORMS: Platform[] = [
   },
   {
     id: 'Twilio',
-    label: 'Twilio (גיבוי קולי / SMS)',
-    hint: 'משמש לתשתית הודעות טלפוניות מוקלטות ושיחות יוצאות בגיבוי לוופי.',
+    label: 'Twilio (שיחות / SMS)',
+    hint: 'תשתית הטלפון של ריטה עם ElevenLabs והודעות SMS.',
     link: { url: 'https://console.twilio.com/', label: 'Twilio Console' },
     instructions: [
       'Twilio Console → Account → API keys & tokens.',

@@ -16,12 +16,22 @@ import { buildRitaDynamicVariables, firstNameFromFullName, isPlaceholderLeadName
     expect(variables.agent_name).toBe('TORAFF');
     expect(variables.broker_id).toBe('');
     expect(variables.property_context).toEqual({});
+    expect(variables.call_role).toBe('general_inbound');
   });
   it('includes exact property facts and identifiers', () => {
     const property = propertyContextFromListing({ id: 'property-a', property_title: 'דירת גן', city: 'הרצליה', neighborhood: 'המרכז', rooms: 4, asking_price: 2500000, deal_type: 'sale' });
     const variables = buildRitaDynamicVariables({ source: 'property_card', property });
     expect(variables.property_id).toBe('property-a');
     expect(variables.property_context).toEqual({ property_id: 'property-a', title: 'דירת גן', city: 'הרצליה', neighborhood: 'המרכז', rooms: 4, price: 2500000, deal_type: 'sale' });
+  });
+  it.each(['property_lead', 'broker_invite', 'broker_support', 'general_inbound'] as const)('preserves the explicit %s hat and invitation context', callRole => {
+    const variables = buildRitaDynamicVariables({ source: 'verified_call', callRole, inviteContext: 'ביקוש לדירה בהרצליה' });
+    expect(variables.call_role).toBe(callRole);
+    expect(variables.hat).toBe(callRole);
+    expect(variables.invite_context).toBe('ביקוש לדירה בהרצליה');
+  });
+  it('rejects unknown call hats', () => {
+    expect(ritaOutboundInputSchema.safeParse({ call_role: 'admin' }).success).toBe(false);
   });
   it('requires valid bounded input and normalizes Israeli phones', () => {
     expect(normalizeRitaPhone('+972 50 123 4567')).toBe('972501234567');

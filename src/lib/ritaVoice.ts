@@ -2,6 +2,9 @@ import { z } from 'zod';
 
 export const RITA_DEFAULT_AGENCY = 'TORAFF';
 export const RITA_DEFAULT_VOICE = 't1FxSQNdBrLMfytJMHmg';
+export const RITA_PHONE_NUMBER = '+97233826735';
+export const ritaCallRoleSchema = z.enum(['property_lead', 'broker_invite', 'broker_support', 'general_inbound']);
+export type RitaCallRole = z.infer<typeof ritaCallRoleSchema>;
 
 const optionalUuid = z.union([z.string().uuid(), z.literal('')]).optional();
 export const ritaOutboundInputSchema = z.object({
@@ -13,6 +16,9 @@ export const ritaOutboundInputSchema = z.object({
   source: z.string().trim().min(1).max(80).default('lead_card'),
   instructions: z.string().trim().max(1500).optional(),
   voice_id: z.string().trim().max(100).optional(),
+  call_role: ritaCallRoleSchema.optional(),
+  hat: ritaCallRoleSchema.optional(),
+  invite_context: z.string().trim().max(1500).optional(),
   demo: z.boolean().optional().default(false),
   record_call: z.boolean().optional().default(true),
 }).strict();
@@ -39,6 +45,9 @@ export type RitaPropertyContext = {
 };
 
 export type RitaDynamicVariables = {
+  call_role: RitaCallRole;
+  hat: RitaCallRole;
+  invite_context: string;
   agency_name: string;
   agent_name: string;
   broker_id: string;
@@ -97,10 +106,15 @@ export function buildRitaDynamicVariables(input: {
   property?: RitaPropertyContext | Record<string, never>;
   source: string;
   instructions?: string | null;
+  callRole?: RitaCallRole;
+  inviteContext?: string | null;
 }): RitaDynamicVariables {
   const fullName = String(input.fullName ?? '').trim();
   const agency = String(input.agencyName ?? '').trim() || RITA_DEFAULT_AGENCY;
   return {
+    call_role: input.callRole ?? 'general_inbound',
+    hat: input.callRole ?? 'general_inbound',
+    invite_context: String(input.inviteContext ?? '').trim(),
     agency_name: agency,
     agent_name: String(input.agentName ?? '').trim() || agency,
     broker_id: input.brokerId ?? '',
@@ -112,6 +126,14 @@ export function buildRitaDynamicVariables(input: {
     source: input.source,
     custom_instructions: String(input.instructions ?? '').trim(),
   };
+}
+
+export function ritaOpeningGreeting(variables: RitaDynamicVariables): string {
+  const hello = variables.lead_name ? `שלום ${variables.lead_name},` : 'שלום,';
+  if (variables.call_role === 'broker_invite') return `${hello} אני ריטה, עוזרת ההצטרפות של TORAFF. אפשר לדבר בקצרה על המשרד שלך?`;
+  if (variables.call_role === 'broker_support') return `${hello} אני ריטה מ-TORAFF, העוזרת הדיגיטלית של ${variables.agency_name}. במה אפשר לעזור היום?`;
+  const property = variables.call_role === 'property_lead' && 'title' in variables.property_context ? variables.property_context.title : '';
+  return `${hello} אני ריטה, הסוכנת הדיגיטלית של ${variables.agency_name}.${property ? ` אני חוזרת לגבי ${property}.` : ''} איך אפשר לעזור?`;
 }
 
 export function isPlaceholderLeadName(name: string | null | undefined): boolean {

@@ -130,7 +130,7 @@ export default function AiDialer() {
       let ok = 0, failed = 0;
       for (const t of targets) {
         try {
-          await ritaCall({ data: { lead_id: (t as any).id, voice_id: voiceId, source: 'ai_dialer', instructions: instructions || undefined } });
+          await ritaCall({ data: { lead_id: (t as any).id, voice_id: voiceId, call_role: 'property_lead', source: 'ai_dialer', instructions: instructions || undefined } });
           ok++;
         } catch { failed++; }
       }

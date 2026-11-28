@@ -1,5 +1,12 @@
 # Roadmap
 
+## ElevenLabs-only role-aware calls November 28
+- [ ] Remove active Vapi UI, call routes/functions and fallback configuration without affecting unrelated integrations.
+- [ ] Add server-owned call hats and context across property, campaigns, support, invitation, retry and inbound calls.
+- [ ] Replace delayed invitation scheduling with a durable consent-gated ElevenLabs dispatch and cancellation path.
+- [ ] Sync production agent/tools, verify role routing and callbacks, and retire deployed Vapi functions after replacement verification.
+- [ ] Publish and verify the replacement first, then disable deployed Vapi endpoints (user approved).
+
 ## Rita live production routing November 28
 - [x] Updated the live ElevenLabs inbound-context URL to toraff.co.il; verified property search and post-call already use production. Preserved active voice, language, greeting, tools and qualification settings, adding only the missing lead_name prompt context.
 - [x] Authenticated production inbound and existing outbound-context requests returned 200; invalid x-rita-key returned 401. Required dynamic variables and +97233826735 assignment verified; temporary contexts removed. No real calls placed.

@@ -1,3 +1,5 @@
+import { useServerFn } from '@tanstack/react-start';
+import { inspectRitaVoiceInfrastructure } from '@/lib/ritaVoice.functions';
 import { PersonalWhatsAppSubscriptionCard } from './PersonalWhatsAppSubscriptionCard';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { InventoryToolSoftLock } from '@/components/InventoryCollection';
@@ -205,6 +207,7 @@ export function ConnectionsTab() {
   const [waMode, setWaMode] = useState<string | null>(null);
   const [greenReady, setGreenReady] = useState(false);
   const [voiceReady, setVoiceReady] = useState(false);
+  const inspectVoice = useServerFn(inspectRitaVoiceInfrastructure);
   // Live phone numbers so a collapsed row shows the actual connected number.
   const [waPhone, setWaPhone] = useState<string | null>(null);
   const [greenPhone, setGreenPhone] = useState<string | null>(null);
@@ -240,11 +243,9 @@ export function ConnectionsTab() {
         const { data } = await supabase.functions.invoke('manage-api-configs', { method: 'GET' });
         const rows = (data as any[]) || [];
         setGreenReady(!!rows.find((r) => r.service_name === 'Green API')?.api_key);
-        setVoiceReady(!!rows.find((r) => r.service_name === 'Vapi')?.api_key);
-        // Twilio: api_key = `${sid}:${token}:${phone}`
-        const twilio = String(rows.find((r) => r.service_name === 'Twilio')?.api_key ?? '');
-        const twilioPhone = twilio.split(':')[2] ?? '';
-        if (twilioPhone.replace(/\D/g, '')) setVoicePhone(twilioPhone);
+        const voice = await inspectVoice();
+        setVoiceReady(voice.connected);
+        setVoicePhone(voice.phone_number || null);
       } catch { /* silent */ }
       try {
         const { data: wap } = await supabase.from('wa_providers' as never).select('config').limit(1).maybeSingle();

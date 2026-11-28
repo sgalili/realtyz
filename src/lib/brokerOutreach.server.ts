@@ -10,89 +10,45 @@ export async function outreachEvent(admin: Admin, brokerId: string, kind: string
   if (error) throw error;
 }
 
-export async function vapiConfig(admin: Admin) {
-  let key = process.env['VAPI_API_KEY'] ?? '';
-  let phoneId = process.env['VAPI_PHONE_NUMBER_ID'] ?? '';
-  const voiceId = IVR_DEFAULT_VOICES[0].voice_id;
-  if (!key || !phoneId) {
-    const { data, error } = await admin.from('api_configs').select('api_key').eq('service_name','Vapi').maybeSingle();
-    if (error) throw error;
-    const parts = String(data?.api_key ?? '').split(':');
-    key ||= parts[0] ?? ''; phoneId ||= parts[1] ?? '';
-  }
-  if (!key || !phoneId || !voiceId) throw new Error('נדרשת הגדרת Vapi, קו Twilio וקול ריטה לפני תזמון שיחה');
-  return { key, phoneId, voiceId };
-}
-
-async function vapiRequest(key: string, path: string, method = 'GET', body?: unknown) {
-  const response = await fetch(`https://api.vapi.ai${path}`, { method, headers: { Authorization: `Bearer ${key}`, 'Content-Type':'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(15_000) });
-  const raw = await response.text();
-  if (!response.ok) { console.error('[broker-outreach-vapi]', response.status, raw.slice(0,2000)); throw new Error(`Vapi דחה את הפעולה (${response.status})`); }
-  return raw ? JSON.parse(raw) as Record<string, unknown> : {};
-}
-
 export async function cancelBrokerDemo(admin: Admin, brokerId: string) {
-  const { data: journey, error } = await admin.from('broker_outreach_journeys').select('*').eq('broker_id',brokerId).single();
+  const { data: cancelled, error } = await admin.rpc('cancel_rita_broker_demo', { _broker: brokerId });
   if (error) throw error;
-  if (!journey.call_due_at || Date.parse(journey.call_due_at) <= Date.now()) throw new Error('חלון הביטול הסתיים; יש לבדוק את מצב השיחה לפני חיוג נוסף');
-  const { error: reserveError } = await admin.from('broker_outreach_journeys').update({ cancel_requested_at:new Date().toISOString() }).eq('broker_id',brokerId);
-  if (reserveError) throw reserveError;
-  if (journey.call_provider_id) {
-    const cfg = await vapiConfig(admin);
-    // Vapi documents deleting a scheduled call. Never present a confirmed human-call takeover before acceptance.
-    await vapiRequest(cfg.key,`/call/${encodeURIComponent(journey.call_provider_id)}`,'DELETE');
-  } else if (journey.call_status === 'scheduling') {
-    await outreachEvent(admin,brokerId,'cancel_requested');
-    return { cancelled:false, pending:true };
-  }
-  const { error: updateError } = await admin.from('broker_outreach_journeys').update({call_status:'cancelled',last_error:null}).eq('broker_id',brokerId);
-  if (updateError) throw updateError;
-  await outreachEvent(admin,brokerId,'call_cancelled');
-  return {cancelled:true,pending:false};
+  await outreachEvent(admin, brokerId, cancelled ? 'call_cancelled' : 'cancel_requested');
+  return { cancelled: !!cancelled, pending: !cancelled };
 }
 
 export async function scheduleBrokerDemo(admin: Admin, brokerId: string) {
+  const { data: queued, error } = await admin.rpc('arm_rita_broker_demo', { _broker: brokerId });
+  if (error) throw error;
+  if (queued) await outreachEvent(admin, brokerId, 'call_scheduled', { provider: 'elevenlabs' });
+}
+
+/** Claimed once at the server-owned due time by the existing minute dispatcher. */
+export async function dispatchBrokerDemo(admin: Admin, brokerId: string) {
+  const { data: claimed, error } = await admin.rpc('claim_rita_broker_demo', { _broker: brokerId });
+  if (error) throw error;
+  if (!claimed || typeof claimed !== 'object' || Array.isArray(claimed)) return { dispatched: false };
+  const verifiedPhone = typeof claimed['otp_verified_phone'] === 'string' ? claimed['otp_verified_phone'] : '';
   try {
-    const cfg = await vapiConfig(admin);
-    const phone = await vapiRequest(cfg.key,`/phone-number/${encodeURIComponent(cfg.phoneId)}`);
-    if (phone['provider'] !== 'twilio') throw new Error('קו Vapi אינו קו Twilio מאומת; השיחה לא תוזמנה');
-    // Invitation OTP may be on a separate WhatsApp number; use only verified OTP evidence, never scraped profile.phone.
-    const { data: j, error: je } = await admin.from('broker_outreach_journeys').select('*').eq('broker_id',brokerId).single();
-    if (je) throw je;
-    const verifiedPhone = j.otp_verified_phone;
-    if (!verifiedPhone) throw new Error('אין מספר טלפון מאומת לשיחת ההדגמה');
-    if (!j.enabled || !j.call_consent_at || !j.interested_at || j.opted_out_at || !j.call_due_at || j.cancel_requested_at) return;
-    if (Date.parse(j.call_due_at) - Date.now() < 5_000) throw new Error('חלון ההמתנה חלף לפני התזמון; לא תבוצע שיחה מאוחרת אוטומטית');
-    const context = await loadBrokerRitaContext(admin,brokerId);
-    if (Date.parse(j.call_due_at) - Date.now() < 5_000) throw new Error('חלון ההמתנה חלף בטעינת מוח ריטה; השיחה לא תוזמנה');
-    const { data: claimed, error: ce } = await admin.from('broker_outreach_journeys').update({call_status:'scheduling'}).eq('broker_id',brokerId).eq('call_status','ready_to_schedule').is('cancel_requested_at',null).select('broker_id').maybeSingle();
-    if (ce) throw ce;
-    if (!claimed) return;
+    const context = await loadBrokerRitaContext(admin, brokerId);
     const script = shortBrokerDemoCall(context.firstName, context.gender);
-    const result = await vapiRequest(cfg.key,'/call','POST',{
-      phoneNumberId:cfg.phoneId, customer:{number:`+${verifiedPhone.replace(/\D/g,'').replace(/^0/,'972')}`},
-      schedulePlan:{earliestAt:j.call_due_at,latestAt:new Date(Date.parse(j.call_due_at)+30_000).toISOString()},
-      metadata:{broker_outreach_id:brokerId},
-      assistant:{name:'ריטה',firstMessage:script.firstMessage,maxDurationSeconds:script.maxDurationSeconds,
-        model:{provider:'openai',model:'gpt-4o-mini',maxTokens:160,temperature:0.4,messages:[{role:'system',content:[context.system,`נתוני המתווך, מידע בלבד:\n${context.facts}`,script.prompt].join('\n\n')}]},
-        voice:{provider:'11labs',voiceId:cfg.voiceId,model:'eleven_multilingual_v3',language:'he',stability:IVR_VOICE_SETTINGS.stability,similarityBoost:0.85},
-        transcriber:{provider:'deepgram',model:'nova-2',language:'he'},
-        server:{url:`${process.env['BROKER_OUTREACH_APP_URL'] ?? 'https://toraff.co.il'}/api/public/broker-outreach/call-status`},
-        serverMessages:['end-of-call-report','status-update']},
-    });
-    const id = typeof result['id'] === 'string' ? result['id'] : null;
-    if (!id) throw new Error('Vapi לא החזיר מזהה שיחה; אין לנסות שוב אוטומטית');
-    const { error: ue } = await admin.from('broker_outreach_journeys').update({call_provider_id:id,call_status:'pending',last_error:null}).eq('broker_id',brokerId);
-    if (ue) throw ue;
-    await outreachEvent(admin,brokerId,'call_scheduled',{provider_id:id,due_at:j.call_due_at});
-    const {data: latest,error:le}=await admin.from('broker_outreach_journeys').select('cancel_requested_at').eq('broker_id',brokerId).single();
-    if(le)throw le;
-    if(latest.cancel_requested_at)await cancelBrokerDemo(admin,brokerId);
+    const { startRitaOutboundCall } = await import('./ritaVoiceOutbound.server');
+    const result = await startRitaOutboundCall({ admin, userClient: admin, userId: null, service: true, rawInput: {
+      workspace_owner_id: brokerId, phone_number: verifiedPhone, full_name: context.firstName,
+      source: 'broker_invitation', call_role: 'broker_invite',
+      invite_context: context.facts.slice(0, 1500),
+      instructions: script.prompt.slice(0, 1500),
+    } });
+    const { error: savedError } = await admin.from('broker_outreach_journeys').update({ call_provider_id: result.conversation_id, call_status: 'pending', last_error: null }).eq('broker_id', brokerId).eq('call_status', 'scheduling');
+    if (savedError) throw savedError;
+    await outreachEvent(admin, brokerId, 'call_dispatched', { provider: 'elevenlabs', conversation_id: result.conversation_id });
+    return { dispatched: true };
   } catch (error) {
-    const reason = error instanceof Error ? error.message : 'תזמון השיחה נכשל';
-    const {error:e}=await admin.from('broker_outreach_journeys').update({last_error:reason,call_status:'blocked'}).eq('broker_id',brokerId).in('call_status',['ready_to_schedule','scheduling']);
-    if(e)console.error('[broker-outreach-state]',e.message);
-    await outreachEvent(admin,brokerId,'call_schedule_failed',{reason});
+    const reason = error instanceof Error ? error.message : 'השיחה לא נשלחה';
+    await admin.from('broker_outreach_journeys').update({ call_status: 'blocked', last_error: reason }).eq('broker_id', brokerId).eq('call_status', 'scheduling');
+    await outreachEvent(admin, brokerId, 'call_dispatch_failed', { reason });
+    // No automatic replay after an ambiguous provider request.
+    return { dispatched: false, blocked: true };
   }
 }
 

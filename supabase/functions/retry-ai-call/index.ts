@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
         property_id: listingId,
         instructions: "השיחה מתייחסת אך ורק לנכס שנשלח אליך. שאל לפחות שלוש שאלות סינון לפני סיום השיחה.",
         workspace_owner_id: attempt.user_id,
+        call_role: "property_lead",
         source: "retry_ai_call",
         record_call: false,
       }),

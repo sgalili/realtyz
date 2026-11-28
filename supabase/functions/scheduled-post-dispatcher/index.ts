@@ -249,6 +249,22 @@ Deno.serve(async (req) => {
   if (__caller instanceof Response) return __caller;
 
   const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
+  // Reuse this existing minute tick; invitations never add a permanent timer.
+  // Only newly queued ElevenLabs journeys qualify; historical provider IDs are not replayed.
+  const { data: invitations, error: invitationError } = await admin.from('broker_outreach_journeys')
+    .select('broker_id').eq('call_provider', 'elevenlabs').eq('call_status', 'pending')
+    .is('call_provider_id', null).is('cancel_requested_at', null).lte('call_due_at', new Date().toISOString())
+    .order('call_due_at', { ascending: true }).limit(5);
+  if (invitationError) console.error('[rita-invitation-tick]', invitationError.message);
+  await Promise.all((invitations ?? []).map(async invitation => {
+    try {
+      const response = await fetch('https://toraff.co.il/api/public/rita/broker-dispatch', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE}` },
+        body: JSON.stringify({ broker_id: invitation.broker_id }), signal: AbortSignal.timeout(30000),
+      });
+      if (!response.ok) console.error('[rita-invitation-dispatch]', response.status);
+    } catch (error) { console.error('[rita-invitation-dispatch]', error instanceof Error ? error.message : 'Request failed'); }
+  }));
   const workerId = `disp-${crypto.randomUUID().slice(0, 8)}-${Date.now()}`;
   const now = Date.now();
 

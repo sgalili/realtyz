@@ -53,8 +53,20 @@ describe('Rita outbound context', () => {
     const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     const variables = request.conversation_initiation_client_data.dynamic_variables;
     expect(request.to_number).toBe('+972501234567');
-    expect(variables).toMatchObject({ agency_name: 'משרד הדוגמה', agent_name: 'דני לוי', broker_id: BROKER_ID, lead_name: 'דנה', lead_full_name: 'דנה כהן', lead_phone: '+972501234567', property_id: PROPERTY_ID, rita_call_context_id: 'context-a' });
+    expect(variables).toMatchObject({ call_role: 'property_lead', hat: 'property_lead', agency_name: 'משרד הדוגמה', agent_name: 'דני לוי', broker_id: BROKER_ID, lead_name: 'דנה', lead_full_name: 'דנה כהן', lead_phone: '+972501234567', property_id: PROPERTY_ID, rita_call_context_id: 'context-a' });
     expect(variables.property_context).toMatchObject({ title: 'דירת גן', city: 'הרצליה', neighborhood: 'המרכז', rooms: 4, price: 2500000 });
     expect(request.conversation_initiation_client_data.conversation_config_override.agent.first_message).toContain('שלום דנה, אני ריטה');
+  });
+  it('does not let a property lead impersonate a broker invitation', async () => {
+    const { admin, userClient } = mockClients();
+    const fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock);
+    await expect(startRitaOutboundCall({ admin, userClient, userId: BROKER_ID, rawInput: { lead_id: LEAD_ID, call_role: 'broker_invite' } })).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('rejects mismatched explicit hats before contacting the provider', async () => {
+    const { admin, userClient } = mockClients();
+    const fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock);
+    await expect(startRitaOutboundCall({ admin, userClient, userId: BROKER_ID, rawInput: { lead_id: LEAD_ID, call_role: 'property_lead', hat: 'broker_support' } })).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

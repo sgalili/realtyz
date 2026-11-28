@@ -124,9 +124,9 @@ import { Route as CrmProfileIdRouteImport } from './routes/crm/profile/$id'
 import { Route as MyAdsIdEditRouteImport } from './routes/my-ads/$id/edit'
 import { Route as SharePropertyTokenRouteImport } from './routes/share/property/$token'
 import { Route as SuperAdminBrokerBrokerIdRouteImport } from './routes/super-admin_.broker.$brokerId'
-import { Route as ApiPublicBrokerOutreachCallStatusRouteImport } from './routes/api/public/broker-outreach/call-status'
 import { Route as ApiPublicBrokerOutreachEmailReplyRouteImport } from './routes/api/public/broker-outreach/email-reply'
 import { Route as ApiPublicBrokerOutreachReplyRouteImport } from './routes/api/public/broker-outreach/reply'
+import { Route as ApiPublicRitaBrokerDispatchRouteImport } from './routes/api/public/rita/broker-dispatch'
 import { Route as ApiPublicRitaConversationInitiationRouteImport } from './routes/api/public/rita/conversation-initiation'
 import { Route as ApiPublicRitaOutboundRouteImport } from './routes/api/public/rita/outbound'
 import { Route as ApiPublicRitaPostCallRouteImport } from './routes/api/public/rita/post-call'
@@ -708,12 +708,6 @@ const SuperAdminBrokerBrokerIdRoute =
     path: '/super-admin/broker/$brokerId',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicBrokerOutreachCallStatusRoute =
-  ApiPublicBrokerOutreachCallStatusRouteImport.update({
-    id: '/api/public/broker-outreach/call-status',
-    path: '/api/public/broker-outreach/call-status',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicBrokerOutreachEmailReplyRoute =
   ApiPublicBrokerOutreachEmailReplyRouteImport.update({
     id: '/api/public/broker-outreach/email-reply',
@@ -724,6 +718,12 @@ const ApiPublicBrokerOutreachReplyRoute =
   ApiPublicBrokerOutreachReplyRouteImport.update({
     id: '/api/public/broker-outreach/reply',
     path: '/api/public/broker-outreach/reply',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicRitaBrokerDispatchRoute =
+  ApiPublicRitaBrokerDispatchRouteImport.update({
+    id: '/api/public/rita/broker-dispatch',
+    path: '/api/public/rita/broker-dispatch',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicRitaConversationInitiationRoute =
@@ -865,9 +865,9 @@ export interface FileRoutesByFullPath {
   '/my-ads/$id/edit': typeof MyAdsIdEditRoute
   '/share/property/$token': typeof SharePropertyTokenRoute
   '/super-admin/broker/$brokerId': typeof SuperAdminBrokerBrokerIdRoute
-  '/api/public/broker-outreach/call-status': typeof ApiPublicBrokerOutreachCallStatusRoute
   '/api/public/broker-outreach/email-reply': typeof ApiPublicBrokerOutreachEmailReplyRoute
   '/api/public/broker-outreach/reply': typeof ApiPublicBrokerOutreachReplyRoute
+  '/api/public/rita/broker-dispatch': typeof ApiPublicRitaBrokerDispatchRoute
   '/api/public/rita/conversation-initiation': typeof ApiPublicRitaConversationInitiationRoute
   '/api/public/rita/outbound': typeof ApiPublicRitaOutboundRoute
   '/api/public/rita/post-call': typeof ApiPublicRitaPostCallRoute
@@ -989,9 +989,9 @@ export interface FileRoutesByTo {
   '/my-ads/$id/edit': typeof MyAdsIdEditRoute
   '/share/property/$token': typeof SharePropertyTokenRoute
   '/super-admin/broker/$brokerId': typeof SuperAdminBrokerBrokerIdRoute
-  '/api/public/broker-outreach/call-status': typeof ApiPublicBrokerOutreachCallStatusRoute
   '/api/public/broker-outreach/email-reply': typeof ApiPublicBrokerOutreachEmailReplyRoute
   '/api/public/broker-outreach/reply': typeof ApiPublicBrokerOutreachReplyRoute
+  '/api/public/rita/broker-dispatch': typeof ApiPublicRitaBrokerDispatchRoute
   '/api/public/rita/conversation-initiation': typeof ApiPublicRitaConversationInitiationRoute
   '/api/public/rita/outbound': typeof ApiPublicRitaOutboundRoute
   '/api/public/rita/post-call': typeof ApiPublicRitaPostCallRoute
@@ -1114,9 +1114,9 @@ export interface FileRoutesById {
   '/my-ads/$id/edit': typeof MyAdsIdEditRoute
   '/share/property/$token': typeof SharePropertyTokenRoute
   '/super-admin_/broker/$brokerId': typeof SuperAdminBrokerBrokerIdRoute
-  '/api/public/broker-outreach/call-status': typeof ApiPublicBrokerOutreachCallStatusRoute
   '/api/public/broker-outreach/email-reply': typeof ApiPublicBrokerOutreachEmailReplyRoute
   '/api/public/broker-outreach/reply': typeof ApiPublicBrokerOutreachReplyRoute
+  '/api/public/rita/broker-dispatch': typeof ApiPublicRitaBrokerDispatchRoute
   '/api/public/rita/conversation-initiation': typeof ApiPublicRitaConversationInitiationRoute
   '/api/public/rita/outbound': typeof ApiPublicRitaOutboundRoute
   '/api/public/rita/post-call': typeof ApiPublicRitaPostCallRoute
@@ -1240,9 +1240,9 @@ export interface FileRouteTypes {
     | '/my-ads/$id/edit'
     | '/share/property/$token'
     | '/super-admin/broker/$brokerId'
-    | '/api/public/broker-outreach/call-status'
     | '/api/public/broker-outreach/email-reply'
     | '/api/public/broker-outreach/reply'
+    | '/api/public/rita/broker-dispatch'
     | '/api/public/rita/conversation-initiation'
     | '/api/public/rita/outbound'
     | '/api/public/rita/post-call'
@@ -1364,9 +1364,9 @@ export interface FileRouteTypes {
     | '/my-ads/$id/edit'
     | '/share/property/$token'
     | '/super-admin/broker/$brokerId'
-    | '/api/public/broker-outreach/call-status'
     | '/api/public/broker-outreach/email-reply'
     | '/api/public/broker-outreach/reply'
+    | '/api/public/rita/broker-dispatch'
     | '/api/public/rita/conversation-initiation'
     | '/api/public/rita/outbound'
     | '/api/public/rita/post-call'
@@ -1488,9 +1488,9 @@ export interface FileRouteTypes {
     | '/my-ads/$id/edit'
     | '/share/property/$token'
     | '/super-admin_/broker/$brokerId'
-    | '/api/public/broker-outreach/call-status'
     | '/api/public/broker-outreach/email-reply'
     | '/api/public/broker-outreach/reply'
+    | '/api/public/rita/broker-dispatch'
     | '/api/public/rita/conversation-initiation'
     | '/api/public/rita/outbound'
     | '/api/public/rita/post-call'
@@ -1613,9 +1613,9 @@ export interface RootRouteChildren {
   MyAdsIdEditRoute: typeof MyAdsIdEditRoute
   SharePropertyTokenRoute: typeof SharePropertyTokenRoute
   SuperAdminBrokerBrokerIdRoute: typeof SuperAdminBrokerBrokerIdRoute
-  ApiPublicBrokerOutreachCallStatusRoute: typeof ApiPublicBrokerOutreachCallStatusRoute
   ApiPublicBrokerOutreachEmailReplyRoute: typeof ApiPublicBrokerOutreachEmailReplyRoute
   ApiPublicBrokerOutreachReplyRoute: typeof ApiPublicBrokerOutreachReplyRoute
+  ApiPublicRitaBrokerDispatchRoute: typeof ApiPublicRitaBrokerDispatchRoute
   ApiPublicRitaConversationInitiationRoute: typeof ApiPublicRitaConversationInitiationRoute
   ApiPublicRitaOutboundRoute: typeof ApiPublicRitaOutboundRoute
   ApiPublicRitaPostCallRoute: typeof ApiPublicRitaPostCallRoute
@@ -2429,13 +2429,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperAdminBrokerBrokerIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/broker-outreach/call-status': {
-      id: '/api/public/broker-outreach/call-status'
-      path: '/api/public/broker-outreach/call-status'
-      fullPath: '/api/public/broker-outreach/call-status'
-      preLoaderRoute: typeof ApiPublicBrokerOutreachCallStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/broker-outreach/email-reply': {
       id: '/api/public/broker-outreach/email-reply'
       path: '/api/public/broker-outreach/email-reply'
@@ -2448,6 +2441,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/broker-outreach/reply'
       fullPath: '/api/public/broker-outreach/reply'
       preLoaderRoute: typeof ApiPublicBrokerOutreachReplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/rita/broker-dispatch': {
+      id: '/api/public/rita/broker-dispatch'
+      path: '/api/public/rita/broker-dispatch'
+      fullPath: '/api/public/rita/broker-dispatch'
+      preLoaderRoute: typeof ApiPublicRitaBrokerDispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/rita/conversation-initiation': {
@@ -2597,11 +2597,10 @@ const rootRouteChildren: RootRouteChildren = {
   MyAdsIdEditRoute: MyAdsIdEditRoute,
   SharePropertyTokenRoute: SharePropertyTokenRoute,
   SuperAdminBrokerBrokerIdRoute: SuperAdminBrokerBrokerIdRoute,
-  ApiPublicBrokerOutreachCallStatusRoute:
-    ApiPublicBrokerOutreachCallStatusRoute,
   ApiPublicBrokerOutreachEmailReplyRoute:
     ApiPublicBrokerOutreachEmailReplyRoute,
   ApiPublicBrokerOutreachReplyRoute: ApiPublicBrokerOutreachReplyRoute,
+  ApiPublicRitaBrokerDispatchRoute: ApiPublicRitaBrokerDispatchRoute,
   ApiPublicRitaConversationInitiationRoute:
     ApiPublicRitaConversationInitiationRoute,
   ApiPublicRitaOutboundRoute: ApiPublicRitaOutboundRoute,

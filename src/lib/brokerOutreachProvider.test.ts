@@ -1,22 +1,37 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { scheduleBrokerDemo } from './brokerOutreach.server';
-afterEach(()=>vi.unstubAllGlobals());
-describe('broker demo call provider fence',()=>{
- it('rejects a non-Twilio Vapi line without creating a phone call',async()=>{
-  const events:unknown[]=[];
-  const admin={from:(table:string)=>{
-    const query:any={};
-    for(const method of ['select','eq','update','in'])query[method]=()=>query;
-    query.maybeSingle=async()=>({data:{api_key:'test-key:test-phone'},error:null});
-    query.insert=(value:unknown)=>{events.push(value);return Promise.resolve({error:null});};
-    query.then=(resolve:(value:unknown)=>void)=>resolve({error:null});return query;
-  }};
-  const fetchMock=vi.fn(async(_url:string,_init?:RequestInit)=>new Response(JSON.stringify({provider:'vapi'})));
-  vi.stubGlobal('fetch',fetchMock);
-  await scheduleBrokerDemo(admin as never,'00000000-0000-0000-0000-000000000010');
-  expect(fetchMock).toHaveBeenCalledTimes(1);
-  expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.vapi.ai/phone-number/test-phone');
-  expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('GET');
-  expect(events).toEqual([expect.objectContaining({kind:'call_schedule_failed'})]);
- });
+import { dispatchBrokerDemo } from './brokerOutreach.server';
+const start = vi.hoisted(() => vi.fn());
+vi.mock('./ritaVoiceOutbound.server', () => ({ startRitaOutboundCall: start }));
+vi.mock('./brokerRitaContext.server', () => ({ loadBrokerRitaContext: async () => ({ firstName: 'דנה', gender: 'female', system: 'Rita', facts: 'ביקוש בהרצליה' }) }));
+afterEach(() => vi.clearAllMocks());
+function client(claim: unknown) {
+  const updates: unknown[] = [];
+  return { updates, admin: { rpc: vi.fn(async () => ({ data: claim, error: null })), from: () => {
+    const q: Record<string, unknown> = {};
+    q['update'] = (value: unknown) => { updates.push(value); return q; };
+    q['eq'] = () => q;
+    q['insert'] = async () => ({ error: null });
+    q['then'] = (resolve: (value: unknown) => void) => resolve({ error: null });
+    return q;
+  } } };
+}
+describe('broker invitation provider fences', () => {
+  it('does not dispatch without the atomic consent and due-time claim', async () => {
+    const { admin } = client(null);
+    expect(await dispatchBrokerDemo(admin as never, 'broker')).toEqual({ dispatched: false });
+    expect(start).not.toHaveBeenCalled();
+  });
+  it('sends broker_invite with the verified OTP phone and scoped invitation facts', async () => {
+    start.mockResolvedValue({ conversation_id: 'conversation-a' });
+    const { admin } = client({ otp_verified_phone: '972500000034' });
+    expect(await dispatchBrokerDemo(admin as never, 'broker')).toEqual({ dispatched: true });
+    expect(start).toHaveBeenCalledWith(expect.objectContaining({ service: true, rawInput: expect.objectContaining({ call_role: 'broker_invite', workspace_owner_id: 'broker', phone_number: '972500000034', invite_context: 'ביקוש בהרצליה' }) }));
+  });
+  it('blocks ambiguous submissions instead of automatically replaying a call', async () => {
+    start.mockRejectedValue(new Error('Unknown provider outcome'));
+    const { admin, updates } = client({ otp_verified_phone: '972500000034' });
+    expect(await dispatchBrokerDemo(admin as never, 'broker')).toEqual({ dispatched: false, blocked: true });
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(updates).toContainEqual(expect.objectContaining({ call_status: 'blocked' }));
+  });
 });

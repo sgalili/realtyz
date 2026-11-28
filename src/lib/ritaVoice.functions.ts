@@ -15,6 +15,14 @@ export const startRitaCall = createServerFn({ method: 'POST' }).middleware([requ
     return startRitaOutboundCall({ admin: supabaseAdmin, userClient: context.supabase, userId: context.userId, rawInput: data });
   });
 
+export const inspectRitaVoiceInfrastructure = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async () => {
+  const key = process.env['ELEVENLABS_API_KEY'];
+  if (!key) return { connected: false, phone_number: '', message: 'ElevenLabs אינו מחובר' };
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const { inspectRitaProvider } = await import('./ritaVoiceProvider.server');
+  return inspectRitaProvider(supabaseAdmin, key);
+});
+
 export const configureRitaVoiceIntegration = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   const { data: allowed, error } = await context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'super_admin' });
   if (error || !allowed) throw new Error('הגדרת החיבור המרכזי זמינה למנהל המערכת בלבד');
@@ -63,5 +71,18 @@ export async function handleRitaPostCallRequest(request: Request): Promise<Respo
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     const { handleRitaPostCall } = await import('./ritaVoiceWebhook.server');
     return Response.json(await handleRitaPostCall(supabaseAdmin, rawBody, request.headers.get('elevenlabs-signature')));
+  } catch (error) { return failure(error); }
+}
+
+export async function handleRitaBrokerDispatchRequest(request: Request): Promise<Response> {
+  try {
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { requireRitaCallbackSecret, requireServiceBearer } = await import('./ritaVoiceSecurity.server');
+    if (request.headers.has('x-rita-key')) await requireRitaCallbackSecret(request, supabaseAdmin);
+    else requireServiceBearer(request);
+    const { dispatchBrokerDemo } = await import('./brokerOutreach.server');
+    const { z } = await import('zod');
+    const input = z.object({ broker_id: z.string().uuid() }).strict().parse(await request.json());
+    return Response.json(await dispatchBrokerDemo(supabaseAdmin, input.broker_id));
   } catch (error) { return failure(error); }
 }

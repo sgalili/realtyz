@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
       let callContextId: string | null = null;
       try {
         const appUrl = (Deno.env.get("PUBLIC_SITE_URL") || "https://toraff.co.il").replace(/\/$/, "");
-        const response = await fetch(`${appUrl}/api/public/rita/outbound`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` }, body: JSON.stringify({ lead_id: leadId, property_id: listing.id, instructions, workspace_owner_id: ownerId, source: "property_landing_callback", record_call: false }) });
+        const response = await fetch(`${appUrl}/api/public/rita/outbound`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` }, body: JSON.stringify({ lead_id: leadId, property_id: listing.id, instructions, workspace_owner_id: ownerId, call_role: "property_lead", source: "property_landing_callback", record_call: false }) });
         const callData = await response.json().catch(() => ({}));
         callOk = response.ok && !callData?.error;
         callError = callOk ? "" : str(callData?.error ?? `HTTP ${response.status}`, 400);

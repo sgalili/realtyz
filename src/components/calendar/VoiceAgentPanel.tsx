@@ -115,7 +115,7 @@ function AccountVoiceAgentPanel() {
     if (locked.current) return;
     locked.current = true; setBusy('test'); setError(''); setConfirmation('');
     try {
-      await boundedVoiceRequest(testFn({ data: { demo: true, source: 'voice_agent_test', record_call: false } }), 30000);
+      await boundedVoiceRequest(testFn({ data: { demo: true, call_role: 'general_inbound', source: 'voice_agent_test', record_call: false } }), 30000);
       if (alive.current) { setConfirmation('שיחת הבדיקה נשלחה למספר המאומת בפרופיל'); toast.success('שיחת הבדיקה נשלחה'); }
     } catch (e) {
       if (alive.current) { const message = e instanceof Error ? e.message : 'שיחת הבדיקה נכשלה'; setError(message); toast.error(message); }
@@ -132,7 +132,7 @@ function AccountVoiceAgentPanel() {
         <CardTitle className="flex items-center gap-2"><Phone className="h-5 w-5 text-primary" />סוכן קול AI</CardTitle>
         <Badge variant="secondary">ElevenLabs Conversational AI</Badge>
       </div>
-      <CardDescription>שיחות ריטה נכנסות ויוצאות דרך ElevenLabs Conversational AI ומספר Twilio המחובר. Vapi נשאר זמין לתהליכים קודמים בלבד.</CardDescription>
+      <CardDescription>שיחות ריטה נכנסות ויוצאות דרך ElevenLabs Conversational AI ומספר Twilio המחובר.</CardDescription>
       {connection && <p className="text-sm text-muted-foreground break-words" role="status">{connection.message} · {phoneLabels[connection.phoneState]}</p>}
       {connection?.settingsMatch && !dirty && <Badge variant="secondary" className="gap-1 w-fit"><CheckCircle2 className="h-3 w-3" />ההגדרות אומתו אצל הספק</Badge>}
     </CardHeader>
