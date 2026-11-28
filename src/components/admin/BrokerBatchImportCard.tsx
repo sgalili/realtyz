@@ -1,3 +1,4 @@
+import { importJobBlock } from '@/lib/importJobBlock';
 import { readSuperAdminViewState, saveSuperAdminViewState } from '@/lib/superAdminViewState';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -162,6 +163,17 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
     developerWork?: { developer?: { company_name?: string | null }; visitedUrls?: string[]; pendingUrls?: string[]; projects?: unknown[]; expectedProjects?: number };
     developerResults?: { developer_id: string; company_name: string; projects: number; units: number; expected_projects: number }[];
   } | undefined;
+  const blocked = importJobBlock(current, checkpoint, now);
+  const [blockBusy, setBlockBusy] = useState(false);
+  const controlBlocked = async (kind: 'retry' | 'dismiss') => {
+    if (!current) return;
+    setBlockBusy(true); setError('');
+    const { error: controlError } = await supabase.rpc('control_blocked_import_job', { _id: current.id, _action: kind });
+    setBlockBusy(false);
+    if (controlError) { setError(kind === 'retry' ? 'לא ניתן לנסות שוב כרגע. ההתקדמות נשמרה.' : 'לא ניתן לבטל את הייבוא כרגע.'); return; }
+    setNotice(kind === 'retry' ? 'הייבוא חודש מהנקודה שנשמרה.' : 'הייבוא בוטל. ניתן להתחיל ייבוא חדש.');
+    await qc.invalidateQueries({ queryKey: ['admin-broker-import-jobs'] });
+  };
   const waitSeconds = Math.max(0, Math.ceil(((checkpoint?.waitUntil ?? 0) - now) / 1000));
   const autonomousDeveloper = autonomousDeveloperCheckpoint(checkpoint);
   const waitingForAutomaticRetry = waitSeconds > 0 && (checkpoint?.waitReason === 'rate_limit' || checkpoint?.waitReason === DEVELOPER_TRANSIENT_RETRY);
@@ -204,6 +216,11 @@ export function BrokerBatchImportCard({ visible = true }: { visible?: boolean })
     <div role="status" className="space-y-2 rounded-md border border-border/70 p-2">
       {completed && <p className="text-xs text-muted-foreground">ייבוא אחרון · {importRunTime(completed.updated_at)}</p>}
       {current ? <div className="flex items-start gap-2"><Button variant="ghost" type="button" aria-label={statusExpanded ? 'כיווץ פרטי הייבוא' : 'הרחבת פרטי הייבוא'} aria-expanded={statusExpanded} aria-controls="import-status-details" className="h-auto min-w-0 flex-1 flex-col items-start gap-1 whitespace-normal p-0 text-right hover:bg-transparent" onClick={toggleStatus}><span className="flex min-w-0 items-center gap-2 whitespace-nowrap text-base font-semibold sm:text-lg"><ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${statusExpanded ? 'rotate-180' : ''}`} />{current.status === 'running' && !stalled && <Loader2 className="h-5 w-5 shrink-0 animate-spin" />}<span className="min-w-0 truncate">{current.status === 'paused' ? 'מושהה · ' : ''}{stages[current.stage] ?? current.stage}</span></span><span className="flex min-w-0 flex-wrap gap-x-2 gap-y-0.5 text-sm tabular-nums text-muted-foreground sm:text-base">{[targetKind === 'developers' ? `${current.developers_done ?? 0}/${current.target_brokers} יזמים` : targetKind === 'links' ? `${entitiesDone}/${current.target_brokers} קישורים` : `${current.brokers_done}/${current.target_brokers} מתווכים`, `${current.listings_done} טיוטות`, ...((current.developers_done ?? 0) > 0 ? [`${current.developers_done} יזמים`, `${current.projects_done} פרויקטים`, `${current.units_done} יחידות`] : []), ...(current.skipped > 0 ? [`${current.skipped} דולגו`] : [])].map(item => <span key={item} className="whitespace-nowrap">{item}</span>)}</span></Button><div className="flex shrink-0 items-center gap-1">{stopControl}{repeatButton}{importButton}</div></div> : <div className="flex items-center gap-2"><span className="flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap text-base font-semibold sm:text-lg"><ScanSearch className="h-5 w-5 shrink-0 text-muted-foreground" /><span className="truncate">סטטוס ייבוא</span><span className="truncate text-sm font-normal text-muted-foreground sm:text-base">· אין ייבוא פעיל</span></span><div className="flex shrink-0 items-center gap-1">{stopControl}{repeatButton}{importButton}</div></div>}
+      {blocked && <div role="alert" className={`space-y-2 rounded-md border p-2 ${blocked.kind === 'provider_account' ? 'border-destructive/50 text-destructive' : 'border-warning/50 text-warning'}`}>
+        <p className="text-base font-semibold">{blocked.title}</p>
+        <p className="text-sm sm:text-base">{blocked.detail}{blocked.until ? ` · בעוד ${Math.max(0, Math.ceil((blocked.until - now) / 1000))} שניות` : ''}</p>
+        <div className="flex flex-row justify-between gap-2"><Button type="button" size="sm" disabled={blockBusy} onClick={() => void controlBlocked('retry')}>{blockBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ניסיון חוזר'}</Button><Button type="button" size="sm" variant="outline" disabled={blockBusy} onClick={() => void controlBlocked('dismiss')}>ביטול הייבוא</Button></div>
+      </div>}
       {current && statusExpanded && <div id="import-status-details" className="space-y-3">
       {targetKind === 'brokers' && <p className="text-base text-muted-foreground">תקרת הריצה: עד {current.max_listings} נכסים למתווך</p>}
       <details><summary className="cursor-pointer text-sm text-muted-foreground">מתווכים שיובאו ({savedCounts.data?.length ?? 0})</summary><div className="max-h-48 space-y-1 overflow-y-auto">{savedCounts.data?.map(broker => <p key={broker.broker_id} className="text-sm text-muted-foreground">{((current.checkpoint as { brokerResults?: { broker_id: string; full_name?: string }[] })?.brokerResults ?? []).find(item => item.broker_id === broker.broker_id)?.full_name ?? 'מתווך'} · {broker.saved_count} נכסים נשמרו</p>)}</div></details>

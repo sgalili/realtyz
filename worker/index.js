@@ -806,6 +806,9 @@ function mergeDeveloperQueuePage(work, page) {
     if (value != null && value !== "" && !(key === "company_name" && work.developer.company_name)) work.developer[key] = value;
   }
   for (const project of page.projects ?? []) {
+    const seenKey = projectKey(project);
+    work.seenProjectKeys = work.seenProjectKeys ?? [];
+    if (seenKey && !work.seenProjectKeys.includes(seenKey)) work.seenProjectKeys.push(seenKey);
     const index = work.projects.findIndex((old) => sameProject(old, project));
     if (index >= 0) work.projects[index] = mergeProject(work.projects[index], project);
     else if (work.maxProjects && work.projects.length >= work.maxProjects) continue;
@@ -1184,12 +1187,24 @@ async function startImportWorker() {
     }
   };
   console.log("TORAFF import worker started");
+  let idle = 0;
   try {
-    while (!stopping && !providerSuspended) {
+    while (!stopping) {
+      if (providerSuspended) {
+        console.error(JSON.stringify({ event: "provider_suspended_cooldown", zone: config.zone, retry_in_ms: 6e5 }));
+        await delay(6e5);
+        providerSuspended = false;
+        continue;
+      }
       try {
         const { job } = await api({ action: "claim" });
-        if (job) await runJob(job);
-        else await delay(config.poll);
+        if (job) {
+          idle = 0;
+          await runJob(job);
+        } else {
+          await delay(Math.min(config.poll * 2 ** idle, Math.max(config.poll, 3e4)));
+          idle = Math.min(idle + 1, 6);
+        }
       } catch (error) {
         console.error(JSON.stringify({ event: "worker_connection_error", error: error.message }));
         await delay(15e3);

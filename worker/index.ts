@@ -212,7 +212,9 @@ export async function startImportWorker() {
   console.log('TORAFF import worker started');
   // Idle backoff: each empty claim doubles the wait (5s → 10s → 20s → 30s cap); any job resets it.
   let idle=0;
-  try { while(!stopping&&!providerSuspended) {
+  try { while(!stopping) {
+    // Account/proxy auth (407, client_10020): the job already failed visibly; idle instead of exiting so Railway does not crash-loop, then probe again.
+    if(providerSuspended){console.error(JSON.stringify({event:'provider_suspended_cooldown',zone:config.zone,retry_in_ms:600000}));await delay(600000);providerSuspended=false;continue;}
     try{const {job}=await api({action:'claim'});if(job){idle=0;await runJob(job);}else{await delay(Math.min(config.poll*2**idle,Math.max(config.poll,30000)));idle=Math.min(idle+1,6);}}
     catch(error){console.error(JSON.stringify({event:'worker_connection_error',error:(error as Error).message}));await delay(15000);}
   } } finally {process.removeListener('SIGTERM',stop);process.removeListener('SIGINT',stop);}

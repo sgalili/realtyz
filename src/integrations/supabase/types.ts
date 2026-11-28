@@ -12484,6 +12484,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      control_blocked_import_job: {
+        Args: { _action: string; _id: string }
+        Returns: undefined
+      }
       control_broker_import_job: {
         Args: { _action: string; _id: string }
         Returns: undefined
