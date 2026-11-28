@@ -3,7 +3,7 @@
 ## Realtime publication reduction November 28
 - [x] Removed only campaign_activity_queue, fb_cloud_sessions, fb_user_groups and platform_branding from supabase_realtime; all tables, rows, RLS and application code remain intact.
 - [x] Verified campaign_logs, engagement_events, property_tours and rotating_messages remain the only publication members; all four signed-in subscriptions reached SUBSCRIBED and cleaned up without page errors or test writes.
-- [ ] Run a fresh security scan, commit and publish to toraff.co.il; report deployment and browser verification separately. Fresh scan completed with no active findings; commit and publish remain.
+- [x] Fresh scan completed, change committed as 997f45d16 and publishing requested for toraff.co.il. Deployment completion was not confirmed; the publish gate reported 23 pre-existing unresolved critical deep-scan findings, left unchanged under the explicit security-scope rule.
 
 ## Rita summaries on existing cards November 28
 - [x] Service-only sync_rita_post_call transaction locks stored conversation/contact identity, matches workspace-scoped lead_id then normalized phone, updates profile hats without buyer leads, and writes one call/timeline item. Existing RLS unchanged; unknown callers without a verified workspace remain unassigned.
