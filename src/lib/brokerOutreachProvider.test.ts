@@ -23,15 +23,20 @@ describe('broker invitation provider fences', () => {
   });
   it('sends broker_invite with the verified OTP phone and scoped invitation facts', async () => {
     start.mockResolvedValue({ conversation_id: 'conversation-a' });
-    const { admin } = client({ otp_verified_phone: '972500000034' });
+    const { admin } = client({ otp_verified_phone: '972500000034', call_due_at: new Date().toISOString() });
     expect(await dispatchBrokerDemo(admin as never, 'broker')).toEqual({ dispatched: true });
     expect(start).toHaveBeenCalledWith(expect.objectContaining({ service: true, rawInput: expect.objectContaining({ call_role: 'broker_invite', workspace_owner_id: 'broker', phone_number: '972500000034', invite_context: 'ביקוש בהרצליה' }) }));
   });
   it('blocks ambiguous submissions instead of automatically replaying a call', async () => {
     start.mockRejectedValue(new Error('Unknown provider outcome'));
-    const { admin, updates } = client({ otp_verified_phone: '972500000034' });
+    const { admin, updates } = client({ otp_verified_phone: '972500000034', call_due_at: new Date().toISOString() });
     expect(await dispatchBrokerDemo(admin as never, 'broker')).toEqual({ dispatched: false, blocked: true });
     expect(start).toHaveBeenCalledTimes(1);
     expect(updates).toContainEqual(expect.objectContaining({ call_status: 'blocked' }));
+  });
+  it('does not send if the bounded dispatch window expires during context loading', async () => {
+    const { admin } = client({ otp_verified_phone: '972500000034', call_due_at: new Date(Date.now() - 91_000).toISOString() });
+    expect(await dispatchBrokerDemo(admin as never, 'broker')).toEqual({ dispatched: false, blocked: true });
+    expect(start).not.toHaveBeenCalled();
   });
 });

@@ -31,10 +31,12 @@ export async function dispatchBrokerDemo(admin: Admin, brokerId: string) {
   const verifiedPhone = typeof claimed['otp_verified_phone'] === 'string' ? claimed['otp_verified_phone'] : '';
   try {
     const context = await loadBrokerRitaContext(admin, brokerId);
+    const dueAt = typeof claimed['call_due_at'] === 'string' ? Date.parse(claimed['call_due_at']) : NaN;
+    if (!Number.isFinite(dueAt) || Date.now() > dueAt + 90_000) throw new Error('חלון השיחה חלף בטעינת ההקשר; נדרש אישור חדש');
     const script = shortBrokerDemoCall(context.firstName, context.gender);
     const { startRitaOutboundCall } = await import('./ritaVoiceOutbound.server');
     const result = await startRitaOutboundCall({ admin, userClient: admin, userId: null, service: true, rawInput: {
-      workspace_owner_id: brokerId, phone_number: verifiedPhone, full_name: context.firstName,
+      workspace_owner_id: brokerId, phone_number: verifiedPhone,
       source: 'broker_invitation', call_role: 'broker_invite',
       invite_context: context.facts.slice(0, 1500),
       instructions: script.prompt.slice(0, 1500),
