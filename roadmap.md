@@ -3,7 +3,7 @@
 ## Rita role-specific opening framing November 28
 - [x] Shared inbound/outbound openings establish Rita, phonetic brand, saved first name, locked gender and role scope in the first sentence. Consented first-login dispatcher supplies welcome lifecycle without changing its broker hat; existing brokers use active support. Existing authorization, search/send/closing safeguards and test limits remain unchanged.
 - [x] 63 focused tests passed; 12 signed real initiation requests verified male/female across six frames, invalid key returned 401 and temporary contexts were removed. ElevenLabs prompt and new default opening read back; voice, Hebrew, gender dictionaries, search/WhatsApp tools and production post-call/initiation settings preserved. No actual call or audio pronunciation verified.
-- [ ] Request production publication; fresh quick scan has no new actionable findings, but the completed deep scan still reports 39 unresolved critical findings. No unrelated findings were changed.
+- [x] Publishing requested for https://toraff.co.il; scheduling succeeded but deployment completion is unconfirmed. Fresh quick scan has no new actionable findings; completed deep scan still reports 39 unresolved critical findings, disclosed before publication. No unrelated findings were changed.
 
 ## Rita gender, confirmed property links and transcripts November 28
 - [x] Locked provider/initiation gender with male default; created separate male/female IPA dictionaries and per-call overrides, preserved Rita voice and unrelated tools, vocalized greetings and conservatively normalized Hebrew transcript labels, punctuation and Latin brand artifacts without inventing caller facts.
