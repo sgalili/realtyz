@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@/integrations/supabase/types';
-import { buildRitaDynamicVariables, firstNameFromFullName, propertyContextFromListing, ritaOutboundInputSchema, ritaPhoneE164, ritaOpeningGreeting, ritaProviderVariables, type RitaDynamicVariables, type RitaCallRole } from './ritaVoice';
+import { RITA_TEST_MAX_SECONDS, normalizeRitaGender, buildRitaDynamicVariables, firstNameFromFullName, propertyContextFromListing, ritaOutboundInputSchema, ritaPhoneE164, ritaOpeningGreeting, ritaProviderVariables, type RitaDynamicVariables, type RitaCallRole } from './ritaVoice';
 import { getRitaRuntime, type RitaAdmin } from './ritaVoiceSecurity.server';
 
 const LEAD_COLUMNS = 'id,full_name,phone_number,workspace_owner_id,linked_listing_id,deal_type,city,preferences';
@@ -16,7 +16,14 @@ type ResolvedContext = {
   agencyName: string;
   agentName: string;
   property: ReturnType<typeof propertyContextFromListing>;
+  gender?: string | null;
 };
+
+async function profileGender(admin: RitaAdmin, userId: string | null): Promise<string | null> {
+  if (!userId) return null;
+  const { data } = await admin.from('profiles').select('gender').eq('id', userId).maybeSingle();
+  return (data as { gender?: string | null } | null)?.gender ?? null;
+}
 
 function json(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;
@@ -62,7 +69,7 @@ async function resolveGeneralContext(admin: RitaAdmin, input: ReturnType<typeof 
     if (error || !journey?.enabled || !journey.call_consent_at || !journey.interested_at || journey.opted_out_at || journey.cancel_requested_at || ritaPhoneE164(journey.otp_verified_phone) !== ritaPhoneE164(input.phone_number)) throw new Error('שיחת הזמנה דורשת הסכמה ומספר מאומת של המתווך');
     const { data: profile, error: profileError } = await admin.from('profiles').select('full_name').eq('id', brokerId).single();
     if (profileError || !profile?.full_name) throw new Error('שם המתווך אינו זמין');
-    return { workspaceId: brokerId, leadId: null, propertyId: null, fullName: profile.full_name, phone: ritaPhoneE164(journey.otp_verified_phone), ...(await identity(admin, brokerId)), property: {} };
+    return { workspaceId: brokerId, leadId: null, propertyId: null, fullName: profile.full_name, phone: ritaPhoneE164(journey.otp_verified_phone), ...(await identity(admin, brokerId)), property: {}, gender: await profileGender(admin, brokerId) };
   }
   if (!service && input.demo) {
     const { data: profile, error } = await admin.from('profiles').select('full_name,phone').eq('id', userId ?? '').maybeSingle();
@@ -77,7 +84,7 @@ async function resolveGeneralContext(admin: RitaAdmin, input: ReturnType<typeof 
     const requested = ritaPhoneE164(input.phone_number || (input.call_role === 'broker_support' || input.hat === 'broker_support' ? profile.phone : ''));
     const ownPhone = ritaPhoneE164(profile.phone);
     if (!requested || requested !== ownPhone) throw new Error('ללא ליד ניתן לחייג רק למספר המאומת שלך');
-    return { workspaceId: userId, leadId: null, propertyId: null, fullName: profile.full_name?.trim() || '', phone: requested, ...(await identity(admin, userId)), property: {} };
+    return { workspaceId: userId, leadId: null, propertyId: null, fullName: profile.full_name?.trim() || '', phone: requested, ...(await identity(admin, userId)), property: {}, gender: await profileGender(admin, userId) };
   }
   const fullName = input.full_name?.trim() ?? '';
   const phone = ritaPhoneE164(input.phone_number);
@@ -120,10 +127,11 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
     if (error || !allowed) throw new Error('שיחות בדיקה למספר חופשי זמינות למנהל המערכת בלבד');
     const phone = ritaPhoneE164(input.phone_number);
     if (!phone) throw new Error('מספר הטלפון לבדיקה אינו תקין');
-    testRole = input.test_scenario === 'seller_lead' ? 'property_lead' : input.test_scenario;
+    testRole = input.test_scenario === 'seller_lead' ? 'property_lead' : input.test_scenario === 'broker_onboarded' ? 'broker_support' : input.test_scenario;
     if (input.test_scenario === 'seller_lead') testInstructions = 'שיחת בדיקה: הפונה מעוניין למכור נכס. יש לברר כתובת, סוג נכס, מחיר מבוקש ולוח זמנים.';
     else if (input.test_scenario === 'property_lead') testInstructions = 'שיחת בדיקה: הפונה מתעניין ברכישת דירה. יש לברר תקציב, אזור, חדרים ולוח זמנים.';
-    resolved = { workspaceId: null, leadId: null, propertyId: null, fullName: input.full_name?.trim() || 'בדיקה', phone, agencyName: 'TORAFF', agentName: 'TORAFF', property: {} };
+    else if (input.test_scenario === 'broker_onboarded') testInstructions = 'שיחת בדיקה: מתווך שכבר קיבל את ההזמנה והתחבר לפרופיל שנוצר עבורו.';
+    resolved = { workspaceId: null, leadId: null, propertyId: null, fullName: input.full_name?.trim() || '', phone, agencyName: 'TORAFF', agentName: 'TORAFF', property: {}, gender: input.gender ?? 'male' };
   } else if (input.lead_id) {
     const { data: authorizedLead, error } = await userClient.from('leads').select('id,workspace_owner_id').eq('id', input.lead_id).maybeSingle();
     if (error || !authorizedLead) throw new Error('הליד אינו זמין במרחב העבודה שלך');
@@ -155,6 +163,9 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
     source: input.source,
     instructions: [testInstructions, input.instructions].filter(Boolean).join('\n') || undefined,
     callRole,
+    gender: normalizeRitaGender(resolved.gender),
+    isTestCall: !!testRole,
+    brokerStage: input.test_scenario === 'broker_onboarded' ? 'onboarded_welcome' : null,
     inviteContext: callRole === 'broker_invite' ? (input.invite_context || (testRole ? 'שיחת בדיקה של הזמנת מתווך חדש ל-TORAFF' : '')) : '',
   });
   const { data: context, error: contextError } = await admin.from('rita_call_contexts').insert({
@@ -189,7 +200,7 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
         ...(resolved.leadId ? { user_id: resolved.leadId } : {}),
         source_info: { source: 'twilio', version: 'toraff-rita-v1' },
         conversation_config_override: {
-          ...(callRole === 'broker_invite' ? { conversation: { max_duration_seconds: 90 } } : {}),
+          ...(testRole ? { conversation: { max_duration_seconds: RITA_TEST_MAX_SECONDS } } : callRole === 'broker_invite' ? { conversation: { max_duration_seconds: 90 } } : {}),
           agent: {
             first_message: ritaOpeningGreeting(dynamicVariables),
           },

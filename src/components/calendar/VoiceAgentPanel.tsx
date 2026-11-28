@@ -37,6 +37,7 @@ const TEST_SCENARIOS = [
   { value: 'property_lead', label: 'מתעניין ברכישת דירה' },
   { value: 'seller_lead', label: 'מתעניין במכירת נכס' },
   { value: 'broker_invite', label: 'מתווך חדש לאחר הזמנה' },
+  { value: 'broker_onboarded', label: 'מתווך שהצטרף והתחבר לפרופיל' },
   { value: 'broker_support', label: 'מתווך קיים / תמיכה' },
   { value: 'general_inbound', label: 'שיחה נכנסת כללית' },
 ] as const;
@@ -75,6 +76,8 @@ function AccountVoiceAgentPanel({ adminTestRow }: { adminTestRow: boolean }) {
   const [testRole, setTestRole] = useState<'general_inbound' | 'broker_support'>('general_inbound');
   const [scenario, setScenario] = useState<TestScenario>('property_lead');
   const [targetPhone, setTargetPhone] = useState('');
+  const [testFirstName, setTestFirstName] = useState('');
+  const [testGender, setTestGender] = useState<'male' | 'female'>('male');
   const [adminTest, setAdminTest] = useState(false);
   const dirty = JSON.stringify(draft) !== JSON.stringify(settingsFrom(row));
 
@@ -132,7 +135,7 @@ function AccountVoiceAgentPanel({ adminTestRow }: { adminTestRow: boolean }) {
     locked.current = true; setBusy('test'); setError(''); setConfirmation('');
     try {
       if (adminTest) {
-        await boundedVoiceRequest(testFn({ data: { test_scenario: scenario, phone_number: targetPhone.trim(), source: 'voice_agent_test', record_call: false } }), 30000);
+        await boundedVoiceRequest(testFn({ data: { test_scenario: scenario, phone_number: targetPhone.trim(), gender: testGender, ...(testFirstName.trim().length >= 2 ? { full_name: testFirstName.trim() } : {}), source: 'voice_agent_test', record_call: false } }), 30000);
         if (alive.current) { setConfirmation(`שיחת הבדיקה נשלחה אל ${targetPhone.trim()}`); toast.success('שיחת הבדיקה נשלחה'); }
         return;
       }
@@ -194,6 +197,10 @@ function AccountVoiceAgentPanel({ adminTestRow }: { adminTestRow: boolean }) {
           <SelectTrigger aria-label="סוג שיחה" className="h-9 col-span-2 sm:w-56 sm:col-span-1"><SelectValue /></SelectTrigger>
           <SelectContent>{TEST_SCENARIOS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
         </Select>
+        <Input aria-label="שם פרטי" placeholder="שם פרטי" className="h-9 min-w-0 sm:w-32" maxLength={40} value={testFirstName} onChange={e => setTestFirstName(e.target.value)} disabled={!!busy} />
+        <div role="radiogroup" aria-label="מגדר" className="flex h-9 shrink-0 overflow-hidden rounded-md border">
+          {(['male', 'female'] as const).map(g => <button key={g} type="button" role="radio" aria-checked={testGender === g} disabled={!!busy} onClick={() => setTestGender(g)} className={`px-3 text-sm ${testGender === g ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground'}`}>{g === 'male' ? 'זכר' : 'נקבה'}</button>)}
+        </div>
         <Input aria-label="מספר טלפון לבדיקה" dir="ltr" inputMode="tel" placeholder="05X-XXXXXXX" className="h-9 min-w-0 sm:w-44" value={targetPhone} onChange={e => setTargetPhone(e.target.value)} disabled={!!busy} />
         <Button size="sm" className="h-9 shrink-0" disabled={!!busy || dirty || targetPhone.replace(/\D/g, '').length < 9} title={dirty ? 'יש לשמור ולסנכרן לפני שיחת בדיקה' : 'חיוג שיחת בדיקה'} onClick={() => { setAdminTest(true); setConfirmTest(true); }}>{busy === 'test' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}חייג</Button>
       </div>}

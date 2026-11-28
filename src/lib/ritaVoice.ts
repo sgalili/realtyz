@@ -22,8 +22,20 @@ export const ritaOutboundInputSchema = z.object({
   demo: z.boolean().optional().default(false),
   record_call: z.boolean().optional().default(true),
   /** Super Admin test calls only: scenario to simulate against a typed target number. */
-  test_scenario: z.enum(['property_lead', 'seller_lead', 'broker_invite', 'broker_support', 'general_inbound']).optional(),
+  test_scenario: z.enum(['property_lead', 'seller_lead', 'broker_invite', 'broker_onboarded', 'broker_support', 'general_inbound']).optional(),
+  /** Super Admin test calls only: grammatical gender for Rita's Hebrew. */
+  gender: z.enum(['male', 'female']).optional(),
 }).strict();
+export type RitaGender = 'male' | 'female';
+export const RITA_TEST_INITIAL_SECONDS = 60;
+export const RITA_TEST_EXTENSION_SECONDS = 120;
+export const RITA_TEST_MAX_SECONDS = RITA_TEST_INITIAL_SECONDS + RITA_TEST_EXTENSION_SECONDS;
+
+/** Unknown or unrecognized gender defaults to male Hebrew. */
+export function normalizeRitaGender(value: unknown): RitaGender {
+  const v = String(value ?? '').trim().toLowerCase();
+  return v === 'female' || v === 'f' || v === 'אישה' || v === 'נקבה' || v === 'woman' ? 'female' : 'male';
+}
 export type RitaOutboundInput = z.input<typeof ritaOutboundInputSchema>;
 
 export const ritaPropertySearchSchema = z.object({
@@ -54,6 +66,10 @@ export type RitaDynamicVariables = {
   agent_name: string;
   broker_id: string;
   lead_name: string;
+  first_name: string;
+  gender: RitaGender;
+  is_test_call: boolean;
+  broker_stage: string;
   lead_full_name: string;
   lead_phone: string;
   property_id: string;
@@ -110,6 +126,9 @@ export function buildRitaDynamicVariables(input: {
   instructions?: string | null;
   callRole?: RitaCallRole;
   inviteContext?: string | null;
+  gender?: unknown;
+  isTestCall?: boolean;
+  brokerStage?: string | null;
 }): RitaDynamicVariables {
   const fullName = String(input.fullName ?? '').trim();
   const agency = String(input.agencyName ?? '').trim() || RITA_DEFAULT_AGENCY;
@@ -121,6 +140,10 @@ export function buildRitaDynamicVariables(input: {
     agent_name: String(input.agentName ?? '').trim() || agency,
     broker_id: input.brokerId ?? '',
     lead_name: firstNameFromFullName(fullName),
+    first_name: firstNameFromFullName(fullName),
+    gender: normalizeRitaGender(input.gender),
+    is_test_call: input.isTestCall === true,
+    broker_stage: String(input.brokerStage ?? '').trim() || (input.callRole === 'broker_support' ? 'onboarded' : input.callRole === 'broker_invite' ? 'invited' : ''),
     lead_full_name: fullName,
     lead_phone: ritaPhoneE164(input.phone),
     property_id: String(input.property && 'property_id' in input.property ? input.property.property_id : ''),
@@ -133,6 +156,7 @@ export function buildRitaDynamicVariables(input: {
 export function ritaOpeningGreeting(variables: RitaDynamicVariables): string {
   const hello = variables.lead_name ? `שלום ${variables.lead_name},` : 'שלום,';
   if (variables.call_role === 'broker_invite') return `${hello} אני ריטה, עוזרת ההצטרפות של TORAFF. אפשר לדבר בקצרה על המשרד שלך?`;
+  if (variables.call_role === 'broker_support' && variables.broker_stage === 'onboarded_welcome') return `${hello} ${variables.gender === 'female' ? 'ברוכה הבאה' : 'ברוך הבא'} ל-TORAFF! אני ריטה, העוזרת הדיגיטלית שלך. אני תמיד זמינה עבורך בתפריט הצדדי באפליקציה.`;
   if (variables.call_role === 'broker_support') return `${hello} אני ריטה מ-TORAFF, העוזרת הדיגיטלית של ${variables.agency_name}. במה אפשר לעזור היום?`;
   const property = variables.call_role === 'property_lead' && 'title' in variables.property_context ? variables.property_context.title : '';
   return `${hello} אני ריטה, הסוכנת הדיגיטלית של ${variables.agency_name}.${property ? ` אני חוזרת לגבי ${property}.` : ''} איך אפשר לעזור?`;

@@ -98,6 +98,8 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
     source: 'inbound_twilio',
     callRole: contextRole,
     inviteContext: text(record(prior?.dynamic_variables)['invite_context'], 1500),
+    gender: record(prior?.dynamic_variables)['gender'],
+    isTestCall: false,
   });
   const { data: saved, error } = await admin.from('rita_call_contexts').insert({
     workspace_owner_id: contextValues.workspaceId,
