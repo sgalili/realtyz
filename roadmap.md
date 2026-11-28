@@ -1,5 +1,10 @@
 # Roadmap
 
+## Realtime publication reduction November 28
+- [x] Removed only campaign_activity_queue, fb_cloud_sessions, fb_user_groups and platform_branding from supabase_realtime; all tables, rows, RLS and application code remain intact.
+- [x] Verified campaign_logs, engagement_events, property_tours and rotating_messages remain the only publication members; all four signed-in subscriptions reached SUBSCRIBED and cleaned up without page errors or test writes.
+- [ ] Run a fresh security scan, commit and publish to toraff.co.il; report deployment and browser verification separately. Fresh scan completed with no active findings; commit and publish remain.
+
 ## Rita summaries on existing cards November 28
 - [x] Service-only sync_rita_post_call transaction locks stored conversation/contact identity, matches workspace-scoped lead_id then normalized phone, updates profile hats without buyer leads, and writes one call/timeline item. Existing RLS unchanged; unknown callers without a verified workspace remain unassigned.
 - [x] Shared compact Hebrew summary/insights block, latest-call badges and click-only RLS transcripts on Leads, Deal Room, authorized profile/admin user cards and waiting-broker cards. Provider configuration supports factual 2–3 bullets and next step; no live provider settings changed.

@@ -2297,6 +2297,13 @@
       "when": 1795874042679,
       "tag": "0327_optimize_get_my_workspaces_and_queue_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 328,
+      "version": "7",
+      "when": 1795874262621,
+      "tag": "0328_remove_unused_realtime_publication_tables",
+      "breakpoints": true
     }
   ]
 }
