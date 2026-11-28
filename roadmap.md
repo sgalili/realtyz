@@ -1,5 +1,10 @@
 # Roadmap
 
+## Rita concise broker conversation style November 28
+- [x] Replace benefit-by-benefit questioning with a compact context-aware broker overview: Facebook campaigns first, matching second, organized leads/call insights and side-menu help third. Preserve role/gender locks, consent and test limits; require a real closing response before recap and handover.
+- [x] 63 focused safeguard tests and preview build passed; live ElevenLabs prompt read back exactly, preserving voice, Hebrew, pronunciation dictionaries, property search, approved WhatsApp links and production callbacks. No live call or spoken conversation behavior verified.
+- [ ] Request production publication; fresh quick scan has no new actionable findings, while 39 critical deep-scan findings remain unresolved and unchanged.
+
 ## Rita role-specific opening framing November 28
 - [x] Shared inbound/outbound openings establish Rita, phonetic brand, saved first name, locked gender and role scope in the first sentence. Consented first-login dispatcher supplies welcome lifecycle without changing its broker hat; existing brokers use active support. Existing authorization, search/send/closing safeguards and test limits remain unchanged.
 - [x] 63 focused tests passed; 12 signed real initiation requests verified male/female across six frames, invalid key returned 401 and temporary contexts were removed. ElevenLabs prompt and new default opening read back; voice, Hebrew, gender dictionaries, search/WhatsApp tools and production post-call/initiation settings preserved. No actual call or audio pronunciation verified.
