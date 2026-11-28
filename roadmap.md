@@ -1,12 +1,12 @@
 # Roadmap
 
 ## Rita end-to-end phone integration November 28
-- [ ] Require full name in every callback form and preserve existing lead qualification and consent rules.
-- [ ] Share server-resolved broker, office, lead and property context across inbound, outbound, test and demo calls.
-- [ ] Add authenticated Rita property search with broker-first and public-safe cross-broker fallback.
-- [ ] Verify ElevenLabs post-call signatures and synchronize transcripts, qualification, property matches and CRM leads idempotently.
-- [ ] Connect the confirmed Twilio voice number and ElevenLabs agent tools/webhook; verify without placing unapproved real calls.
-- [ ] Run focused tests and browser checks, then report exact URLs, mappings and any remaining provider setup.
+- [x] Required full name in the shared property callback form and server gate; existing lead qualification, consent and charging rules retained.
+- [x] Server-resolved broker, office, lead and property context for property callbacks, campaigns, lead picker, AI dialer, retries, inbound calls and the explicit confirmed test-call action. Legacy scheduled broker-onboarding Vapi flow retained for compatibility.
+- [x] Signed Rita property search with broker-first and public-safe cross-broker fallback; no private contacts, drafts or rewards returned.
+- [x] HMAC-verified post-call sync with transcripts, qualification, matched properties and idempotent CRM/call/message updates. Real local route test passed twice with one row each and complete test cleanup.
+- [x] Connected confirmed Twilio number +97233826735 and configured ElevenLabs tools, dynamic variables, initiation and post-call webhooks; no real call placed. Production publishing requested.
+- [x] Twenty-five focused tests passed, typecheck/build clean, mobile voice settings and guest callback form verified. Production reachability remains to be read back after deployment.
 
 ## Voice agent settings November 28
 - [x] Account-owned authenticated settings save with readback, controlled drafts, bounded requests/finally and safe retry; no RLS or workspace ownership changes.
