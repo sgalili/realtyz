@@ -155,9 +155,9 @@ export function buildRitaDynamicVariables(input: {
 
 export function ritaOpeningGreeting(variables: RitaDynamicVariables): string {
   const hello = variables.lead_name ? `שלום ${variables.lead_name},` : 'שלום,';
-  if (variables.call_role === 'broker_invite') return `${hello} אני ריטה, עוזרת ההצטרפות של TORAFF. אפשר לדבר בקצרה על המשרד שלך?`;
-  if (variables.call_role === 'broker_support' && variables.broker_stage === 'onboarded_welcome') return `${hello} ${variables.gender === 'female' ? 'ברוכה הבאה' : 'ברוך הבא'} ל-TORAFF! אני ריטה, העוזרת הדיגיטלית שלך. אני תמיד זמינה עבורך בתפריט הצדדי באפליקציה.`;
-  if (variables.call_role === 'broker_support') return `${hello} אני ריטה מ-TORAFF, העוזרת הדיגיטלית של ${variables.agency_name}. במה אפשר לעזור היום?`;
+  if (variables.call_role === 'broker_invite') return `${hello} אני ריטה, עוזרת ההצטרפות של טוֹרָאף. אפשר לדבר בקצרה על המשרד שלך?`;
+  if (variables.call_role === 'broker_support' && variables.broker_stage === 'onboarded_welcome') return `${hello} ${variables.gender === 'female' ? 'ברוכה הבאה' : 'ברוך הבא'} לטוֹרָאף! אני ריטה, העוזרת הדיגיטלית שלך. אני תמיד זמינה עבורך בתפריט הצדדי באפליקציה.`;
+  if (variables.call_role === 'broker_support') return `${hello} אני ריטה מטוֹרָאף, העוזרת הדיגיטלית של ${variables.agency_name}. במה אפשר לעזור היום?`;
   const property = variables.call_role === 'property_lead' && 'title' in variables.property_context ? variables.property_context.title : '';
   return `${hello} אני ריטה, הסוכנת הדיגיטלית של ${variables.agency_name}.${property ? ` אני חוזרת לגבי ${property}.` : ''} איך אפשר לעזור?`;
 }
