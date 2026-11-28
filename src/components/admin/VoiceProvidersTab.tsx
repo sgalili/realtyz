@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Copy, Loader2, PlugZap, Save } from 'lucide-react';
+import { CheckCircle2, Copy, Loader2, PlugZap, Save, XCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { RITA_DEFAULT_VOICE_ID } from '../../../supabase/functions/_shared/ivrVoices';
 
@@ -31,6 +32,20 @@ export function VoiceProvidersTab() {
   const [saving, setSaving] = useState<Provider | null>(null);
   const [testing, setTesting] = useState(false);
   const inspectVoice = useServerFn(inspectRitaVoiceInfrastructure);
+  const [status, setStatus] = useState<{ connected: boolean; message: string } | null>(null);
+  const check = async (silent = false) => {
+    setTesting(true);
+    try {
+      const result = await Promise.race([inspectVoice(), new Promise<never>((_, reject) => setTimeout(() => reject(new Error('הבדיקה ארכה זמן רב מדי')), 30000))]);
+      setStatus({ connected: !!result.connected, message: result.message });
+      if (!silent) (result.connected ? toast.success : toast.error)(result.message);
+    } catch (e) {
+      const message = `בדיקת החיבור נכשלה: ${(e as Error)?.message ?? ''}`.trim();
+      setStatus({ connected: false, message });
+      if (!silent) toast.error(message);
+    } finally { setTesting(false); }
+  };
+  useEffect(() => { void check(true); }, []);
 
   useEffect(() => {
     let alive = true;
@@ -58,21 +73,21 @@ export function VoiceProvidersTab() {
       const { error } = await supabase.functions.invoke('manage-api-configs', { method: 'POST', body: { service_name: p, api_key: v.join(':'), is_active: true } });
       if (error) throw error;
       toast.success(`${p} נשמר`);
+      void check(true);
     } catch (e) { toast.error(`השמירה נכשלה: ${(e as Error)?.message ?? e}`); } finally { setSaving(null); }
   };
 
-  const test = async () => {
-    setTesting(true);
-    try {
-      const result = await inspectVoice();
-      (result.connected ? toast.success : toast.error)(result.message);
-    } catch { toast.error('בדיקת החיבור נכשלה'); } finally { setTesting(false); }
-  };
+  const test = () => check(false);
 
   const block = (p: Provider) => (
     <Card key={p}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
-        <CardTitle className="text-sm font-semibold">{p}</CardTitle>
+        <div className="flex min-w-0 items-center gap-2">
+          <CardTitle className="text-sm font-semibold">{p}</CardTitle>
+          {testing && !status ? <Badge variant="outline" className="gap-1"><Loader2 className="h-3 w-3 animate-spin" />בודק</Badge>
+            : status?.connected ? <Badge className="gap-1 bg-green-600 hover:bg-green-600 text-white" title={status.message}><CheckCircle2 className="h-3 w-3" />מחובר ופעיל</Badge>
+            : status ? <Badge variant="destructive" className="gap-1" title={status.message}><XCircle className="h-3 w-3" />לא מחובר</Badge> : null}
+        </div>
         <div className="flex items-center gap-1">
           {<IconBtn label="בדיקת חיבור" onClick={test} busy={testing || loading}><PlugZap className="h-4 w-4" /></IconBtn>}
           <IconBtn label="שמירה" onClick={() => save(p)} busy={saving === p || loading}><Save className="h-4 w-4" /></IconBtn>
@@ -87,6 +102,7 @@ export function VoiceProvidersTab() {
           </div>
         ))}
       </CardContent>
+      {status && !status.connected && <p role="alert" className="px-6 pb-4 text-xs text-destructive break-words">{status.message}</p>}
     </Card>
   );
 
@@ -103,7 +119,7 @@ export function VoiceProvidersTab() {
           <p dir="ltr" className="mt-1 font-mono text-sm text-end">{RITA_DEFAULT_VOICE_ID}</p>
         </CardContent>
       </Card>
-      <VoiceAgentPanel />
+      <VoiceAgentPanel adminTestRow />
     </div>
   );
 }

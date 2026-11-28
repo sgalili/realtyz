@@ -21,6 +21,8 @@ export const ritaOutboundInputSchema = z.object({
   invite_context: z.string().trim().max(1500).optional(),
   demo: z.boolean().optional().default(false),
   record_call: z.boolean().optional().default(true),
+  /** Super Admin test calls only: scenario to simulate against a typed target number. */
+  test_scenario: z.enum(['property_lead', 'seller_lead', 'broker_invite', 'broker_support', 'general_inbound']).optional(),
 }).strict();
 export type RitaOutboundInput = z.input<typeof ritaOutboundInputSchema>;
 

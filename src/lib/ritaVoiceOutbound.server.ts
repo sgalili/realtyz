@@ -113,7 +113,18 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
   const requestedRole = input.call_role ?? input.hat;
   if (!service && requestedRole === 'broker_invite') throw new Error('שיחת הזמנה נשלחת רק במסלול הסכמה מאומת');
   let resolved: ResolvedContext;
-  if (input.lead_id) {
+  let testRole: RitaCallRole | null = null;
+  let testInstructions = '';
+  if (!service && input.test_scenario) {
+    const { data: allowed, error } = await userClient.rpc('has_role', { _user_id: userId ?? '', _role: 'super_admin' });
+    if (error || !allowed) throw new Error('שיחות בדיקה למספר חופשי זמינות למנהל המערכת בלבד');
+    const phone = ritaPhoneE164(input.phone_number);
+    if (!phone) throw new Error('מספר הטלפון לבדיקה אינו תקין');
+    testRole = input.test_scenario === 'seller_lead' ? 'property_lead' : input.test_scenario;
+    if (input.test_scenario === 'seller_lead') testInstructions = 'שיחת בדיקה: הפונה מעוניין למכור נכס. יש לברר כתובת, סוג נכס, מחיר מבוקש ולוח זמנים.';
+    else if (input.test_scenario === 'property_lead') testInstructions = 'שיחת בדיקה: הפונה מתעניין ברכישת דירה. יש לברר תקציב, אזור, חדרים ולוח זמנים.';
+    resolved = { workspaceId: null, leadId: null, propertyId: null, fullName: input.full_name?.trim() || 'בדיקה', phone, agencyName: 'TORAFF', agentName: 'TORAFF', property: {} };
+  } else if (input.lead_id) {
     const { data: authorizedLead, error } = await userClient.from('leads').select('id,workspace_owner_id').eq('id', input.lead_id).maybeSingle();
     if (error || !authorizedLead) throw new Error('הליד אינו זמין במרחב העבודה שלך');
     if (input.workspace_owner_id && authorizedLead.workspace_owner_id !== input.workspace_owner_id) throw new Error('הליד אינו שייך למרחב העבודה שצוין');
@@ -124,13 +135,14 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
   if (input.property_id && !resolved.propertyId) throw new Error('לא ניתן לקשר את הנכס לשיחה');
 
   let callRole: RitaCallRole = resolved.leadId ? 'property_lead' : 'general_inbound';
-  if (service && requestedRole === 'broker_invite') callRole = 'broker_invite';
+  if (testRole) callRole = testRole;
+  else if (service && requestedRole === 'broker_invite') callRole = 'broker_invite';
   else if (!resolved.leadId && !input.demo && userId) {
     const { data: broker, error } = await userClient.from('user_roles').select('user_id').eq('user_id', userId).in('role', ['agent', 'managing_broker', 'lead_agent']).limit(1).maybeSingle();
     if (error) throw new Error('לא ניתן לאמת את תפקיד החשבון');
     if (broker) callRole = 'broker_support';
   }
-  if (requestedRole && requestedRole !== callRole) throw new Error('תפקיד השיחה אינו תואם לנמען המאומת');
+  if (!testRole && requestedRole && requestedRole !== callRole) throw new Error('תפקיד השיחה אינו תואם לנמען המאומת');
 
   const runtime = await getRitaRuntime(admin);
   const variables = buildRitaDynamicVariables({
@@ -141,9 +153,9 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
     phone: resolved.phone,
     property: resolved.property,
     source: input.source,
-    instructions: input.instructions,
+    instructions: [testInstructions, input.instructions].filter(Boolean).join('\n') || undefined,
     callRole,
-    inviteContext: callRole === 'broker_invite' ? input.invite_context : '',
+    inviteContext: callRole === 'broker_invite' ? (input.invite_context || (testRole ? 'שיחת בדיקה של הזמנת מתווך חדש ל-TORAFF' : '')) : '',
   });
   const { data: context, error: contextError } = await admin.from('rita_call_contexts').insert({
     workspace_owner_id: resolved.workspaceId,
@@ -158,7 +170,7 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
     property_context: json(resolved.property),
     dynamic_variables: json(variables),
     status: 'pending',
-    source_context: json({ demo: input.demo, requested_by: service ? 'trusted_service' : userId }),
+    source_context: json({ demo: input.demo, test_scenario: input.test_scenario ?? null, requested_by: service ? 'trusted_service' : userId }),
   }).select('*').single();
   if (contextError || !context) throw new Error('שמירת הקשר השיחה נכשלה');
   const dynamicVariables: RitaDynamicVariables = { ...variables, rita_call_context_id: context.id };
