@@ -47,12 +47,12 @@ afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 describe('Rita outbound context', () => {
   it('resolves real broker, lead and property facts and sends them to ElevenLabs', async () => {
     vi.stubEnv('ELEVENLABS_API_KEY', 'test-key');
-    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ success: true, conversation_id: 'conversation-a', callSid: 'call-a' })));
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify(_url.endsWith('/user/subscription') ? { character_count: 0, character_limit: 1000, can_extend_character_limit: false } : { success: true, conversation_id: 'conversation-a', callSid: 'call-a' })));
     vi.stubGlobal('fetch', fetchMock);
     const { admin, userClient } = mockClients();
     const result = await startRitaOutboundCall({ admin, userClient, userId: BROKER_ID, rawInput: { lead_id: LEAD_ID, property_id: PROPERTY_ID, source: 'property_callback', phone_number: '+972599999999' } });
     expect(result.success).toBe(true);
-    const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const request = JSON.parse(String(fetchMock.mock.calls.find(call => call[0].endsWith('/outbound-call'))?.[1]?.body));
     const variables = request.conversation_initiation_client_data.dynamic_variables;
     expect(request.to_number).toBe('+972501234567');
     expect(variables).toMatchObject({ call_role: 'property_lead', hat: 'property_lead', agency_name: 'משרד הדוגמה', agent_name: 'דני לוי', broker_id: BROKER_ID, lead_name: 'דנה', lead_full_name: 'דנה כהן', lead_phone: '+972501234567', property_id: PROPERTY_ID, rita_call_context_id: 'context-a' });
@@ -77,11 +77,11 @@ describe('Rita outbound context', () => {
     { rawInput: { workspace_owner_id: BROKER_ID, phone_number: '+972501234567', call_role: 'broker_invite', invite_context: 'ביקוש בהרצליה' }, role: 'broker_invite', duration: 90, service: true },
   ])('sends the verified $role call context to ElevenLabs', async ({ rawInput, role, duration, service }) => {
     vi.stubEnv('ELEVENLABS_API_KEY', 'test-key');
-    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ success: true, conversation_id: 'conversation-a' })));
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify(_url.endsWith('/user/subscription') ? { character_count: 0, character_limit: 1000, can_extend_character_limit: false } : { success: true, conversation_id: 'conversation-a' })));
     vi.stubGlobal('fetch', fetchMock);
     const { admin, userClient } = mockClients();
     await startRitaOutboundCall({ admin, userClient, userId: service ? null : BROKER_ID, rawInput, ...(service ? { service: true } : {}) });
-    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const body = JSON.parse(String(fetchMock.mock.calls.find(call => call[0].endsWith('/outbound-call'))?.[1]?.body));
     expect(body.conversation_initiation_client_data.dynamic_variables.call_role).toBe(role);
     expect(body.conversation_initiation_client_data.conversation_config_override.conversation?.max_duration_seconds).toBe(duration);
   });
@@ -90,5 +90,15 @@ describe('Rita outbound context', () => {
     const fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock);
     await expect(startRitaOutboundCall({ admin, userClient, userId: BROKER_ID, rawInput: { phone_number: '+972501234567', call_role: 'broker_support' } })).rejects.toThrow();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('does not save or dial a call with the observed four-credit provider balance', async () => {
+    vi.stubEnv('ELEVENLABS_API_KEY', 'test-key');
+    const fetchMock = vi.fn(async (_url: string) => Response.json({ character_count: 87872, character_limit: 87876, can_extend_character_limit: false }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { admin, userClient, contexts } = mockClients();
+    await expect(startRitaOutboundCall({ admin, userClient, userId: BROKER_ID, rawInput: { lead_id: LEAD_ID } })).rejects.toThrow('4 קרדיטים');
+    expect(contexts).toHaveLength(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.elevenlabs.io/v1/user/subscription');
   });
 });

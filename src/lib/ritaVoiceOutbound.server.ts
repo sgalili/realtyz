@@ -3,6 +3,7 @@ import type { Database, Json } from '@/integrations/supabase/types';
 import { RITA_TEST_MAX_SECONDS, normalizeRitaGender, buildRitaDynamicVariables, firstNameFromFullName, propertyContextFromListing, ritaOutboundInputSchema, ritaPhoneE164, ritaOpeningGreeting, ritaProviderVariables, type RitaDynamicVariables, type RitaCallRole } from './ritaVoice';
 import { ritaPronunciationLocators } from './ritaHebrewSpeech';
 import { getRitaRuntime, type RitaAdmin } from './ritaVoiceSecurity.server';
+import { requireRitaStartupBalance } from './ritaVoiceQuota.server';
 
 const LEAD_COLUMNS = 'id,full_name,phone_number,workspace_owner_id,linked_listing_id,deal_type,city,preferences';
 const PROPERTY_COLUMNS = 'id,property_title,address,city,neighborhood,rooms,asking_price,deal_type,workspace_owner_id';
@@ -155,6 +156,11 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
   }
   if (!testRole && requestedRole && requestedRole !== callRole) throw new Error('תפקיד השיחה אינו תואם לנמען המאומת');
 
+  const key = process.env['ELEVENLABS_API_KEY'];
+  if (!key) throw new Error('ElevenLabs אינו מחובר לפרויקט');
+  // Check only after authorization, but before saving/dispatching a call that
+  // would ring and fail to initialize. Never automatically replay failed calls.
+  await requireRitaStartupBalance(key);
   const runtime = await getRitaRuntime(admin);
   const variables = buildRitaDynamicVariables({
     agencyName: resolved.agencyName,
@@ -192,8 +198,6 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
   let provider: Awaited<ReturnType<typeof elevenLabsOutbound>> | null = null;
   let failure: unknown = null;
   try {
-    const key = process.env['ELEVENLABS_API_KEY'];
-    if (!key) throw new Error('ElevenLabs אינו מחובר לפרויקט');
     provider = await elevenLabsOutbound(key, {
       agent_id: runtime.agent_id,
       agent_phone_number_id: runtime.agent_phone_number_id,

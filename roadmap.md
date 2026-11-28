@@ -1,5 +1,12 @@
 # Roadmap
 
+## Rita immediate post-answer disconnect November 28
+- [x] Two latest real Twilio calls failed at zero seconds with ElevenLabs code 3000/call_initialization_error, no resolved variables or audio; production initiation logs show no provider request. Twilio assignment intact. Isolated old greeting/prompt still failed; restored all recent improvements and provider readback passed.
+- [x] Exact voice/model/dictionary TTS returned quota_exceeded: 4 credits remained, minimal greeting required 5. Subscription confirms 87872/87876 credits used and usage extension disabled. Native mocked one-turn provider validation passed, ruling out a prompt validation failure in that test; no telephone call placed.
+- [x] Added post-authorization startup-balance check before context creation/dialing; actual four-credit balance blocked with no call. 68 focused tests passed, preview build OK and 12 signed initiation role/gender checks still passed. Provider prompt/config readback and native mocked validation passed; no Unicode/prompt rewrite or endpoint permission changes needed.
+- [ ] Request production publication of the guard; 39 unresolved critical deep-scan findings remain outside this task.
+- [ ] Verify real audio/call recovery after the owner replenishes ElevenLabs credits or enables paid usage: provider billing is outside app control. Generic call logs do not expose a more specific underlying termination detail.
+
 ## Rita concise broker conversation style November 28
 - [x] Replace benefit-by-benefit questioning with a compact context-aware broker overview: Facebook campaigns first, matching second, organized leads/call insights and side-menu help third. Preserve role/gender locks, consent and test limits; require a real closing response before recap and handover.
 - [x] 63 focused safeguard tests and preview build passed; live ElevenLabs prompt read back exactly, preserving voice, Hebrew, pronunciation dictionaries, property search, approved WhatsApp links and production callbacks. No live call or spoken conversation behavior verified.
