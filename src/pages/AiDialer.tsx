@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from '@tanstack/react-start';
+import { startRitaCall } from '@/lib/ritaVoice.functions';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +22,7 @@ const UDI_VOICE = { id: "udi", name: "אודי ויטמן", voice_id: "4eohDAy1k
 type AudienceMode = "all" | "manual" | "csv" | "paste";
 
 export default function AiDialer() {
+  const ritaCall = useServerFn(startRitaCall);
   const [aiActive, setAiActive] = useState(true);
   const [tab, setTab] = useState<"outbound" | "analytics">("outbound");
 
@@ -127,10 +130,8 @@ export default function AiDialer() {
       let ok = 0, failed = 0;
       for (const t of targets) {
         try {
-          const { error } = await supabase.functions.invoke("vapi-outbound-call", {
-            body: { phone_number: t.phone, lead_id: (t as any).id, voice_id: voiceId, instructions: instructions || undefined },
-          });
-          if (error) failed++; else ok++;
+          await ritaCall({ data: { lead_id: (t as any).id, voice_id: voiceId, source: 'ai_dialer', instructions: instructions || undefined } });
+          ok++;
         } catch { failed++; }
       }
       toast.success(`הופעלו ${ok} שיחות${failed ? ` · ${failed} נכשלו` : ""}`);

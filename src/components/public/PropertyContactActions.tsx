@@ -143,8 +143,8 @@ export default function PropertyContactActions({
   };
 
   const submit = async (verification?: { id: string; answers: Record<string, string> }) => {
-    if ((mode !== 'phone' && !name.trim()) || phone.replace(/\D/g, '').length < 9) {
-      toast.error(mode === 'phone' ? 'יש למלא מספר טלפון תקין' : 'יש למלא שם מלא ומספר טלפון תקין');
+    if (!name.trim() || phone.replace(/\D/g, '').length < 9) {
+      toast.error('יש למלא שם מלא ומספר טלפון תקין');
       return;
     }
     const callback = mode === 'phone';
@@ -265,10 +265,13 @@ export default function PropertyContactActions({
 
           </form>
         )}
-          {mode === 'phone' && <div className="space-y-3 px-4"><Label htmlFor={`callback-${listingId}`}>מספר טלפון *</Label><Input id={`callback-${listingId}`} type="tel" dir="ltr" autoComplete="tel" value={phone} maxLength={11} onChange={(event) => { const d = event.target.value.replace(/\D/g, '').replace(/^972/, '0').slice(0, 10); setPhone(d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d); }} /></div>}
+          {mode === 'phone' && <div className="space-y-3 px-4">
+            <div><Label htmlFor={`callback-name-${listingId}`}>שם מלא <span className="text-destructive">*</span></Label><Input id={`callback-name-${listingId}`} autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
+            <div><Label htmlFor={`callback-${listingId}`}>מספר טלפון <span className="text-destructive">*</span></Label><Input id={`callback-${listingId}`} type="tel" dir="ltr" autoComplete="tel" required value={phone} maxLength={11} onChange={(event) => { const d = event.target.value.replace(/\D/g, '').replace(/^972/, '0').slice(0, 10); setPhone(d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d); }} /></div>
+          </div>}
           <DrawerFooter>
             <Button variant="outline" disabled={sending} onClick={() => setMode(null)}>ביטול</Button>
-            <Button variant="destructive" className={mode === 'phone' ? 'bg-lead-phone text-primary-foreground hover:bg-lead-phone/90' : undefined} type={mode === 'digital' ? 'submit' : 'button'} form={mode === 'digital' ? `property-inquiry-${listingId}` : undefined} disabled={sending || phone.replace(/\D/g, '').length < 9 || (mode === 'digital' && !name.trim())} onClick={mode === 'phone' ? () => void submit() : undefined}>
+            <Button variant="destructive" className={mode === 'phone' ? 'bg-lead-phone text-primary-foreground hover:bg-lead-phone/90' : undefined} type={mode === 'digital' ? 'submit' : 'button'} form={mode === 'digital' ? `property-inquiry-${listingId}` : undefined} disabled={sending || phone.replace(/\D/g, '').length < 9 || !name.trim()} onClick={mode === 'phone' ? () => void submit() : undefined}>
               {sending && <Loader2 className="h-4 w-4 animate-spin" />}{mode === 'phone' ? 'חייגו אליי' : 'שליחת פרטים'}
             </Button>
           </DrawerFooter>

@@ -25,11 +25,14 @@ describe('property inquiry submission', () => {
     fireEvent.submit(screen.getByLabelText(/שם מלא/).closest('form') as HTMLFormElement);
     await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith('public-lead-gate', { body: expect.objectContaining({ listing_id: 'listing-a', action: 'register', intent: 'digital', name: 'ישראל ישראלי', phone: '050-1234567' }) }));
   });
-  it('callback stays a callback without inventing a screened lead', async () => {
+  it('callback requires full name and stays unscreened', async () => {
     setup();
     fireEvent.click(screen.getByRole('button', { name: 'שיחת טלפון' }));
+    expect(screen.getByRole('button', { name: 'חייגו אליי' })).toBeDisabled();
     fireEvent.change(screen.getByLabelText(/מספר טלפון/), { target: { value: '0501234567' } });
+    expect(screen.getByRole('button', { name: 'חייגו אליי' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText(/שם מלא/), { target: { value: 'ישראל ישראלי' } });
     fireEvent.click(screen.getByRole('button', { name: 'חייגו אליי' }));
-    await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith('public-lead-gate', { body: expect.objectContaining({ listing_id: 'listing-a', action: 'callback', intent: 'phone', form_answers: undefined }) }));
+    await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith('public-lead-gate', { body: expect.objectContaining({ listing_id: 'listing-a', action: 'callback', intent: 'phone', name: 'ישראל ישראלי', form_answers: undefined }) }));
   });
 });

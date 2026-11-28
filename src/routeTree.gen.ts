@@ -127,6 +127,10 @@ import { Route as SuperAdminBrokerBrokerIdRouteImport } from './routes/super-adm
 import { Route as ApiPublicBrokerOutreachCallStatusRouteImport } from './routes/api/public/broker-outreach/call-status'
 import { Route as ApiPublicBrokerOutreachEmailReplyRouteImport } from './routes/api/public/broker-outreach/email-reply'
 import { Route as ApiPublicBrokerOutreachReplyRouteImport } from './routes/api/public/broker-outreach/reply'
+import { Route as ApiPublicRitaConversationInitiationRouteImport } from './routes/api/public/rita/conversation-initiation'
+import { Route as ApiPublicRitaOutboundRouteImport } from './routes/api/public/rita/outbound'
+import { Route as ApiPublicRitaPostCallRouteImport } from './routes/api/public/rita/post-call'
+import { Route as ApiPublicRitaSearchPropertiesRouteImport } from './routes/api/public/rita/search-properties'
 
 const Char91indexChar93Route = Char91indexChar93RouteImport.update({
   id: '/index',
@@ -722,6 +726,28 @@ const ApiPublicBrokerOutreachReplyRoute =
     path: '/api/public/broker-outreach/reply',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicRitaConversationInitiationRoute =
+  ApiPublicRitaConversationInitiationRouteImport.update({
+    id: '/api/public/rita/conversation-initiation',
+    path: '/api/public/rita/conversation-initiation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicRitaOutboundRoute = ApiPublicRitaOutboundRouteImport.update({
+  id: '/api/public/rita/outbound',
+  path: '/api/public/rita/outbound',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicRitaPostCallRoute = ApiPublicRitaPostCallRouteImport.update({
+  id: '/api/public/rita/post-call',
+  path: '/api/public/rita/post-call',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicRitaSearchPropertiesRoute =
+  ApiPublicRitaSearchPropertiesRouteImport.update({
+    id: '/api/public/rita/search-properties',
+    path: '/api/public/rita/search-properties',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -842,6 +868,10 @@ export interface FileRoutesByFullPath {
   '/api/public/broker-outreach/call-status': typeof ApiPublicBrokerOutreachCallStatusRoute
   '/api/public/broker-outreach/email-reply': typeof ApiPublicBrokerOutreachEmailReplyRoute
   '/api/public/broker-outreach/reply': typeof ApiPublicBrokerOutreachReplyRoute
+  '/api/public/rita/conversation-initiation': typeof ApiPublicRitaConversationInitiationRoute
+  '/api/public/rita/outbound': typeof ApiPublicRitaOutboundRoute
+  '/api/public/rita/post-call': typeof ApiPublicRitaPostCallRoute
+  '/api/public/rita/search-properties': typeof ApiPublicRitaSearchPropertiesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -962,6 +992,10 @@ export interface FileRoutesByTo {
   '/api/public/broker-outreach/call-status': typeof ApiPublicBrokerOutreachCallStatusRoute
   '/api/public/broker-outreach/email-reply': typeof ApiPublicBrokerOutreachEmailReplyRoute
   '/api/public/broker-outreach/reply': typeof ApiPublicBrokerOutreachReplyRoute
+  '/api/public/rita/conversation-initiation': typeof ApiPublicRitaConversationInitiationRoute
+  '/api/public/rita/outbound': typeof ApiPublicRitaOutboundRoute
+  '/api/public/rita/post-call': typeof ApiPublicRitaPostCallRoute
+  '/api/public/rita/search-properties': typeof ApiPublicRitaSearchPropertiesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -1083,6 +1117,10 @@ export interface FileRoutesById {
   '/api/public/broker-outreach/call-status': typeof ApiPublicBrokerOutreachCallStatusRoute
   '/api/public/broker-outreach/email-reply': typeof ApiPublicBrokerOutreachEmailReplyRoute
   '/api/public/broker-outreach/reply': typeof ApiPublicBrokerOutreachReplyRoute
+  '/api/public/rita/conversation-initiation': typeof ApiPublicRitaConversationInitiationRoute
+  '/api/public/rita/outbound': typeof ApiPublicRitaOutboundRoute
+  '/api/public/rita/post-call': typeof ApiPublicRitaPostCallRoute
+  '/api/public/rita/search-properties': typeof ApiPublicRitaSearchPropertiesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1205,6 +1243,10 @@ export interface FileRouteTypes {
     | '/api/public/broker-outreach/call-status'
     | '/api/public/broker-outreach/email-reply'
     | '/api/public/broker-outreach/reply'
+    | '/api/public/rita/conversation-initiation'
+    | '/api/public/rita/outbound'
+    | '/api/public/rita/post-call'
+    | '/api/public/rita/search-properties'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1325,6 +1367,10 @@ export interface FileRouteTypes {
     | '/api/public/broker-outreach/call-status'
     | '/api/public/broker-outreach/email-reply'
     | '/api/public/broker-outreach/reply'
+    | '/api/public/rita/conversation-initiation'
+    | '/api/public/rita/outbound'
+    | '/api/public/rita/post-call'
+    | '/api/public/rita/search-properties'
   id:
     | '__root__'
     | '/'
@@ -1445,6 +1491,10 @@ export interface FileRouteTypes {
     | '/api/public/broker-outreach/call-status'
     | '/api/public/broker-outreach/email-reply'
     | '/api/public/broker-outreach/reply'
+    | '/api/public/rita/conversation-initiation'
+    | '/api/public/rita/outbound'
+    | '/api/public/rita/post-call'
+    | '/api/public/rita/search-properties'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1566,6 +1616,10 @@ export interface RootRouteChildren {
   ApiPublicBrokerOutreachCallStatusRoute: typeof ApiPublicBrokerOutreachCallStatusRoute
   ApiPublicBrokerOutreachEmailReplyRoute: typeof ApiPublicBrokerOutreachEmailReplyRoute
   ApiPublicBrokerOutreachReplyRoute: typeof ApiPublicBrokerOutreachReplyRoute
+  ApiPublicRitaConversationInitiationRoute: typeof ApiPublicRitaConversationInitiationRoute
+  ApiPublicRitaOutboundRoute: typeof ApiPublicRitaOutboundRoute
+  ApiPublicRitaPostCallRoute: typeof ApiPublicRitaPostCallRoute
+  ApiPublicRitaSearchPropertiesRoute: typeof ApiPublicRitaSearchPropertiesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -2396,6 +2450,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBrokerOutreachReplyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/rita/conversation-initiation': {
+      id: '/api/public/rita/conversation-initiation'
+      path: '/api/public/rita/conversation-initiation'
+      fullPath: '/api/public/rita/conversation-initiation'
+      preLoaderRoute: typeof ApiPublicRitaConversationInitiationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/rita/outbound': {
+      id: '/api/public/rita/outbound'
+      path: '/api/public/rita/outbound'
+      fullPath: '/api/public/rita/outbound'
+      preLoaderRoute: typeof ApiPublicRitaOutboundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/rita/post-call': {
+      id: '/api/public/rita/post-call'
+      path: '/api/public/rita/post-call'
+      fullPath: '/api/public/rita/post-call'
+      preLoaderRoute: typeof ApiPublicRitaPostCallRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/rita/search-properties': {
+      id: '/api/public/rita/search-properties'
+      path: '/api/public/rita/search-properties'
+      fullPath: '/api/public/rita/search-properties'
+      preLoaderRoute: typeof ApiPublicRitaSearchPropertiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -2520,6 +2602,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicBrokerOutreachEmailReplyRoute:
     ApiPublicBrokerOutreachEmailReplyRoute,
   ApiPublicBrokerOutreachReplyRoute: ApiPublicBrokerOutreachReplyRoute,
+  ApiPublicRitaConversationInitiationRoute:
+    ApiPublicRitaConversationInitiationRoute,
+  ApiPublicRitaOutboundRoute: ApiPublicRitaOutboundRoute,
+  ApiPublicRitaPostCallRoute: ApiPublicRitaPostCallRoute,
+  ApiPublicRitaSearchPropertiesRoute: ApiPublicRitaSearchPropertiesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

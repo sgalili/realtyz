@@ -196,9 +196,9 @@ Deno.serve(async (req) => {
     // is logged as a failed attempt that the partner can retry or call manually.
     if (action === "callback") {
       const listingId = str(body?.listing_id, 60);
-      const name = str(body?.name, 80) || 'פנייה טלפונית';
+      const name = str(body?.name, 80);
       const phone = normalizePhone(str(body?.phone, 30));
-      if (!listingId || !phone) return json({ error: "מספר טלפון תקין הוא שדה חובה" }, 400);
+      if (!listingId || !name || !phone) return json({ error: "שם מלא ומספר טלפון תקין הם שדות חובה" }, 400);
       const { data: listing } = await admin.from("listings").select("id, city, address, house_number, property_title, deal_type, workspace_owner_id, user_id, contact_options, affiliate_enabled, is_published, affiliate_tier3_amount, latitude, longitude").eq("id", listingId).maybeSingle();
       if (!listing || (!brokersOnly && (!(listing.affiliate_enabled || listing.is_published) || !(Number(listing.affiliate_tier3_amount) > 0)))) return json({ error: "אפשרות השיחה אינה זמינה" }, 404);
       const gid = await guardIdentity(req, body, phone);
@@ -255,12 +255,17 @@ Deno.serve(async (req) => {
       let callOk = false;
       let callError = "";
       let callId: string | null = null;
+      let conversationId: string | null = null;
+      let callContextId: string | null = null;
       try {
-        const response = await fetch(`${backendUrl}/functions/v1/vapi-outbound-call`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` }, body: JSON.stringify({ phone_number: phone, lead_id: leadId, listing_id: listing.id, instructions, workspace_owner_id: ownerId }) });
+        const appUrl = (Deno.env.get("PUBLIC_SITE_URL") || "https://toraff.co.il").replace(/\/$/, "");
+        const response = await fetch(`${appUrl}/api/public/rita/outbound`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` }, body: JSON.stringify({ lead_id: leadId, property_id: listing.id, instructions, workspace_owner_id: ownerId, source: "property_landing_callback", record_call: false }) });
         const callData = await response.json().catch(() => ({}));
         callOk = response.ok && !callData?.error;
         callError = callOk ? "" : str(callData?.error ?? `HTTP ${response.status}`, 400);
-        callId = str(callData?.call?.id ?? callData?.call_id, 120) || null;
+        callId = str(callData?.call_id ?? callData?.call?.callSid, 120) || null;
+        conversationId = str(callData?.conversation_id, 160) || null;
+        callContextId = str(callData?.context_id, 80) || null;
       } catch (callException) {
         callError = str((callException as Error)?.message, 400) || "call_failed";
       }
@@ -276,11 +281,12 @@ Deno.serve(async (req) => {
         needs_callback: !callOk,
         callback_reason: callOk ? null : callError.slice(0, 200),
         started_at: new Date().toISOString(),
-        metadata: { listing_id: listing.id, affiliate_id: affiliateId, lead_name: name, address: addressLabel, provider: "vapi", provider_call_id: callId, error: callOk ? null : callError },
+        elevenlabs_conversation_id: conversationId,
+        metadata: { listing_id: listing.id, affiliate_id: affiliateId, lead_name: name, address: addressLabel, provider: "elevenlabs", provider_call_id: callId, rita_call_context_id: callContextId, error: callOk ? null : callError },
       });
       if (!callOk) {
         console.error("[public-lead-gate] ai call failed", callError);
-        await admin.from("integration_error_logs").insert({ integration: "vapi", function_name: "vapi-outbound-call", error_message: callError.slice(0, 500), context: { lead_id: leadId, listing_id: listing.id, workspace_owner_id: ownerId } }).then(() => {}, () => {});
+        await admin.from("integration_error_logs").insert({ integration: "elevenlabs", function_name: "rita-outbound", error_message: callError.slice(0, 500), context: { lead_id: leadId, listing_id: listing.id, workspace_owner_id: ownerId } }).then(() => {}, () => {});
       }
 
       const { error: stateError } = await admin.from('listing_inquiry_states').upsert({ listing_id: listing.id, lead_id: leadId, workspace_owner_id: ownerId, channel: 'phone', verified_name: str(body?.name, 80) || null, questions, answers: [], evidence_source: 'callback_identity_only' }, { onConflict: 'listing_id,lead_id,channel' });

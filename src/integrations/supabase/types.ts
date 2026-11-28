@@ -9534,6 +9534,93 @@ export type Database = {
         }
         Relationships: []
       }
+      rita_call_contexts: {
+        Row: {
+          agency_name: string
+          agent_name: string
+          conversation_id: string | null
+          created_at: string
+          direction: string
+          dynamic_variables: Json
+          full_name: string | null
+          id: string
+          lead_id: string | null
+          lead_phone: string | null
+          matched_property_ids: string[]
+          property_context: Json
+          property_id: string | null
+          provider_call_id: string | null
+          qualification: Json
+          source: string
+          source_context: Json
+          status: string
+          transcript_summary: string | null
+          updated_at: string
+          workspace_owner_id: string | null
+        }
+        Insert: {
+          agency_name?: string
+          agent_name?: string
+          conversation_id?: string | null
+          created_at?: string
+          direction: string
+          dynamic_variables?: Json
+          full_name?: string | null
+          id?: string
+          lead_id?: string | null
+          lead_phone?: string | null
+          matched_property_ids?: string[]
+          property_context?: Json
+          property_id?: string | null
+          provider_call_id?: string | null
+          qualification?: Json
+          source: string
+          source_context?: Json
+          status?: string
+          transcript_summary?: string | null
+          updated_at?: string
+          workspace_owner_id?: string | null
+        }
+        Update: {
+          agency_name?: string
+          agent_name?: string
+          conversation_id?: string | null
+          created_at?: string
+          direction?: string
+          dynamic_variables?: Json
+          full_name?: string | null
+          id?: string
+          lead_id?: string | null
+          lead_phone?: string | null
+          matched_property_ids?: string[]
+          property_context?: Json
+          property_id?: string | null
+          provider_call_id?: string | null
+          qualification?: Json
+          source?: string
+          source_context?: Json
+          status?: string
+          transcript_summary?: string | null
+          updated_at?: string
+          workspace_owner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rita_call_contexts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rita_call_contexts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rita_chat_gateway_state: {
         Row: {
           blocked: boolean
@@ -9766,6 +9853,45 @@ export type Database = {
           mode?: string
           user_id?: string | null
           visitor_token_hash?: string | null
+        }
+        Relationships: []
+      }
+      rita_voice_runtime: {
+        Row: {
+          agent_id: string
+          agent_phone_number_id: string
+          created_at: string
+          id: boolean
+          phone_number: string
+          tool_id: string | null
+          tool_secret_id: string | null
+          updated_at: string
+          webhook_id: string | null
+          webhook_secret: string | null
+        }
+        Insert: {
+          agent_id: string
+          agent_phone_number_id: string
+          created_at?: string
+          id?: boolean
+          phone_number: string
+          tool_id?: string | null
+          tool_secret_id?: string | null
+          updated_at?: string
+          webhook_id?: string | null
+          webhook_secret?: string | null
+        }
+        Update: {
+          agent_id?: string
+          agent_phone_number_id?: string
+          created_at?: string
+          id?: boolean
+          phone_number?: string
+          tool_id?: string | null
+          tool_secret_id?: string | null
+          updated_at?: string
+          webhook_id?: string | null
+          webhook_secret?: string | null
         }
         Relationships: []
       }

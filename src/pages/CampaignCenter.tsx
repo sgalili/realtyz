@@ -35,6 +35,8 @@ import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { shortenName } from "@/lib/shortenName";
 import { useNavigate, useSearchParams } from '@/lib/router-compat';
 import { useQueryClient } from '@tanstack/react-query';
+import { useServerFn } from '@tanstack/react-start';
+import { startRitaCall } from '@/lib/ritaVoice.functions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -3297,6 +3299,7 @@ const ConfirmDispatchDialog = ({
 
   const { user } = useAuth();
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const ritaCall = useServerFn(startRitaCall);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
@@ -3884,10 +3887,10 @@ const ConfirmDispatchDialog = ({
         if (channel.id === 'ivr' || channel.id === 'ai-call') {
           for (const l of leads || []) {
             if (!l.phone_number) continue;
-            const { error: callErr } = await supabase.functions.invoke('vapi-outbound-call', {
-              body: { phone_number: l.phone_number, lead_id: l.id },
-            });
-            if (callErr) failed++; else dispatched++;
+            try {
+              await ritaCall({ data: { lead_id: l.id, property_id: listingId || undefined, source: 'campaign_inquiry' } });
+              dispatched++;
+            } catch { failed++; }
           }
         } else if (channel.id === 'email') {
           for (const l of leads || []) {
@@ -6910,6 +6913,7 @@ const VoiceLeadPickerDialog = ({
   onClose: () => void;
   channel: ChannelCard | null;
 }) => {
+  const ritaCall = useServerFn(startRitaCall);
   const [leads, setLeads] = useState<VoiceLead[]>([]);
   const [loading, setLoading] = useState(false);
   const [listGroup, setListGroup] = useState<string>('');
@@ -7023,20 +7027,16 @@ const VoiceLeadPickerDialog = ({
     try {
       for (const l of targets) {
         if (!l.phone) continue;
-        const { error } = await supabase.functions.invoke('vapi-outbound-call', {
-          body: {
-            phone_number: l.phone,
+        try {
+          await ritaCall({ data: {
             lead_id: l.id,
             voice_id: agent.voice_id,
-            agent_label: agent.label,
-            voice_gender: (agent as any).gender ?? null,
-            user_gender: userGender,
-            listing_id: selectedListingId ?? null,
-            instructions: instructions.trim() || null,
-          },
-        });
-
-        if (error) failed++; else ok++;
+            property_id: selectedListingId ?? undefined,
+            source: 'lead_card_call',
+            instructions: instructions.trim() || undefined,
+          } });
+          ok++;
+        } catch { failed++; }
       }
       toast.dismiss('voice-dial');
       if (ok > 0) toast.success(`נשלחו ${ok} שיחות מ-${formatPhoneDisplay(VOICE_DIAL_NUMBER)}${failed ? ` · ${failed} נכשלו` : ''}`);

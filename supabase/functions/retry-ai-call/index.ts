@@ -37,20 +37,24 @@ Deno.serve(async (req) => {
     if (attempt.user_id !== userId && affiliateId !== userId) return json({ error: "forbidden" }, 403);
 
     const listingId = (attempt.metadata ?? {})?.listing_id ?? null;
-    const response = await fetch(`${backendUrl}/functions/v1/vapi-outbound-call`, {
+    const appUrl = (Deno.env.get("PUBLIC_SITE_URL") || "https://toraff.co.il").replace(/\/$/, "");
+    const response = await fetch(`${appUrl}/api/public/rita/outbound`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
       body: JSON.stringify({
-        phone_number: attempt.caller_phone,
         lead_id: attempt.lead_id,
-        listing_id: listingId,
+        property_id: listingId,
         instructions: "השיחה מתייחסת אך ורק לנכס שנשלח אליך. שאל לפחות שלוש שאלות סינון לפני סיום השיחה.",
         workspace_owner_id: attempt.user_id,
+        source: "retry_ai_call",
+        record_call: false,
       }),
     });
     const callData = await response.json().catch(() => ({}));
     const success = response.ok && !callData?.error;
-    const providerCallId = String(callData?.call?.id ?? "").trim() || null;
+    const providerCallId = String(callData?.call_id ?? "").trim() || null;
+    const conversationId = String(callData?.conversation_id ?? "").trim() || null;
+    const callContextId = String(callData?.context_id ?? "").trim() || null;
     const errorText = success ? null : String(callData?.error ?? `HTTP ${response.status}`).slice(0, 300);
 
     await admin.from("call_records").insert({
@@ -63,7 +67,8 @@ Deno.serve(async (req) => {
       needs_callback: !success,
       callback_reason: errorText,
       started_at: new Date().toISOString(),
-      metadata: { ...(attempt.metadata ?? {}), provider: "vapi", provider_call_id: providerCallId, error: errorText, retry_of: attempt.id },
+      elevenlabs_conversation_id: conversationId,
+      metadata: { ...(attempt.metadata ?? {}), provider: "elevenlabs", provider_call_id: providerCallId, rita_call_context_id: callContextId, error: errorText, retry_of: attempt.id },
     });
     if (success) await admin.from("call_records").update({ needs_callback: false }).eq("id", attempt.id);
 
