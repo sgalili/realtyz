@@ -35,7 +35,7 @@ export async function dispatchBrokerDemo(admin: Admin, brokerId: string) {
     if (!Number.isFinite(dueAt) || Date.now() > dueAt + 90_000) throw new Error('חלון השיחה חלף בטעינת ההקשר; נדרש אישור חדש');
     const script = shortBrokerDemoCall(context.firstName, context.gender);
     const { startRitaOutboundCall } = await import('./ritaVoiceOutbound.server');
-    const result = await startRitaOutboundCall({ admin, userClient: admin, userId: null, service: true, rawInput: {
+    const result = await startRitaOutboundCall({ admin, userClient: admin, userId: null, service: true, brokerStage: 'onboarded_welcome', rawInput: {
       workspace_owner_id: brokerId, phone_number: verifiedPhone,
       source: 'broker_invitation', call_role: 'broker_invite',
       invite_context: context.facts.slice(0, 1500),

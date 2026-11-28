@@ -41,7 +41,28 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
   if (input.agent_id !== runtime.agent_id) throw new Error('Agent mismatch');
   const phone = ritaPhoneE164(input.caller_id);
   const { data: existing } = await admin.from('rita_call_contexts').select('*').eq('conversation_id', input.conversation_id).maybeSingle();
-  if (existing) return { type: 'conversation_initiation_client_data', dynamic_variables: ritaProviderVariables(record(existing.dynamic_variables)), conversation_config_override: { tts: { pronunciation_dictionary_locators: ritaPronunciationLocators(runtime.pronunciation_dictionaries, record(existing.dynamic_variables)['gender']) } } };
+  if (existing) {
+    const stored = record(existing.dynamic_variables);
+    const openingContext = buildRitaDynamicVariables({
+      source: existing.source,
+      callRole: ritaCallRoleSchema.safeParse(stored['call_role']).data ?? (existing.lead_id ? 'property_lead' : 'general_inbound'),
+      agencyName: existing.agency_name,
+      fullName: existing.full_name,
+      property: (existing.property_context ?? {}) as ReturnType<typeof propertyContextFromListing>,
+      gender: stored['gender'],
+      brokerStage: text(stored['broker_stage']),
+      isTestCall: stored['is_test_call'] === true,
+      instructions: text(stored['custom_instructions'], 1500),
+    });
+    return {
+      type: 'conversation_initiation_client_data',
+      dynamic_variables: ritaProviderVariables(stored),
+      conversation_config_override: {
+        agent: { first_message: vocalizeRitaHebrew(ritaOpeningGreeting(openingContext), openingContext.gender) },
+        tts: { pronunciation_dictionary_locators: ritaPronunciationLocators(runtime.pronunciation_dictionaries, stored['gender']) },
+      },
+    };
+  }
 
   let contextValues: {
     workspaceId: string | null; leadId: string | null; propertyId: string | null;

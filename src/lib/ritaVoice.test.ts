@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRitaDynamicVariables, firstNameFromFullName, isPlaceholderLeadName, normalizeRitaConfigurationOrigin, normalizeRitaPhone, propertyContextFromListing, ritaOutboundInputSchema, ritaPropertySearchSchema, ritaProviderVariables } from './ritaVoice';
+import { buildRitaDynamicVariables, firstNameFromFullName, isPlaceholderLeadName, normalizeRitaConfigurationOrigin, normalizeRitaPhone, propertyContextFromListing, ritaOpeningFrame, ritaOutboundInputSchema, ritaPropertySearchSchema, ritaProviderVariables } from './ritaVoice';
 
  describe('Rita voice contracts', () => {
   it('uses only the first token for lead_name and retains the full name separately', () => {
@@ -32,6 +32,28 @@ import { buildRitaDynamicVariables, firstNameFromFullName, isPlaceholderLeadName
   });
   it('rejects unknown call hats', () => {
     expect(ritaOutboundInputSchema.safeParse({ call_role: 'admin' }).success).toBe(false);
+  });
+  it('frames an explicit post-invite stage without changing its broker hat', () => {
+    const variables = buildRitaDynamicVariables({ source: 'welcome', callRole: 'broker_support', brokerStage: 'onboarded_welcome' });
+    expect(ritaOpeningFrame(variables)).toBe('broker_onboarded');
+    expect(variables.call_role).toBe('broker_support');
+  });
+  it('keeps existing broker support separate from post-invite onboarding', () => {
+    expect(ritaOpeningFrame(buildRitaDynamicVariables({ source: 'broker_assistant', callRole: 'broker_support' }))).toBe('broker_support');
+  });
+  it.each(['property_lead', 'general_inbound'] as const)('uses the authorized %s opening despite unrelated welcome context', callRole => {
+    expect(ritaOpeningFrame(buildRitaDynamicVariables({ source: 'call', callRole, brokerStage: 'onboarded_welcome' }))).toBe(callRole);
+  });
+  it('frames the consented first-login invitation as welcome without changing its broker hat', () => {
+    const variables = buildRitaDynamicVariables({ source: 'broker_invitation', callRole: 'broker_invite', brokerStage: 'onboarded_welcome' });
+    expect(ritaOpeningFrame(variables)).toBe('broker_onboarded');
+    expect(variables.hat).toBe('broker_invite');
+  });
+  it('keeps an unaccepted broker invitation in the partnership frame', () => {
+    expect(ritaOpeningFrame(buildRitaDynamicVariables({ source: 'invite', callRole: 'broker_invite' }))).toBe('broker_invite');
+  });
+  it('does not reframe real property calls from arbitrary seller instructions', () => {
+    expect(ritaOpeningFrame(buildRitaDynamicVariables({ source: 'call', callRole: 'property_lead', instructions: 'מעוניין למכור נכס' }))).toBe('property_lead');
   });
   it('serializes property facts for the provider without losing structured context', () => {
     const variables = buildRitaDynamicVariables({ source: 'property_call', callRole: 'property_lead', property: propertyContextFromListing({ id: 'property-a', rooms: 4, asking_price: 2500000 }) });

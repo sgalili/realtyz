@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const RITA_DEFAULT_AGENCY = 'TORAFF';
 export const RITA_DEFAULT_VOICE = 't1FxSQNdBrLMfytJMHmg';
 export const RITA_PHONE_NUMBER = '+97233826735';
+export const RITA_FALLBACK_GREETING = 'שלום, אני ריטה מטוֹרָאף, העוזרת הדיגיטלית לשירותי הפלטפורמה. איך אפשר לעזור במסגרת טוֹרָאף?';
 export const ritaCallRoleSchema = z.enum(['property_lead', 'broker_invite', 'broker_support', 'general_inbound']);
 export type RitaCallRole = z.infer<typeof ritaCallRoleSchema>;
 
@@ -144,7 +145,7 @@ export function buildRitaDynamicVariables(input: {
     first_name: firstNameFromFullName(fullName),
     gender: normalizeRitaGender(input.gender),
     is_test_call: input.isTestCall === true,
-    broker_stage: String(input.brokerStage ?? '').trim() || (input.callRole === 'broker_support' ? 'onboarded' : input.callRole === 'broker_invite' ? 'invited' : ''),
+    broker_stage: String(input.brokerStage ?? '').trim() || (input.callRole === 'broker_support' ? 'active' : input.callRole === 'broker_invite' ? 'invited' : ''),
     lead_full_name: fullName,
     lead_phone: ritaPhoneE164(input.phone),
     property_id: String(input.property && 'property_id' in input.property ? input.property.property_id : ''),
@@ -154,15 +155,27 @@ export function buildRitaDynamicVariables(input: {
   };
 }
 
+/** Lifecycle refines the opening only; it never changes the authorized call hat. */
+export function ritaOpeningFrame(variables: RitaDynamicVariables): RitaCallRole | 'broker_onboarded' | 'seller_lead' {
+  if (['broker_support', 'broker_invite'].includes(variables.call_role) && ['onboarded', 'onboarded_welcome'].includes(variables.broker_stage)) return 'broker_onboarded';
+  if (variables.call_role === 'property_lead' && variables.is_test_call && variables.custom_instructions.includes('מעוניין למכור נכס')) return 'seller_lead';
+  return variables.call_role;
+}
+
 export function ritaOpeningGreeting(variables: RitaDynamicVariables): string {
   const hello = variables.lead_name ? `שלום ${variables.lead_name},` : 'שלום,';
   const yours = variables.gender === 'female' ? 'שֶׁלָּךְ' : 'שֶׁלְּךָ';
   const forYou = variables.gender === 'female' ? 'עֲבוּרֵךְ' : 'עֲבוּרְךָ';
-  if (variables.call_role === 'broker_invite') return `${hello} אני ריטה, עוזרת ההצטרפות של טוֹרָאף. אפשר לדבר בקצרה על המשרד ${yours}?`;
-  if (variables.call_role === 'broker_support' && variables.broker_stage === 'onboarded_welcome') return `${hello} ${variables.gender === 'female' ? 'ברוכה הבאה' : 'ברוך הבא'} לטוֹרָאף! אני ריטה, העוזרת הדיגיטלית ${yours}. אני תמיד זמינה ${forYou} בתפריט הצדדי באפליקציה.`;
-  if (variables.call_role === 'broker_support') return `${hello} אני ריטה מטוֹרָאף, העוזרת הדיגיטלית של ${variables.agency_name}. במה אפשר לעזור היום?`;
-  const property = variables.call_role === 'property_lead' && 'title' in variables.property_context ? variables.property_context.title : '';
-  return `${hello} אני ריטה, הסוכנת הדיגיטלית של ${variables.agency_name.replace(/\bTORAFF?\b/gi, 'טוֹרָאף')}.${property ? ` אני חוזרת לגבי ${property}.` : ''} איך אפשר לעזור?`;
+  const agency = variables.agency_name.replace(/\bTORAFF?\b/gi, 'טוֹרָאף');
+  const office = agency === 'טוֹרָאף' ? `המשרד ${yours}` : `משרד ${agency}`;
+  const frame = ritaOpeningFrame(variables);
+  if (frame === 'broker_invite') return `${hello} אני ריטה מטוֹרָאף, ואני מתקשרת לשיחה קצרה על הזמנת ${office} להצטרף לפלטפורמה ועל הערך של השותפות. אפשר לדבר בקצרה?`;
+  if (frame === 'broker_onboarded') return `${hello} אני ריטה מטוֹרָאף, העוזרת הדיגיטלית ${yours}, ואני מתקשרת להיכרות ממוקדת של כדקה בעקבות הצטרפות ${office} לפלטפורמה. ${variables.gender === 'female' ? 'ברוכה הבאה' : 'ברוך הבא'} לטוֹרָאף! אני זמינה ${forYou} גם בתפריט הצדדי באפליקציה. אפשר להתחיל?`;
+  if (frame === 'broker_support') return `${hello} אני ריטה מטוֹרָאף, העוזרת הדיגיטלית של ${office}, ואני כאן לעזור עם הנכסים בשיווק, הלידים או מרחב העבודה ${yours}. במה נתמקד היום?`;
+  const property = 'title' in variables.property_context ? variables.property_context.title : '';
+  if (frame === 'seller_lead') return `${hello} אני ריטה מטוֹרָאף, הסוכנת הדיגיטלית${agency === 'טוֹרָאף' ? '' : ` של ${agency}`}, ואני כאן לגבי הפנייה ${yours} למכירת נכס${property ? `, ${property}` : ''}. מה חשוב לְךָ לקדם במכירה?`.replace('לְךָ', variables.gender === 'female' ? 'לָךְ' : 'לְךָ');
+  if (frame === 'property_lead') return `${hello} אני ריטה מטוֹרָאף, הסוכנת הדיגיטלית${agency === 'טוֹרָאף' ? '' : ` של ${agency}`}, ואני חוזרת לגבי הפנייה ${yours}${property ? ` על ${property}` : ' לחיפוש הנכס הבא'}. תודה שבחרת לחפש את הנכס הבא דרך הפלטפורמה. מה חשוב ${variables.gender === 'female' ? 'לָךְ' : 'לְךָ'} לברר לגבי הפנייה?`;
+  return `${hello} אני ריטה מטוֹרָאף, העוזרת הדיגיטלית לשירותי הפלטפורמה. איך אפשר לעזור במסגרת טוֹרָאף?`;
 }
 
 /** ElevenLabs accepts scalar dynamic variables; structured property facts travel as JSON. */

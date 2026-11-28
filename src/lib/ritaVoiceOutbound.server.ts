@@ -108,12 +108,14 @@ async function elevenLabsOutbound(key: string, payload: Record<string, unknown>)
   return JSON.parse(raw) as { success?: boolean; message?: string; conversation_id?: string; callSid?: string };
 }
 
-export async function startRitaOutboundCall({ admin, userClient, userId, rawInput, service = false }: {
+export async function startRitaOutboundCall({ admin, userClient, userId, rawInput, service = false, brokerStage }: {
   admin: RitaAdmin;
   userClient: Client;
   userId: string | null;
   rawInput: unknown;
   service?: boolean;
+  /** Trusted dispatcher only, after the first-login consent claim. Never accepted from HTTP input. */
+  brokerStage?: 'onboarded_welcome';
 }) {
   const input = ritaOutboundInputSchema.parse(rawInput);
   if (!service && !userId) throw new Error('נדרשת התחברות');
@@ -166,7 +168,7 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
     callRole,
     gender: normalizeRitaGender(resolved.gender),
     isTestCall: !!testRole,
-    brokerStage: input.test_scenario === 'broker_onboarded' ? 'onboarded_welcome' : null,
+    brokerStage: input.test_scenario === 'broker_onboarded' ? 'onboarded_welcome' : service ? brokerStage : null,
     inviteContext: callRole === 'broker_invite' ? (input.invite_context || (testRole ? 'שיחת בדיקה של הזמנת מתווך חדש ל-TORAFF' : '')) : '',
   });
   const { data: context, error: contextError } = await admin.from('rita_call_contexts').insert({
