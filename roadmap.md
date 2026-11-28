@@ -3,7 +3,7 @@
 ## Rita live production routing November 28
 - [x] Updated the live ElevenLabs inbound-context URL to toraff.co.il; verified property search and post-call already use production. Preserved active voice, language, greeting, tools and qualification settings, adding only the missing lead_name prompt context.
 - [x] Authenticated production inbound and existing outbound-context requests returned 200; invalid x-rita-key returned 401. Required dynamic variables and +97233826735 assignment verified; temporary contexts removed. No real calls placed.
-- [ ] Refresh security results and publish the requested version.
+- [x] Fresh pre-publication scan had no actionable findings; fifteen focused tests passed and build OK. Publishing requested for toraff.co.il; deployment completion and actual phone calls remain unverified. Publish gate noted some scans stale for the documentation commit, so a fresh/deeper check is recommended before broad sharing.
 
 ## Rita preview origin synchronization November 28
 - [x] Accept HTTPS preview subdomains on lovable.app and lovableproject.com alongside toraff.co.il without allowing lookalike domains, credentials, paths or insecure URLs.
