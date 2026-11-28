@@ -136,6 +136,16 @@ export function ritaOpeningGreeting(variables: RitaDynamicVariables): string {
   return `${hello} אני ריטה, הסוכנת הדיגיטלית של ${variables.agency_name}.${property ? ` אני חוזרת לגבי ${property}.` : ''} איך אפשר לעזור?`;
 }
 
+/** ElevenLabs accepts scalar dynamic variables; structured property facts travel as JSON. */
+export function ritaProviderVariables(variables: Record<string, unknown>): Record<string, string | number | boolean> {
+  const result: Record<string, string | number | boolean> = {};
+  for (const [key, value] of Object.entries(variables)) {
+    if (value === null || value === undefined) continue;
+    result[key] = typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? value : JSON.stringify(value);
+  }
+  return result;
+}
+
 export function isPlaceholderLeadName(name: string | null | undefined): boolean {
   const value = String(name ?? '').trim();
   return !value || /^(פנייה טלפונית|לקוח|ליד|מתעניין|ללא שם|caller\b|unknown\b)/i.test(value);

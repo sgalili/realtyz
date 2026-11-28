@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Database, Json } from '@/integrations/supabase/types';
-import { buildRitaDynamicVariables, isPlaceholderLeadName, normalizeRitaPhone, propertyContextFromListing, ritaPhoneE164, ritaCallRoleSchema, ritaOpeningGreeting } from './ritaVoice';
+import { buildRitaDynamicVariables, isPlaceholderLeadName, normalizeRitaPhone, propertyContextFromListing, ritaPhoneE164, ritaCallRoleSchema, ritaOpeningGreeting, ritaProviderVariables, type RitaCallRole } from './ritaVoice';
 import { resolveLeadCallContext } from './ritaVoiceOutbound.server';
 import { getRitaRuntime, verifyElevenLabsPostCallSignature, type RitaAdmin } from './ritaVoiceSecurity.server';
 
@@ -45,16 +45,18 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
   if (input.agent_id !== runtime.agent_id) throw new Error('Agent mismatch');
   const phone = ritaPhoneE164(input.caller_id);
   const { data: existing } = await admin.from('rita_call_contexts').select('*').eq('conversation_id', input.conversation_id).maybeSingle();
-  if (existing) return { type: 'conversation_initiation_client_data', dynamic_variables: existing.dynamic_variables };
+  if (existing) return { type: 'conversation_initiation_client_data', dynamic_variables: ritaProviderVariables(record(existing.dynamic_variables)) };
 
   let contextValues: {
     workspaceId: string | null; leadId: string | null; propertyId: string | null;
     fullName: string; agencyName: string; agentName: string;
     property: ReturnType<typeof propertyContextFromListing>;
   } = { workspaceId: null, leadId: null, propertyId: null, fullName: '', agencyName: 'TORAFF', agentName: 'TORAFF', property: {} };
+  let contextRole: RitaCallRole = 'general_inbound';
 
   const { data: prior } = phone ? await admin.from('rita_call_contexts').select('*').eq('lead_phone', phone).order('created_at', { ascending: false }).limit(1).maybeSingle() : { data: null };
   if (prior) {
+    contextRole = ritaCallRoleSchema.safeParse(record(prior.dynamic_variables)['call_role']).data ?? (prior.lead_id ? 'property_lead' : 'general_inbound');
     contextValues = {
       workspaceId: prior.workspace_owner_id,
       leadId: prior.lead_id,
@@ -66,10 +68,22 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
     };
   } else if (phone) {
     const normalized = normalizeRitaPhone(phone) ?? '';
+    const phoneVariants = [normalized, phone, `0${normalized.slice(3)}`];
+    const { data: profiles } = await admin.from('profiles').select('id,full_name,broker_byline').in('phone', phoneVariants).limit(2);
+    const candidate = profiles?.length === 1 ? profiles[0] : null;
+    const { data: broker } = candidate ? await admin.from('user_roles').select('user_id').eq('user_id', candidate.id).in('role', ['agent', 'managing_broker', 'lead_agent']).limit(1).maybeSingle() : { data: null };
+    if (candidate && broker) {
+      const { data: brand } = await admin.from('white_label_settings').select('agency_name').eq('user_id', candidate.id).maybeSingle();
+      const name = candidate.broker_byline?.trim() || candidate.full_name?.trim() || 'TORAFF';
+      contextValues = { workspaceId: candidate.id, leadId: null, propertyId: null, fullName: candidate.full_name || '', agencyName: brand?.agency_name?.trim() || name, agentName: name, property: {} };
+      contextRole = 'broker_support';
+    } else {
     const { data: lead } = await admin.from('leads').select('id').eq('phone_number', normalized).order('last_interaction_at', { ascending: false }).limit(1).maybeSingle();
     if (lead) {
       const resolved = await resolveLeadCallContext(admin, lead.id);
       contextValues = { workspaceId: resolved.workspaceId, leadId: resolved.leadId, propertyId: resolved.propertyId, fullName: resolved.fullName, agencyName: resolved.agencyName, agentName: resolved.agentName, property: resolved.property };
+      contextRole = 'property_lead';
+    }
     }
   }
 
@@ -81,7 +95,7 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
     phone,
     property: contextValues.property,
     source: 'inbound_twilio',
-    callRole: ritaCallRoleSchema.safeParse(record(prior?.dynamic_variables)['call_role']).data ?? (contextValues.leadId ? 'property_lead' : 'general_inbound'),
+    callRole: contextRole,
     inviteContext: text(record(prior?.dynamic_variables)['invite_context'], 1500),
   });
   const { data: saved, error } = await admin.from('rita_call_contexts').insert({
@@ -106,7 +120,7 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
   await admin.from('rita_call_contexts').update({ dynamic_variables: json(dynamicVariables) }).eq('id', saved.id);
   return {
     type: 'conversation_initiation_client_data',
-    dynamic_variables: dynamicVariables,
+    dynamic_variables: ritaProviderVariables(dynamicVariables),
     ...(contextValues.leadId ? { user_id: contextValues.leadId } : {}),
     conversation_config_override: {
       agent: {

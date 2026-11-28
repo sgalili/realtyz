@@ -1,11 +1,13 @@
 # Roadmap
 
 ## ElevenLabs-only role-aware calls November 28
-- [ ] Remove active Vapi UI, call routes/functions and fallback configuration without affecting unrelated integrations.
-- [ ] Add server-owned call hats and context across property, campaigns, support, invitation, retry and inbound calls.
-- [ ] Replace delayed invitation scheduling with a durable consent-gated ElevenLabs dispatch and cancellation path.
+- [x] Removed Vapi UI, source functions/status route and fallback routing; Homely's unrelated webtivapi URLs are untouched. Deployed retirement waits for replacement verification below.
+- [x] Server-owned hats across shared public property callback, both campaign dispatch paths, AI dialer, retry, broker-assistant/test buttons, invitation first-login and inbound calls. Scalar provider context preserves structured property facts; only property_lead post-calls create/update buyer leads.
+- [x] Service-only arm/claim/cancel RPCs use the existing minute dispatcher, preserving consent, OTP phones, bounded waiting, cancellation and no automatic replay. No historical provider calls restarted.
+- Scheduling uses the existing one-minute dispatcher, not the initially proposed temporary checks: the 60-second minimum wait can be followed by up to one minute of tick latency, with late calls blocked after the bounded window.
 - [ ] Sync production agent/tools, verify role routing and callbacks, and retire deployed Vapi functions after replacement verification.
 - [ ] Publish and verify the replacement first, then disable deployed Vapi endpoints (user approved).
+- [x] Forty-nine focused tests passed, including isolated database consent/claim/cancel/expiry/permission tests and signed post-call role fences. Real authorized mobile/desktop connection checks and cancelled test confirmations passed without browser errors or calls; build OK.
 
 ## Rita live production routing November 28
 - [x] Updated the live ElevenLabs inbound-context URL to toraff.co.il; verified property search and post-call already use production. Preserved active voice, language, greeting, tools and qualification settings, adding only the missing lead_name prompt context.

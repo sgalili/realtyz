@@ -7,7 +7,7 @@ beforeAll(async () => {
   db = new PGlite();
   await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
     CREATE TABLE public.broker_outreach_journeys (broker_id uuid PRIMARY KEY, enabled boolean, call_consent_at timestamptz, interested_at timestamptz, opted_out_at timestamptz, cancel_requested_at timestamptz, otp_verified_phone text, call_due_at timestamptz, call_status text, call_provider_id text, last_error text);`);
-  await db.exec(readFileSync(new URL('../../drizzle/migrations/0324_rita_broker_demo_dispatch.sql', import.meta.url), 'utf8'));
+  await db.exec(readFileSync('drizzle/migrations/0324_rita_broker_demo_dispatch.sql', 'utf8'));
 }, 30000);
 beforeEach(async () => {
   await db.exec(`DELETE FROM public.broker_outreach_journeys;

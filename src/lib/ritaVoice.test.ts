@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRitaDynamicVariables, firstNameFromFullName, isPlaceholderLeadName, normalizeRitaConfigurationOrigin, normalizeRitaPhone, propertyContextFromListing, ritaOutboundInputSchema, ritaPropertySearchSchema } from './ritaVoice';
+import { buildRitaDynamicVariables, firstNameFromFullName, isPlaceholderLeadName, normalizeRitaConfigurationOrigin, normalizeRitaPhone, propertyContextFromListing, ritaOutboundInputSchema, ritaPropertySearchSchema, ritaProviderVariables } from './ritaVoice';
 
  describe('Rita voice contracts', () => {
   it('uses only the first token for lead_name and retains the full name separately', () => {
@@ -32,6 +32,13 @@ import { buildRitaDynamicVariables, firstNameFromFullName, isPlaceholderLeadName
   });
   it('rejects unknown call hats', () => {
     expect(ritaOutboundInputSchema.safeParse({ call_role: 'admin' }).success).toBe(false);
+  });
+  it('serializes property facts for the provider without losing structured context', () => {
+    const variables = buildRitaDynamicVariables({ source: 'property_call', callRole: 'property_lead', property: propertyContextFromListing({ id: 'property-a', rooms: 4, asking_price: 2500000 }) });
+    const sent = ritaProviderVariables(variables);
+    expect(typeof sent['property_context']).toBe('string');
+    expect(JSON.parse(String(sent['property_context']))).toMatchObject({ property_id: 'property-a', rooms: 4, price: 2500000 });
+    expect(variables.property_context).toMatchObject({ rooms: 4 });
   });
   it('requires valid bounded input and normalizes Israeli phones', () => {
     expect(normalizeRitaPhone('+972 50 123 4567')).toBe('972501234567');

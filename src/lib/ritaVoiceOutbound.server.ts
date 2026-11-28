@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@/integrations/supabase/types';
-import { buildRitaDynamicVariables, firstNameFromFullName, propertyContextFromListing, ritaOutboundInputSchema, ritaPhoneE164, ritaOpeningGreeting, type RitaDynamicVariables, type RitaCallRole } from './ritaVoice';
+import { buildRitaDynamicVariables, firstNameFromFullName, propertyContextFromListing, ritaOutboundInputSchema, ritaPhoneE164, ritaOpeningGreeting, ritaProviderVariables, type RitaDynamicVariables, type RitaCallRole } from './ritaVoice';
 import { getRitaRuntime, type RitaAdmin } from './ritaVoiceSecurity.server';
 
 const LEAD_COLUMNS = 'id,full_name,phone_number,workspace_owner_id,linked_listing_id,deal_type,city,preferences';
@@ -74,7 +74,7 @@ async function resolveGeneralContext(admin: RitaAdmin, input: ReturnType<typeof 
   if (!service) {
     const { data: profile, error } = await admin.from('profiles').select('full_name,phone').eq('id', userId ?? '').maybeSingle();
     if (error || !profile) throw new Error('לא ניתן לטעון את פרטי המשתמש');
-    const requested = ritaPhoneE164(input.phone_number);
+    const requested = ritaPhoneE164(input.phone_number || (input.call_role === 'broker_support' || input.hat === 'broker_support' ? profile.phone : ''));
     const ownPhone = ritaPhoneE164(profile.phone);
     if (!requested || requested !== ownPhone) throw new Error('ללא ליד ניתן לחייג רק למספר המאומת שלך');
     return { workspaceId: userId, leadId: null, propertyId: null, fullName: profile.full_name?.trim() || '', phone: requested, ...(await identity(admin, userId)), property: {} };
@@ -126,7 +126,7 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
   let callRole: RitaCallRole = resolved.leadId ? 'property_lead' : 'general_inbound';
   if (service && requestedRole === 'broker_invite') callRole = 'broker_invite';
   else if (!resolved.leadId && !input.demo && userId) {
-    const { data: broker, error } = await userClient.from('user_roles').select('user_id').eq('user_id', userId).eq('role', 'broker').limit(1).maybeSingle();
+    const { data: broker, error } = await userClient.from('user_roles').select('user_id').eq('user_id', userId).in('role', ['agent', 'managing_broker', 'lead_agent']).limit(1).maybeSingle();
     if (error) throw new Error('לא ניתן לאמת את תפקיד החשבון');
     if (broker) callRole = 'broker_support';
   }
@@ -173,7 +173,7 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
       agent_phone_number_id: runtime.agent_phone_number_id,
       to_number: resolved.phone,
       conversation_initiation_client_data: {
-        dynamic_variables: dynamicVariables,
+        dynamic_variables: ritaProviderVariables(dynamicVariables),
         ...(resolved.leadId ? { user_id: resolved.leadId } : {}),
         source_info: { source: 'twilio', version: 'toraff-rita-v1' },
         conversation_config_override: {
