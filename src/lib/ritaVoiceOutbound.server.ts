@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@/integrations/supabase/types';
 import { RITA_TEST_MAX_SECONDS, normalizeRitaGender, buildRitaDynamicVariables, firstNameFromFullName, propertyContextFromListing, ritaOutboundInputSchema, ritaPhoneE164, ritaOpeningGreeting, ritaProviderVariables, type RitaDynamicVariables, type RitaCallRole } from './ritaVoice';
+import { ritaPronunciationLocators } from './ritaHebrewSpeech';
 import { getRitaRuntime, type RitaAdmin } from './ritaVoiceSecurity.server';
 
 const LEAD_COLUMNS = 'id,full_name,phone_number,workspace_owner_id,linked_listing_id,deal_type,city,preferences';
@@ -204,7 +205,7 @@ export async function startRitaOutboundCall({ admin, userClient, userId, rawInpu
           agent: {
             first_message: ritaOpeningGreeting(dynamicVariables),
           },
-          ...(input.voice_id ? { tts: { voice_id: input.voice_id } } : {}),
+          tts: { ...(input.voice_id ? { voice_id: input.voice_id } : {}), pronunciation_dictionary_locators: ritaPronunciationLocators(runtime.pronunciation_dictionaries, dynamicVariables.gender) },
         },
       },
       call_recording_enabled: false,

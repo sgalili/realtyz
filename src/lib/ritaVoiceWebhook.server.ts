@@ -4,6 +4,7 @@ import { buildRitaDynamicVariables, isPlaceholderLeadName, normalizeRitaPhone, p
 import { resolveLeadCallContext } from './ritaVoiceOutbound.server';
 import { conciseRitaText, ritaSummaryBullets, ritaCallSummarySchema } from './ritaCallSummary';
 import { getRitaRuntime, verifyElevenLabsPostCallSignature, type RitaAdmin } from './ritaVoiceSecurity.server';
+import { formatRitaTranscript, normalizeRitaTranscriptText, vocalizeRitaHebrew, ritaPronunciationLocators } from './ritaHebrewSpeech';
 
 const initiationSchema = z.object({
   caller_id: z.string().max(40),
@@ -24,12 +25,6 @@ function collectionValue(value: unknown): unknown {
   const item = record(value);
   return 'value' in item ? item['value'] : value;
 }
-function transcriptText(transcript: unknown): string {
-  return Array.isArray(transcript) ? transcript.map(turn => {
-    const item = record(turn);
-    return `[${text(item['role'] || item['speaker'] || 'agent', 30)}] ${text(item['message'] || item['text'], 4000)}`;
-  }).filter(Boolean).join('\n').slice(0, 100000) : '';
-}
 function propertyIds(value: unknown): string[] {
   let candidate = value;
   if (typeof candidate === 'string') {
@@ -46,7 +41,7 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
   if (input.agent_id !== runtime.agent_id) throw new Error('Agent mismatch');
   const phone = ritaPhoneE164(input.caller_id);
   const { data: existing } = await admin.from('rita_call_contexts').select('*').eq('conversation_id', input.conversation_id).maybeSingle();
-  if (existing) return { type: 'conversation_initiation_client_data', dynamic_variables: ritaProviderVariables(record(existing.dynamic_variables)) };
+  if (existing) return { type: 'conversation_initiation_client_data', dynamic_variables: ritaProviderVariables(record(existing.dynamic_variables)), conversation_config_override: { tts: { pronunciation_dictionary_locators: ritaPronunciationLocators(runtime.pronunciation_dictionaries, record(existing.dynamic_variables)['gender']) } } };
 
   let contextValues: {
     workspaceId: string | null; leadId: string | null; propertyId: string | null;
@@ -54,6 +49,7 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
     property: ReturnType<typeof propertyContextFromListing>;
   } = { workspaceId: null, leadId: null, propertyId: null, fullName: '', agencyName: 'TORAFF', agentName: 'TORAFF', property: {} };
   let contextRole: RitaCallRole = 'general_inbound';
+  let inboundGender: unknown;
 
   const { data: prior } = phone ? await admin.from('rita_call_contexts').select('*').eq('lead_phone', phone).order('created_at', { ascending: false }).limit(1).maybeSingle() : { data: null };
   if (prior) {
@@ -70,7 +66,7 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
   } else if (phone) {
     const normalized = normalizeRitaPhone(phone) ?? '';
     const phoneVariants = [normalized, phone, `0${normalized.slice(3)}`];
-    const { data: profiles } = await admin.from('profiles').select('id,full_name,broker_byline').in('phone', phoneVariants).limit(2);
+    const { data: profiles } = await admin.from('profiles').select('id,full_name,broker_byline,gender').in('phone', phoneVariants).limit(2);
     const candidate = profiles?.length === 1 ? profiles[0] : null;
     const { data: broker } = candidate ? await admin.from('user_roles').select('user_id').eq('user_id', candidate.id).in('role', ['agent', 'managing_broker', 'lead_agent']).limit(1).maybeSingle() : { data: null };
     if (candidate && broker) {
@@ -78,6 +74,7 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
       const name = candidate.broker_byline?.trim() || candidate.full_name?.trim() || 'TORAFF';
       contextValues = { workspaceId: candidate.id, leadId: null, propertyId: null, fullName: candidate.full_name || '', agencyName: brand?.agency_name?.trim() || name, agentName: name, property: {} };
       contextRole = 'broker_support';
+      inboundGender = candidate.gender;
     } else {
     const { data: lead } = await admin.from('leads').select('id').eq('phone_number', normalized).order('last_interaction_at', { ascending: false }).limit(1).maybeSingle();
     if (lead) {
@@ -98,7 +95,7 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
     source: 'inbound_twilio',
     callRole: contextRole,
     inviteContext: text(record(prior?.dynamic_variables)['invite_context'], 1500),
-    gender: record(prior?.dynamic_variables)['gender'],
+    gender: record(prior?.dynamic_variables)['gender'] ?? inboundGender,
     isTestCall: false,
   });
   const { data: saved, error } = await admin.from('rita_call_contexts').insert({
@@ -126,8 +123,9 @@ export async function handleRitaConversationInitiation(admin: RitaAdmin, rawInpu
     dynamic_variables: ritaProviderVariables(dynamicVariables),
     ...(contextValues.leadId ? { user_id: contextValues.leadId } : {}),
     conversation_config_override: {
+      tts: { pronunciation_dictionary_locators: ritaPronunciationLocators(runtime.pronunciation_dictionaries, dynamicVariables.gender) },
       agent: {
-        first_message: ritaOpeningGreeting(dynamicVariables),
+        first_message: vocalizeRitaHebrew(ritaOpeningGreeting(dynamicVariables), dynamicVariables.gender),
       },
     },
   };
@@ -156,7 +154,7 @@ export async function handleRitaPostCall(admin: RitaAdmin, rawBody: string, sign
   if (!context) throw new Error('Missing call context');
   const storedDynamic = record(context.dynamic_variables);
   const callRole = ritaCallRoleSchema.safeParse(storedDynamic['call_role']).data ?? (context.lead_id ? 'property_lead' : 'general_inbound');
-  dynamic = { ...storedDynamic, ...dynamic, call_role: callRole, hat: callRole };
+  dynamic = { ...storedDynamic, ...dynamic, call_role: callRole, hat: callRole, gender: storedDynamic['gender'] ?? 'male' };
 
   if (eventType === 'call_initiation_failure') {
     const reason = text(data['failure_reason'], 500) || 'השיחה לא התחברה';
@@ -170,7 +168,6 @@ export async function handleRitaPostCall(admin: RitaAdmin, rawBody: string, sign
   const analysis = record(data['analysis']);
   const collected = record(analysis['data_collection_results']);
   const transcript = data['transcript'] ?? data['transcript_with_metadata'] ?? [];
-  const asText = transcriptText(transcript);
   const metadata = record(data['metadata']);
   const phoneCall = record(metadata['phone_call']);
   // Provider-returned identity variables never replace the server-owned workspace,
@@ -178,10 +175,14 @@ export async function handleRitaPostCall(admin: RitaAdmin, rawBody: string, sign
   const callerPhone = ritaPhoneE164(context.lead_phone) || ritaPhoneE164(text(phoneCall['external_number'] || phoneCall['from_number'] || metadata['caller_id'], 40));
   const collectedFullName = text(collectionValue(collected['full_name']), 80);
   const fullName = context.full_name && !isPlaceholderLeadName(context.full_name) ? context.full_name : collectedFullName || context.full_name || '';
+  const asText = formatRitaTranscript(transcript, fullName);
   const needsCallback = collectionValue(collected['requested_callback']) === true || (Array.isArray(transcript) && transcript.some(turn => {
     const calls = record(turn)['tool_calls'];
     return Array.isArray(calls) && calls.some(call => text(record(call)['tool_name'] || record(call)['name'], 80) === 'request_callback');
   }));
+  const linkSends = await admin.from('rita_whatsapp_link_sends').select('status,property_ids,provider_message_id').eq('context_id', context.id).order('created_at', { ascending: false }).limit(10);
+  if (linkSends.error) throw linkSends.error;
+  const linkActions = linkSends.data ?? [];
   const qualification = {
     timeline_urgency: conciseRitaText(collectionValue(collected['timeline_urgency'])),
     budget_financing: conciseRitaText(collectionValue(collected['budget_financing'])),
@@ -189,12 +190,19 @@ export async function handleRitaPostCall(admin: RitaAdmin, rawBody: string, sign
     viewing_availability: conciseRitaText(collectionValue(collected['viewing_availability'])),
     next_step: conciseRitaText(collectionValue(collected['next_step'])) || (needsCallback ? 'חזרה אנושית מהצוות' : null),
     requested_callback: needsCallback,
+    whatsapp_link_actions: linkActions,
   };
   const matchedPropertyIds = propertyIds(collectionValue(collected['matched_property_ids']) ?? dynamic['matched_property_ids']);
   if (context.property_id && !matchedPropertyIds.includes(context.property_id)) matchedPropertyIds.unshift(context.property_id);
   matchedPropertyIds.splice(20);
-  const rawSummary = text(analysis['transcript_summary'] || data['summary'], 20000);
+  const rawSummary = normalizeRitaTranscriptText(text(analysis['transcript_summary'] || data['summary'], 20000));
   const bullets = ritaSummaryBullets(collectionValue(collected['summary_bullets']), rawSummary);
+  for (let i = 0; i < bullets.length; i++) bullets[i] = normalizeRitaTranscriptText(bullets[i]);
+  if (linkActions.length) {
+    const delivered = linkActions.some(action => ['delivered', 'read'].includes(action.status));
+    const accepted = linkActions.some(action => ['accepted', 'sent'].includes(action.status));
+    bullets.splice(2, 1, delivered ? 'קישורי הנכסים נמסרו בוואטסאפ.' : accepted ? 'קישורי הנכסים הועברו לשליחה בוואטסאפ, ללא אישור מסירה עדיין.' : 'שליחת קישורי הנכסים בוואטסאפ לא אושרה; נדרש בירור.');
+  }
   const durationValue = Number(metadata['call_duration_secs'] ?? metadata['duration_secs'] ?? 0);
   const duration = Number.isFinite(durationValue) ? Math.min(86400, Math.max(0, Math.round(durationValue))) : 0;
   const startSeconds = Number(metadata['start_time_unix_secs']);

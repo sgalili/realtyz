@@ -2304,6 +2304,27 @@
       "when": 1795874262621,
       "tag": "0328_remove_unused_realtime_publication_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 329,
+      "version": "7",
+      "when": 1795875370439,
+      "tag": "0329_rita_confirmed_whatsapp_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 330,
+      "version": "7",
+      "when": 1795875503372,
+      "tag": "0330_rita_whatsapp_verified_service_window",
+      "breakpoints": true
+    },
+    {
+      "idx": 331,
+      "version": "7",
+      "when": 1795875745151,
+      "tag": "0331_rita_gender_pronunciation_dictionaries",
+      "breakpoints": true
     }
   ]
 }

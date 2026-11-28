@@ -68,8 +68,11 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "invalid_signature" }), { status: 401, headers: { "Content-Type": "application/json" } });
     }
     payload = JSON.parse(__raw);
+    const deliveryId = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(__raw)))).map(byte => byte.toString(16).padStart(2, '0')).join('');
+    const stored = await admin.rpc('record_rita_whatsapp_status', { _delivery_id: deliveryId, _payload: payload });
+    if (stored.error) return json({ error: 'Unable to persist WhatsApp delivery' }, 503);
   } catch {
-    return json({ received: true });
+    return json({ error: 'Unable to validate or persist WhatsApp delivery' }, 503);
   }
 
   try {

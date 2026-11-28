@@ -39,6 +39,7 @@ export function normalizeRitaGender(value: unknown): RitaGender {
 export type RitaOutboundInput = z.input<typeof ritaOutboundInputSchema>;
 
 export const ritaPropertySearchSchema = z.object({
+  rita_call_context_id: optionalUuid,
   broker_id: optionalUuid,
   property_id: optionalUuid,
   city_or_area: z.string().trim().max(120).optional(),
@@ -155,17 +156,20 @@ export function buildRitaDynamicVariables(input: {
 
 export function ritaOpeningGreeting(variables: RitaDynamicVariables): string {
   const hello = variables.lead_name ? `שלום ${variables.lead_name},` : 'שלום,';
-  if (variables.call_role === 'broker_invite') return `${hello} אני ריטה, עוזרת ההצטרפות של טוֹרָאף. אפשר לדבר בקצרה על המשרד שלך?`;
-  if (variables.call_role === 'broker_support' && variables.broker_stage === 'onboarded_welcome') return `${hello} ${variables.gender === 'female' ? 'ברוכה הבאה' : 'ברוך הבא'} לטוֹרָאף! אני ריטה, העוזרת הדיגיטלית שלך. אני תמיד זמינה עבורך בתפריט הצדדי באפליקציה.`;
+  const yours = variables.gender === 'female' ? 'שֶׁלָּךְ' : 'שֶׁלְּךָ';
+  const forYou = variables.gender === 'female' ? 'עֲבוּרֵךְ' : 'עֲבוּרְךָ';
+  if (variables.call_role === 'broker_invite') return `${hello} אני ריטה, עוזרת ההצטרפות של טוֹרָאף. אפשר לדבר בקצרה על המשרד ${yours}?`;
+  if (variables.call_role === 'broker_support' && variables.broker_stage === 'onboarded_welcome') return `${hello} ${variables.gender === 'female' ? 'ברוכה הבאה' : 'ברוך הבא'} לטוֹרָאף! אני ריטה, העוזרת הדיגיטלית ${yours}. אני תמיד זמינה ${forYou} בתפריט הצדדי באפליקציה.`;
   if (variables.call_role === 'broker_support') return `${hello} אני ריטה מטוֹרָאף, העוזרת הדיגיטלית של ${variables.agency_name}. במה אפשר לעזור היום?`;
   const property = variables.call_role === 'property_lead' && 'title' in variables.property_context ? variables.property_context.title : '';
-  return `${hello} אני ריטה, הסוכנת הדיגיטלית של ${variables.agency_name}.${property ? ` אני חוזרת לגבי ${property}.` : ''} איך אפשר לעזור?`;
+  return `${hello} אני ריטה, הסוכנת הדיגיטלית של ${variables.agency_name.replace(/\bTORAFF?\b/gi, 'טוֹרָאף')}.${property ? ` אני חוזרת לגבי ${property}.` : ''} איך אפשר לעזור?`;
 }
 
 /** ElevenLabs accepts scalar dynamic variables; structured property facts travel as JSON. */
 export function ritaProviderVariables(variables: Record<string, unknown>): Record<string, string | number | boolean> {
-  const result: Record<string, string | number | boolean> = {};
+  const result: Record<string, string | number | boolean> = { gender: normalizeRitaGender(variables['gender']) };
   for (const [key, value] of Object.entries(variables)) {
+    if (key === 'gender') continue;
     if (value === null || value === undefined) continue;
     result[key] = typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? value : JSON.stringify(value);
   }

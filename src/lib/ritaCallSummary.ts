@@ -16,6 +16,7 @@ export const ritaCallSummarySchema = z.object({
     viewing_availability: z.string().max(240).nullable(),
     next_step: z.string().max(240).nullable(),
     requested_callback: z.boolean(),
+    whatsapp_link_actions: z.array(z.object({ status: z.string().max(30), property_ids: z.array(z.string().uuid()).max(3), provider_message_id: z.string().nullable() })).max(10).optional(),
   }),
   matched_property_ids: z.array(z.string().uuid()).max(20),
 });

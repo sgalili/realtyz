@@ -1826,6 +1826,9 @@ Deno.serve(async (req) => {
   // are telemetry and are acknowledged without persisting anything.
   // ================================================================
   if (payload?.object === "whatsapp_business_account" || Array.isArray(payload?.entry)) {
+    const deliveryId = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawBody)))).map(byte => byte.toString(16).padStart(2, '0')).join('');
+    const stored = await admin.rpc('record_rita_whatsapp_status', { _delivery_id: deliveryId, _payload: payload });
+    if (stored.error) return jsonResponse({ error: 'Unable to persist WhatsApp delivery' }, 503);
     const value = payload?.entry?.[0]?.changes?.[0]?.value ?? {};
 
     // Delivery receipts: a send can return a wamid and still never arrive

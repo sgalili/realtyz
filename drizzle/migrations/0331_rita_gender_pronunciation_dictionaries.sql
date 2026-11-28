@@ -1,0 +1,2 @@
+ALTER TABLE public.rita_voice_runtime ADD COLUMN pronunciation_dictionaries jsonb NOT NULL DEFAULT '{}'::jsonb;
+COMMENT ON COLUMN public.rita_voice_runtime.pronunciation_dictionaries IS 'Service-managed gender pronunciation dictionary locators and preserved shared dictionaries for ElevenLabs conversation overrides';

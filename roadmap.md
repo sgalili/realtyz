@@ -1,5 +1,12 @@
 # Roadmap
 
+## Rita gender, confirmed property links and transcripts November 28
+- [x] Locked provider/initiation gender with male default; created separate male/female IPA dictionaries and per-call overrides, preserved Rita voice and unrelated tools, vocalized greetings and conservatively normalized Hebrew transcript labels, punctuation and Latin brand artifacts without inventing caller facts.
+- [x] Confirmed send_whatsapp_links validates stored caller/workspace, rejects test calls and unsearched/nonpublic properties, uses official Meta only, and records one durable call-linked send with provider ID. Service-only receipt inbox and reconciliation handle early/replayed/out-of-order callbacks without changing existing RLS; both existing receivers deployed. No polling added; residual reconciliation waits for subsequent callbacks or sender completion during quiet periods.
+- [x] 68 focused tests passed, including mocked accepted-send and no-resend checks; actual local secure search/initiation/link endpoints returned expected 200/400/401 results, female dictionary selected correctly, and signed deployed official callback returned 200 and persisted. Temporary verification contexts/receipts removed; real public property page rendered at 411x801 without browser errors. Live ElevenLabs prompt, dictionaries, voice and both tools read back successfully. No audio pronunciation or real phone call verified.
+- [ ] Request production publication after final checks; fresh quick scan has no actionable findings, completed deep scan reports 39 critical and 50 warning findings, not fixed by this voice-focused request.
+- [ ] Send the approved single WhatsApp verification to the same saved test number, identified uniquely from five requester-owned test calls: blocked by closed 24-hour WhatsApp window and Meta review of submitted rita_property_links_v1 (PENDING). Runtime checks approval live and enables the template after approval; a real incoming WhatsApp message can open the service window sooner. No real message sent.
+
 ## Realtime publication reduction November 28
 - [x] Removed only campaign_activity_queue, fb_cloud_sessions, fb_user_groups and platform_branding from supabase_realtime; all tables, rows, RLS and application code remain intact.
 - [x] Verified campaign_logs, engagement_events, property_tours and rotating_messages remain the only publication members; all four signed-in subscriptions reached SUBSCRIBED and cleaned up without page errors or test writes.

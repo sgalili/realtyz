@@ -9866,6 +9866,7 @@ export type Database = {
           created_at: string
           id: boolean
           phone_number: string
+          pronunciation_dictionaries: Json
           tool_id: string | null
           tool_secret_id: string | null
           updated_at: string
@@ -9878,6 +9879,7 @@ export type Database = {
           created_at?: string
           id?: boolean
           phone_number: string
+          pronunciation_dictionaries?: Json
           tool_id?: string | null
           tool_secret_id?: string | null
           updated_at?: string
@@ -9890,11 +9892,92 @@ export type Database = {
           created_at?: string
           id?: boolean
           phone_number?: string
+          pronunciation_dictionaries?: Json
           tool_id?: string | null
           tool_secret_id?: string | null
           updated_at?: string
           webhook_id?: string | null
           webhook_secret?: string | null
+        }
+        Relationships: []
+      }
+      rita_whatsapp_link_sends: {
+        Row: {
+          context_id: string
+          created_at: string
+          dedupe_key: string
+          error: string | null
+          id: string
+          message: string
+          phone_number: string
+          property_ids: string[]
+          provider_message_id: string | null
+          status: string
+          status_history: Json
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          context_id: string
+          created_at?: string
+          dedupe_key: string
+          error?: string | null
+          id?: string
+          message: string
+          phone_number: string
+          property_ids: string[]
+          provider_message_id?: string | null
+          status?: string
+          status_history?: Json
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          context_id?: string
+          created_at?: string
+          dedupe_key?: string
+          error?: string | null
+          id?: string
+          message?: string
+          phone_number?: string
+          property_ids?: string[]
+          provider_message_id?: string | null
+          status?: string
+          status_history?: Json
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rita_whatsapp_link_sends_context_id_fkey"
+            columns: ["context_id"]
+            isOneToOne: false
+            referencedRelation: "rita_call_contexts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rita_whatsapp_status_inbox: {
+        Row: {
+          delivery_id: string
+          payload: Json
+          processed_at: string | null
+          processing_error: string | null
+          received_at: string
+        }
+        Insert: {
+          delivery_id: string
+          payload: Json
+          processed_at?: string | null
+          processing_error?: string | null
+          received_at?: string
+        }
+        Update: {
+          delivery_id?: string
+          payload?: Json
+          processed_at?: string | null
+          processing_error?: string | null
+          received_at?: string
         }
         Relationships: []
       }
@@ -12637,6 +12720,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      finish_rita_whatsapp_links: {
+        Args: {
+          _error?: string
+          _id: string
+          _provider_id?: string
+          _status: string
+        }
+        Returns: undefined
+      }
       finish_social_draft: {
         Args: { _content?: string; _request: string }
         Returns: Json
@@ -13526,6 +13618,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reconcile_rita_whatsapp_statuses: { Args: never; Returns: number }
       record_broker_outreach_reply: {
         Args: {
           _broker: string
@@ -13560,6 +13653,10 @@ export type Database = {
       record_property_referral_inquiry: {
         Args: { _code: string; _lead_id: string; _listing_id: string }
         Returns: string
+      }
+      record_rita_whatsapp_status: {
+        Args: { _delivery_id: string; _payload: Json }
+        Returns: number
       }
       recover_broker_whatsapp_jobs: { Args: never; Returns: number }
       register_as_affiliate: {
@@ -13674,6 +13771,10 @@ export type Database = {
       revoke_grow_card_mandate: { Args: never; Returns: undefined }
       rita_latest_profile_calls: { Args: never; Returns: Json }
       rita_normalize_phone: { Args: { _raw: string }; Returns: string }
+      rita_whatsapp_service_window: {
+        Args: { _context_id: string; _phone: string }
+        Returns: boolean
+      }
       run_availability_checks: { Args: { _limit?: number }; Returns: Json }
       rz_is_synthetic_email: { Args: { _e: string }; Returns: boolean }
       rz_phone_label: { Args: { _p: string }; Returns: string }

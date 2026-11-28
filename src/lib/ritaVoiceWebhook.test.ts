@@ -8,7 +8,7 @@ function client(role: string) {
   const admin = { rpc: async (name: string, value: unknown) => { writes.push({ table: name, value }); return { data: { received: true }, error: null }; }, from: (table: string) => {
     reads.push(table);
     const query: Record<string, unknown> = {};
-    for (const method of ['select', 'eq', 'filter', 'limit']) query[method] = () => query;
+    for (const method of ['select', 'eq', 'filter', 'limit', 'order']) query[method] = () => query;
     for (const method of ['insert', 'update', 'upsert']) query[method] = (value: unknown) => { writes.push({ table, value }); return query; };
     query['single'] = async () => ({ data: table === 'rita_voice_runtime' ? { agent_id: 'agent-a', webhook_secret: 'test-secret' } : { id: 'record-a' }, error: null });
     query['maybeSingle'] = async () => ({ data: table === 'rita_call_contexts' ? context : null, error: null });

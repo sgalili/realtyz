@@ -131,6 +131,7 @@ import { Route as ApiPublicRitaConversationInitiationRouteImport } from './route
 import { Route as ApiPublicRitaOutboundRouteImport } from './routes/api/public/rita/outbound'
 import { Route as ApiPublicRitaPostCallRouteImport } from './routes/api/public/rita/post-call'
 import { Route as ApiPublicRitaSearchPropertiesRouteImport } from './routes/api/public/rita/search-properties'
+import { Route as ApiPublicRitaSendWhatsappLinksRouteImport } from './routes/api/public/rita/send-whatsapp-links'
 
 const Char91indexChar93Route = Char91indexChar93RouteImport.update({
   id: '/index',
@@ -748,6 +749,12 @@ const ApiPublicRitaSearchPropertiesRoute =
     path: '/api/public/rita/search-properties',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicRitaSendWhatsappLinksRoute =
+  ApiPublicRitaSendWhatsappLinksRouteImport.update({
+    id: '/api/public/rita/send-whatsapp-links',
+    path: '/api/public/rita/send-whatsapp-links',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -872,6 +879,7 @@ export interface FileRoutesByFullPath {
   '/api/public/rita/outbound': typeof ApiPublicRitaOutboundRoute
   '/api/public/rita/post-call': typeof ApiPublicRitaPostCallRoute
   '/api/public/rita/search-properties': typeof ApiPublicRitaSearchPropertiesRoute
+  '/api/public/rita/send-whatsapp-links': typeof ApiPublicRitaSendWhatsappLinksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -996,6 +1004,7 @@ export interface FileRoutesByTo {
   '/api/public/rita/outbound': typeof ApiPublicRitaOutboundRoute
   '/api/public/rita/post-call': typeof ApiPublicRitaPostCallRoute
   '/api/public/rita/search-properties': typeof ApiPublicRitaSearchPropertiesRoute
+  '/api/public/rita/send-whatsapp-links': typeof ApiPublicRitaSendWhatsappLinksRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -1121,6 +1130,7 @@ export interface FileRoutesById {
   '/api/public/rita/outbound': typeof ApiPublicRitaOutboundRoute
   '/api/public/rita/post-call': typeof ApiPublicRitaPostCallRoute
   '/api/public/rita/search-properties': typeof ApiPublicRitaSearchPropertiesRoute
+  '/api/public/rita/send-whatsapp-links': typeof ApiPublicRitaSendWhatsappLinksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1247,6 +1257,7 @@ export interface FileRouteTypes {
     | '/api/public/rita/outbound'
     | '/api/public/rita/post-call'
     | '/api/public/rita/search-properties'
+    | '/api/public/rita/send-whatsapp-links'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1371,6 +1382,7 @@ export interface FileRouteTypes {
     | '/api/public/rita/outbound'
     | '/api/public/rita/post-call'
     | '/api/public/rita/search-properties'
+    | '/api/public/rita/send-whatsapp-links'
   id:
     | '__root__'
     | '/'
@@ -1495,6 +1507,7 @@ export interface FileRouteTypes {
     | '/api/public/rita/outbound'
     | '/api/public/rita/post-call'
     | '/api/public/rita/search-properties'
+    | '/api/public/rita/send-whatsapp-links'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1620,6 +1633,7 @@ export interface RootRouteChildren {
   ApiPublicRitaOutboundRoute: typeof ApiPublicRitaOutboundRoute
   ApiPublicRitaPostCallRoute: typeof ApiPublicRitaPostCallRoute
   ApiPublicRitaSearchPropertiesRoute: typeof ApiPublicRitaSearchPropertiesRoute
+  ApiPublicRitaSendWhatsappLinksRoute: typeof ApiPublicRitaSendWhatsappLinksRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -2478,6 +2492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRitaSearchPropertiesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/rita/send-whatsapp-links': {
+      id: '/api/public/rita/send-whatsapp-links'
+      path: '/api/public/rita/send-whatsapp-links'
+      fullPath: '/api/public/rita/send-whatsapp-links'
+      preLoaderRoute: typeof ApiPublicRitaSendWhatsappLinksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -2606,6 +2627,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicRitaOutboundRoute: ApiPublicRitaOutboundRoute,
   ApiPublicRitaPostCallRoute: ApiPublicRitaPostCallRoute,
   ApiPublicRitaSearchPropertiesRoute: ApiPublicRitaSearchPropertiesRoute,
+  ApiPublicRitaSendWhatsappLinksRoute: ApiPublicRitaSendWhatsappLinksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

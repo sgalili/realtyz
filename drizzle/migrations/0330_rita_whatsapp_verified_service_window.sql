@@ -1,0 +1,6 @@
+CREATE INDEX rita_whatsapp_inbox_received_idx ON public.rita_whatsapp_status_inbox(received_at DESC);
+CREATE OR REPLACE FUNCTION public.rita_whatsapp_service_window(_phone text,_context_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+ SELECT EXISTS (SELECT 1 FROM public.rita_call_contexts c JOIN public.leads l ON l.id=c.lead_id AND l.workspace_owner_id=c.workspace_owner_id JOIN public.messages m ON m.lead_id=l.id WHERE c.id=_context_id AND regexp_replace(c.lead_phone,'[^0-9]','','g')=_phone AND m.direction='inbound' AND m.platform='whatsapp' AND m.created_at>now()-interval '24 hours') OR EXISTS (SELECT 1 FROM public.rita_whatsapp_status_inbox i CROSS JOIN LATERAL jsonb_path_query(i.payload,'$.entry[*].changes[*].value.messages[*]') msg WHERE i.received_at>now()-interval '24 hours' AND msg->>'from'=_phone AND (msg->>'timestamp') ~ '^[0-9]{1,11}$' AND to_timestamp((msg->>'timestamp')::bigint)>now()-interval '24 hours' AND to_timestamp((msg->>'timestamp')::bigint)<=now());
+$$;
+REVOKE ALL ON FUNCTION public.rita_whatsapp_service_window(text,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.rita_whatsapp_service_window(text,uuid) TO service_role;

@@ -51,7 +51,34 @@ export async function handleRitaPropertySearchRequest(request: Request): Promise
     const { requireRitaCallbackSecret } = await import('./ritaVoiceSecurity.server');
     await requireRitaCallbackSecret(request, supabaseAdmin);
     const { searchRitaProperties } = await import('./ritaVoiceSearch.server');
-    return Response.json(await searchRitaProperties(supabaseAdmin, await request.json()));
+    const { ritaPropertySearchSchema } = await import('./ritaVoice');
+    const input = ritaPropertySearchSchema.parse(await request.json());
+    let context = null;
+    if (input.rita_call_context_id) {
+      const result = await supabaseAdmin.from('rita_call_contexts').select('id,workspace_owner_id,source_context').eq('id', input.rita_call_context_id).single();
+      if (result.error || !result.data) throw new Error('Missing call context');
+      context = result.data;
+      if (input.broker_id && input.broker_id !== context.workspace_owner_id) throw new Error('Invalid broker context');
+    }
+    const result = await searchRitaProperties(supabaseAdmin, context ? { ...input, broker_id: context.workspace_owner_id || '' } : input);
+    if (context) {
+      const source = (context.source_context ?? {}) as Record<string, never>;
+      const saved = await supabaseAdmin.from('rita_call_contexts').update({ source_context: { ...source, searched_property_ids: result.property_ids } }).eq('id', context.id);
+      if (saved.error) throw saved.error;
+    }
+    return Response.json(result);
+  } catch (error) { return failure(error); }
+}
+
+export async function handleRitaWhatsappLinksRequest(request: Request): Promise<Response> {
+  try {
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { requireRitaCallbackSecret } = await import('./ritaVoiceSecurity.server');
+    await requireRitaCallbackSecret(request, supabaseAdmin);
+    const raw = await request.text();
+    if (raw.length > 20000) return new Response('Too large', { status: 413 });
+    const { sendRitaWhatsappLinks } = await import('./ritaWhatsappLinks.server');
+    return Response.json(await sendRitaWhatsappLinks(supabaseAdmin, JSON.parse(raw)));
   } catch (error) { return failure(error); }
 }
 
